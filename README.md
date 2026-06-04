@@ -1,4 +1,4 @@
-# 🏢 OFFICE GAME：職場現形記 (Game of Office Politics)
+# 🏢 OFFICE GAME：職場風雲 (Game of Office Politics)
 
 [![Game Status](https://img.shields.io/badge/Status-Prototype-orange.svg)]()
 [![Players](https://img.shields.io/badge/Players-2--4-blue.svg)]()
