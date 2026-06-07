@@ -1,5 +1,5 @@
 <template>
-  <div class="app">
+  <div class="login-page app">
     <!-- ── Cinematic Background ── -->
     <div class="bg">
       <div class="bgOrb bgOrb1" />
@@ -29,12 +29,14 @@ import LoginContent from './LoginContent.vue'
 <style>
 @import '../assets/styles/LoginStyle.css';
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Cinzel:wght@400;700&display=swap');
+</style>
 
-body {
-  font-family: var(--font-body);
+<style scoped>
+.login-page {
   min-height: 100vh;
-  background: #1a2a3a;
   overflow: hidden;
+  background: #1a2a3a;
+  color: #ffffff;
 }
 
 .app {

@@ -12,7 +12,5 @@
 <style scoped>
 .home-page {
   padding: 2rem;
-  background: rgba(253, 253, 253, 0.1);
-  color: #fff;
 }
 </style>
