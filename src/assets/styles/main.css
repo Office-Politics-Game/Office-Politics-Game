@@ -76,3 +76,31 @@ select {
     --text-display: 64px;
   }
 }
+
+@theme {
+  --font-display: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+  --font-sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --shadow-paper: 0 18px 30px rgba(18, 12, 6, 0.48), 0 3px 0 rgba(255, 255, 255, 0.55) inset;
+}
+
+html {
+  background: #0d0d0c;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  height: 100%;
+  min-height: 100%;
+  background: #0d0d0c;
+  font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+}
+
+#app {
+  min-height: 100%;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
