@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import EntryPage from '../views/EntryPage.vue'
+import LoginPage from '../components/LoginPage.vue'
 import Lobby from '../views/Lobby.vue'
 import GameView from '../views/GameView.vue'
 import FriendView from '@/views/FriendView.vue'
@@ -6,8 +8,13 @@ import FriendView from '@/views/FriendView.vue'
 const routes = [
   {
     path: '/',
-    name: 'Home',
-    component: Lobby
+    name: 'Entry',
+    component: EntryPage
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: LoginPage
   },
   {
     path: '/lobby',
