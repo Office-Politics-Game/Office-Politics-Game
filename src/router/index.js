@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Lobby from '../views/Lobby.vue'
+import FriendView from '@/views/FriendView.vue'
 
 const routes = [
   {
@@ -12,6 +13,11 @@ const routes = [
     name: 'Lobby',
     component: Lobby
   },
+  {
+    path: '/friend',
+    name: 'Friend',
+    component: FriendView
+  }
 ]
 
 const router = createRouter({
