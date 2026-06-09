@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Lobby from '../views/Lobby.vue'
 import GameView from '../views/GameView.vue'
+import FriendView from '@/views/FriendView.vue'
 
 const routes = [
   {
@@ -18,6 +19,11 @@ const routes = [
     name: 'Game',
     component: GameView
   },
+  {
+    path: '/friend',
+    name: 'Friend',
+    component: FriendView
+  }
 ]
 
 const router = createRouter({

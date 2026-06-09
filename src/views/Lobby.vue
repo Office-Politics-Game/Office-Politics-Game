@@ -1,72 +1,78 @@
-<script setup>
-import { ref } from 'vue'
-const isProfileOpen = ref(false)
-</script>
-
 <template>
-  <div class="relative w-screen h-screen bg-white text-black flex flex-col justify-center items-center overflow-hidden p-4 select-none">
-    <div class="absolute top-[0vh] left-[10vw] w-[6vw] h-[15vh] bg-[#d9d9d9] flex flex-col justify-center items-center text-[2.5vh] font-medium leading-relaxed rounded-sm">
-      <span>活動</span>
-      <span>宣傳</span>
-    </div>
-    <main class="flex flex-col gap-[4vh] w-[40vw]">
-      <button class="w-full h-[12vh] bg-[#d9d9d9] text-[2.8vh] font-medium hover:bg-gray-300 active:scale-98 transition-all flex justify-center items-center rounded-sm">
-        開始遊戲
-      </button>
-      <button 
-        @click="isProfileOpen = true"
-        class="w-full h-[12vh] bg-[#d9d9d9] text-[2.8vh] font-medium hover:bg-gray-300 active:scale-98 transition-all flex justify-center items-center rounded-sm"
-      >
-        個人空間
-      </button>
-      <button class="w-full h-[12vh] bg-[#d9d9d9] text-[2.8vh] font-medium hover:bg-gray-300 active:scale-98 transition-all flex justify-center items-center rounded-sm">
-        商城/抽卡
-      </button>
-    </main>
-    <div 
-      v-if="isProfileOpen" 
-      class="absolute inset-0 bg-black/40 flex justify-center items-center z-50 animate-fade-in"
+  <main class="w-screen min-h-screen bg-[#1e1e1e] flex items-center justify-center overflow-hidden">
+    <div
+      class="relative w-full min-h-screen bg-cover bg-center flex items-center justify-center"
+      :style="{ backgroundImage: `url(${bgDashboard})` }"
     >
-      <div class="relative w-[75vw] h-[75vh] flex gap-[3vw] p-4 items-end">
-        <div class="w-[22vw] h-full bg-[#d9d9d9] rounded-sm flex flex-col items-center pt-[6vh] px-4 gap-[3vh]">
-          <div class="w-[12vw] h-[12vw] max-w-[120px] max-h-[120px] bg-gray-400 rounded-full shadow-inner"></div>
-          <div class="w-full flex flex-col gap-[3vh]">
-            <div class="w-full h-[4vh] bg-gray-400 rounded-sm"></div>
-            <div class="w-full h-[4vh] bg-gray-400 rounded-sm"></div>
-            <div class="w-full h-[4vh] bg-gray-400 rounded-sm"></div>
-          </div>
-        </div>
-        <div class="flex-1 h-full flex flex-col relative">
-          <button 
-            @click="isProfileOpen = false"
-            class="absolute -top-[1vh] -right-[1vw] text-[6vh] font-light text-black hover:text-gray-600 transition-colors z-10 line-height-none flex items-center justify-center w-[6vh] h-[6vh]"
-          >
-            ×
-          </button>
-          <div class="flex gap-[1vw] pl-[1vw]">
-            <button class="w-32 px-[2vw] py-[1vh] bg-[#d9d9d9] text-[2.2vh] font-medium rounded-t-sm border-b-2 border-[#d9d9d9]">
-              好友列表
-            </button>
-            <button class="w-32 px-[2vw] py-[1vh] bg-[#d9d9d9] text-[2.2vh] font-medium rounded-t-sm">
-              造型庫
-            </button>
-            <button class="w-32 px-[2vw] py-[1vh] bg-[#d9d9d9] text-[2.2vh] font-medium rounded-t-sm">
-              對戰紀錄
-            </button>
-          </div>
-          <div class="flex-1 bg-[#d9d9d9] rounded-sm shadow-md"></div>
-        </div>
-      </div>
+      <div class="absolute inset-0 bg-black/45"></div>
+
+      <section
+        class="relative w-[80vw] max-w-[760px] aspect-[16/9] bg-[length:100%_100%] bg-center shadow-2xl"
+        :style="{ backgroundImage: `url(${menuBg})` }"
+      >
+        <!-- 開始遊玩 -->
+        <button class="menu-btn gap-6 left-[6%] top-[10%] w-[29.5%] h-[75%]">
+          <img src="../assets/Icon_Card.png" alt="開始遊玩" class="w-[35%] h-auto object-contain" />
+          <span class="text-[20px] font-bold tracking-wider">開始遊玩</span>
+        </button>
+
+        <!-- 個人區域 -->
+        <button class="menu-btn left-[36.5%] top-[10%] w-[39%] h-[45.5%]">
+          <img src="../assets/Icon_Personal.png" alt="個人區域" class="w-[20%] h-auto object-contain" />
+          <span class="text-[20px] font-bold mt-2 tracking-wider">個人區域</span>
+        </button>
+
+        <!-- 社交 -->
+        <button class="menu-btn left-[76%] top-[10%] w-[17.5%] h-[27%]">
+          <img src="../assets/Icon_Social.png" alt="社交" class="w-[35%] h-auto object-contain" />
+          <span class="text-[20px] font-bold mt-1 tracking-wider">社交</span>
+        </button>
+
+        <!-- 設定 -->
+        <button class="menu-btn left-[76.3%] top-[39%] w-[17%] h-[22.5%]">
+          <img src="../assets/Icon_Setting.png" alt="設定" class="w-[30%] h-auto object-contain" />
+          <span class="text-[20px] font-bold mt-1 tracking-wider">設定</span>
+        </button>
+
+        <!-- 招募 -->
+        <button class="menu-btn left-[36%] top-[57%] w-[18%] h-[28%]">
+          <img src="../assets/Icon_Recruit.png" alt="招募" class="w-[32%] h-auto object-contain" />
+          <span class="text-[18px] font-bold mt-1 tracking-wider">招募</span>
+        </button>
+
+        <!-- 商城 -->
+        <button class="menu-btn left-[53%] top-[57%] w-[17%] h-[28%]">
+          <img src="../assets/Icon_Mall.png" alt="商城" class="w-[32%] h-auto object-contain" />
+          <span class="text-[18px] font-bold mt-1 tracking-wider">商城</span>
+        </button>
+
+        <!-- 打卡下班 -->
+        <button class="menu-btn left-[70%] top-[62%] w-[23%] h-[23%]">
+          <img src="../assets/Icon_Quit.png" alt="打卡下班" class="w-[23%] h-auto object-contain" />
+          <span class="text-[16px] font-bold mt-1 tracking-wider">打卡下班</span>
+        </button>
+      </section>
     </div>
-  </div>
+  </main>
 </template>
 
+<script setup>
+import bgDashboard from '@/assets/BG_Dashboard.jpg'
+import menuBg from '@/assets/Menu.png'
+</script>
+
 <style scoped>
-.animate-fade-in {
-  animation: fadeIn 0.15s ease-out;
+.menu-btn {
+  position: absolute;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: 0.2s;
 }
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+
+.menu-btn:hover {
+  background-color: rgba(39, 35, 35, 0.12);
 }
 </style>
