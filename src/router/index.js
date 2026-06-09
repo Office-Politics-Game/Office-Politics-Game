@@ -4,7 +4,7 @@ import LoginPage from "../components/LoginPage.vue";
 import Lobby from "../views/Lobby.vue";
 import GameView from "../views/GameView.vue";
 import FriendView from "@/views/FriendView.vue";
-
+import Result from "@/views/Result.vue";
 const routes = [
   {
     path: "/",
