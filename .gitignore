@@ -44,3 +44,4 @@ AGENTS.md
 .spectra.yaml
 .spectra/
 openspec/
+openspec/.vector-search.db*

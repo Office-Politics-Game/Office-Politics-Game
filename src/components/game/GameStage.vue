@@ -2,6 +2,7 @@
 import gameTableBackgroundUrl from '@/assets/BG_GameTable.jpg'
 import GameSettingsIcon from './GameSettingsIcon.vue'
 import RotateDeviceNotice from './RotateDeviceNotice.vue'
+import TableCardPiles from './TableCardPiles.vue'
 import TurnStatus from './TurnStatus.vue'
 
 defineProps({
@@ -15,6 +16,14 @@ defineProps({
   },
   currentStep: {
     type: String,
+    required: true,
+  },
+  deckCount: {
+    type: [Number, String],
+    required: true,
+  },
+  discardCard: {
+    type: Object,
     required: true,
   },
 })
@@ -37,6 +46,10 @@ defineProps({
 
       <div class="absolute top-[clamp(20px,6vh,40px)] right-[clamp(18px,2.5vw,40px)]">
         <GameSettingsIcon />
+      </div>
+
+      <div class="absolute top-[52%] left-1/2 -translate-x-1/2">
+        <TableCardPiles :deck-count="deckCount" :discard-card="discardCard" />
       </div>
     </section>
 
