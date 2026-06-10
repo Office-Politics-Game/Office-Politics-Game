@@ -1,61 +1,59 @@
 <script setup>
 import { ref } from 'vue';
-import { Crown, DoorOpen } from '@lucide/vue';
-import buttonBlue from '@/assets/image/button-blue.png';
-import buttonWhite from '@/assets/image/button-white.png';
-import joinRoomBackground from '@/assets/image/modal-join-room.png';
+import { DoorOpen } from '@lucide/vue';
+import joinRoomBackground from '@/assets/WaitingRoom.png';
 
 const roomId = ref("")
 </script>
 
 <template>
-  <div class="lobby-modal-backdrop" aria-label="加入房間彈窗">
-    <article class="lobby-modal-paper join-room-panel">
-      <img class="modal-paper-image" :src="joinRoomBackground" alt="" aria-hidden="true" />
+  <div class="lobby-modal-backdrop absolute inset-0 z-[8] grid place-items-center" aria-label="加入房間彈窗">
+    <article class="lobby-modal-paper join-room-panel relative overflow-visible">
+      <img
+        class="modal-paper-image pointer-events-none absolute inset-0 h-full w-full select-none object-contain"
+        :src="joinRoomBackground"
+        alt=""
+        aria-hidden="true"
+      />
 
       <header class="text-center">
-        <div class="join-room-brand mx-auto flex items-center justify-center gap-4 text-[#836a4e]">
-          <span class="h-px flex-1 bg-current"></span>
-          <Crown class="join-room-crown fill-current stroke-current" :stroke-width="1.4" />
-          <span class="h-px flex-1 bg-current"></span>
-        </div>
-
-        <div class="join-room-title-row flex items-center justify-center text-[#8a6f4f]">
-          <span class="join-room-star">★</span>
-          <h2 class="join-room-title font-display font-black leading-none tracking-normal text-[#2d241b]">
+        <div class="join-room-title-row flex items-center justify-center">
+          <span class="join-room-title-rule block h-px min-w-7 flex-1"></span>
+          <h2 class="join-room-title leading-none tracking-normal">
             加入房間
           </h2>
-          <span class="join-room-star">★</span>
+          <span class="join-room-title-rule block h-px min-w-7 flex-1"></span>
         </div>
-
-        <div class="join-room-title-rule mx-auto h-px w-[82%] border-t border-dashed border-[#b99f7a]/58"></div>
       </header>
 
       <section class="join-room-form" aria-label="輸入房號">
-        <label class="join-room-label flex items-center font-display font-black text-[#2f2a25]">
-          <DoorOpen class="h-[1.25em] w-[1.25em] fill-[#9b7b52] stroke-[#9b7b52]" :stroke-width="1.8" />
+        <label class="join-room-label flex items-center" for="roomId">
+          <DoorOpen class="join-room-label-icon" :stroke-width="2.2" />
           請輸入房間 ID：
         </label>
 
-        <div class="join-room-input" aria-hidden="true">
+        <div class="join-room-input grid grid-cols-1 items-center">
           <input
                 id="roomId"
                 v-model="roomId"
-                class="join-room-real-input"
+                class="join-room-real-input min-w-0 w-full border-0 bg-transparent outline-0"
                 type="text"
+                placeholder="ABCD12"
           />
-          <!-- <span class="join-room-divider"></span> -->
-          <!-- <Search class="join-room-search" :stroke-width="3.6" /> -->
         </div>
       </section>
 
-      <footer class="join-room-actions">
-        <button class="modal-action-button modal-action-button-light" type="button">
-          <img :src="buttonWhite" alt="" aria-hidden="true" />
+      <footer class="join-room-actions grid grid-cols-2">
+        <button
+          class="modal-action-button modal-action-button-light relative flex cursor-pointer items-center justify-center"
+          type="button"
+        >
           <span>取消</span>
         </button>
-        <button class="modal-action-button modal-action-button-primary" type="button">
-          <img :src="buttonBlue" alt="" aria-hidden="true" />
+        <button
+          class="modal-action-button modal-action-button-primary relative flex cursor-pointer items-center justify-center"
+          type="button"
+        >
           <span>加入</span>
         </button>
       </footer>
@@ -65,147 +63,132 @@ const roomId = ref("")
 
 <style scoped>
 .lobby-modal-backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: 8;
-  display: grid;
-  place-items: center;
-  background: radial-gradient(circle at center, rgba(255, 244, 218, 0.18), rgba(0, 0, 0, 0.32) 68%);
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.22), rgba(0, 19, 50, 0.38) 70%);
   padding: 8px;
 }
 
 .lobby-modal-paper {
-  position: relative;
-  width: 70%;
-  max-width: 520px;
-  overflow: visible;
-}
-
-.modal-paper-image {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  object-fit: contain;
-  user-select: none;
+  width: min(55vw, calc((100svh - 16px) * 1361 / 801), 900px);
+  color: var(--brand-active, #465563);
+  font-family: var(--font-sans, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
 }
 
 .join-room-panel {
-  aspect-ratio: 1448 / 1086;
+  aspect-ratio: 1361 / 801;
 }
 
 .join-room-panel > header {
   position: absolute;
-  top: 14%;
+  top: 22%;
   left: 50%;
   z-index: 1;
-  width: 64%;
+  width: 54%;
   transform: translateX(-50%);
 }
 
-.join-room-brand {
-  width: 100px;
-}
-
-.join-room-crown {
-  width: 18px;
-  height: 18px;
-}
-
 .join-room-title-row {
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.join-room-title {
-  font-size: 22px;
-}
-
-.join-room-star {
-  font-size: 10px;
+  gap: clamp(6px, 1vw, 12px);
+  color: var(--brand-active, #465563);
 }
 
 .join-room-title-rule {
-  margin-top: 8px;
+  background: var(--brand-primary, #86b3e0);
+}
+
+.join-room-title {
+  color: var(--brand-active, #465563);
+  font-size: clamp(20px, 2.6vw, 32px);
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .join-room-form {
   position: absolute;
-  top: 39%;
+  top: 40%;
   left: 50%;
   z-index: 1;
-  width: 72%;
+  width: 54%;
   transform: translateX(-50%);
 }
 
 .join-room-label {
   gap: 8px;
-  font-size: 12px;
+  color: var(--brand-active, #465563);
+  font-size: clamp(13px, 1.35vw, 18px);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.join-room-label-icon {
+  width: 1.2em;
+  height: 1.2em;
+  color: var(--brand-primary, #86b3e0);
 }
 
 .join-room-input {
-  display: grid;
-  min-height: 38px;
-  grid-template-columns: 1fr auto auto;
-  align-items: center;
-  margin-top: 8px;
-  border: 1px solid rgba(113, 86, 53, 0.62);
-  border-radius: 4px;
-  background: rgba(244, 235, 218, 0.78);
-  color: #897b6b;
-  font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  min-height: clamp(34px, 3.8vw, 48px);
+  margin-top: clamp(10px, 1.6vw, 16px);
+  border: 1px solid var(--brand-primary, #86b3e0);
+  border-radius: var(--radius-md, 0);
+  background: rgba(255, 255, 255, 0.54);
+  color: var(--brand-active, #465563);
+  font-family: var(--font-sans, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
   font-weight: 500;
   letter-spacing: 0.08em;
-  box-shadow: 0 8px 12px rgba(49, 33, 18, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  box-shadow: 0 10px 20px rgba(0, 19, 50, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.join-room-input:focus-within {
+  border-color: var(--brand-hover, #0046f4);
+  background: var(--surface-glass-hover, rgba(255, 255, 255, 0.72));
+  box-shadow: 0 0 0 4px var(--brand-focus, rgba(0, 70, 244, 0.24));
 }
 
 .join-room-real-input {
-  min-width: 0;
-  width: 100%;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: #2f2a25;
-  padding: 0 12px;
-  font-size: 20px;
+  color: var(--brand-active, #465563);
+  padding: 0 clamp(10px, 1.2vw, 14px);
+  font-family: var(--font-sans, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
+  font-size: clamp(15px, 1.7vw, 22px);
+  font-weight: 700;
   letter-spacing: 0.08em;
+}
+
+.join-room-real-input::placeholder {
+  color: var(--brand-disabled, #a0a6b3);
 }
 
 .join-room-actions {
   position: absolute;
-  bottom: 12%;
+  bottom: 15%;
   left: 50%;
   z-index: 1;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  width: 64%;
+  gap: clamp(10px, 1.4vw, 16px);
+  width: 40%;
   transform: translateX(-50%);
 }
 
 .modal-action-button {
-  position: relative;
-  display: grid;
-  aspect-ratio: 2172 / 724;
-  place-items: center;
-  overflow: hidden;
-  border: 0;
-  background: transparent;
-  font-family: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
-  font-size: 14px;
-  font-weight: 900;
+  min-height: clamp(30px, 3.4vw, 42px);
+  border: 1px solid var(--brand-primary, #86b3e0);
+  border-radius: var(--radius-md, 0);
+  background: var(--surface-glass, rgba(255, 255, 255, 0.3));
+  color: var(--brand-active, #465563);
+  font-family: var(--font-sans, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
+  font-size: clamp(13px, 1.2vw, 15px);
+  font-weight: 700;
   line-height: 1;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
-}
-
-.modal-action-button img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  object-fit: fill;
+  text-shadow: none;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease;
 }
 
 .modal-action-button span {
@@ -214,124 +197,176 @@ const roomId = ref("")
 }
 
 .modal-action-button-light {
-  color: #33281e;
+  background: var(--surface-glass, rgba(255, 255, 255, 0.3));
 }
 
 .modal-action-button-primary {
-  color: #f4dfb8;
+  background: rgba(134, 179, 224, 0.34);
+}
+
+.modal-action-button:hover {
+  transform: translateY(-2px);
+  border-color: var(--brand-hover, #0046f4);
+  background: var(--brand-hover, #0046f4);
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(0, 70, 244, 0.24);
+}
+
+.modal-action-button:active {
+  transform: translateY(1px);
+  border-color: var(--brand-active, #465563);
+  background: var(--brand-active, #465563);
+  color: #ffffff;
+  box-shadow: 0 6px 14px rgba(70, 85, 99, 0.24);
+}
+
+.modal-action-button:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 4px var(--brand-focus, rgba(0, 70, 244, 0.24));
 }
 
 @media (min-width: 768px) {
   .lobby-modal-paper {
-    width: 70%;
-    max-width: 740px;
-  }
-
-  .join-room-brand {
-    width: 140px;
-  }
-
-  .join-room-crown {
-    width: 28px;
-    height: 28px;
+    width: min(55vw, calc((100svh - 48px) * 1361 / 801), 760px);
   }
 
   .join-room-title-row {
-    gap: 14px;
-    margin-top: 6px;
+    gap: 12px;
   }
 
   .join-room-title {
-    font-size: 40px;
-  }
-
-  .join-room-star {
-    font-size: 16px;
-  }
-
-  .join-room-title-rule {
-    margin-top: 14px;
+    font-size: clamp(24px, 2.6vw, 30px);
   }
 
   .join-room-form {
-    width: 78%;
+    top: 40%;
+    width: 54%;
   }
 
   .join-room-label {
-    gap: 12px;
-    font-size: 24px;
+    gap: 10px;
+    font-size: 16px;
   }
 
   .join-room-input {
-    min-height: 74px;
-    margin-top: 16px;
-    font-size: 48px;
-    border-radius: 6px;
+    min-height: 44px;
+    margin-top: 14px;
   }
 
   .join-room-real-input {
     letter-spacing: 0.1em;
-    padding: 0 16px;
-    font-size: 32px;
+    padding: 0 14px;
+    font-size: 18px;
   }
 
   .join-room-actions {
-    gap: 36px;
-    width: 72%;
+    bottom: 15%;
+    gap: 14px;
+    width: 40%;
   }
 
   .modal-action-button {
-    font-size: 28px;
+    min-height: 38px;
+    font-size: 14px;
   }
 }
 
 @media (min-width: 1024px) {
   .lobby-modal-paper {
-    width: 70%;
-    max-width: 840px;
-  }
-
-  .join-room-brand {
-    width: 170px;
-  }
-
-  .join-room-crown {
-    width: 34px;
-    height: 34px;
+    width: min(55vw, calc((100svh - 64px) * 1361 / 801), 900px);
   }
 
   .join-room-title {
-    font-size: 50px;
+    font-size: 32px;
   }
 
   .join-room-form {
-    width: 82%;
+    top: 40%;
+    width: 52%;
   }
 
   .join-room-label {
-    font-size: 30px;
+    font-size: 18px;
   }
 
   .join-room-input {
-    min-height: 96px;
-    margin-top: 18px;
-    font-size: 58px;
-    border-radius: 8px;
+    min-height: 48px;
+    margin-top: 16px;
   }
 
   .join-room-real-input {
     letter-spacing: 0.12em;
-    font-size: 48px;
-    padding: 0 20px;
+    font-size: 22px;
+    padding: 0 16px;
   }
 
   .join-room-actions {
-    gap: 58px;
-    width: 76%;
+    bottom: 15%;
+    gap: 16px;
+    width: 38%;
   }
 
   .modal-action-button {
-    font-size: 34px;
+    min-height: 42px;
+    font-size: 15px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .lobby-modal-backdrop {
+    padding: 4px;
+  }
+
+  .lobby-modal-paper {
+    width: min(55vw, calc((100svh - 8px) * 1361 / 801), 680px);
+  }
+
+  .join-room-panel > header {
+    top: 21%;
+    width: 54%;
+  }
+
+  .join-room-title-row {
+    gap: 8px;
+  }
+
+  .join-room-title-rule {
+    min-width: 20px;
+  }
+
+  .join-room-title {
+    font-size: clamp(16px, 2.8vw, 22px);
+  }
+
+  .join-room-form {
+    top: 39%;
+    width: 54%;
+  }
+
+  .join-room-label {
+    gap: 6px;
+    font-size: clamp(12px, 2vw, 14px);
+  }
+
+  .join-room-input {
+    min-height: clamp(26px, 6.4vh, 32px);
+    margin-top: clamp(8px, 2.4vh, 12px);
+  }
+
+  .join-room-real-input {
+    padding: 0 10px;
+    font-size: clamp(14px, 2.6vw, 16px);
+  }
+
+  .join-room-actions {
+    bottom: 14%;
+    gap: clamp(8px, 2vw, 10px);
+    width: 40%;
+  }
+
+  .modal-action-button {
+    min-height: clamp(24px, 5.8vh, 30px);
+    font-size: clamp(12px, 2.4vw, 13px);
   }
 }
 </style>
