@@ -1,24 +1,24 @@
-<script setup lang="ts">
-defineProps<{
-  name: string;
-  level: number;
-  score: number;
-  avatar: string;
-}>();
+<script setup>
+defineProps({
+  name: String,
+  level: Number,
+  score: Number,
+  avatar: String,
+});
 </script>
 
 <template>
-  <div class="relative flex h-[42px] w-52 items-center justify-between">
+  <div class="relative flex h-[40px] w-47 items-center justify-between">
     <div class="flex min-w-0 items-center gap-4 ali justify-between">
       <div>
         <div class="flex">
           <img
             :src="avatar"
             :alt="name"
-            class="h-10 w-10 rounded-full border-2 border-blue-600 object-cover"
+            class="h-9 w-9 rounded-full border-2 border-blue-600 object-cover"
           />
           <span
-            class="absolute bottom-0 left-7 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-[10px] font-bold leading-none text-white shadow"
+            class="absolute bottom-0 left-7 flex h-5 w-5 items-center justify-center rounded-full border-1 border-white bg-blue-600 text-[9px] font-bold leading-none text-white shadow"
           >
             {{ level }}
           </span>
