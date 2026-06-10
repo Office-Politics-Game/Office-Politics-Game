@@ -43,37 +43,37 @@ const playerSlots = [
 </script>
 
 <template>
-  <main class="game-view text-stone-900">
+  <main class="flex h-[100svh] min-h-[100svh] w-screen items-center justify-center overflow-hidden p-0 text-stone-900">
     <section
-      class="room-stage game-stage relative overflow-hidden bg-cover bg-center"
+      class="relative h-[100svh] w-screen overflow-hidden bg-cover bg-center"
       :style="{ backgroundImage: `url(${customRoomBackground})` }"
       aria-label="自訂遊戲局"
     >
       <button
-        class="room-icon-button room-back-button"
+        class="room-icon-button room-back-button pointer-events-auto absolute top-[5%] z-[3] grid aspect-square w-6 cursor-pointer place-items-center backdrop-blur"
         type="button"
         aria-label="返回"
       >
         <ArrowLeft :stroke-width="3.2" />
       </button>
       <button
-        class="room-icon-button room-setting-button"
+        class="room-icon-button room-setting-button pointer-events-auto absolute top-[5%] z-[3] grid aspect-square w-6 cursor-pointer place-items-center backdrop-blur"
         type="button"
         aria-label="設定"
       >
         <Settings :stroke-width="3" />
       </button>
-      <div class="room-id-badge">
+      <div class="room-id-badge absolute left-1/2 top-[8%] z-[2] flex w-[36%] min-w-[120px] -translate-x-1/2 items-center justify-center gap-2 px-2 py-1 font-black leading-none">
         <span>房間ID：</span>
         <span class="tracking-[0.08em]">{{ roomId }}</span>
         <Copy class="room-id-icon" :stroke-width="2.3" />
       </div>
       <CustomRoomPlayerList :slots="playerSlots" />
-      <div class="room-action-area">
-        <button class="room-action-button room-action-button-light" type="button">
+      <div class="room-action-area pointer-events-auto absolute bottom-[6%] left-1/2 z-10 grid w-[44%] -translate-x-1/2 grid-cols-2 gap-[16%]">
+        <button class="room-action-button room-action-button-light pointer-events-auto flex cursor-pointer items-center justify-center overflow-hidden whitespace-nowrap" type="button">
           返回大廳
         </button>
-        <button class="room-action-button room-action-button-primary" type="button">
+        <button class="room-action-button room-action-button-primary pointer-events-auto flex cursor-pointer items-center justify-center overflow-hidden whitespace-nowrap" type="button">
           <Play class="room-action-icon fill-current" :stroke-width="2.4" />
           開始遊戲
         </button>
@@ -84,44 +84,12 @@ const playerSlots = [
 </template>
 
 <style scoped>
-.game-view {
-  display: flex;
-  width: 100vw;
-  height: 100svh;
-  min-height: 100svh;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  padding: 0;
-}
-
-.game-stage {
-  width: 100vw;
-  height: 100svh;
-  background-size: cover;
-  background-position: center center;
-}
-
-.room-stage {
-  background-position: center center;
-}
-
 .room-icon-button {
-  position: absolute;
-  top: 5%;
-  z-index: 3;
-  display: grid;
-  width: 24px;
-  aspect-ratio: 1;
-  place-items: center;
   border: 1px solid var(--brand-primary, #86b3e0);
   border-radius: var(--radius-md, 0);
   background: var(--surface-glass, rgba(255, 255, 255, 0.3));
   color: var(--brand-active, #465563);
   box-shadow: 0 8px 22px rgba(0, 19, 50, 0.2);
-  backdrop-filter: blur(8px);
-  pointer-events: auto;
-  cursor: pointer;
   transition:
     transform 180ms ease,
     border-color 180ms ease,
@@ -165,26 +133,12 @@ const playerSlots = [
 }
 
 .room-id-badge {
-  position: absolute;
-  top: 8%;
-  left: 50%;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 36%;
-  min-width: 120px;
-  transform: translateX(-50%);
   border: 1px solid rgba(211, 183, 131, 0.35);
   border-radius: var(--radius-md, 0);
   background: rgba(33, 26, 20, 0.92);
-  padding: 4px 8px;
   color: #ead2a5;
   font-family: var(--font-sans, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
   font-size: 8px;
-  font-weight: 900;
-  line-height: 1;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
 }
 
@@ -193,26 +147,9 @@ const playerSlots = [
   height: 12px;
 }
 
-.room-action-area {
-  position: absolute;
-  bottom: 6%;
-  left: 50%;
-  z-index: 10;
-  display: grid;
-  width: 44%;
-  transform: translateX(-50%);
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16%;
-  pointer-events: auto;
-}
-
 .room-action-button {
-  display: flex;
   height: clamp(16px, 5vw, 64px);
-  align-items: center;
-  justify-content: center;
   gap: clamp(2px, 0.8vw, 8px);
-  overflow: hidden;
   border: 1px solid var(--brand-primary, #86b3e0);
   border-radius: var(--radius-md, 0);
   background: var(--surface-glass, rgba(255, 255, 255, 0.3));
@@ -221,10 +158,7 @@ const playerSlots = [
   font-size: clamp(var(--text-sm, 14px), 2vw, 18px);
   font-weight: 700;
   line-height: 1;
-  white-space: nowrap;
   box-shadow: 0 10px 18px rgba(0, 19, 50, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  cursor: pointer;
-  pointer-events: auto;
   transition:
     transform 180ms ease,
     border-color 180ms ease,

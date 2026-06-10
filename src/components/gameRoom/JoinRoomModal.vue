@@ -15,7 +15,6 @@ const roomId = ref("")
         alt=""
         aria-hidden="true"
       />
-
       <header class="text-center">
         <div class="join-room-title-row flex items-center justify-center">
           <span class="join-room-title-rule block h-px min-w-7 flex-1"></span>
@@ -25,13 +24,11 @@ const roomId = ref("")
           <span class="join-room-title-rule block h-px min-w-7 flex-1"></span>
         </div>
       </header>
-
       <section class="join-room-form" aria-label="輸入房號">
         <label class="join-room-label flex items-center" for="roomId">
           <DoorOpen class="join-room-label-icon" :stroke-width="2.2" />
           請輸入房間 ID：
         </label>
-
         <div class="join-room-input grid grid-cols-1 items-center">
           <input
                 id="roomId"
@@ -42,7 +39,6 @@ const roomId = ref("")
           />
         </div>
       </section>
-
       <footer class="join-room-actions grid grid-cols-2">
         <button
           class="modal-action-button modal-action-button-light relative flex cursor-pointer items-center justify-center"

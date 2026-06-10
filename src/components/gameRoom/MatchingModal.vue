@@ -15,14 +15,11 @@ import matchingBackground from '@/assets/images/modal-matching-screen.png';
         alt=""
         aria-hidden="true"
       />
-
       <div class="matching-screen-content absolute left-1/2 z-[1] grid text-center">
         <section class="matching-loading-group flex min-h-0 flex-col items-center justify-center" aria-label="配對進度">
           <h2 class="matching-title">LOADING...</h2>
-
           <div class="matching-progress" aria-hidden="true"></div>
         </section>
-
         <footer class="matching-actions grid grid-cols-2">
           <button
             class="matching-action-button matching-action-button-blue relative flex cursor-pointer items-center justify-center"
@@ -31,7 +28,6 @@ import matchingBackground from '@/assets/images/modal-matching-screen.png';
             <LogOut class="matching-action-icon" :stroke-width="2.5" />
             <span>返回大廳</span>
           </button>
-
           <button
             class="matching-action-button matching-action-button-red relative flex cursor-pointer items-center justify-center"
             type="button"
