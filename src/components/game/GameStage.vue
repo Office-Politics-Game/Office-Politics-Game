@@ -8,6 +8,7 @@ import GameSettingsModal from './GameSettingsModal.vue'
 import PlayerHand from './PlayerHand.vue'
 import PlayerSeats from './PlayerSeats.vue'
 import RotateDeviceNotice from './RotateDeviceNotice.vue'
+import TableCardPiles from './TableCardPiles.vue'
 import TurnStatus from './TurnStatus.vue'
 
 defineProps({

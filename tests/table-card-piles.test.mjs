@@ -4,6 +4,16 @@ import test from 'node:test'
 
 const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
+test('game stage imports and renders the table card piles', async () => {
+  const source = await readSource('src/components/game/GameStage.vue')
+
+  assert.match(source, /import TableCardPiles from '\.\/TableCardPiles\.vue'/)
+  assert.match(
+    source,
+    /<TableCardPiles :deck-count="deckCount" :discard-card="discardCard" \/>/,
+  )
+})
+
 test('table card piles use scoped GSAP pointer tilt with lifecycle cleanup', async () => {
   const source = await readSource('src/components/game/TableCardPiles.vue')
 
