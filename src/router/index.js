@@ -5,6 +5,12 @@ import Lobby from "../views/Lobby.vue";
 import GameView from "../views/GameView.vue";
 import FriendView from "@/views/FriendView.vue";
 import Result from "@/views/Result.vue";
+import GameRoomView from "@/views/GameRoomView.vue";
+import MatchingModal from "@/components/gameRoom/MatchingModal.vue";
+import JoinRoomModal from "@/components/gameRoom/JoinRoomModal.vue";
+import CustomRoomView from "@/views/CustomRoomView.vue";
+import InviteFriendModal from "@/components/gameRoom/InviteFriendModal.vue";
+
 const routes = [
   {
     path: "/",
@@ -37,6 +43,31 @@ const routes = [
     name: "Friend",
     component: FriendView,
   },
+  {
+    path: "/game-menu",
+    name: "GameMenu",
+    component: GameRoomView,
+  },
+  {
+    path: "/matching",
+    name: "Matching",
+    component: MatchingModal,
+  },
+  {
+    path: "/join-room",
+    name: "JoinRoom",
+    component: JoinRoomModal,
+  },    
+  {
+    path: "/custom-room",
+    name: "CustomRoom",
+    component: CustomRoomView,
+  },
+  {
+    path: "/invite-friend",
+    name: "InviteFriend",
+    component: InviteFriendModal,
+  },  
 ];
 
 const router = createRouter({
