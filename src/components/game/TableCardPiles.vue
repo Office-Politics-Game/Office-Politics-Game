@@ -1,5 +1,6 @@
 <script setup>
 import cardBackUrl from '@/assets/CardBGBack.png'
+import GameCard from './GameCard.vue'
 
 defineProps({
   deckCount: {
@@ -54,19 +55,10 @@ defineProps({
       <div
         class="relative aspect-[3/4] h-[clamp(108px,25vh,220px)] rotate-[2deg] drop-shadow-[0_10px_16px_rgba(0,19,50,0.28)]"
       >
-        <img
-          :src="discardCard.backgroundUrl"
-          alt=""
-          aria-hidden="true"
-          class="absolute inset-0 block size-full select-none object-contain"
-          draggable="false"
-        />
-        <img
-          :src="discardCard.frameUrl"
-          alt=""
-          aria-hidden="true"
-          class="absolute inset-0 block size-full select-none object-contain"
-          draggable="false"
+        <GameCard
+          :name="discardCard.name"
+          :background-url="discardCard.backgroundUrl"
+          :frame-url="discardCard.frameUrl"
         />
       </div>
 

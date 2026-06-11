@@ -1,6 +1,9 @@
 <script setup>
 import advisorBackgroundUrl from '@/assets/CardBGAdvisor.png'
+import advisorHandBackgroundUrl from '@/assets/CardBG_Advisor@2x.png'
 import advisorFrameUrl from '@/assets/CardFrame_Advisor@2x.png'
+import ceoBackgroundUrl from '@/assets/CardBG_CEO@2x.png'
+import ceoFrameUrl from '@/assets/CardFrame_CEO@2x.png'
 import playerOneUrl from '@/assets/Player_1.png'
 import playerTwoUrl from '@/assets/Player_2.png'
 import playerThreeUrl from '@/assets/Player_3.png'
@@ -21,6 +24,21 @@ const cardPiles = {
     frameUrl: advisorFrameUrl,
   },
 }
+
+const handCards = [
+  {
+    id: 'hand-ceo',
+    name: 'CEO',
+    backgroundUrl: ceoBackgroundUrl,
+    frameUrl: ceoFrameUrl,
+  },
+  {
+    id: 'hand-advisor',
+    name: '資深顧問',
+    backgroundUrl: advisorHandBackgroundUrl,
+    frameUrl: advisorFrameUrl,
+  },
+]
 
 const players = [
   {
@@ -66,5 +84,6 @@ const players = [
     :deck-count="cardPiles.deckCount"
     :discard-card="cardPiles.discardCard"
     :players="players"
+    :hand-cards="handCards"
   />
 </template>

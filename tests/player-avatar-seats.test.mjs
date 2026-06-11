@@ -63,3 +63,14 @@ test('the selected bonus cheque badge exists as a PNG asset', async () => {
 
   assert.deepEqual([...signature], [137, 80, 78, 71, 13, 10, 26, 10])
 })
+
+test('game table shows the brand beside a standalone settings icon', async () => {
+  const gameStageSource = await readSource('src/components/game/GameStage.vue')
+  const settingsSource = await readSource('src/components/game/GameSettingsIcon.vue')
+
+  assert.match(gameStageSource, /LOGO_En_W\.png/)
+  assert.match(gameStageSource, /game-brand-tools/)
+  assert.match(gameStageSource, /<GameSettingsIcon/)
+  assert.match(settingsSource, /size-\[clamp\(42px,4\.8vw,58px\)\]/)
+  assert.doesNotMatch(settingsSource, /<button|rounded-|bg-\[|\bborder\b|border-|backdrop-blur/)
+})
