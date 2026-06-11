@@ -1,1 +1,78 @@
 @import "tailwindcss";
+
+:root {
+  --brand-primary: #86b3e0;
+  --brand-hover: #0046f4;
+  --brand-active: #465563;
+  --brand-focus: rgba(0, 70, 244, 0.24);
+  --brand-disabled: #a0a6b3;
+  --brand-navy: #001332;
+  --gray-100: #d6d7dc;
+  --gray-200: #a0a6b3;
+  --gray-300: #8c96a5;
+  --gray-400: #6f7b8a;
+  --gray-500: #465563;
+  --surface-glass: rgba(255, 255, 255, 0.3);
+  --surface-glass-hover: rgba(255, 255, 255, 0.72);
+  --surface-glass-active: rgba(70, 85, 99, 0.88);
+  --shadow: 0 20px 60px rgba(0, 19, 50, 0.14);
+  --radius-md: 0;
+  --radius-lg: 0;
+  --font-sans:
+    Inter, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial,
+    sans-serif;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+  --text-display: 36px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  font-family: var(--font-sans);
+  background: var(--brand-navy);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --text-xs: 13px;
+    --text-sm: 14px;
+    --text-md: 17px;
+    --text-lg: 20px;
+    --text-xl: 30px;
+    --text-display: 48px;
+  }
+}
+
+@media (min-width: 1200px) {
+  :root {
+    --text-xs: 13px;
+    --text-sm: 15px;
+    --text-md: 18px;
+    --text-lg: 22px;
+    --text-xl: 36px;
+    --text-display: 64px;
+  }
+}
