@@ -18,7 +18,9 @@
   --shadow: 0 20px 60px rgba(0, 19, 50, 0.14);
   --radius-md: 0;
   --radius-lg: 0;
-  --font-sans: Inter, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif;
+  --font-sans:
+    Inter, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial,
+    sans-serif;
   --text-xs: 12px;
   --text-sm: 14px;
   --text-md: 16px;
@@ -46,11 +48,43 @@ body {
   background: var(--brand-navy);
 }
 
+@keyframes drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(12px, -18px, 0) scale(1.08);
+  }
+  100% {
+    transform: translate3d(-14px, 8px, 0) scale(0.95);
+  }
+}
+
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.92);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+
 button,
 input,
 textarea,
 select {
   font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
 }
 
 @media (min-width: 768px) {
@@ -73,4 +107,12 @@ select {
     --text-xl: 36px;
     --text-display: 64px;
   }
+}
+
+@theme {
+  --font-display: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+  --font-sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --shadow-paper:
+    0 18px 30px rgba(18, 12, 6, 0.48),
+    0 3px 0 rgba(255, 255, 255, 0.55) inset;
 }

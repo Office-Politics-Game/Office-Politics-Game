@@ -44,3 +44,6 @@ AGENTS.md
 
 # Markdown files
 *.md
+.spectra.yaml
+.spectra/
+openspec/
