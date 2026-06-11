@@ -48,6 +48,34 @@ body {
   background: var(--brand-navy);
 }
 
+@keyframes drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(12px, -18px, 0) scale(1.08);
+  }
+  100% {
+    transform: translate3d(-14px, 8px, 0) scale(0.95);
+  }
+}
+
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.92);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+
 button,
 input,
 textarea,

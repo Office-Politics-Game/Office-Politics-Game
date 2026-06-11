@@ -1,8 +1,14 @@
 <template>
-  <div class="modal relative w-full max-w-105 rounded-2xl bg-white/95 px-8 pt-9 pb-8 shadow-[0_24px_80px_rgba(0,0,0,0.55),0_0_0_1px_rgba(200,168,75,0.2)] animate-[popIn_0.4s_cubic-bezier(0.34,1.56,0.64,1)_both]">
+  <div class="modal relative w-full max-w-105 rounded-2xl bg-white/95 px-8 pt-9 pb-8 shadow-[0_24px_80px_rgba(0,0,0,0.55),0_0_0_1px_rgba(200,168,75,0.2)] animate-[popIn_0.42s_cubic-bezier(0.18,1.35,0.25,1)_both]">
     <div class="absolute inset-x-8 top-0 h-px rounded-full bg-[linear-gradient(90deg,transparent,rgba(200,168,75,0.6),transparent)]" />
 
-    <button class="modalClose absolute top-3.5 right-3.5 h-9 w-9 rounded-full bg-slate-300 text-white text-lg font-bold flex items-center justify-center">✕</button>
+    <button
+      type="button"
+      class="modalClose absolute top-3.5 right-3.5 h-9 w-9 rounded-full bg-slate-300 text-white text-lg font-bold flex items-center justify-center"
+      @click="emit('close')"
+    >
+      ✕
+    </button>
 
     <h2 class="modalTitle text-center text-[26px] font-bold text-[#6bb8d4] tracking-[0.25em] mb-7 font-['Cinzel',serif]">登入</h2>
 
@@ -61,4 +67,5 @@
 </template>
 
 <script setup>
+const emit = defineEmits(['close'])
 </script>

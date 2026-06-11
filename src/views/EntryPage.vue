@@ -32,7 +32,7 @@
       <div class="flex flex-col gap-4 w-full max-w-xs">
         <!-- 登入遊玩按鈕 -->
         <button
-          @click="$router.push('/login')"
+          @click="showLoginModal = true"
           class="px-8 py-3 bg-white text-gray-900 font-semibold rounded-lg hover:bg-gray-200 transition-colors shadow-lg"
         >
           登入遊玩
@@ -46,15 +46,27 @@
           訪客遊玩
         </button>
       </div>
+
+      <!-- 登入彈窗 -->
+      <div
+        v-if="showLoginModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+        @click.self="showLoginModal = false"
+      >
+        <LoginContent @close="showLoginModal = false" />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import LoginContent from '@/components/LoginContent.vue'
 import bgEntryVideo from '@/assets/EntryPage_BgVideo.mp4'
 
 const router = useRouter()
+const showLoginModal = ref(false)
 </script>
 
 <style scoped>
