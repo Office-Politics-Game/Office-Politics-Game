@@ -74,6 +74,14 @@ const players = [
     isCurrentPlayer: true,
   },
 ]
+
+function handleReturnLobby() {
+  // Reserved for the future multiplayer-aware lobby transition.
+}
+
+function handleRestartGame() {
+  // Reserved for the future multiplayer-aware restart flow.
+}
 </script>
 
 <template>
@@ -85,5 +93,7 @@ const players = [
     :discard-card="cardPiles.discardCard"
     :players="players"
     :hand-cards="handCards"
+    @return-lobby="handleReturnLobby"
+    @restart-game="handleRestartGame"
   />
 </template>

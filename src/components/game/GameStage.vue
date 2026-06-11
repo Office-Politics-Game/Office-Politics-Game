@@ -1,7 +1,10 @@
 <script setup>
+import { ref } from 'vue'
 import gameTableBackgroundUrl from '@/assets/BG_GameTable.jpg'
 import gameLogoUrl from '@/assets/LOGO_En_W.png'
+import { useAudioSettings } from '@/composables/UseAudioSettings'
 import GameSettingsIcon from './GameSettingsIcon.vue'
+import GameSettingsModal from './GameSettingsModal.vue'
 import PlayerHand from './PlayerHand.vue'
 import PlayerSeats from './PlayerSeats.vue'
 import RotateDeviceNotice from './RotateDeviceNotice.vue'
@@ -46,6 +49,35 @@ defineProps({
       ),
   },
 })
+
+const emit = defineEmits(['return-lobby', 'restart-game'])
+const isSettingsOpen = ref(false)
+const {
+  musicEnabled,
+  musicVolume,
+  soundEnabled,
+  soundVolume,
+  setMusicEnabled,
+  setMusicVolume,
+  setSoundEnabled,
+  setSoundVolume,
+} = useAudioSettings()
+
+function openSettings() {
+  isSettingsOpen.value = true
+}
+
+function closeSettings() {
+  isSettingsOpen.value = false
+}
+
+function handleReturnLobby() {
+  emit('return-lobby')
+}
+
+function handleRestartGame() {
+  emit('restart-game')
+}
 </script>
 
 <template>
@@ -74,7 +106,7 @@ defineProps({
           class="block h-auto w-[clamp(104px,11vw,150px)] select-none object-contain drop-shadow-[0_3px_10px_rgba(0,19,50,0.48)]"
           draggable="false"
         />
-        <GameSettingsIcon />
+        <GameSettingsIcon @open="openSettings" />
       </div>
 
       <div class="table-card-piles absolute top-[42%] left-1/2 -translate-x-1/2">
@@ -85,6 +117,21 @@ defineProps({
         <PlayerHand :cards="handCards" />
       </div>
     </section>
+
+    <GameSettingsModal
+      :is-open="isSettingsOpen"
+      :music-enabled="musicEnabled"
+      :music-volume="musicVolume"
+      :sound-enabled="soundEnabled"
+      :sound-volume="soundVolume"
+      @close="closeSettings"
+      @update:music-enabled="setMusicEnabled"
+      @update:music-volume="setMusicVolume"
+      @update:sound-enabled="setSoundEnabled"
+      @update:sound-volume="setSoundVolume"
+      @return-lobby="handleReturnLobby"
+      @restart-game="handleRestartGame"
+    />
 
     <RotateDeviceNotice />
   </main>
