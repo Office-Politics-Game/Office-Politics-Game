@@ -5,7 +5,7 @@
   >
     <!-- 白色面板 -->
     <div
-      class="relative w-[96vw] h-[92vh] md:w-[92vw] md:h-[86vh] md:max-w-[900px] md:max-h-[500px] bg-cover bg-center rounded-xl overflow-hidden"
+      class="relative w-[90vw] h-[86vh] md:w-[92vw] md:h-[86vh] md:max-w-[900px] md:max-h-[500px] bg-cover bg-center rounded-xl overflow-hidden"
       :style="{ backgroundImage: `url(${WaitingRoom})` }"
     >
       <!-- 關閉 -->
@@ -35,7 +35,7 @@
           </div>
 
           <!-- 等級 -->
-          <div class="w-full mt-5 ml-3 md:mt-8">
+          <div class="w-full mt-2 ml-3 md:mt-8">
             <div class="flex justify-between text-xs md:text-sm">
               <span>等級 12</span>
             </div>
@@ -50,7 +50,7 @@
           </div>
 
           <!-- 功能選單 -->
-          <div class="w-full mt-5 ml-3 md:mt-8 space-y-2">
+          <div class="w-full ml-3 md:mt-8 space-y-2">
             <button class="menu-item">
               個人資料
             </button>
