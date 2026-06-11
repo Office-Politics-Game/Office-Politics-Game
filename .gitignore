@@ -41,3 +41,6 @@ __screenshots__/
 # Local agent and project standards files
 .agents/
 AGENTS.md
+
+# Markdown files
+*.md

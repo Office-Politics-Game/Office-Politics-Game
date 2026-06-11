@@ -120,13 +120,5 @@ const positionClasses = {
   .player-seats__seat--right {
     right: 8px;
   }
-
-  .player-seats__seat :deep(.player-avatar) {
-    gap: 4px;
-  }
-
-  .player-seats__seat :deep(.player-avatar__info) {
-    padding: 4px 6px;
-  }
 }
 </style>

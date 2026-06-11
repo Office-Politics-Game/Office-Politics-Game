@@ -18,6 +18,22 @@ test('player avatar components expose the planned static presentation contract',
   assert.match(avatarSource, /slot <= roundWins/)
   assert.match(avatarSource, /年度分紅得主/)
   assert.match(avatarSource, /已取得 \$\{roundWins\}／3 枚年終支票/)
+  assert.doesNotMatch(avatarSource, /YOUR TURN/)
+  assert.match(avatarSource, /animation:\s*current-player-glow 1\.6s ease-in-out infinite/)
+  assert.match(avatarSource, /@keyframes current-player-glow/)
+  assert.match(avatarSource, /@media \(prefers-reduced-motion: reduce\)/)
+  assert.match(
+    avatarSource,
+    /@media \(max-height: 480px\) and \(orientation: landscape\)/,
+  )
+  assert.match(avatarSource, /width:\s*22px/)
+  assert.match(avatarSource, /height:\s*14px/)
+  assert.match(avatarSource, /gap:\s*2px/)
+  assert.match(avatarSource, /padding:\s*4px 5px/)
+  assert.match(
+    avatarSource,
+    /\.player-avatar--winner\.player-avatar--current \.player-avatar__frame/,
+  )
   assert.doesNotMatch(avatarSource, /victoryTokens|勝利 TOKEN/)
   assert.doesNotMatch(avatarSource, /<button|rounded-/)
   assert.match(seatsSource, /Number\.isInteger\(player\?\.roundWins\)/)
@@ -30,6 +46,14 @@ test('player avatar components expose the planned static presentation contract',
   assert.match(seatsSource, /right:/)
   assert.match(seatsSource, /bottom:/)
   assert.match(seatsSource, /<PlayerAvatar/)
+  assert.doesNotMatch(
+    seatsSource,
+    /\.player-seats__seat :deep\(\.player-avatar__info\)\s*\{\s*padding:/,
+  )
+  assert.doesNotMatch(
+    seatsSource,
+    /\.player-seats__seat :deep\(\.player-avatar\)\s*\{\s*gap:/,
+  )
 })
 
 test('game view owns four complete player records and passes them through the stage', async () => {

@@ -44,13 +44,6 @@ const isMatchWinner = computed(() => props.roundWins === 3)
         class="block size-full select-none object-contain"
         draggable="false"
       />
-      <span
-        v-if="isCurrentPlayer"
-        class="absolute inset-x-0 bottom-0 bg-[var(--brand-hover)] py-0.5 text-center text-[10px] font-bold tracking-[0.14em] text-white"
-        aria-hidden="true"
-      >
-        YOUR TURN
-      </span>
     </div>
 
     <div
@@ -63,11 +56,14 @@ const isMatchWinner = computed(() => props.roundWins === 3)
         年度分紅得主
       </span>
       <p
-        class="m-0 max-w-[clamp(86px,12vw,148px)] truncate text-[var(--text-sm)] font-semibold tracking-[0.06em] text-white"
+        class="player-avatar__name m-0 max-w-[clamp(86px,12vw,148px)] truncate text-[var(--text-sm)] font-semibold tracking-[0.06em] text-white"
       >
         {{ name }}
       </p>
-      <div class="mt-1 flex items-center gap-[clamp(3px,0.5vw,6px)]" aria-hidden="true">
+      <div
+        class="player-avatar__cheques mt-1 flex items-center gap-[clamp(3px,0.5vw,6px)]"
+        aria-hidden="true"
+      >
         <span
           v-for="slot in 3"
           :key="slot"
@@ -108,6 +104,7 @@ const isMatchWinner = computed(() => props.roundWins === 3)
 }
 
 .player-avatar--current .player-avatar__frame {
+  animation: current-player-glow 1.6s ease-in-out infinite;
   border-color: var(--brand-hover);
   box-shadow:
     0 0 0 3px var(--brand-focus),
@@ -136,5 +133,60 @@ const isMatchWinner = computed(() => props.roundWins === 3)
 .player-avatar--winner .player-avatar__cheque-slot--active {
   border-color: var(--winner-gold);
   box-shadow: 0 0 9px rgba(229, 166, 43, 0.52);
+}
+
+.player-avatar--winner.player-avatar--current .player-avatar__frame {
+  border-color: var(--brand-hover);
+}
+
+@keyframes current-player-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 3px var(--brand-focus),
+      0 0 18px rgba(0, 70, 244, 0.46),
+      0 8px 22px rgba(0, 19, 50, 0.42);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 4px rgba(0, 70, 244, 0.28),
+      0 0 28px rgba(0, 70, 244, 0.72),
+      0 8px 22px rgba(0, 19, 50, 0.42);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-avatar--current .player-avatar__frame {
+    animation: none;
+    box-shadow:
+      0 0 0 3px var(--brand-focus),
+      0 0 20px rgba(0, 70, 244, 0.54),
+      0 8px 22px rgba(0, 19, 50, 0.42);
+  }
+}
+
+@media (max-height: 480px) and (orientation: landscape) {
+  .player-avatar {
+    gap: 4px;
+  }
+
+  .player-avatar__info {
+    padding: 4px 5px;
+  }
+
+  .player-avatar__name {
+    max-width: 78px;
+  }
+
+  .player-avatar__cheques {
+    gap: 2px;
+    margin-top: 3px;
+  }
+
+  .player-avatar__cheque-slot {
+    width: 22px;
+    height: 14px;
+  }
 }
 </style>
