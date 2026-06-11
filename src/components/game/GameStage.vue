@@ -1,6 +1,7 @@
 <script setup>
 import gameTableBackgroundUrl from '@/assets/BG_GameTable.jpg'
 import GameSettingsIcon from './GameSettingsIcon.vue'
+import PlayerSeats from './PlayerSeats.vue'
 import RotateDeviceNotice from './RotateDeviceNotice.vue'
 import TableCardPiles from './TableCardPiles.vue'
 import TurnStatus from './TurnStatus.vue'
@@ -26,6 +27,10 @@ defineProps({
     type: Object,
     required: true,
   },
+  players: {
+    type: Array,
+    required: true,
+  },
 })
 </script>
 
@@ -36,6 +41,8 @@ defineProps({
       :style="{ backgroundImage: `url(${gameTableBackgroundUrl})` }"
       aria-label="Office Politics 遊戲桌"
     >
+      <PlayerSeats :players="players" />
+
       <div class="absolute top-[clamp(20px,6vh,40px)] left-[clamp(16px,2.6vw,40px)]">
         <TurnStatus
           :round-number="roundNumber"

@@ -1,6 +1,10 @@
 <script setup>
 import advisorBackgroundUrl from '@/assets/CardBGAdvisor.png'
 import advisorFrameUrl from '@/assets/CardFrame_Advisor@2x.png'
+import playerOneUrl from '@/assets/Player_1.png'
+import playerTwoUrl from '@/assets/Player_2.png'
+import playerThreeUrl from '@/assets/Player_3.png'
+import playerFourUrl from '@/assets/Player_4.png'
 import GameStage from '@/components/game/GameStage.vue'
 
 const turnStatus = {
@@ -17,6 +21,41 @@ const cardPiles = {
     frameUrl: advisorFrameUrl,
   },
 }
+
+const players = [
+  {
+    id: 'player-top',
+    name: '摸魚大師',
+    avatarUrl: playerTwoUrl,
+    roundWins: 3,
+    position: 'top',
+    isCurrentPlayer: false,
+  },
+  {
+    id: 'player-left',
+    name: '小菜雞',
+    avatarUrl: playerThreeUrl,
+    roundWins: 0,
+    position: 'left',
+    isCurrentPlayer: false,
+  },
+  {
+    id: 'player-right',
+    name: '豬隊666',
+    avatarUrl: playerFourUrl,
+    roundWins: 1,
+    position: 'right',
+    isCurrentPlayer: false,
+  },
+  {
+    id: 'player-bottom',
+    name: '薪水小偷',
+    avatarUrl: playerOneUrl,
+    roundWins: 2,
+    position: 'bottom',
+    isCurrentPlayer: true,
+  },
+]
 </script>
 
 <template>
@@ -26,5 +65,6 @@ const cardPiles = {
     :current-step="turnStatus.currentStep"
     :deck-count="cardPiles.deckCount"
     :discard-card="cardPiles.discardCard"
+    :players="players"
   />
 </template>
