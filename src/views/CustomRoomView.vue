@@ -43,12 +43,17 @@ const playerSlots = [
 </script>
 
 <template>
-  <main class="flex h-[100svh] min-h-[100svh] w-screen items-center justify-center overflow-hidden p-0 text-stone-900">
+  <main class="flex h-[100svh] min-h-[100svh] w-screen items-center justify-center overflow-hidden bg-[#17110c] p-0 text-stone-900">
     <section
-      class="relative h-[100svh] w-screen overflow-hidden bg-cover bg-center"
-      :style="{ backgroundImage: `url(${customRoomBackground})` }"
+      class="custom-room-frame relative overflow-hidden"
       aria-label="自訂遊戲局"
     >
+      <img
+        class="pointer-events-none absolute inset-0 h-full w-full select-none object-contain"
+        :src="customRoomBackground"
+        alt=""
+        aria-hidden="true"
+      />
       <button
         class="room-icon-button room-back-button pointer-events-auto absolute top-[5%] z-[3] grid aspect-square w-6 cursor-pointer place-items-center backdrop-blur"
         type="button"
@@ -84,6 +89,11 @@ const playerSlots = [
 </template>
 
 <style scoped>
+.custom-room-frame {
+  width: min(100vw, calc(100svh * 1672 / 941));
+  aspect-ratio: 1672 / 941;
+}
+
 .room-icon-button {
   border: 1px solid var(--brand-primary, #86b3e0);
   border-radius: var(--radius-md, 0);
@@ -203,8 +213,7 @@ const playerSlots = [
 
 @media (max-width: 767px) {
   .room-icon-button,
-  .room-id-badge,
-  .room-action-button {
+  .room-id-badge {
     border-radius: 4px;
   }
 }

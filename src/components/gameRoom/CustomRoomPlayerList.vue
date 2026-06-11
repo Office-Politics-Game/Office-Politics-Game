@@ -50,25 +50,21 @@
 
 <style scoped>
   .custom-room-player-list {
-    top: 50%;
-    left: 50%;
+    inset: 0;
     z-index: 2;
-    aspect-ratio: 1672 / 941;
-    width: min(96vw, calc(94svh * 1672 / 941));
-    transform: translate(-50%, -50%);
   }
 
   .custom-room-player-row {
     top: 52%;
     left: 50%;
-    width: 71%;
+    width: 86%;
     height: 60%;
-    gap: 1.55%;
+    gap: 0.42%;
     transform: translate(-50%, -50%);
   }
 
   .room-player-slot {
-    aspect-ratio: 281 / 567;
+    aspect-ratio: 979 / 1606;
     height: 100%;
     flex: 0 0 auto;
     color: #2c2925;
@@ -190,14 +186,10 @@
   }
 
   @media (min-width: 768px) {
-    .custom-room-player-list {
-      width: min(94vw, calc(90svh * 1672 / 941));
-    }
-
     .custom-room-player-row {
-      width: 71%;
+      width: 84%;
       height: 60%;
-      gap: 1.45%;
+      gap: 0.36%;
     }
 
     .room-player-avatar {
@@ -228,14 +220,10 @@
   }
 
   @media (min-width: 1024px) {
-    .custom-room-player-list {
-      width: min(96vw, calc(94svh * 1672 / 941));
-    }
-
     .custom-room-player-row {
-      width: 71%;
+      width: 84%;
       height: 60%;
-      gap: 1.35%;
+      gap: 0.32%;
     }
 
     .room-player-avatar {
@@ -266,14 +254,10 @@
   }
 
   @media (orientation: landscape) and (max-height: 500px) {
-    .custom-room-player-list {
-      width: min(96vw, calc(94svh * 1672 / 941));
-    }
-
     .custom-room-player-row {
       top: 52%;
       height: 60%;
-      gap: 1.55%;
+      gap: 0.42%;
     }
 
     .room-player-avatar {

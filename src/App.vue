@@ -1,3 +1,10 @@
+<script setup lang="ts">
+import EntryPage from './views/EntryPage.vue';
+
+</script>
+
 <template>
-  <RouterView />
+  <!-- <RouterView /> -->
+  <!-- <CustomRoomView /> -->
+   <EntryPage />
 </template>
