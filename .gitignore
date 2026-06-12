@@ -38,9 +38,12 @@ __screenshots__/
 # Vite
 *.timestamp-*-*.mjs
 
-# Local agent, project standards, and Spectra files
+# Local agent and project standards files
 .agents/
 AGENTS.md
+
+# Markdown files
+*.md
 .spectra.yaml
 .spectra/
 openspec/
