@@ -1,6 +1,6 @@
 <script setup>
-    import gameRoomBackground from '@/assets/BG_Dashboard.jpg';
-    import roomMenu from '@/assets/RoomMenu.png';
+    import gameRoomBackground from '@/assets/images/bg-dashboard.webp';
+    import roomMenu from '@/assets/images/room-menu.webp';
     import WaitingRoomMenu from '@/components/gameRoom/WaitingRoomMenu.vue';
 </script>
 

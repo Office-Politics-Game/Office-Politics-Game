@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import EntryPage from "../views/EntryPage.vue";
-import LoginPage from "../components/LoginPage.vue";
+import LoginPage from "../components/login/LoginPage.vue";
 import Lobby from "../views/Lobby.vue";
 import GameView from "../views/GameView.vue";
 import FriendView from "@/views/FriendView.vue";

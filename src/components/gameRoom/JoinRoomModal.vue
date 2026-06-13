@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import { DoorOpen } from '@lucide/vue';
-import joinRoomBackground from '@/assets/WaitingRoom.png';
+import joinRoomBackground from '@/assets/images/waiting-room.png';
 
 const roomId = ref("")
 </script>

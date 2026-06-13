@@ -1,7 +1,7 @@
-import avatar1 from "@/assets/Player_1.png";
-import avatar2 from "@/assets/Player_2.png";
-import avatar3 from "@/assets/Player_3.png";
-import avatar4 from "@/assets/Player_4.png";
+import avatar1 from "@/assets/images/player-1.png";
+import avatar2 from "@/assets/images/player-2.png";
+import avatar3 from "@/assets/images/player-3.png";
+import avatar4 from "@/assets/images/player-4.png";
 const rankingList = [
   {
     id: 1,

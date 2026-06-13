@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue'
-import gameTableBackgroundUrl from '@/assets/BG_GameTable.jpg'
-import gameLogoUrl from '@/assets/LOGO_En_W.png'
+import gameTableBackgroundUrl from '@/assets/images/bg-game-table.webp'
+import gameLogoUrl from '@/assets/images/logo-en-white.png'
 import { useAudioSettings } from '@/composables/UseAudioSettings'
 import GameSettingsIcon from './GameSettingsIcon.vue'
 import GameSettingsModal from './GameSettingsModal.vue'
