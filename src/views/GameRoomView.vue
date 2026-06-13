@@ -9,7 +9,7 @@
     <section
       class="lobby-stage game-stage relative overflow-hidden text-[#282623]"
       :style="{ backgroundImage: `url(${gameRoomBackground})` }"
-      aria-label="職場風雲橫向遊戲房間"
+      aria-label="職場風雲遊戲房間"
     >
       <section class="lobby-blueprint-frame absolute" aria-label="遊戲入口">
         <img

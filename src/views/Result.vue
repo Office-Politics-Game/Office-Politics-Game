@@ -23,7 +23,8 @@ import Achievements from "@/components/result/Achievements.vue";
       </div>
       <div class="absolute bottom-6 left-1/2 -translate-x-1/2 lg:bottom-10">
         <button
-          class="bg-[var(--brand-active)] px-4 py-1 text-sm text-white hover:bg-[var(--brand-hover)] lg:px-8 lg:py-2 lg:text-lg"
+          class="btn-dark tap-pop hover:bg-[var(--brand-hover)] lg:px-8 lg:py-2 lg:text-lg"
+          @click="$router.push('/lobby')"
         >
           返回大廳
         </button>

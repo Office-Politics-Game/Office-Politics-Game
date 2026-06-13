@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from "vue";
 
 const props = defineProps({
   isOpen: {
@@ -24,114 +24,116 @@ const props = defineProps({
     required: true,
     validator: (value) => value >= 0 && value <= 100,
   },
-})
+});
 
 const emit = defineEmits([
-  'close',
-  'update:musicEnabled',
-  'update:musicVolume',
-  'update:soundEnabled',
-  'update:soundVolume',
-  'return-lobby',
-  'restart-game',
-])
+  "close",
+  "update:musicEnabled",
+  "update:musicVolume",
+  "update:soundEnabled",
+  "update:soundVolume",
+  "return-lobby",
+  "restart-game",
+]);
 
-const dialog = ref(null)
-const closeButton = ref(null)
-const confirmationAction = ref(null)
-const isSubmittingAction = ref(false)
-let previouslyFocusedElement = null
+const dialog = ref(null);
+const closeButton = ref(null);
+const confirmationAction = ref(null);
+const isSubmittingAction = ref(false);
+let previouslyFocusedElement = null;
 
 const confirmationContent = computed(() => {
-  if (confirmationAction.value === 'return-lobby') {
+  if (confirmationAction.value === "return-lobby") {
     return {
-      title: '返回大廳？',
-      description: '目前對局將會中斷。這個版本只會送出返回大廳事件，不會直接切換頁面。',
-      confirmLabel: '確認返回',
-    }
+      title: "返回大廳？",
+      description:
+        "目前對局將會中斷。這個版本只會送出返回大廳事件，不會直接切換頁面。",
+      confirmLabel: "確認返回",
+    };
   }
 
-  if (confirmationAction.value === 'restart-game') {
+  if (confirmationAction.value === "restart-game") {
     return {
-      title: '重新開始？',
-      description: '目前對局進度將會重設。這個版本只會送出重新開始事件，不會直接修改遊戲資料。',
-      confirmLabel: '確認重開',
-    }
+      title: "重新開始？",
+      description:
+        "目前對局進度將會重設。這個版本只會送出重新開始事件，不會直接修改遊戲資料。",
+      confirmLabel: "確認重開",
+    };
   }
 
-  return null
-})
+  return null;
+});
 
 function requestClose() {
   if (!isSubmittingAction.value) {
-    emit('close')
+    emit("close");
   }
 }
 
 function updateVolume(eventName, event) {
-  emit(eventName, Number(event.target.value))
+  emit(eventName, Number(event.target.value));
 }
 
 function openConfirmation(action) {
-  confirmationAction.value = action
-  nextTick(() => closeButton.value?.focus())
+  confirmationAction.value = action;
+  nextTick(() => closeButton.value?.focus());
 }
 
 function cancelConfirmation() {
-  confirmationAction.value = null
-  nextTick(() => closeButton.value?.focus())
+  confirmationAction.value = null;
+  nextTick(() => closeButton.value?.focus());
 }
 
 function confirmAction() {
   if (!confirmationAction.value || isSubmittingAction.value) {
-    return
+    return;
   }
 
-  isSubmittingAction.value = true
-  emit(confirmationAction.value)
-  emit('close')
+  isSubmittingAction.value = true;
+  emit(confirmationAction.value);
+  emit("close");
 }
 
 function getFocusableElements() {
   if (!dialog.value) {
-    return []
+    return [];
   }
 
   return Array.from(
     dialog.value.querySelectorAll(
       'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
     ),
-  ).filter((element) => !element.hasAttribute('aria-hidden'))
+  ).filter((element) => !element.hasAttribute("aria-hidden"));
 }
 
 function handleKeydown(event) {
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    requestClose()
-    return
+  if (event.key === "Escape") {
+    event.preventDefault();
+    requestClose();
+    return;
   }
 
-  if (event.key !== 'Tab') {
-    return
+  if (event.key !== "Tab") {
+    return;
   }
 
-  const focusableElements = getFocusableElements()
+  const focusableElements = getFocusableElements();
 
   if (focusableElements.length === 0) {
-    event.preventDefault()
-    dialog.value?.focus()
-    return
+    event.preventDefault();
+    dialog.value?.focus();
+    return;
   }
 
-  const firstElement = focusableElements[0]
-  const lastElement = focusableElements[focusableElements.length - 1]
+  const firstElement = focusableElements[0];
+  const lastElement = focusableElements[focusableElements.length - 1];
 
   if (event.shiftKey && document.activeElement === firstElement) {
-    event.preventDefault()
-    lastElement.focus()
+    event.preventDefault();
+    lastElement.focus();
   } else if (!event.shiftKey && document.activeElement === lastElement) {
-    event.preventDefault()
-    firstElement.focus()
+    event.preventDefault();
+    firstElement.focus();
   }
 }
 
@@ -139,35 +141,31 @@ watch(
   () => props.isOpen,
   async (isOpen) => {
     if (isOpen) {
-      previouslyFocusedElement = document.activeElement
-      confirmationAction.value = null
-      isSubmittingAction.value = false
-      await nextTick()
-      closeButton.value?.focus()
-      return
+      previouslyFocusedElement = document.activeElement;
+      confirmationAction.value = null;
+      isSubmittingAction.value = false;
+      await nextTick();
+      closeButton.value?.focus();
+      return;
     }
 
-    confirmationAction.value = null
-    isSubmittingAction.value = false
-    await nextTick()
+    confirmationAction.value = null;
+    isSubmittingAction.value = false;
+    await nextTick();
 
     if (previouslyFocusedElement instanceof HTMLElement) {
-      previouslyFocusedElement.focus()
+      previouslyFocusedElement.focus();
     }
 
-    previouslyFocusedElement = null
+    previouslyFocusedElement = null;
   },
-)
+);
 </script>
 
 <template>
   <Teleport to="body">
     <Transition name="settings-modal">
-      <div
-        v-if="isOpen"
-        class="settings-overlay"
-        @click.self="requestClose"
-      >
+      <div v-if="isOpen" class="settings-overlay" @click.self="requestClose">
         <section
           ref="dialog"
           class="settings-dialog"
@@ -181,7 +179,7 @@ watch(
             <div>
               <p class="settings-eyebrow">OFFICE POLITICS</p>
               <h2 id="game-settings-title" class="settings-title">
-                {{ confirmationContent?.title ?? '遊戲設定' }}
+                {{ confirmationContent?.title ?? "遊戲設定" }}
               </h2>
             </div>
 
@@ -198,7 +196,10 @@ watch(
           </header>
 
           <div v-if="!confirmationContent" class="settings-content">
-            <section class="audio-section" aria-labelledby="audio-settings-title">
+            <section
+              class="audio-section"
+              aria-labelledby="audio-settings-title"
+            >
               <div class="section-heading">
                 <div>
                   <p class="section-kicker">AUDIO</p>
@@ -222,7 +223,7 @@ watch(
                       :aria-label="`音樂${musicEnabled ? '已開啟' : '已關閉'}`"
                       @click="emit('update:musicEnabled', !musicEnabled)"
                     >
-                      {{ musicEnabled ? '開啟' : '關閉' }}
+                      {{ musicEnabled ? "開啟" : "關閉" }}
                     </button>
                   </div>
 
@@ -258,7 +259,7 @@ watch(
                       :aria-label="`音效${soundEnabled ? '已開啟' : '已關閉'}`"
                       @click="emit('update:soundEnabled', !soundEnabled)"
                     >
-                      {{ soundEnabled ? '開啟' : '關閉' }}
+                      {{ soundEnabled ? "開啟" : "關閉" }}
                     </button>
                   </div>
 
@@ -294,7 +295,7 @@ watch(
                 <button
                   type="button"
                   class="glass-button"
-                  @click="openConfirmation('return-lobby')"
+                  @click="$router.push('/Lobby')"
                 >
                   返回大廳
                 </button>
@@ -359,7 +360,11 @@ watch(
   border: 1px solid rgba(214, 215, 220, 0.92);
   border-radius: 0;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(214, 215, 220, 0.82)),
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.92),
+      rgba(214, 215, 220, 0.82)
+    ),
     var(--surface-glass-hover);
   box-shadow:
     var(--shadow),
