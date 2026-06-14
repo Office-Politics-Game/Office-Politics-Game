@@ -143,11 +143,11 @@ button {
     border-(--brand-primary)
     bg-(--brand-active)
     text-white
-    shadow-[0_10px_24px_rgba(70,85,99,0.24)]
+    /* shadow-[0_10px_24px_rgba(70,85,99,0.24)] */
     hover:border-(--brand-hover)
     hover:bg-(--brand-hover)
     hover:text-white
-    hover:shadow-[0_10px_24px_rgba(0,70,244,0.24)]
+    /* hover:shadow-[0_10px_24px_rgba(0,70,244,0.24)] */
     focus-visible:outline-0
     focus-visible:shadow-[0_0_0_4px_var(--brand-focus)];
   }

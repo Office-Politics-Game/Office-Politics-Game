@@ -159,7 +159,7 @@ const emit = defineEmits(["close"]);
 }
 
 .login-title {
-  @apply text-[var(--brand-active)] text-[var(--text-xl)] tracking-normal;
+  @apply text-[var(--brand-navy)] text-xl tracking-normal;
 }
 
 .login-input {
