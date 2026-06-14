@@ -56,10 +56,6 @@ function handleMouseLeave() {
     box-shadow 0.18s ease;
 }
 
-.settings-button:hover {
-  color: #ff8400;
-}
-
 .settings-button:active {
   color: var(--brand-active);
 }

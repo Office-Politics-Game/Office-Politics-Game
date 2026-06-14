@@ -118,7 +118,7 @@ button {
   .btn-glass {
     @apply relative
       px-3 py-1.5
-      lg:px-8 lg:py-4
+      lg:px-8 lg:py-2
       /* rounded-full */
       font-medium
       text-white
