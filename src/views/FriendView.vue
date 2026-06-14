@@ -103,7 +103,7 @@
 
 <script setup>
 import BG_Personal from "@/assets/images/bg-personal.webp";
-import WaitingRoom from "@/assets/images/waiting-room.png";
+import WaitingRoom from "@/assets/images/waiting-room.webp";
 import FriendItem from "@/components/menu/FriendItem.vue";
 </script>
 

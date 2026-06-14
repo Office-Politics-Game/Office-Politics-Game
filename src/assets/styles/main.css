@@ -81,6 +81,17 @@ body {
   }
 }
 
+@keyframes swing {
+  0% { transform: rotate(0deg); }
+  15% { transform: rotate(12deg); }
+  30% { transform: rotate(-10deg); }
+  45% { transform: rotate(8deg); }
+  60% { transform: rotate(-6deg); }
+  75% { transform: rotate(4deg); }
+  90% { transform: rotate(-2deg); }
+  100% { transform: rotate(0deg); }
+}
+
 button,
 input,
 textarea,
@@ -155,3 +166,5 @@ button {
 .tap-pop {
   @apply transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98];
 }
+
+

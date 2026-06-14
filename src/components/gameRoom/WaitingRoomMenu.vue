@@ -75,7 +75,7 @@ function handleActionClick(action) {
   stopMatchTimer();
 
   if (action.title === "建立房間") {
-    router.push("/game");
+    router.push("/custom-room");
     return;
   }
 }
