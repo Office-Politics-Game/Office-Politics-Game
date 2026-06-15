@@ -1,8 +1,30 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { gsap } from 'gsap'
 import cardBackUrl from '@/assets/images/card-bg-back.webp'
 import GameCard from './GameCard.vue'
+
+const props = defineProps({
+  deckCount: {
+    type: [Number, String],
+    required: true,
+  },
+  discardCards: {
+    type: Array,
+    default: () => [],
+    validator: (cards) =>
+      cards.every(
+        (card) =>
+          typeof card?.name === 'string' &&
+          typeof card?.backgroundUrl === 'string' &&
+          typeof card?.frameUrl === 'string',
+      ),
+  },
+  isDropTargetActive: {
+    type: Boolean,
+    default: false,
+  },
+})
 
 const pileArea = ref(null)
 const deckPile = ref(null)
@@ -11,19 +33,12 @@ const TABLE_ROTATION_X = 58
 let gsapContext
 let gsapMedia
 
-defineProps({
-  deckCount: {
-    type: [Number, String],
-    required: true,
-  },
-  discardCard: {
-    type: Object,
-    required: true,
-    validator: (card) =>
-      typeof card?.name === 'string' &&
-      typeof card?.backgroundUrl === 'string' &&
-      typeof card?.frameUrl === 'string',
-  },
+const topDiscardCard = computed(() => {
+  if (props.discardCards.length > 0) {
+    return props.discardCards[props.discardCards.length - 1]
+  }
+
+  return null
 })
 
 function createPileTilt(element, rotationZ) {
@@ -77,6 +92,30 @@ function createPileTilt(element, rotationZ) {
     element.removeEventListener('pointerleave', handlePointerLeave)
   }
 }
+
+defineExpose({
+  getDiscardRect() {
+    return discardPile.value?.getBoundingClientRect() ?? null
+  },
+  getPlayZoneRect() {
+    const bounds = pileArea.value?.getBoundingClientRect()
+    if (!bounds) {
+      return null
+    }
+
+    const expandX = Math.min(Math.max(bounds.width * 0.24, 110), 220)
+    const expandY = Math.min(Math.max(bounds.height * 0.16, 70), 160)
+
+    return {
+      left: bounds.left - expandX,
+      top: bounds.top - expandY,
+      width: bounds.width + expandX * 2,
+      height: bounds.height + expandY * 2,
+      right: bounds.right + expandX,
+      bottom: bounds.bottom + expandY,
+    }
+  },
+})
 
 onMounted(() => {
   gsapContext = gsap.context(() => {
@@ -147,30 +186,34 @@ onUnmounted(() => {
         aria-hidden="true"
         class="m-0 text-[var(--text-xs)] font-bold tracking-[0.12em] text-white text-shadow-[0_2px_6px_var(--brand-navy)]"
       >
-        牌庫 · {{ deckCount }} 張
+        牌庫剩 {{ deckCount }} 張
       </p>
     </section>
 
     <section
       class="flex flex-col items-center gap-[clamp(6px,1.4vh,12px)]"
-      :aria-label="`棄牌區，上一張牌是${discardCard.name}`"
+      :aria-label="topDiscardCard ? `棄牌區，上一張牌是 ${topDiscardCard.name}` : '棄牌區'"
     >
       <div
         ref="discardPile"
         class="table-card-pile table-card-pile--discard relative aspect-[3/4] h-[clamp(108px,25vh,220px)]"
+        :class="{ 'table-card-pile--active': isDropTargetActive }"
       >
-        <GameCard
-          :name="discardCard.name"
-          :background-url="discardCard.backgroundUrl"
-          :frame-url="discardCard.frameUrl"
-        />
+        <template v-for="(card, index) in discardCards" :key="`${index}-${card.name}`">
+          <GameCard
+            :name="card.name"
+            :background-url="card.backgroundUrl"
+            :frame-url="card.frameUrl"
+            class="table-card-pile__card"
+          />
+        </template>
       </div>
 
       <p
         aria-hidden="true"
         class="m-0 text-[var(--text-xs)] font-bold tracking-[0.12em] text-white text-shadow-[0_2px_6px_var(--brand-navy)]"
       >
-        棄牌區 · {{ discardCard.name }}
+        棄牌區 · {{ topDiscardCard ? topDiscardCard.name : '尚未出牌' }}
       </p>
     </section>
   </div>
@@ -210,6 +253,19 @@ onUnmounted(() => {
 
 .table-card-pile--discard {
   transform: rotateX(58deg) rotateZ(2deg);
+}
+
+.table-card-pile--active {
+  filter:
+    drop-shadow(0 0 18px rgba(107, 184, 212, 0.88))
+    drop-shadow(0 0 42px rgba(200, 168, 75, 0.38))
+    drop-shadow(0 3px 3px rgba(0, 19, 50, 0.34))
+    drop-shadow(0 9px 10px rgba(0, 19, 50, 0.24));
+}
+
+.table-card-pile__card {
+  position: absolute;
+  inset: 0;
 }
 
 .card-stack__layer--1 {
