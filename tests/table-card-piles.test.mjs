@@ -50,3 +50,11 @@ test('deck and discard piles keep distinct tabletop rotations and shadows', asyn
   assert.match(source, /transform-style:\s*preserve-3d/)
   assert.match(source, /will-change:\s*transform/)
 })
+
+test('table card piles expose the deck rectangle for deal animations', async () => {
+  const source = await readSource('src/components/game/TableCardPiles.vue')
+
+  assert.match(source, /function getDeckRect\(\)/)
+  assert.match(source, /deckPile\.value\?\.getBoundingClientRect\(\)/)
+  assert.match(source, /defineExpose\(\{\s*getDeckRect/)
+})

@@ -26,6 +26,14 @@ defineProps({
   },
 })
 
+function getDeckRect() {
+  return deckPile.value?.getBoundingClientRect() ?? null
+}
+
+defineExpose({
+  getDeckRect,
+})
+
 function createPileTilt(element, rotationZ) {
   if (!element) {
     return () => {}
