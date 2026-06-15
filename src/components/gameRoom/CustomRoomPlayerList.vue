@@ -1,6 +1,6 @@
 <script setup>
   import { UserPlus } from '@lucide/vue';
-  import waitingRoomPlayer from '@/assets/WaitingRoom_Player.png';
+  import waitingRoomPlayer from '@/assets/images/waiting-room-player.png';
 
   defineProps({
     slots: {

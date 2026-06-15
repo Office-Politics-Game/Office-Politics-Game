@@ -4,7 +4,7 @@
   >
     <div class="flex items-center gap-2">
       <img
-        src="@/assets/Player_1.png"
+        src="@/assets/images/player-1.png"
         class="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover"
       />
       <div>
@@ -27,6 +27,6 @@
 <script setup>
 defineProps({
   name: String,
-  status: String
-})
+  status: String,
+});
 </script>

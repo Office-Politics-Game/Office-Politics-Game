@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import bonusChequeTokenUrl from '@/assets/BonusChequeToken.png'
+import bonusChequeTokenUrl from '@/assets/images/bonus-cheque-token.png'
 
 const props = defineProps({
   name: {

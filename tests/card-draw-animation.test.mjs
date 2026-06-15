@@ -13,7 +13,7 @@ test('card draw animation renders card back and front faces', async () => {
   await access(componentUrl)
   const source = await readFile(componentUrl, 'utf8')
 
-  assert.match(source, /CardBGBack\.png/)
+  assert.match(source, /card-bg-back\.webp/)
   assert.match(source, /card-draw__face--back/)
   assert.match(source, /card-draw__face--front/)
   assert.match(source, /<GameCard/)

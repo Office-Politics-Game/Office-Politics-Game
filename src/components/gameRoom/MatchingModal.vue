@@ -1,6 +1,6 @@
 <script setup>
 import { LogOut, X } from '@lucide/vue';
-import matchingBackground from '@/assets/images/modal-matching-screen.png';
+import matchingBackground from '@/assets/images/modal-matching-screen.webp';
 </script>
 
 <template>

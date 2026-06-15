@@ -80,7 +80,10 @@ test('game view owns four complete player records and passes them through the st
 })
 
 test('the selected bonus cheque badge exists as a PNG asset', async () => {
-  const assetUrl = new URL('../src/assets/BonusChequeToken.png', import.meta.url)
+  const assetUrl = new URL(
+    '../src/assets/images/bonus-cheque-token.png',
+    import.meta.url,
+  )
 
   await access(assetUrl)
   const signature = (await readFile(assetUrl)).subarray(0, 8)
@@ -92,7 +95,7 @@ test('game table shows the brand beside a standalone settings icon', async () =>
   const gameStageSource = await readSource('src/components/game/GameStage.vue')
   const settingsSource = await readSource('src/components/game/GameSettingsIcon.vue')
 
-  assert.match(gameStageSource, /LOGO_En_W\.png/)
+  assert.match(gameStageSource, /logo-en-white\.png/)
   assert.match(gameStageSource, /game-brand-tools/)
   assert.match(gameStageSource, /<GameSettingsIcon/)
   assert.match(settingsSource, /size-\[clamp\(42px,4\.8vw,58px\)\]/)

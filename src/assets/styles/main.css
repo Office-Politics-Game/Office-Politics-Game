@@ -18,15 +18,21 @@
   --shadow: 0 20px 60px rgba(0, 19, 50, 0.14);
   --radius-md: 0;
   --radius-lg: 0;
-  --font-sans:
-    Inter, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial,
-    sans-serif;
   --text-xs: 12px;
   --text-sm: 14px;
   --text-md: 16px;
   --text-lg: 18px;
   --text-xl: 24px;
   --text-display: 36px;
+}
+
+@theme {
+  --font-display: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+  --font-sans:
+    Inter, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial,
+    sans-serif;
+  --shadow-paper:
+    0 18px 30px rgba(18, 12, 6, 0.48), 0 3px 0 rgba(255, 255, 255, 0.55) inset;
 }
 
 * {
@@ -75,7 +81,6 @@ body {
   }
 }
 
-
 button,
 input,
 textarea,
@@ -98,7 +103,7 @@ button {
   }
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 1024px) {
   :root {
     --text-xs: 13px;
     --text-sm: 15px;
@@ -107,12 +112,4 @@ button {
     --text-xl: 36px;
     --text-display: 64px;
   }
-}
-
-@theme {
-  --font-display: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
-  --font-sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
-  --shadow-paper:
-    0 18px 30px rgba(18, 12, 6, 0.48),
-    0 3px 0 rgba(255, 255, 255, 0.55) inset;
 }

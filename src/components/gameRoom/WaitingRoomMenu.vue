@@ -2,9 +2,9 @@
   import matchIcon from '@/assets/images/icon-match.png';
   import joinIcon from '@/assets/images/icon-join.png';
   import createIcon from '@/assets/images/icon-create.png';
-  import waitingRoomOne from '@/assets/images/waiting-room-1.png';
-  import waitingRoomTwo from '@/assets/images/waiting-room-2.png';
-  import waitingRoomThree from '@/assets/images/waiting-room-3.png';
+  import waitingRoomOne from '@/assets/images/waiting-room-1.webp';
+  import waitingRoomTwo from '@/assets/images/waiting-room-2.webp';
+  import waitingRoomThree from '@/assets/images/waiting-room-3.webp';
 
   const roomActions = [
     {

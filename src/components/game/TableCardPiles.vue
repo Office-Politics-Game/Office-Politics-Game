@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { gsap } from 'gsap'
-import cardBackUrl from '@/assets/CardBGBack.png'
+import cardBackUrl from '@/assets/images/card-bg-back.webp'
 import GameCard from './GameCard.vue'
 
 const pileArea = ref(null)
