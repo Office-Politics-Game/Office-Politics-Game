@@ -96,5 +96,7 @@ test('game table shows the brand beside a standalone settings icon', async () =>
   assert.match(gameStageSource, /game-brand-tools/)
   assert.match(gameStageSource, /<GameSettingsIcon/)
   assert.match(settingsSource, /size-\[clamp\(42px,4\.8vw,58px\)\]/)
-  assert.doesNotMatch(settingsSource, /<button|rounded-|bg-\[|\bborder\b|border-|backdrop-blur/)
+  assert.match(settingsSource, /<button/)
+  assert.match(settingsSource, /aria-label="開啟遊戲設定"/)
+  assert.doesNotMatch(settingsSource, /rounded-|bg-\[|backdrop-blur/)
 })

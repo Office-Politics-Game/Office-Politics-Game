@@ -1,8 +1,9 @@
 <script setup>
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import gameTableBackgroundUrl from '@/assets/BG_GameTable.jpg'
 import gameLogoUrl from '@/assets/LOGO_En_W.png'
 import { useAudioSettings } from '@/composables/UseAudioSettings'
+import CardDrawAnimation from './CardDrawAnimation.vue'
 import GameSettingsIcon from './GameSettingsIcon.vue'
 import GameSettingsModal from './GameSettingsModal.vue'
 import PlayerHand from './PlayerHand.vue'
@@ -11,7 +12,7 @@ import RotateDeviceNotice from './RotateDeviceNotice.vue'
 import TableCardPiles from './TableCardPiles.vue'
 import TurnStatus from './TurnStatus.vue'
 
-defineProps({
+const props = defineProps({
   roundNumber: {
     type: [Number, String],
     required: true,
@@ -48,10 +49,25 @@ defineProps({
           typeof card?.frameUrl === 'string',
       ),
   },
+  drawCard: {
+    type: Object,
+    default: null,
+    validator: (card) =>
+      card === null ||
+      (typeof card?.id === 'string' &&
+        typeof card?.name === 'string' &&
+        typeof card?.backgroundUrl === 'string' &&
+        typeof card?.frameUrl === 'string'),
+  },
 })
 
-const emit = defineEmits(['return-lobby', 'restart-game'])
+const emit = defineEmits(['return-lobby', 'restart-game', 'draw-complete'])
 const isSettingsOpen = ref(false)
+const isDrawAnimating = ref(false)
+const activeDrawCard = ref(null)
+const tableCardPiles = ref(null)
+const playerHand = ref(null)
+const cardDrawAnimation = ref(null)
 const {
   musicEnabled,
   musicVolume,
@@ -78,6 +94,44 @@ function handleReturnLobby() {
 function handleRestartGame() {
   emit('restart-game')
 }
+
+async function playDrawAnimation() {
+  if (isDrawAnimating.value || !props.drawCard) {
+    return
+  }
+
+  isDrawAnimating.value = true
+  activeDrawCard.value = { ...props.drawCard }
+  playerHand.value?.prepareDrawTarget()
+  await nextTick()
+
+  const startRect = tableCardPiles.value?.getDeckRect()
+  const targetRect = playerHand.value?.getDrawTargetRect()
+
+  if (!startRect || !targetRect) {
+    playerHand.value?.finishDraw()
+    activeDrawCard.value = null
+    isDrawAnimating.value = false
+    return
+  }
+
+  try {
+    await cardDrawAnimation.value?.play({
+      startRect,
+      targetRect,
+      onLanded: () => emit('draw-complete', activeDrawCard.value),
+    })
+    await nextTick()
+  } finally {
+    playerHand.value?.finishDraw()
+    activeDrawCard.value = null
+    isDrawAnimating.value = false
+  }
+}
+
+defineExpose({
+  playDrawAnimation,
+})
 </script>
 
 <template>
@@ -89,7 +143,9 @@ function handleRestartGame() {
     >
       <PlayerSeats :players="players" />
 
-      <div class="absolute top-[clamp(20px,6vh,40px)] left-[clamp(16px,2.6vw,40px)]">
+      <div
+        class="turn-controls absolute top-[clamp(20px,6vh,40px)] left-[clamp(16px,2.6vw,40px)]"
+      >
         <TurnStatus
           :round-number="roundNumber"
           :current-phase="currentPhase"
@@ -110,12 +166,26 @@ function handleRestartGame() {
       </div>
 
       <div class="table-card-piles absolute top-[42%] left-1/2 -translate-x-1/2">
-        <TableCardPiles :deck-count="deckCount" :discard-card="discardCard" />
+        <TableCardPiles
+          ref="tableCardPiles"
+          :deck-count="deckCount"
+          :discard-card="discardCard"
+          :is-draw-disabled="isDrawAnimating || !drawCard"
+          @draw="playDrawAnimation"
+        />
       </div>
 
       <div class="absolute bottom-[-34px] left-1/2 z-20 -translate-x-1/2">
-        <PlayerHand :cards="handCards" />
+        <PlayerHand
+          ref="playerHand"
+          :cards="handCards"
+        />
       </div>
+
+      <CardDrawAnimation
+        ref="cardDrawAnimation"
+        :card="activeDrawCard"
+      />
     </section>
 
     <GameSettingsModal
@@ -145,6 +215,10 @@ function handleRestartGame() {
 }
 
 @media (max-height: 480px) {
+  .turn-controls {
+    top: 10px;
+  }
+
   .game-brand-tools {
     top: 10px;
   }
