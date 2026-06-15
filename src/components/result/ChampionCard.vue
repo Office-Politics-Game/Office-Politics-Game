@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { getRankingList } from "@/services/rankingService.js";
-import Crown from "@/assets/Crown.png";
+import Crown from "@/assets/images/crown.png";
 const rankingList = ref([]);
 const champion = computed(() => rankingList.value[0]);
 onMounted(async () => {

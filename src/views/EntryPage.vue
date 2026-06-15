@@ -22,7 +22,7 @@
       <div class="flex flex-col items-center gap-6 mb-12">
         <!-- Logo 圖片 -->
         <img
-          src="@/assets/LOGO_Main.png"
+          src="@/assets/images/logo-main.png"
           alt="Office Politics Logo"
           class="object-contain drop-shadow-lg"
         />
@@ -62,8 +62,8 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import LoginContent from '@/components/LoginContent.vue'
-import bgEntryVideo from '@/assets/EntryPage_BgVideo.mp4'
+import LoginContent from '@/components/login/LoginContent.vue'
+import bgEntryVideo from '@/assets/videos/EntryPage_BgVideo.mp4'
 
 const router = useRouter()
 const showLoginModal = ref(false)

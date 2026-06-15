@@ -1,6 +1,6 @@
 <script setup>
-import BG from "../assets/BG_Result.jpg";
-import Board from "@/assets/Result_Board.png";
+import BG from "../assets/images/bg-result.webp";
+import Board from "@/assets/images/result-board.webp";
 import RankingItems from "@/components/result/RankingItems.vue";
 import ChampionCard from "@/components/result/ChampionCard.vue";
 import Achievements from "@/components/result/Achievements.vue";

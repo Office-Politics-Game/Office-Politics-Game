@@ -22,7 +22,7 @@
         >
           <!-- 頭像 -->
           <img
-            src="@/assets/Player_1.png"
+            src="@/assets/images/player-1.png"
             class="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover"
           />
 
@@ -117,8 +117,8 @@
 </template>
 
 <script setup>
-import BG_Personal from '@/assets/BG_Personal.jpg'
-import WaitingRoom from '@/assets/WaitingRoom.png'
+import BG_Personal from '@/assets/images/bg-personal.webp'
+import WaitingRoom from '@/assets/images/waiting-room.png'
 import FriendItem from '@/components/menu/FriendItem.vue'
 </script>
 

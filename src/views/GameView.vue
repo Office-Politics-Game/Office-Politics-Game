@@ -1,13 +1,13 @@
 <script setup>
-import advisorBackgroundUrl from '@/assets/CardBGAdvisor.png'
-import advisorHandBackgroundUrl from '@/assets/CardBG_Advisor@2x.png'
-import advisorFrameUrl from '@/assets/CardFrame_Advisor@2x.png'
-import ceoBackgroundUrl from '@/assets/CardBG_CEO@2x.png'
-import ceoFrameUrl from '@/assets/CardFrame_CEO@2x.png'
-import playerOneUrl from '@/assets/Player_1.png'
-import playerTwoUrl from '@/assets/Player_2.png'
-import playerThreeUrl from '@/assets/Player_3.png'
-import playerFourUrl from '@/assets/Player_4.png'
+import advisorBackgroundUrl from '@/assets/images/card-bg-advisor.webp'
+import advisorHandBackgroundUrl from '@/assets/images/card-bg-advisor.webp'
+import advisorFrameUrl from '@/assets/images/card-frame-advisor.webp'
+import ceoBackgroundUrl from '@/assets/images/card-bg-ceo.webp'
+import ceoFrameUrl from '@/assets/images/card-frame-ceo.webp'
+import playerOneUrl from '@/assets/images/player-1.png'
+import playerTwoUrl from '@/assets/images/player-2.png'
+import playerThreeUrl from '@/assets/images/player-3.png'
+import playerFourUrl from '@/assets/images/player-4.png'
 import GameStage from '@/components/game/GameStage.vue'
 
 const turnStatus = {
