@@ -2,7 +2,7 @@ import { createDeck } from './Deck'
 
 function createInitialGameState (players) {
     const deck = createDeck()
-    //shuffleDeck() 洗牌
+    // shuffleDeck() 洗牌
 
     const sortedPlayers = [...players].sort((a, b) => {
         return a.seat_order - b.seat_order
