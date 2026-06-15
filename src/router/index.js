@@ -10,6 +10,7 @@ import MatchingModal from "@/components/gameRoom/MatchingModal.vue";
 import JoinRoomModal from "@/components/gameRoom/JoinRoomModal.vue";
 import CustomRoomView from "@/views/CustomRoomView.vue";
 import InviteFriendModal from "@/components/gameRoom/InviteFriendModal.vue";
+import CardDealDemoView from "@/views/CardDealDemoView.vue";
 
 const routes = [
   {
@@ -67,7 +68,12 @@ const routes = [
     path: "/invite-friend",
     name: "InviteFriend",
     component: InviteFriendModal,
-  },  
+  },
+  {
+    path: "/card-deal-demo",
+    name: "CardDealDemo",
+    component: CardDealDemoView,
+  },
 ];
 
 const router = createRouter({

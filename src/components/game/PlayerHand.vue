@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from 'vue'
 import GameCard from './GameCard.vue'
 
 defineProps({
@@ -15,11 +16,21 @@ defineProps({
       ),
   },
 })
+
+const dealTarget = ref(null)
+
+function getDealTargetRect() {
+  return dealTarget.value?.getBoundingClientRect() ?? null
+}
+
+defineExpose({
+  getDealTargetRect,
+})
 </script>
 
 <template>
   <section
-    class="player-hand pointer-events-none flex items-end justify-center"
+    class="player-hand pointer-events-none relative flex items-end justify-center"
     aria-label="你的手牌"
   >
     <div
@@ -35,6 +46,12 @@ defineProps({
         />
       </div>
     </div>
+
+    <div
+      ref="dealTarget"
+      class="game-card-arrangement--deal-target absolute bottom-0 left-1/2 aspect-[3/4] h-[clamp(126px,31vh,230px)] origin-bottom"
+      aria-hidden="true"
+    />
   </section>
 </template>
 
@@ -52,5 +69,10 @@ defineProps({
   z-index: 2;
   margin-left: clamp(-42px, -3vw, -24px);
   transform: rotate(5deg);
+}
+
+.game-card-arrangement--deal-target {
+  visibility: hidden;
+  transform: translateX(-50%);
 }
 </style>

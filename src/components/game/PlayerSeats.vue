@@ -1,7 +1,9 @@
 <script setup>
+import { computed, ref } from 'vue'
+import cardBackUrl from '@/assets/images/card-bg-back.webp'
 import PlayerAvatar from './PlayerAvatar.vue'
 
-defineProps({
+const props = defineProps({
   players: {
     type: Array,
     required: true,
@@ -24,7 +26,16 @@ defineProps({
       )
     },
   },
+  dealtPlayerIds: {
+    type: Array,
+    default: () => [],
+    validator: (playerIds) =>
+      playerIds.every((playerId) => typeof playerId === 'string'),
+  },
 })
+
+const handTargetElements = ref({})
+const dealtPlayerIdSet = computed(() => new Set(props.dealtPlayerIds))
 
 const positionClasses = {
   top: 'player-seats__seat--top',
@@ -32,6 +43,27 @@ const positionClasses = {
   right: 'player-seats__seat--right',
   bottom: 'player-seats__seat--bottom',
 }
+
+function setHandTargetElement(playerId, element) {
+  if (!playerId) {
+    return
+  }
+
+  if (element) {
+    handTargetElements.value[playerId] = element
+    return
+  }
+
+  delete handTargetElements.value[playerId]
+}
+
+function getHandTargetRect(playerId) {
+  return handTargetElements.value[playerId]?.getBoundingClientRect() ?? null
+}
+
+defineExpose({
+  getHandTargetRect,
+})
 </script>
 
 <template>
@@ -48,11 +80,62 @@ const positionClasses = {
         :round-wins="player.roundWins"
         :is-current-player="player.isCurrentPlayer"
       />
+
+      <div
+        v-if="player.position !== 'bottom'"
+        :ref="(element) => setHandTargetElement(player.id, element)"
+        class="player-seat-hand-target pointer-events-none absolute aspect-[3/4] h-[clamp(62px,10vh,92px)]"
+        :class="`player-seat-hand-target--${player.position}`"
+        aria-hidden="true"
+      >
+        <img
+          v-if="dealtPlayerIdSet.has(player.id)"
+          :src="cardBackUrl"
+          alt=""
+          class="player-seat-hand-target__card block size-full select-none object-contain"
+          draggable="false"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+.player-seat-hand-target {
+  z-index: 0;
+  filter: drop-shadow(0 8px 12px rgba(0, 19, 50, 0.34));
+}
+
+.player-seat-hand-target--top {
+  top: calc(100% + clamp(8px, 1.5vh, 14px));
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.player-seat-hand-target--left {
+  top: 50%;
+  left: calc(100% + clamp(8px, 1vw, 14px));
+  transform: translateY(-50%);
+}
+
+.player-seat-hand-target--right {
+  top: 50%;
+  right: calc(100% + clamp(8px, 1vw, 14px));
+  transform: translateY(-50%);
+}
+
+.player-seat-hand-target--top .player-seat-hand-target__card {
+  transform: rotate(180deg);
+}
+
+.player-seat-hand-target--left .player-seat-hand-target__card {
+  transform: rotate(90deg);
+}
+
+.player-seat-hand-target--right .player-seat-hand-target__card {
+  transform: rotate(-90deg);
+}
+
 .player-seats__seat--top {
   top: clamp(62px, 8vh, 84px);
   left: 50%;
@@ -104,6 +187,10 @@ const positionClasses = {
 }
 
 @media (max-height: 480px) {
+  .player-seat-hand-target {
+    height: 54px;
+  }
+
   .player-seats__seat--top {
     top: 28px;
   }
