@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from 'vue'
 import PlayerAvatar from './PlayerAvatar.vue'
 
 defineProps({
@@ -26,12 +27,33 @@ defineProps({
   },
 })
 
+const seatElements = ref({})
+
 const positionClasses = {
   top: 'player-seats__seat--top',
   left: 'player-seats__seat--left',
   right: 'player-seats__seat--right',
   bottom: 'player-seats__seat--bottom',
 }
+
+function setSeatElement(playerId, element) {
+  if (!playerId) {
+    return
+  }
+
+  if (element) {
+    seatElements.value[playerId] = element
+    return
+  }
+
+  delete seatElements.value[playerId]
+}
+
+defineExpose({
+  getSeatRect(playerId) {
+    return seatElements.value[playerId]?.getBoundingClientRect() ?? null
+  },
+})
 </script>
 
 <template>
@@ -39,6 +61,7 @@ const positionClasses = {
     <div
       v-for="player in players"
       :key="player.id"
+      :ref="(element) => setSeatElement(player.id, element)"
       class="player-seats__seat absolute"
       :class="positionClasses[player.position]"
     >
