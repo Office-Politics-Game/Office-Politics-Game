@@ -1,4 +1,4 @@
-import { createDeck } from './Deck'
+import { createDeck } from './Deck.js'
 
 function createInitialGameState (players) {
     const deck = createDeck()
