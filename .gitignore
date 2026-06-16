@@ -47,3 +47,5 @@ AGENTS.md
 .spectra.yaml
 .spectra/
 openspec/
+
+.env
