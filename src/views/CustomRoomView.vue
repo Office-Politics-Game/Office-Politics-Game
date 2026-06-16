@@ -123,7 +123,7 @@ onMounted(async () => {
         <button
           class="btn-dark tap-pop pointer-events-auto flex h-9 cursor-pointer items-center justify-center gap-2 overflow-hidden text-sm font-bold lg:h-12 lg:text-base"
           type="button"
-          @click="$router.push('/matching')"
+          @click="$router.push('/loading')"
         >
           <Play
             class="h-4 w-4 fill-current lg:h-5 lg:w-5"
