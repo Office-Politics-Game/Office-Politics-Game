@@ -1,0 +1,6 @@
+function discardCard() {
+
+}
+export {
+  discardCard
+};
