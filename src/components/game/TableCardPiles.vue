@@ -1,17 +1,20 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from "vue";
-import { gsap } from "gsap";
-import cardBackUrl from "@/assets/images/card-bg-back.webp";
-import GameCard from "./GameCard.vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { gsap } from 'gsap'
+import cardBackUrl from '@/assets/images/card-bg-back.webp'
+import GameCard from './GameCard.vue'
 
-const pileArea = ref(null);
-const deckPile = ref(null);
-const discardPile = ref(null);
-const TABLE_ROTATION_X = 58;
-let gsapContext;
-let gsapMedia;
+const pileArea = ref(null)
+const deckPile = ref(null)
+const discardPile = ref(null)
+const isDeckPressing = ref(false)
+const TABLE_ROTATION_X = 58
+let gsapContext
+let gsapMedia
+let pressTimeline
+let hasRequestedDraw = false
 
-defineProps({
+const props = defineProps({
   deckCount: {
     type: [Number, String],
     required: true,
@@ -24,7 +27,107 @@ defineProps({
       typeof card?.backgroundUrl === "string" &&
       typeof card?.frameUrl === "string",
   },
-});
+  isDrawDisabled: {
+    type: Boolean,
+    default: false,
+  },
+})
+
+const emit = defineEmits(['draw'])
+const isDeckInteractionDisabled = computed(
+  () => props.isDrawDisabled || isDeckPressing.value,
+)
+
+function getDeckRect() {
+  return deckPile.value?.getBoundingClientRect() ?? null
+}
+
+defineExpose({
+  getDeckRect,
+})
+
+function resetDeckPose() {
+  if (!deckPile.value) {
+    return
+  }
+
+  gsap.set(deckPile.value, {
+    rotationX: TABLE_ROTATION_X,
+    rotationY: 0,
+    rotationZ: -2,
+    scale: 1,
+    y: 0,
+    clearProps: 'filter,opacity',
+  })
+}
+
+function releaseDeckInteraction() {
+  hasRequestedDraw = false
+  isDeckPressing.value = false
+  resetDeckPose()
+}
+
+function emitDrawAfterPress() {
+  hasRequestedDraw = true
+  emit('draw')
+
+  nextTick(() => {
+    if (!props.isDrawDisabled) {
+      releaseDeckInteraction()
+    }
+  })
+}
+
+function handleDeckDraw() {
+  if (isDeckInteractionDisabled.value || !deckPile.value) {
+    return
+  }
+
+  isDeckPressing.value = true
+  gsap.killTweensOf(deckPile.value)
+
+  const reduceMotion = window.matchMedia(
+    '(prefers-reduced-motion: reduce)',
+  ).matches
+
+  pressTimeline?.kill()
+  pressTimeline = gsap.timeline({
+    onComplete: emitDrawAfterPress,
+  })
+
+  if (reduceMotion) {
+    pressTimeline
+      .to(deckPile.value, {
+        filter: 'brightness(0.82)',
+        duration: 0.08,
+        ease: 'power1.out',
+      })
+      .to(deckPile.value, {
+        filter: 'brightness(1)',
+        duration: 0.1,
+        ease: 'power1.out',
+      })
+    return
+  }
+
+  pressTimeline
+    .to(deckPile.value, {
+      rotationX: TABLE_ROTATION_X,
+      rotationY: 0,
+      rotationZ: -1,
+      scale: 0.96,
+      y: 5,
+      duration: 0.08,
+      ease: 'power2.in',
+    })
+    .to(deckPile.value, {
+      rotationZ: -2,
+      scale: 1,
+      y: 0,
+      duration: 0.12,
+      ease: 'back.out(1.8)',
+    })
+}
 
 function createPileTilt(element, rotationZ) {
   if (!element) {
@@ -54,9 +157,13 @@ function createPileTilt(element, rotationZ) {
   });
 
   function handlePointerMove(event) {
-    const bounds = element.getBoundingClientRect();
-    const offsetX = (event.clientX - bounds.left) / bounds.width - 0.5;
-    const offsetY = (event.clientY - bounds.top) / bounds.height - 0.5;
+    if (isDeckInteractionDisabled.value && element === deckPile.value) {
+      return
+    }
+
+    const bounds = element.getBoundingClientRect()
+    const offsetX = (event.clientX - bounds.left) / bounds.width - 0.5
+    const offsetY = (event.clientY - bounds.top) / bounds.height - 0.5
 
     moveX(offsetX * 4);
     moveY(TABLE_ROTATION_X + offsetY * -4);
@@ -64,9 +171,13 @@ function createPileTilt(element, rotationZ) {
   }
 
   function handlePointerLeave() {
-    moveX(0);
-    moveY(TABLE_ROTATION_X);
-    lift(0);
+    if (isDeckInteractionDisabled.value && element === deckPile.value) {
+      return
+    }
+
+    moveX(0)
+    moveY(TABLE_ROTATION_X)
+    lift(0)
   }
 
   element.addEventListener("pointermove", handlePointerMove, { passive: true });
@@ -77,6 +188,15 @@ function createPileTilt(element, rotationZ) {
     element.removeEventListener("pointerleave", handlePointerLeave);
   };
 }
+
+watch(
+  () => props.isDrawDisabled,
+  (isDisabled) => {
+    if (!isDisabled && hasRequestedDraw) {
+      releaseDeckInteraction()
+    }
+  },
+)
 
 onMounted(() => {
   gsapContext = gsap.context(() => {
@@ -112,9 +232,10 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  gsapMedia?.revert();
-  gsapContext?.revert();
-});
+  pressTimeline?.kill()
+  gsapMedia?.revert()
+  gsapContext?.revert()
+})
 </script>
 
 <template>
@@ -127,10 +248,13 @@ onUnmounted(() => {
       class="flex flex-col items-center gap-[clamp(6px,1.4vh,12px)]"
       :aria-label="`牌庫，剩餘 ${deckCount} 張`"
     >
-      <div
+      <button
         ref="deckPile"
+        type="button"
         class="table-card-pile table-card-pile--deck card-stack relative aspect-[3/4] h-[clamp(108px,25vh,220px)]"
-        @click="$router.push('/result')"
+        :disabled="isDeckInteractionDisabled"
+        :aria-label="`從牌庫抽牌，剩餘 ${deckCount} 張`"
+        @click="handleDeckDraw"
       >
         <img
           v-for="layer in 3"
@@ -142,7 +266,7 @@ onUnmounted(() => {
           :class="`card-stack__layer--${layer}`"
           draggable="false"
         />
-      </div>
+      </button>
 
       <p
         aria-hidden="true"
@@ -205,7 +329,31 @@ onUnmounted(() => {
 }
 
 .table-card-pile--deck {
+  padding: 0;
+  cursor: pointer;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   transform: rotateX(58deg) rotateZ(-2deg);
+  transition:
+    filter 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.table-card-pile--deck:hover:not(:disabled) {
+  filter:
+    brightness(1.06)
+    drop-shadow(0 4px 4px rgba(0, 19, 50, 0.34))
+    drop-shadow(0 12px 12px rgba(0, 19, 50, 0.26));
+}
+
+.table-card-pile--deck:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 5px var(--brand-focus);
+}
+
+.table-card-pile--deck:disabled {
+  cursor: not-allowed;
 }
 
 .table-card-pile--discard {
