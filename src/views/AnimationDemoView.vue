@@ -89,15 +89,13 @@ const pendingCard = ref(null)
 function createEnemyOriginRect(playerId) {
   const seatRect = playerSeatsRef.value?.getSeatRect?.(playerId)
   const currentDiscardRect = tableCardPilesRef.value?.getDiscardRect?.()
-  if (!seatRect || !currentDiscardRect) {
-    return null
-  }
+  if (!seatRect) return null
 
   return {
-    left: seatRect.left + seatRect.width / 2 - currentDiscardRect.width / 2,
-    top: seatRect.top + seatRect.height / 2 - currentDiscardRect.height / 2,
-    width: currentDiscardRect.width,
-    height: currentDiscardRect.height,
+    left: seatRect.left,
+    top: seatRect.top,
+    width: seatRect.width,
+    height: seatRect.height,
   }
 }
 
@@ -143,6 +141,7 @@ function handleAnimationFinished() {
   discardRect.value = null
   pendingCard.value = null
 }
+
 </script>
 
 <template>

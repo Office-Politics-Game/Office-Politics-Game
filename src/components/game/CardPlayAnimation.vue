@@ -39,10 +39,12 @@ const emit = defineEmits(['card-arrived', 'animation-finished'])
 const overlayEl = ref(null)
 const trailEl = ref(null)
 const burstEl = ref(null)
+const showcaseEl = ref(null)
 const stage = ref('idle')
 const overlayStyle = ref({ display: 'none' })
 const trailStyle = ref({ display: 'none' })
 const burstStyle = ref({ display: 'none' })
+const showcaseStyle = ref({ display: 'none' })
 
 const hasActiveCard = computed(() => Boolean(props.activeCard && props.originRect))
 
@@ -73,6 +75,7 @@ function resetLayer() {
   overlayStyle.value = { display: 'none' }
   trailStyle.value = { display: 'none' }
   burstStyle.value = { display: 'none' }
+  showcaseStyle.value = { display: 'none' }
 }
 
 function updateDragLayer() {
@@ -114,9 +117,14 @@ async function animatePlay() {
   const dx = targetX - startX
   const dy = targetY - startY
   const travelDirection = Math.sign(dx || dy || 1)
-  const liftHeight = Math.max(originRect.height * 1.02, 250)
+  const liftHeight = Math.max(originRect.height * 0.32, 72)
+  const finalRotation = 2
+  const finalRotationX = 58
+  const showcaseScale = Math.min(1.88, Math.max(1.52, window.innerHeight * 0.42 / originRect.height))
+  const showcaseX = window.innerWidth / 2 - originRect.left - originRect.width / 2
+  const showcaseY = window.innerHeight / 2 - originRect.top - originRect.height / 2
 
-  gsap.killTweensOf([overlayEl.value, burstEl.value])
+  gsap.killTweensOf([overlayEl.value, burstEl.value, showcaseEl.value])
   gsap.killTweensOf(trailEl.value)
 
   gsap.set(overlayEl.value, {
@@ -151,15 +159,59 @@ async function animatePlay() {
     display: 'block',
   })
 
-  const startPoint = { x: startX, y: startY }
-  const liftPoint = {
-    x: startX + dx * 0.08,
-    y: startY - liftHeight,
+  showcaseStyle.value = {
+    display: 'block',
+    left: `${window.innerWidth / 2}px`,
+    top: `${window.innerHeight / 2}px`,
   }
-  const settleOffsetX = 0
-  const settleOffsetY = -142
-  const settleTargetX = targetX + settleOffsetX
-  const settleTargetY = targetY + settleOffsetY
+
+  gsap.set(showcaseEl.value, {
+    opacity: 0,
+    scale: 0.45,
+    rotation: 0,
+  })
+
+  gsap.set(overlayEl.value, {
+    x: targetX,
+    y: targetY,
+    scaleX: 1,
+    scaleY: 1,
+    rotation: finalRotation,
+    rotationX: finalRotationX,
+    rotationY: 0,
+  })
+  const baseFinalRect = overlayEl.value.getBoundingClientRect()
+  const settleScale = discardRect.height / baseFinalRect.height
+
+  gsap.set(overlayEl.value, {
+    x: targetX,
+    y: targetY,
+    scaleX: settleScale,
+    scaleY: settleScale,
+    rotation: finalRotation,
+    rotationX: finalRotationX,
+    rotationY: 0,
+  })
+  const scaledFinalRect = overlayEl.value.getBoundingClientRect()
+  const settleTargetX = targetX + discardRect.left - scaledFinalRect.left
+  const settleTargetY = targetY + discardRect.top - scaledFinalRect.top
+
+  gsap.set(overlayEl.value, {
+    x: startX,
+    y: startY,
+    scaleX: 1.02,
+    scaleY: 1.02,
+    rotation: -2,
+    rotationX: -4,
+    rotationY: 0,
+    transformOrigin: '50% 100%',
+  })
+
+  const startPoint = { x: showcaseX, y: showcaseY }
+  const liftPoint = {
+    x: showcaseX + (settleTargetX - showcaseX) * 0.42,
+    y: Math.min(showcaseY, settleTargetY) - liftHeight,
+  }
   const flyPoint = {
     x: settleTargetX,
     y: settleTargetY - Math.max(originRect.height * 0.42, 92),
@@ -169,18 +221,74 @@ async function animatePlay() {
     y: settleTargetY + 2,
   }
   const motion = { t: 0 }
-  const curve = { x: startX, y: startY }
+  const curve = { x: showcaseX, y: showcaseY }
   const trailMotion = { t: 0 }
-  const trailPoint = { x: startX, y: startY }
+  const trailPoint = { x: showcaseX, y: showcaseY }
   const cleanup = () => {
     emit('animation-finished')
     resetLayer()
   }
 
-  const leadTween = gsap.to(motion, {
+  const playTimeline = gsap.timeline()
+
+  playTimeline.to(overlayEl.value, {
+    x: showcaseX,
+    y: showcaseY,
+    scaleX: showcaseScale,
+    scaleY: showcaseScale,
+    rotation: 0,
+    rotationX: 0,
+    transformOrigin: '50% 50%',
+    duration: 0.28,
+    ease: 'power3.out',
+  })
+
+  playTimeline.to(showcaseEl.value, {
+    opacity: 1,
+    scale: 1,
+    duration: 0.16,
+    ease: 'power2.out',
+  }, '<')
+
+  playTimeline.to(overlayEl.value, {
+    scaleX: showcaseScale * 1.08,
+    scaleY: showcaseScale * 1.08,
+    duration: 0.18,
+    ease: 'power1.inOut',
+  })
+
+  playTimeline.to(overlayEl.value, {
+    scaleX: showcaseScale,
+    scaleY: showcaseScale,
+    duration: 0.16,
+    ease: 'power1.out',
+  })
+
+  playTimeline.to({}, {
+    duration: 2,
+  })
+
+  playTimeline.to(showcaseEl.value, {
+    opacity: 0,
+    scale: 1.22,
+    duration: 0.18,
+    ease: 'power2.out',
+  }, '<')
+
+  playTimeline.set(overlayEl.value, {
+    transformOrigin: '50% 100%',
+  }, '<')
+
+  playTimeline.call(runLandingAnimation, null, '<')
+
+  function runLandingAnimation() {
+    motion.t = 0
+    trailMotion.t = 0
+
+    const leadTween = gsap.to(motion, {
     t: 1,
-    duration: 1.12,
-    ease: 'power2.inOut',
+    duration: 0.92,
+    ease: 'power2.in',
     onUpdate: () => {
       const p = motion.t
       let point
@@ -199,10 +307,10 @@ async function animatePlay() {
       const settleBoost = Math.max(0, Math.min((p - 0.62) / 0.38, 1))
       const scaleX = p < 0.62
         ? lerp(1.16, 1.02, liftBoost)
-        : lerp(1.02, 1, settleBoost)
+        : lerp(1.02, settleScale, settleBoost)
       const scaleY = p < 0.62
         ? (p < 0.38 ? lerp(1.3, 1.12, liftBoost) : lerp(1.12, 1, dropBoost))
-        : lerp(1, 1, settleBoost)
+        : lerp(1, settleScale, settleBoost)
       const rotation = p < 0.62
         ? (p < 0.5
             ? lerp(travelDirection * 12, travelDirection * 4, Math.min(p / 0.5, 1))
@@ -220,7 +328,6 @@ async function animatePlay() {
 
     },
     onComplete: () => {
-      emit('card-arrived')
       gsap.to(burstEl.value, {
         opacity: 1,
         scale: 1.3,
@@ -231,8 +338,8 @@ async function animatePlay() {
       gsap.to(overlayEl.value, {
         x: settleTargetX + travelDirection * 4,
         y: settleTargetY + 4,
-        scaleX: 1.02,
-        scaleY: 0.92,
+        scaleX: settleScale * 1.02,
+        scaleY: settleScale * 0.92,
         rotation: travelDirection * 10,
         rotationX: -34,
         rotationY: 0,
@@ -243,20 +350,21 @@ async function animatePlay() {
       gsap.to(overlayEl.value, {
         x: settleTargetX,
         y: settleTargetY,
-        scaleX: 1,
-        scaleY: 1,
-        rotation: 2,
-        rotationX: 58,
+        scaleX: settleScale,
+        scaleY: settleScale,
+        rotation: finalRotation,
+        rotationX: finalRotationX,
         rotationY: 0,
         duration: 0.18,
         ease: 'power2.out',
-      })
-
-      gsap.to(overlayEl.value, {
-        opacity: 0,
-        duration: 0.12,
-        delay: 0.08,
-        ease: 'power1.out',
+        onComplete: () => {
+          emit('card-arrived')
+          gsap.to(overlayEl.value, {
+            opacity: 0,
+            duration: 0.04,
+            ease: 'power1.out',
+          })
+        },
       })
 
       gsap.to(burstEl.value, {
@@ -275,10 +383,10 @@ async function animatePlay() {
     },
   })
 
-  gsap.to(trailMotion, {
+    gsap.to(trailMotion, {
     t: 1,
-    duration: 1.12,
-    ease: 'power2.inOut',
+    duration: 0.92,
+    ease: 'power2.in',
     onUpdate: () => {
       const p = trailMotion.t
       let point
@@ -302,6 +410,7 @@ async function animatePlay() {
       })
     },
   })
+  }
 }
 
 watch(
@@ -372,6 +481,14 @@ watch(
 
     <div
       v-if="hasActiveCard"
+      ref="showcaseEl"
+      class="card-play-showcase fixed pointer-events-none"
+      :style="showcaseStyle"
+      aria-hidden="true"
+    ></div>
+
+    <div
+      v-if="hasActiveCard"
       ref="overlayEl"
       class="card-play-layer fixed pointer-events-none"
       :class="{ 'card-play-layer--active': isOverPlayZone || stage === 'playing' }"
@@ -432,6 +549,20 @@ watch(
     radial-gradient(circle at 50% 50%, rgba(107, 184, 212, 1), rgba(107, 184, 212, 0.1) 38%, transparent 74%);
   filter: blur(12px);
   mix-blend-mode: screen;
+  transform-origin: 50% 50%;
+}
+
+.card-play-showcase {
+  z-index: 73;
+  width: min(58vmin, 520px);
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.9) 0 5%, transparent 22%),
+    radial-gradient(circle, rgba(107, 184, 212, 0.92) 0 18%, rgba(107, 184, 212, 0.24) 42%, transparent 68%);
+  filter: blur(14px);
+  mix-blend-mode: screen;
+  transform: translate(-50%, -50%);
   transform-origin: 50% 50%;
 }
 </style>

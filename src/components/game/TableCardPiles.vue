@@ -95,7 +95,8 @@ function createPileTilt(element, rotationZ) {
 
 defineExpose({
   getDiscardRect() {
-    return discardPile.value?.getBoundingClientRect() ?? null
+    const topDiscardCard = discardPile.value?.querySelector('.table-card-pile__card:last-child')
+    return topDiscardCard?.getBoundingClientRect() ?? discardPile.value?.getBoundingClientRect() ?? null
   },
   getPlayZoneRect() {
     const bounds = pileArea.value?.getBoundingClientRect()

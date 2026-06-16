@@ -70,8 +70,8 @@ const routes = [
     component: InviteFriendModal,
   },
   {
-    path: "/animation_demo",
-    name: "animation_demo",
+    path: "/enemycardplay_demo",
+    name: "enemycardplay_demo",
     component: AnimationDemoView,
   },
 ];
