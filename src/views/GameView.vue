@@ -1,4 +1,5 @@
 <script setup>
+import { computed, reactive } from 'vue'
 import advisorBackgroundUrl from '@/assets/images/card-bg-advisor.webp'
 import advisorHandBackgroundUrl from '@/assets/images/card-bg-advisor.webp'
 import advisorFrameUrl from '@/assets/images/card-frame-advisor.webp'
@@ -9,6 +10,10 @@ import playerTwoUrl from '@/assets/images/player-2.png'
 import playerThreeUrl from '@/assets/images/player-3.png'
 import playerFourUrl from '@/assets/images/player-4.png'
 import GameStage from '@/components/game/GameStage.vue'
+import {
+  createMockGameState,
+  drawMockCard,
+} from '@/mocks/mockGameState.js'
 
 const turnStatus = {
   roundNumber: 2,
@@ -17,7 +22,6 @@ const turnStatus = {
 }
 
 const cardPiles = {
-  deckCount: 28,
   discardCard: {
     name: '資深顧問',
     backgroundUrl: advisorBackgroundUrl,
@@ -25,20 +29,41 @@ const cardPiles = {
   },
 }
 
-const handCards = [
-  {
-    id: 'hand-ceo',
-    name: 'CEO',
+const cardAssets = {
+  ceo: {
     backgroundUrl: ceoBackgroundUrl,
     frameUrl: ceoFrameUrl,
   },
-  {
-    id: 'hand-advisor',
-    name: '資深顧問',
+  advisor: {
     backgroundUrl: advisorHandBackgroundUrl,
     frameUrl: advisorFrameUrl,
   },
-]
+}
+
+const gameState = reactive(createMockGameState())
+const deckCount = computed(() => gameState.deck.length)
+const handCards = computed(() =>
+  gameState.currentPlayer.hand.map(resolveCardAssets),
+)
+const drawCard = computed(() => {
+  if (gameState.currentPlayer.hand.length >= 2) {
+    return null
+  }
+
+  const nextCard = gameState.deck.at(-1)
+  return nextCard ? resolveCardAssets(nextCard) : null
+})
+
+function resolveCardAssets(card) {
+  const background = cardAssets[card.backgroundUrlKey]
+  const frame = cardAssets[card.frameUrlKey]
+
+  return {
+    ...card,
+    backgroundUrl: background.backgroundUrl,
+    frameUrl: frame.frameUrl,
+  }
+}
 
 const players = [
   {
@@ -82,6 +107,10 @@ function handleReturnLobby() {
 function handleRestartGame() {
   // Reserved for the future multiplayer-aware restart flow.
 }
+
+function handleDrawComplete(card) {
+  drawMockCard(gameState, card.id)
+}
 </script>
 
 <template>
@@ -89,10 +118,12 @@ function handleRestartGame() {
     :round-number="turnStatus.roundNumber"
     :current-phase="turnStatus.currentPhase"
     :current-step="turnStatus.currentStep"
-    :deck-count="cardPiles.deckCount"
+    :deck-count="deckCount"
     :discard-card="cardPiles.discardCard"
     :players="players"
     :hand-cards="handCards"
+    :draw-card="drawCard"
+    @draw-complete="handleDrawComplete"
     @return-lobby="handleReturnLobby"
     @restart-game="handleRestartGame"
   />

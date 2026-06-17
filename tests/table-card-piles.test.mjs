@@ -8,17 +8,21 @@ test('game stage imports and renders the table card piles', async () => {
   const source = await readSource('src/components/game/GameStage.vue')
 
   assert.match(source, /import TableCardPiles from '\.\/TableCardPiles\.vue'/)
-  assert.match(
-    source,
-    /<TableCardPiles :deck-count="deckCount" :discard-card="discardCard" \/>/,
-  )
+  assert.match(source, /<TableCardPiles/)
+  assert.match(source, /ref="tableCardPiles"/)
+  assert.match(source, /:deck-count="deckCount"/)
+  assert.match(source, /:discard-card="discardCard"/)
+  assert.match(source, /:is-draw-disabled="isDrawAnimating \|\| !drawCard"/)
+  assert.match(source, /@draw="playDrawAnimation"/)
 })
 
 test('table card piles use scoped GSAP pointer tilt with lifecycle cleanup', async () => {
   const source = await readSource('src/components/game/TableCardPiles.vue')
 
   assert.match(source, /import \{ gsap \} from 'gsap'/)
-  assert.match(source, /import \{ onMounted, onUnmounted, ref \} from 'vue'/)
+  for (const vueImport of ['onMounted', 'onUnmounted', 'ref']) {
+    assert.match(source, new RegExp(`\\b${vueImport}\\b`))
+  }
   assert.match(source, /const pileArea = ref\(null\)/)
   assert.match(source, /const deckPile = ref\(null\)/)
   assert.match(source, /const discardPile = ref\(null\)/)
@@ -51,10 +55,31 @@ test('deck and discard piles keep distinct tabletop rotations and shadows', asyn
   assert.match(source, /will-change:\s*transform/)
 })
 
-test('table card piles expose the deck rectangle for deal animations', async () => {
+test('deck pile is an accessible draw button with disabled and focus states', async () => {
   const source = await readSource('src/components/game/TableCardPiles.vue')
 
-  assert.match(source, /function getDeckRect\(\)/)
-  assert.match(source, /deckPile\.value\?\.getBoundingClientRect\(\)/)
-  assert.match(source, /defineExpose\(\{\s*getDeckRect/)
+  assert.match(source, /isDrawDisabled:/)
+  assert.match(source, /defineEmits\(\['draw'\]\)/)
+  assert.match(source, /<button/)
+  assert.match(source, /type="button"/)
+  assert.match(source, /:disabled="isDeckInteractionDisabled"/)
+  assert.match(source, /:aria-label="`從牌庫抽牌，剩餘 \$\{deckCount\} 張`"/)
+  assert.match(source, /\.table-card-pile--deck:focus-visible/)
+  assert.match(source, /cursor:\s*pointer/)
+  assert.match(source, /border-radius:\s*0/)
+})
+
+test('deck click feedback emits draw after a guarded GSAP timeline', async () => {
+  const source = await readSource('src/components/game/TableCardPiles.vue')
+
+  assert.match(source, /const isDeckPressing = ref\(false\)/)
+  assert.match(source, /function handleDeckDraw\(\)/)
+  assert.match(source, /if \(isDeckInteractionDisabled\.value/)
+  assert.match(source, /pressTimeline = gsap\.timeline\(/)
+  assert.match(source, /scale:\s*0\.96/)
+  assert.match(source, /y:\s*5/)
+  assert.match(source, /ease:\s*'back\.out/)
+  assert.match(source, /emit\('draw'\)/)
+  assert.match(source, /prefers-reduced-motion:\s*reduce/)
+  assert.match(source, /pressTimeline\?\.kill\(\)/)
 })

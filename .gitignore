@@ -44,8 +44,7 @@ AGENTS.md
 
 # Markdown files
 *.md
-!docs/superpowers/plans/2026-06-15-card-deal-animation.md
-!docs/superpowers/specs/2026-06-15-card-deal-animation-design.md
+docs/superpowers/
 .spectra.yaml
 .spectra/
 openspec/

@@ -29,21 +29,25 @@ test('player hand uses separate arrangement and future motion layers', async () 
   assert.match(source, /<GameCard/)
 })
 
-test('game view provides exactly two default hand cards through the stage', async () => {
+test('game view derives deck count, draw card, and hand cards from mock game state', async () => {
   const gameViewSource = await readSource('src/views/GameView.vue')
   const gameStageSource = await readSource('src/components/game/GameStage.vue')
 
-  assert.match(gameViewSource, /card-bg-ceo\.webp/)
-  assert.match(gameViewSource, /card-frame-ceo\.webp/)
-  assert.match(gameViewSource, /card-bg-advisor\.webp/)
-  assert.match(gameViewSource, /card-frame-advisor\.webp/)
-  assert.match(gameViewSource, /const handCards = \[/)
-  assert.equal((gameViewSource.match(/id: 'hand-/g) ?? []).length, 2)
+  assert.match(gameViewSource, /createMockGameState/)
+  assert.match(gameViewSource, /drawMockCard/)
+  assert.match(gameViewSource, /const gameState = reactive\(createMockGameState\(\)\)/)
+  assert.match(gameViewSource, /const deckCount = computed\(\(\) => gameState\.deck\.length\)/)
+  assert.match(gameViewSource, /const handCards = computed\(/)
+  assert.match(gameViewSource, /const drawCard = computed\(/)
+  assert.match(gameViewSource, /gameState\.currentPlayer\.hand\.length >= 2/)
   assert.match(gameViewSource, /:hand-cards="handCards"/)
+  assert.match(gameViewSource, /:draw-card="drawCard"/)
+  assert.match(gameViewSource, /@draw-complete="handleDrawComplete"/)
 
   assert.match(gameStageSource, /handCards:/)
+  assert.match(gameStageSource, /drawCard:/)
   assert.match(gameStageSource, /import PlayerHand from '\.\/PlayerHand\.vue'/)
-  assert.match(gameStageSource, /<PlayerHand :cards="handCards"/)
+  assert.match(gameStageSource, /<PlayerHand/)
 })
 
 test('discard pile reuses the layered game card', async () => {
@@ -60,4 +64,17 @@ test('player hand remains static and non-interactive', async () => {
 
   assert.doesNotMatch(source, /gsap|<button|@click|@mouseenter|@mouseleave|tabindex|draggable|:hover/)
   assert.doesNotMatch(source, /rounded-/)
+})
+
+test('player hand exposes a draw target and renders its final cards from data', async () => {
+  const source = await readSource('src/components/game/PlayerHand.vue')
+
+  assert.doesNotMatch(source, /previewCard:/)
+  assert.match(source, /const drawTarget = ref\(null\)/)
+  assert.match(source, /function prepareDrawTarget\(\)/)
+  assert.match(source, /function getDrawTargetRect\(\)/)
+  assert.match(source, /function finishDraw\(\)/)
+  assert.match(source, /defineExpose\(\{/)
+  assert.match(source, /v-for="card in cards"/)
+  assert.match(source, /player-hand--drawing/)
 })
