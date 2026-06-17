@@ -12,21 +12,25 @@ defineProps({
     type: String,
     required: true,
   },
-})
+});
 </script>
 
 <template>
   <div
-    class="flex h-[clamp(28px,4.2vh,36px)] items-stretch overflow-hidden rounded-full border border-white/75 text-[clamp(12px,1.4vw,15px)] font-medium tracking-[0.04em] text-white shadow-[0_4px_16px_rgba(0,19,50,0.2)] backdrop-blur-[6px]"
+    class="flex items-stretch overflow-hidden border border-white/75 text-xs font-medium tracking-[0.04em] text-white shadow-[0_4px_16px_rgba(0,19,50,0.2)] backdrop-blur-[6px] lg:text-[18px]"
     aria-label="目前回合狀態"
   >
-    <span class="flex items-center bg-[rgba(70,85,99,0.72)] px-[clamp(12px,1.35vw,18px)]">
+    <span class="flex items-center bg-[rgba(70,85,99,0.72)] px-3 py-1 lg:px-6">
       第 {{ roundNumber }} 回合
     </span>
-    <span class="flex items-center bg-white px-[clamp(12px,1.35vw,18px)] text-[var(--brand-active)]">
+    <span
+      class="flex items-center bg-white px-3 text-[var(--brand-active)] lg:px-6"
+    >
       {{ currentPhase }}
     </span>
-    <span class="flex items-center bg-[rgba(255,255,255,0.2)] px-[clamp(12px,1.35vw,18px)]">
+    <span
+      class="flex items-center bg-[rgba(70,85,99,0.72)] px-3 py-1 text-white lg:px-6"
+    >
       {{ currentStep }}
     </span>
   </div>

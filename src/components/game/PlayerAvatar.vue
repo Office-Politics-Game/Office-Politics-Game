@@ -1,8 +1,7 @@
 <script setup>
-import { computed } from 'vue'
-import bonusChequeTokenUrl from '@/assets/images/bonus-cheque-token.png'
+import bonusChequeTokenUrl from "@/assets/images/bonus-cheque-token.png";
 
-const props = defineProps({
+defineProps({
   name: {
     type: String,
     required: true,
@@ -16,65 +15,96 @@ const props = defineProps({
     required: true,
     validator: (value) => Number.isInteger(value) && value >= 0 && value <= 3,
   },
+  level: {
+    type: [Number, String],
+    default: 12,
+  },
   isCurrentPlayer: {
     type: Boolean,
     default: false,
   },
-})
-
-const isMatchWinner = computed(() => props.roundWins === 3)
+  isMirrored: {
+    type: Boolean,
+    default: false,
+  },
+});
 </script>
 
 <template>
   <section
-    class="player-avatar flex items-center gap-[clamp(6px,1vw,12px)] text-white"
+    class="player-avatar flex items-center gap-1.5 text-white lg:gap-3"
     :class="{
       'player-avatar--current': isCurrentPlayer,
-      'player-avatar--winner': isMatchWinner,
+      'flex-row-reverse': isMirrored,
     }"
     :aria-label="`${name}，已取得 ${roundWins}／3 枚年終支票`"
   >
-    <div
-      class="player-avatar__frame relative size-[clamp(58px,11.5vh,112px)] shrink-0 overflow-hidden border border-white/80 bg-[rgba(0,19,50,0.62)] shadow-[0_7px_20px_rgba(0,19,50,0.36)]"
-    >
-      <img
-        :src="avatarUrl"
-        alt=""
+    <div class="player-avatar__portrait relative z-20">
+      <div
+        class="player-avatar__frame relative z-10 size-13 overflow-hidden rounded-full border-1 border-white bg-[rgba(0,19,50,0.62)] shadow-[0_7px_20px_rgba(0,19,50,0.36)] lg:size-20 lg:border-3"
+      >
+        <img
+          :src="avatarUrl"
+          alt=""
+          aria-hidden="true"
+          class="block size-full select-none rounded-full object-contain"
+          draggable="false"
+        />
+      </div>
+
+      <span
+        class="player-avatar__level absolute -right-1 -bottom-1 z-20 grid size-6 place-items-center rounded-full bg-white text-sm font-black italic leading-none text-[var(--brand-active)] shadow-[0_5px_14px_rgba(0,19,50,0.32)] lg:-right-2 lg:-bottom-2 lg:size-10 lg:text-lg"
+        :class="{
+          'border-[var(--brand-hover)] text-[var(--brand-hover)] shadow-[0_0_18px_rgba(0,70,244,0.52)]  border-2 border-[var(--brand-active)] lg:border-4':
+            isCurrentPlayer,
+        }"
         aria-hidden="true"
-        class="block size-full select-none object-contain"
-        draggable="false"
-      />
+      >
+        {{ level }}
+      </span>
     </div>
 
     <div
-      class="player-avatar__info relative min-w-0 border-l-2 border-white/72 bg-[rgba(0,19,50,0.68)] px-[clamp(7px,1vw,12px)] py-[clamp(5px,0.8vh,8px)] shadow-[0_5px_16px_rgba(0,19,50,0.28)] backdrop-blur-[6px]"
+      class="player-avatar__info relative z-0 w-40 px-2 py-1 backdrop-blur-1.5 -translate-x-10 lg:px-3 lg:py-2 lg:w-60"
+      :class="{
+        'player-avatar__info--mirrored': isMirrored,
+        'text-left translate-x-10': isMirrored,
+        'border-l-[var(--brand-hover)]': isCurrentPlayer && !isMirrored,
+      }"
     >
-      <span
-        v-if="isMatchWinner"
-        class="player-avatar__winner-label absolute right-0 bottom-full bg-[var(--winner-gold)] px-2 py-0.5 text-[10px] font-black tracking-[0.08em] text-[var(--brand-navy)]"
-      >
-        年度分紅得主
-      </span>
       <p
-        class="player-avatar__name m-0 max-w-[clamp(86px,12vw,148px)] truncate text-[var(--text-sm)] font-semibold tracking-[0.06em] text-white"
+        class="player-avatar__name m-0 max-w-23 truncate text-sm font-medium tracking-[0.06em] text-white lg:max-w-37 lg:text-md"
+        :class="
+          isMirrored
+            ? 'text-right translate-x-4 lg:translate-x-10'
+            : 'translate-x-10'
+        "
       >
         {{ name }}
       </p>
       <div
-        class="player-avatar__cheques mt-1 flex items-center gap-[clamp(3px,0.5vw,6px)]"
+        class="player-avatar__cheques flex items-center gap-1.5 lg:gap-3"
+        :class="{ 'justify-start': isMirrored }"
         aria-hidden="true"
       >
         <span
           v-for="slot in 3"
           :key="slot"
-          class="player-avatar__cheque-slot grid h-[clamp(18px,3.2vh,28px)] w-[clamp(28px,4.3vw,42px)] place-items-center border border-white/50 bg-[rgba(160,166,179,0.28)]"
-          :class="{ 'player-avatar__cheque-slot--active': slot <= roundWins }"
+          class="player-avatar__cheque-slot grid size-5 place-items-center lg:size-10"
+          :class="
+            isMirrored ? 'translate-x-9 lg:translate-x-11' : 'translate-x-10'
+          "
         >
           <img
+            v-if="slot <= roundWins"
             :src="bonusChequeTokenUrl"
             alt=""
-            class="block size-full select-none object-contain"
+            class="block size-6 select-none object-contain lg:size-8 lg:translate-y-0"
             draggable="false"
+          />
+          <span
+            v-else
+            class="player-avatar__cheque-placeholder block size-4 rounded-full border border-dashed border-white/70 lg:size-7"
           />
         </span>
       </div>
@@ -83,110 +113,51 @@ const isMatchWinner = computed(() => props.roundWins === 3)
 </template>
 
 <style scoped>
-.player-avatar {
-  --winner-gold: #e5a62b;
+.player-avatar__info {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 19, 50, 0.82) 0%,
+    rgba(0, 19, 50, 0.62) 30%,
+    rgba(0, 19, 50, 0) 100%
+  );
+}
+
+.player-avatar__info--mirrored {
+  background: linear-gradient(
+    270deg,
+    rgba(0, 19, 50, 0.82) 0%,
+    rgba(0, 19, 50, 0.62) 48%,
+    rgba(0, 19, 50, 0) 100%
+  );
 }
 
 .player-avatar__cheque-slot img {
-  filter: grayscale(1) brightness(0.58);
-  opacity: 0.34;
-}
-
-.player-avatar__cheque-slot--active {
-  border-color: var(--brand-primary);
-  background: rgba(134, 179, 224, 0.18);
-  box-shadow: 0 0 8px rgba(134, 179, 224, 0.34);
-}
-
-.player-avatar__cheque-slot--active img {
-  filter: none;
-  opacity: 1;
+  transform: rotate(-15deg) scale(1.15);
 }
 
 .player-avatar--current .player-avatar__frame {
-  animation: current-player-glow 1.6s ease-in-out infinite;
+  animation: current-player-glow 1s ease-in-out infinite;
   border-color: var(--brand-hover);
   box-shadow:
-    0 0 0 3px var(--brand-focus),
-    0 0 24px rgba(0, 70, 244, 0.62),
+    0 0 0 6px var(--brand-focus),
+    0 0 42px rgba(0, 70, 244, 0.72),
     0 8px 22px rgba(0, 19, 50, 0.42);
-}
-
-.player-avatar--current .player-avatar__info {
-  border-left-color: var(--brand-hover);
-  background: rgba(0, 19, 50, 0.82);
-}
-
-.player-avatar--winner .player-avatar__frame {
-  border-color: var(--winner-gold);
-  box-shadow:
-    0 0 0 3px rgba(229, 166, 43, 0.22),
-    0 0 24px rgba(229, 166, 43, 0.58),
-    0 8px 22px rgba(0, 19, 50, 0.42);
-}
-
-.player-avatar--winner .player-avatar__info {
-  border-left-color: var(--winner-gold);
-  background: rgba(0, 19, 50, 0.86);
-}
-
-.player-avatar--winner .player-avatar__cheque-slot--active {
-  border-color: var(--winner-gold);
-  box-shadow: 0 0 9px rgba(229, 166, 43, 0.52);
-}
-
-.player-avatar--winner.player-avatar--current .player-avatar__frame {
-  border-color: var(--brand-hover);
 }
 
 @keyframes current-player-glow {
   0%,
   100% {
     box-shadow:
-      0 0 0 3px var(--brand-focus),
-      0 0 18px rgba(0, 70, 244, 0.46),
+      0 0 0 2px var(--brand-focus),
+      0 0 34px rgba(0, 70, 244, 0.56),
       0 8px 22px rgba(0, 19, 50, 0.42);
   }
 
   50% {
     box-shadow:
-      0 0 0 4px rgba(0, 70, 244, 0.28),
-      0 0 28px rgba(0, 70, 244, 0.72),
+      0 0 0 10px rgba(0, 70, 244, 0.34),
+      0 0 56px rgba(0, 70, 244, 1),
       0 8px 22px rgba(0, 19, 50, 0.42);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .player-avatar--current .player-avatar__frame {
-    animation: none;
-    box-shadow:
-      0 0 0 3px var(--brand-focus),
-      0 0 20px rgba(0, 70, 244, 0.54),
-      0 8px 22px rgba(0, 19, 50, 0.42);
-  }
-}
-
-@media (max-height: 480px) and (orientation: landscape) {
-  .player-avatar {
-    gap: 4px;
-  }
-
-  .player-avatar__info {
-    padding: 4px 5px;
-  }
-
-  .player-avatar__name {
-    max-width: 78px;
-  }
-
-  .player-avatar__cheques {
-    gap: 2px;
-    margin-top: 3px;
-  }
-
-  .player-avatar__cheque-slot {
-    width: 22px;
-    height: 14px;
   }
 }
 </style>

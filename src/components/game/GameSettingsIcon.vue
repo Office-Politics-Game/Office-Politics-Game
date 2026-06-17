@@ -37,7 +37,7 @@ function handleMouseLeave() {
   >
     <span
       ref="settingIcon"
-      class="setting-icon size-[clamp(42px,4.8vw,58px)] drop-shadow-[0_2px_8px_rgba(0,19,50,0.48)]"
+      class="setting-icon size-6 drop-shadow-[0_2px_8px_rgba(0,19,50,0.48)] lg:size-12"
       aria-hidden="true"
     />
   </button>
