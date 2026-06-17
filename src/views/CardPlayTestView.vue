@@ -171,6 +171,8 @@ function setSourceElement(sourceId, element) {
   delete sourceElements.value[sourceId]
 }
 
+// 為動畫疊加層建立一個更大的固定矩形，以便卡片可以從其原始位置放大
+// 而不會顯得模糊或像素化。
 function createFlyingRect(originRect) {
   const height = Math.min(
     Math.max(originRect.height * 2.4, 220),
@@ -198,6 +200,8 @@ function rectToFixedStyle(rect) {
   }
 }
 
+// 檢查目前指標位置是否在目標矩形內，我們用它來判斷拖曳的卡牌是否在遊戲區域上方。
+// 如果在出牌區則讓矩形發亮，放開則會觸發發牌動畫
 function pointInsideRect(point, rect) {
   if (!point || !rect) {
     return false
@@ -211,6 +215,8 @@ function pointInsideRect(point, rect) {
   )
 }
 
+// 拖曳結束或中斷時，把綁在 window 上的 pointer 事件監聽移除，
+// 避免後續還繼續收到移動或放開事件。
 function clearPointerListeners() {
   if (pointerMoveHandler) {
     window.removeEventListener('pointermove', pointerMoveHandler)
@@ -224,6 +230,7 @@ function clearPointerListeners() {
   }
 }
 
+// 在拖曳過程中，讓那張預覽卡跟著滑鼠跑，並同時判斷有沒有拖進出牌區。
 function updateDragPreview(point) {
   if (!dragOriginRect.value) {
     return
@@ -242,6 +249,7 @@ function updateDragPreview(point) {
   }
 }
 
+// 把拖曳互動整個清空，回到初始狀態。拖曳結束、取消，或中斷時的收尾清理。
 function resetDragState() {
   clearPointerListeners()
   draggingCard.value = null
@@ -251,6 +259,7 @@ function resetDragState() {
   isOverPlayZone.value = false
 }
 
+// 算出卡片放開當下的位置矩形。系統需要知道：卡片最後是從畫面上的哪個位置開始接續播放出牌動畫。它是在把「放開的位置」轉成一個可供動畫使用的矩形資料。
 function getDragReleaseRect() {
   if (!dragOriginRect.value || !dragPoint.value) {
     return null
@@ -264,6 +273,7 @@ function getDragReleaseRect() {
   }
 }
 
+// 決定卡片出場時的初始傾斜角度。它根據卡片來自哪個方向，回傳不同的旋轉值。這個 function 是在幫不同位置出來的卡，設定比較合理的起始旋轉角度，讓動畫看起來不那麼呆板。
 function getSourceRotation(position) {
   const rotations = {
     top: -10,
@@ -274,7 +284,7 @@ function getSourceRotation(position) {
 
   return rotations[position] ?? -8
 }
-
+// 決定下一次抽牌要抽到哪一張卡。這個 function 是用來依序抽出下一張卡，並產生一個新的唯一 id，讓抽牌動畫和畫面更新正常運作。
 function getNextDrawCard() {
   const template = drawDeck[drawIndex.value % drawDeck.length]
   drawIndex.value += 1
@@ -285,6 +295,7 @@ function getNextDrawCard() {
   }
 }
 
+// 這個 function 會從牌庫抓一張牌，播放它飛進手牌的動畫，等卡片落地後再真的把它加入我方手牌。
 async function playDrawAnimation() {
   if (isPlaying.value || isDrawAnimating.value || draggingCard.value) {
     return
