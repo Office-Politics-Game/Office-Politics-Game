@@ -1,4 +1,4 @@
-import {shuffleDeck, drawCard} from "./deckService.js";
+import {shuffleDeck, drawCard} from "../src/services/deckService.js";
 
 describe("shuffleDeck", () => {
   test("洗牌後牌數不變且內容完整", () => {
