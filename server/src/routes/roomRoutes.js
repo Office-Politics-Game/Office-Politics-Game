@@ -1,6 +1,6 @@
-import express from "express";
-import pool from "../db/index.js";
-import { createInitialGameState } from '../game/InitialState.js'
+import express from "express"
+import pool from "../db/index.js"
+import { createInitialGameState } from '../game/initialState.js'
 
 const router = express.Router();
 
@@ -15,7 +15,7 @@ router.post('/', async (req,res)=>{
     const { hostPlayerId } = req.body
 
     if (!hostPlayerId){
-      return res.status(400).json({ message : "房主ID不存在" })
+      return res.status(400).json({ message: "房主ID不存在" })
     }
 
     await client.query("BEGIN")
@@ -41,7 +41,7 @@ router.post('/', async (req,res)=>{
     res.status(201).json({ room })
   } catch(error) {
     await client.query("ROLLBACK")
-    return res.status(500).json({ message : "建立房間失敗" , error : error.message })
+    return res.status(500).json({ message: "建立房間失敗" , error: error.message })
   } finally {
     client.release()
   }
@@ -52,7 +52,7 @@ router.post('/:roomCode/join', async (req,res)=>{
   const { playerId } = req.body
 
   if (!playerId){
-    return res.status(400).json({ message : "缺少玩家ID" })
+    return res.status(400).json({ message: "缺少玩家ID" })
   }
 
   const client = await pool.connect()
@@ -67,14 +67,14 @@ router.post('/:roomCode/join', async (req,res)=>{
 
     if (roomResult.rows.length === 0){
       await client.query("ROLLBACK")
-      return res.status(404).json({ message : "加入房間失敗" })
+      return res.status(404).json({ message: "加入房間失敗" })
     }
 
     const room = roomResult.rows[0]
 
     if (room.status !== 'waiting'){
       await client.query("ROLLBACK")
-      return res.status(400).json({ message : "該房間遊戲中，無法加入房間" })
+      return res.status(400).json({ message: "該房間遊戲中，無法加入房間" })
     }
 
     const countResult = await client.query(
@@ -86,7 +86,7 @@ router.post('/:roomCode/join', async (req,res)=>{
 
     if (playerCount >=4){
       await client.query("ROLLBACK")
-      return res.status(400).json({ message : "房間人數已滿" })
+      return res.status(400).json({ message: "房間人數已滿" })
     }
 
     await client.query(
@@ -98,10 +98,10 @@ router.post('/:roomCode/join', async (req,res)=>{
     )
 
     await client.query("COMMIT")
-    res.status(201).json({ message : "成功加入房間" })
+    res.status(201).json({ message: "成功加入房間" })
   } catch(error) {
     await client.query("ROLLBACK")
-    return res.status(500).json({ message : "加入房間失敗" , error : error.message })
+    return res.status(500).json({ message: "加入房間失敗" , error: error.message })
   } finally {
     client.release()
   }
@@ -113,7 +113,7 @@ router.patch('/:roomCode/state', async (req,res)=>{
     const { playerId, isReady } =req.body
 
     if (!playerId || typeof isReady !== 'boolean'){
-      return res.status(400).json({ message : "缺少玩家ID或玩家尚未完成準備" })
+      return res.status(400).json({ message: "缺少玩家ID或玩家尚未完成準備" })
     }
 
     const roomResult = await pool.query(
@@ -122,7 +122,7 @@ router.patch('/:roomCode/state', async (req,res)=>{
     )
 
     if (roomResult.rows.length === 0){
-      return res.status(404).json({ message : "查無此房間" })
+      return res.status(404).json({ message: "查無此房間" })
     }
 
     const room = roomResult.rows[0]
@@ -136,12 +136,12 @@ router.patch('/:roomCode/state', async (req,res)=>{
     )
 
     if (result.rows.length === 0){
-      return res.status(404).json({ message : "玩家不在該房間中，無法變更狀態" })
+      return res.status(404).json({ message: "玩家不在該房間中，無法變更狀態" })
     }
 
     res.status(200).json({ message : "玩家已完成準備狀態" })
   } catch(error) {
-    return res.status(500).json({ message : "玩家準備狀態變更失敗", error : error.message })
+    return res.status(500).json({ message: "玩家準備狀態變更失敗", error: error.message })
   }
 })
 
@@ -153,7 +153,7 @@ router.post('/:roomCode/start', async (req,res)=>{
     const { playerId } = req.body
 
     if (!playerId){
-      return res.status(400).json({ message : "缺少玩家ID" })
+      return res.status(400).json({ message: "缺少玩家ID" })
     }
 
     await client.query("BEGIN")
@@ -165,19 +165,19 @@ router.post('/:roomCode/start', async (req,res)=>{
 
     if (roomResult.rows.length === 0){
       await client.query("ROLLBACK")
-      return res.status(404).json({ message : "查無此房間" })
+      return res.status(404).json({ message: "查無此房間" })
     }
 
     const room = roomResult.rows[0]
 
     if (room.host_player_id !== Number(playerId)){
       await client.query("ROLLBACK")
-      return res.status(403).json({ message : "該玩家不是房主，無法開始遊戲" })
+      return res.status(403).json({ message: "該玩家不是房主，無法開始遊戲" })
     }
 
     if (room.status !== 'waiting'){
       await client.query("ROLLBACK")
-      return res.status(400).json({ message : "遊戲已開始" })
+      return res.status(400).json({ message: "遊戲已開始" })
     }
 
     const playerResult = await client.query(
@@ -193,7 +193,7 @@ router.post('/:roomCode/start', async (req,res)=>{
 
     if (players.length !== 4){
       await client.query("ROLLBACK")
-      return res.status(400).json({ message : "玩家人數不足4位" })
+      return res.status(400).json({ message: "玩家人數不足4位" })
     }
 
     const allReady = players.every((player)=>{
@@ -202,7 +202,7 @@ router.post('/:roomCode/start', async (req,res)=>{
 
     if (!allReady){
       await client.query("ROLLBACK")
-      return res.status(400).json({ message : "仍有玩家狀態處於準備中" })
+      return res.status(400).json({ message: "仍有玩家狀態處於準備中" })
     }
 
     const matchResult = await client.query(
@@ -232,11 +232,13 @@ router.post('/:roomCode/start', async (req,res)=>{
     )
 
     await client.query("COMMIT")
-    res.status(201).json({ message : "開始遊戲" })
+    res.status(201).json({ message: "開始遊戲" })
   } catch(error) {
     await client.query("ROLLBACK")
-    return res.status(500).json({ message : "開始遊戲失敗" })
+    return res.status(500).json({ message: "開始遊戲失敗", error: error.message })
   } finally {
     client.release()
   }
 })
+
+export { router }

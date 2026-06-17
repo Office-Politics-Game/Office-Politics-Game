@@ -1,26 +1,26 @@
-import express from 'express'
-import pool from '../db/index'
+import express from "express"
+import pool from "../db/index.js"
 
 const router = express.Router()
 
-router.post('/guset', async (res,req)=>{
+router.post('/guest', async (req,res)=>{
     try {
         const { username, avatarId } = req.body
 
         if (!username) {
-            return res.status(400).json({ message : "請輸入用戶名稱" })
+            return res.status(400).json({ message: "請輸入用戶名稱" })
         }
 
         const result = await pool.query(
-            `INSERT INTO players (username, avatar_id)
-            VALUES ($1, $2)
-            RETURNING *`,
-            [username, avatarId ?? null]
+        `INSERT INTO players (username, avatar_id)
+        VALUES ($1, $2)
+        RETURNING *`,
+        [username, avatarId ?? null]
         )
 
-        res.status(201).json({ player : result.rows[0] })
-    } catch (error) {
-        res.status(500).json({ error : error.message })
+        res.status(201).json({ player: result.rows[0] })
+    } catch(error) {
+        res.status(500).json({ message: "建立玩家失敗" , error: error.message })
     }
 })
 

@@ -1,8 +1,8 @@
-import { createDeck } from './Deck.js'
+import { createDeck } from "./deck.js"
 
 function createInitialGameState (players) {
     const deck = createDeck()
-    // shuffleDeck() 洗牌
+    // shuffleDeck() 洗牌，等issue34補上
 
     const sortedPlayers = [...players].sort((a, b) => {
         return a.seat_order - b.seat_order
@@ -12,13 +12,13 @@ function createInitialGameState (players) {
         const card = deck.shift() 
 
         return {
-            playerId : player.player_id,
-            username : player.username,
-            seatOrder : player.seat_order,
-            hand : [card],
-            isProtected : false,
-            isEliminated : false,
-            discardedCards : []
+            playerId: player.player_id,
+            username: player.username,
+            seatOrder: player.seat_order,
+            hand: [card],
+            isProtected: false,
+            isEliminated: false,
+            discardedCards: []
         }
     })
 
