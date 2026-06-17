@@ -18,6 +18,7 @@ const props = defineProps({
 })
 
 const drawTarget = ref(null)
+const dealTarget = ref(null)
 const isDrawing = ref(false)
 
 function prepareDrawTarget() {
@@ -28,6 +29,10 @@ function getDrawTargetRect() {
   return drawTarget.value?.getBoundingClientRect() ?? null
 }
 
+function getDealTargetRect() {
+  return dealTarget.value?.getBoundingClientRect() ?? null
+}
+
 function finishDraw() {
   isDrawing.value = false
 }
@@ -35,6 +40,7 @@ function finishDraw() {
 defineExpose({
   prepareDrawTarget,
   getDrawTargetRect,
+  getDealTargetRect,
   finishDraw,
 })
 </script>
@@ -65,6 +71,12 @@ defineExpose({
     <div
       ref="drawTarget"
       class="game-card-arrangement game-card-arrangement--draw-target absolute bottom-0 left-1/2 aspect-[3/4] h-[clamp(126px,31vh,230px)] origin-bottom"
+      aria-hidden="true"
+    />
+
+    <div
+      ref="dealTarget"
+      class="game-card-arrangement--deal-target absolute bottom-0 left-1/2 aspect-[3/4] h-[clamp(126px,31vh,230px)] origin-bottom"
       aria-hidden="true"
     />
   </section>
@@ -109,5 +121,10 @@ defineExpose({
     transition-duration: 0.12s;
     will-change: auto;
   }
+}
+
+.game-card-arrangement--deal-target {
+  visibility: hidden;
+  transform: translateX(-50%);
 }
 </style>
