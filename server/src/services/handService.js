@@ -1,3 +1,6 @@
+import { drawCard } from "./deckService.js";
+import { discardCard } from "./discardService.js";
+
 // 發初始手牌
 function dealCards (deck, players, cardsPerPlayer){
     for(let round=0; round < cardsPerPlayer; round++){
@@ -21,12 +24,35 @@ function removeHandCard(player, cardId){
     if ( cardIndex === -1 ){
         return null
     }
-    player.hand.splice(cardIndex, 1)
-    return player
+    const removeCard = player.hand.splice(cardIndex, 1)
+    return removeCard
+}
+
+// 指定玩家棄牌後重新抽牌
+function replaceCard(player, cardId, discardPile, deck){
+    const discardedCard = discardCard(player, cardId, discardPile)
+    if (discardedCard === null) {
+        return null
+    }
+    const newCard = drawCard(deck)
+    if (newCard === null) {
+        return null
+    }
+    addHandCard(player, newCard)
+    return { discardedCard, newCard, player, deck, discardPile }
+}
+
+// 交換手牌
+function swapHands(playerA, playerB){
+    const temp = playerA.hand
+    playerA.hand = playerB.hand
+    playerB.hand = temp
+    return {playerA, playerB}
 }
 
 export {
   dealCards,
   addHandCard,
-  removeHandCard
+  removeHandCard,
+  replaceCard
 };

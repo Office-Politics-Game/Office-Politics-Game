@@ -1,7 +1,6 @@
 // 洗牌
 function shuffleDeck(cards) {
   const shuffleDeck = [...cards]
-  
   for (let curIndex = shuffleDeck.length-1; curIndex > 0; curIndex--){
     const ranIndex = Math.floor(
         Math.random() * ( curIndex + 1 )
