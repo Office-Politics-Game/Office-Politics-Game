@@ -1,7 +1,9 @@
 <script setup>
+import { computed, ref } from "vue";
+import cardBackUrl from "@/assets/images/card-bg-back.webp";
 import PlayerAvatar from "./PlayerAvatar.vue";
 
-defineProps({
+const props = defineProps({
   players: {
     type: Array,
     required: true,
@@ -27,14 +29,41 @@ defineProps({
       );
     },
   },
+  dealtPlayerIds: {
+    type: Array,
+    default: () => [],
+    validator: (playerIds) =>
+      playerIds.every((playerId) => typeof playerId === "string"),
+  },
 });
+
+const handTargetElements = ref({});
+const dealtPlayerIdSet = computed(() => new Set(props.dealtPlayerIds));
 
 const positionClasses = {
   top: "top-[48px] left-1/2 -translate-x-1/2 lg:top-28",
   left: "top-[42%] left-3 -translate-y-1/2 lg:left-7",
   right: "top-[42%] right-3 -translate-y-1/2 lg:right-7",
-  bottom: "bottom-3 left-[calc(50%-220px)] lg:bottom-10 lg:left-[calc(50%-400px)]",
+  bottom:
+    "bottom-3 left-[calc(50%-220px)] lg:bottom-10 lg:left-[calc(50%-400px)]",
 };
+
+function setHandTargetElement(playerId, element) {
+  if (element) {
+    handTargetElements.value[playerId] = element;
+    return;
+  }
+
+  delete handTargetElements.value[playerId];
+}
+
+function getHandTargetRect(playerId) {
+  return handTargetElements.value[playerId]?.getBoundingClientRect() ?? null;
+}
+
+defineExpose({
+  getHandTargetRect,
+});
 </script>
 
 <template>
@@ -56,6 +85,22 @@ const positionClasses = {
         :is-current-player="player.isCurrentPlayer"
         :is-mirrored="player.position === 'right'"
       />
+
+      <div
+        v-if="player.position !== 'bottom'"
+        :ref="(element) => setHandTargetElement(player.id, element)"
+        class="player-seat-hand-target pointer-events-none absolute aspect-[3/4] h-[clamp(62px,10vh,92px)]"
+        :class="`player-seat-hand-target--${player.position}`"
+        aria-hidden="true"
+      >
+        <img
+          v-if="dealtPlayerIdSet.has(player.id)"
+          :src="cardBackUrl"
+          alt=""
+          class="player-seat-hand-target__card block size-full select-none object-contain"
+          draggable="false"
+        />
+      </div>
     </div>
   </div>
 </template>
