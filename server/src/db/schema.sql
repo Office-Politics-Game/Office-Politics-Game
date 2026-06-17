@@ -25,7 +25,9 @@ CREATE TABLE game_room_players (
 CREATE TABLE cards (
   id SERIAL PRIMARY KEY,
   name VARCHAR(50) NOT NULL,
+  rank INTEGER NOT NULL,
   type VARCHAR(30),
+  quantity INTEGER NOT NULL
   description TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
