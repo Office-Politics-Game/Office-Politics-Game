@@ -1,9 +1,9 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { router as roomRouter } from "./routes/roomRoutes.js";
-import { router as gameStateRouter } from "./routes/gameSessions.js";
-import { router as playerRouter } from "./routes/players.js";
+import { router as roomRouter } from "./routes/Rooms.js";
+import { router as gameStateRouter } from "./routes/GameSessions.js";
+import { router as playerRouter } from "./routes/Players.js";
 
 dotenv.config();
 

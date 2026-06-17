@@ -1,6 +1,6 @@
 import express from "express"
 import pool from "../db/index.js"
-import { createInitialGameState } from '../game/initialState.js'
+import { createInitialGameState } from "../game/InitialState.js"
 
 const router = express.Router();
 
