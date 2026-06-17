@@ -24,7 +24,7 @@ function removeHandCard(player, cardId){
     if ( cardIndex === -1 ){
         return null
     }
-    const removeCard = player.hand.splice(cardIndex, 1)
+    const removeCard = player.hand.splice(cardIndex, 1)[0]
     return removeCard
 }
 
@@ -54,5 +54,6 @@ export {
   dealCards,
   addHandCard,
   removeHandCard,
-  replaceCard
+  replaceCard,
+  swapHands
 };
