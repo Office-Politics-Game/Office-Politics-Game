@@ -1,54 +1,37 @@
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { nextTick, onUnmounted, ref } from 'vue'
 import { gsap } from 'gsap'
-import GameCard from './GameCard.vue'
+import cardBackUrl from '@/assets/images/card-bg-back.webp'
 
-const props = defineProps({
-  activeCard: {
-    type: Object,
-    default: null,
-  },
-  originRect: {
-    type: Object,
-    default: null,
-  },
-  dragPoint: {
-    type: Object,
-    default: null,
-  },
-  discardRect: {
-    type: Object,
-    default: null,
-  },
-  isDragging: {
-    type: Boolean,
-    default: false,
-  },
-  isOverPlayZone: {
-    type: Boolean,
-    default: false,
-  },
-  playTicket: {
-    type: Number,
-    default: 0,
-  },
-})
+const flyingCardRef = ref(null)
+const flipperRef = ref(null)
+const veilRef = ref(null)
+const ringRef = ref(null)
+const slashRef = ref(null)
+const shockwaveRef = ref(null)
+const activeCard = ref(null)
+const flyingStyle = ref({ display: 'none' })
+const shockwaveStyle = ref({ display: 'none' })
+let timeline = null
 
-const emit = defineEmits(['card-arrived', 'animation-finished'])
+function createFlyingRect(originRect) {
+  const height = Math.min(
+    Math.max(originRect.height * 2.4, 220),
+    Math.min(window.innerHeight * 0.62, 420),
+  )
+  const width = height * 0.75
+  const centerX = originRect.left + originRect.width / 2
+  const centerY = originRect.top + originRect.height / 2
 
-const overlayEl = ref(null)
-const trailEl = ref(null)
-const burstEl = ref(null)
-const showcaseEl = ref(null)
-const stage = ref('idle')
-const overlayStyle = ref({ display: 'none' })
-const trailStyle = ref({ display: 'none' })
-const burstStyle = ref({ display: 'none' })
-const showcaseStyle = ref({ display: 'none' })
+  return {
+    left: centerX - width / 2,
+    top: centerY - height / 2,
+    width,
+    height,
+  }
+}
 
-const hasActiveCard = computed(() => Boolean(props.activeCard && props.originRect))
-
-function rectToStyle(rect) {
+function rectToFixedStyle(rect) {
   return {
     display: 'block',
     left: `${rect.left}px`,
@@ -58,511 +41,377 @@ function rectToStyle(rect) {
   }
 }
 
-function lerp(start, end, progress) {
-  return start + (end - start) * progress
-}
-
-function getQuadraticPoint(start, control, end, progress) {
-  const inv = 1 - progress
-  return {
-    x: inv * inv * start.x + 2 * inv * progress * control.x + progress * progress * end.x,
-    y: inv * inv * start.y + 2 * inv * progress * control.y + progress * progress * end.y,
+function getSourceRotation(position) {
+  const rotations = {
+    top: -10,
+    left: 8,
+    right: -8,
+    bottom: 5,
   }
+
+  return rotations[position] ?? -8
 }
 
 function resetLayer() {
-  stage.value = 'idle'
-  overlayStyle.value = { display: 'none' }
-  trailStyle.value = { display: 'none' }
-  burstStyle.value = { display: 'none' }
-  showcaseStyle.value = { display: 'none' }
+  activeCard.value = null
+  flyingStyle.value = { display: 'none' }
+  shockwaveStyle.value = { display: 'none' }
 }
 
-function updateDragLayer() {
-  if (!hasActiveCard.value || !props.originRect || !props.dragPoint || stage.value !== 'dragging') {
-    return
-  }
-
-  const { originRect, dragPoint } = props
-  const translateX = dragPoint.x - (originRect.left + originRect.width / 2)
-  const translateY = dragPoint.y - (originRect.top + originRect.height / 2)
-  const dragScale = props.isOverPlayZone ? 1.06 : 1
-
-  overlayStyle.value = {
-    ...rectToStyle(originRect),
-    transform: `translate3d(${translateX}px, ${translateY}px, 0) scale(${dragScale}) rotate(0deg)`,
-  }
+function stop() {
+  timeline?.kill()
+  timeline = null
+  gsap.killTweensOf([
+    flyingCardRef.value,
+    flipperRef.value,
+    veilRef.value,
+    ringRef.value,
+    slashRef.value,
+    shockwaveRef.value,
+  ].filter(Boolean))
+  resetLayer()
 }
 
-async function animatePlay() {
-  if (!hasActiveCard.value || !overlayEl.value || !props.originRect || !props.discardRect) {
-    return
+async function play({
+  card,
+  originRect,
+  targetRect,
+  position = 'bottom',
+  faceUp = true,
+  onComplete,
+} = {}) {
+  if (!card || !originRect || !targetRect) {
+    return false
   }
 
-  stage.value = 'playing'
+  timeline?.kill()
+  activeCard.value = card
+
+  const flyingRect = createFlyingRect(originRect)
+  const originScale = originRect.height / flyingRect.height
+  flyingStyle.value = rectToFixedStyle(flyingRect)
+  shockwaveStyle.value = {
+    display: 'block',
+    left: `${targetRect.left + targetRect.width / 2}px`,
+    top: `${targetRect.top + targetRect.height / 2}px`,
+  }
+
   await nextTick()
 
-  const originRect = props.originRect
-  const discardRect = props.discardRect
-
-  const startX = props.dragPoint
-    ? props.dragPoint.x - (originRect.left + originRect.width / 2)
-    : 0
-  const startY = props.dragPoint
-    ? props.dragPoint.y - (originRect.top + originRect.height / 2)
-    : 0
-
-  const targetX = discardRect.left - originRect.left
-  const targetY = discardRect.top - originRect.top
-  const dx = targetX - startX
-  const dy = targetY - startY
-  const travelDirection = Math.sign(dx || dy || 1)
-  const liftHeight = Math.max(originRect.height * 0.32, 72)
-  const finalRotation = 2
-  const finalRotationX = 58
-  const showcaseScale = Math.min(1.88, Math.max(1.52, window.innerHeight * 0.42 / originRect.height))
-  const showcaseX = window.innerWidth / 2 - originRect.left - originRect.width / 2
-  const showcaseY = window.innerHeight / 2 - originRect.top - originRect.height / 2
-
-  gsap.killTweensOf([overlayEl.value, burstEl.value, showcaseEl.value])
-  gsap.killTweensOf(trailEl.value)
-
-  gsap.set(overlayEl.value, {
-    x: startX,
-    y: startY,
-    scaleX: 1.02,
-    scaleY: 1.02,
-    rotation: -2,
-    rotationX: -4,
-    transformPerspective: 900,
-    opacity: 1,
-    zIndex: 76,
-    transformOrigin: '50% 100%',
-  })
-
-  gsap.set(trailEl.value, {
-    left: `${originRect.left}px`,
-    top: `${originRect.top}px`,
-    width: `${originRect.width}px`,
-    height: `${originRect.height}px`,
-    opacity: 0,
-    display: 'block',
-  })
-
-  gsap.set(burstEl.value, {
-    left: `${discardRect.left}px`,
-    top: `${discardRect.top}px`,
-    width: `${discardRect.width}px`,
-    height: `${discardRect.height}px`,
-    opacity: 0,
-    scale: 0.35,
-    display: 'block',
-  })
-
-  showcaseStyle.value = {
-    display: 'block',
-    left: `${window.innerWidth / 2}px`,
-    top: `${window.innerHeight / 2}px`,
-  }
-
-  gsap.set(showcaseEl.value, {
-    opacity: 0,
-    scale: 0.45,
-    rotation: 0,
-  })
-
-  gsap.set(overlayEl.value, {
-    x: targetX,
-    y: targetY,
-    scaleX: 1,
-    scaleY: 1,
-    rotation: finalRotation,
-    rotationX: finalRotationX,
-    rotationY: 0,
-  })
-  const baseFinalRect = overlayEl.value.getBoundingClientRect()
-  const settleScale = discardRect.height / baseFinalRect.height
-
-  gsap.set(overlayEl.value, {
-    x: targetX,
-    y: targetY,
-    scaleX: settleScale,
-    scaleY: settleScale,
-    rotation: finalRotation,
-    rotationX: finalRotationX,
-    rotationY: 0,
-  })
-  const scaledFinalRect = overlayEl.value.getBoundingClientRect()
-  const settleTargetX = targetX + discardRect.left - scaledFinalRect.left
-  const settleTargetY = targetY + discardRect.top - scaledFinalRect.top
-
-  gsap.set(overlayEl.value, {
-    x: startX,
-    y: startY,
-    scaleX: 1.02,
-    scaleY: 1.02,
-    rotation: -2,
-    rotationX: -4,
-    rotationY: 0,
-    transformOrigin: '50% 100%',
-  })
-
-  const startPoint = { x: showcaseX, y: showcaseY }
-  const liftPoint = {
-    x: showcaseX + (settleTargetX - showcaseX) * 0.42,
-    y: Math.min(showcaseY, settleTargetY) - liftHeight,
-  }
-  const flyPoint = {
-    x: settleTargetX,
-    y: settleTargetY - Math.max(originRect.height * 0.42, 92),
-  }
-  const landPoint = {
-    x: settleTargetX,
-    y: settleTargetY + 2,
-  }
-  const motion = { t: 0 }
-  const curve = { x: showcaseX, y: showcaseY }
-  const trailMotion = { t: 0 }
-  const trailPoint = { x: showcaseX, y: showcaseY }
-  const cleanup = () => {
-    emit('animation-finished')
+  if (!flyingCardRef.value || !flipperRef.value || !veilRef.value || !ringRef.value || !slashRef.value || !shockwaveRef.value) {
     resetLayer()
+    return false
   }
 
-  const playTimeline = gsap.timeline()
+  const flyingCenter = {
+    x: flyingRect.left + flyingRect.width / 2,
+    y: flyingRect.top + flyingRect.height / 2,
+  }
+  const targetCenter = {
+    x: targetRect.left + targetRect.width / 2,
+    y: targetRect.top + targetRect.height / 2,
+  }
+  const centerX = window.innerWidth / 2 - flyingCenter.x
+  const centerY = window.innerHeight / 2 - flyingCenter.y
+  const landX = targetCenter.x - flyingCenter.x
+  const landY = targetCenter.y - flyingCenter.y
+  const showcaseScale = Math.min(1.9, Math.max(1.16, window.innerHeight * 0.48 / flyingRect.height))
+  const landScale = targetRect.height / flyingRect.height
+  const travelDirection = Math.sign(landX - centerX || landY - centerY || 1)
 
-  playTimeline.to(overlayEl.value, {
-    x: showcaseX,
-    y: showcaseY,
-    scaleX: showcaseScale,
-    scaleY: showcaseScale,
-    rotation: 0,
-    rotationX: 0,
-    transformOrigin: '50% 50%',
-    duration: 0.28,
-    ease: 'power3.out',
-  })
-
-  playTimeline.to(showcaseEl.value, {
-    opacity: 1,
-    scale: 1,
-    duration: 0.16,
-    ease: 'power2.out',
-  }, '<')
-
-  playTimeline.to(overlayEl.value, {
-    scaleX: showcaseScale * 1.08,
-    scaleY: showcaseScale * 1.08,
-    duration: 0.18,
-    ease: 'power1.inOut',
-  })
-
-  playTimeline.to(overlayEl.value, {
-    scaleX: showcaseScale,
-    scaleY: showcaseScale,
-    duration: 0.16,
-    ease: 'power1.out',
-  })
-
-  playTimeline.to({}, {
-    duration: 2,
-  })
-
-  playTimeline.to(showcaseEl.value, {
+  gsap.set([veilRef.value, ringRef.value, slashRef.value, shockwaveRef.value], {
     opacity: 0,
-    scale: 1.22,
-    duration: 0.18,
-    ease: 'power2.out',
-  }, '<')
+  })
+  gsap.set(flyingCardRef.value, {
+    x: 0,
+    y: 0,
+    z: 0,
+    scale: originScale,
+    rotation: getSourceRotation(position),
+    rotationX: position === 'bottom' ? -10 : 16,
+    transformPerspective: 1200,
+    transformOrigin: '50% 50%',
+    opacity: 1,
+    filter: 'brightness(1)',
+  })
+  gsap.set(flipperRef.value, {
+    rotationY: faceUp ? 0 : 180,
+    transformPerspective: 1200,
+    transformStyle: 'preserve-3d',
+  })
+  gsap.set(ringRef.value, {
+    xPercent: -50,
+    yPercent: -50,
+    scale: 0.35,
+    rotation: -24,
+  })
+  gsap.set(slashRef.value, {
+    xPercent: -50,
+    yPercent: -50,
+    scaleX: 0.35,
+    scaleY: 0.78,
+    rotation: -18,
+  })
+  gsap.set(shockwaveRef.value, {
+    xPercent: -50,
+    yPercent: -50,
+    scale: 0.22,
+  })
 
-  playTimeline.set(overlayEl.value, {
-    transformOrigin: '50% 100%',
-  }, '<')
+  return new Promise((resolve) => {
+    timeline = gsap.timeline({
+      defaults: { ease: 'power3.out' },
+      onComplete: () => {
+        onComplete?.(card)
+        resetLayer()
+        timeline = null
+        resolve(true)
+      },
+      onInterrupt: () => {
+        timeline = null
+        resolve(false)
+      },
+    })
 
-  playTimeline.call(runLandingAnimation, null, '<')
-
-  function runLandingAnimation() {
-    motion.t = 0
-    trailMotion.t = 0
-
-    const leadTween = gsap.to(motion, {
-    t: 1,
-    duration: 0.92,
-    ease: 'power2.in',
-    onUpdate: () => {
-      const p = motion.t
-      let point
-
-      if (p < 0.38) {
-        point = getQuadraticPoint(startPoint, liftPoint, flyPoint, p / 0.38)
-      } else {
-        point = getQuadraticPoint(flyPoint, flyPoint, landPoint, (p - 0.38) / 0.62)
-      }
-
-      curve.x = point.x
-      curve.y = point.y
-
-      const liftBoost = p < 0.38 ? p / 0.38 : 1
-      const dropBoost = p > 0.82 ? (p - 0.82) / 0.18 : 0
-      const settleBoost = Math.max(0, Math.min((p - 0.62) / 0.38, 1))
-      const scaleX = p < 0.62
-        ? lerp(1.16, 1.02, liftBoost)
-        : lerp(1.02, settleScale, settleBoost)
-      const scaleY = p < 0.62
-        ? (p < 0.38 ? lerp(1.3, 1.12, liftBoost) : lerp(1.12, 1, dropBoost))
-        : lerp(1, settleScale, settleBoost)
-      const rotation = p < 0.62
-        ? (p < 0.5
-            ? lerp(travelDirection * 12, travelDirection * 4, Math.min(p / 0.5, 1))
-            : lerp(travelDirection * 4, 2, (p - 0.5) / 0.2))
-        : 2
-
-      gsap.set(overlayEl.value, {
-        x: curve.x,
-        y: curve.y,
-        scaleX,
-        scaleY,
-        rotation,
-        rotationX: p < 0.62 ? -12 * (1 - Math.min(p / 0.5, 1)) : 58,
-      })
-
-    },
-    onComplete: () => {
-      gsap.to(burstEl.value, {
-        opacity: 1,
-        scale: 1.3,
-        duration: 0.1,
-        ease: 'power2.out',
-      })
-
-      gsap.to(overlayEl.value, {
-        x: settleTargetX + travelDirection * 4,
-        y: settleTargetY + 4,
-        scaleX: settleScale * 1.02,
-        scaleY: settleScale * 0.92,
-        rotation: travelDirection * 10,
-        rotationX: -34,
+    timeline
+      .to(veilRef.value, { opacity: 1, duration: 0.14, ease: 'power1.out' })
+      .to(slashRef.value, { opacity: 0.88, scaleX: 1, duration: 0.16 }, '<')
+      .to(flyingCardRef.value, {
+        x: centerX,
+        y: centerY,
+        scale: showcaseScale,
+        rotation: 0,
+        rotationX: 0,
+        duration: 0.46,
+        ease: 'expo.out',
+      }, '<')
+      .to(ringRef.value, {
+        opacity: 0.92,
+        scale: 1,
+        rotation: 0,
+        duration: 0.22,
+        ease: 'back.out(1.9)',
+      }, '-=0.18')
+      .to(flipperRef.value, {
         rotationY: 0,
+        duration: faceUp ? 0.01 : 0.34,
+        ease: 'power2.inOut',
+      }, '-=0.05')
+      .to(flyingCardRef.value, {
+        scale: showcaseScale * 1.06,
+        filter: 'brightness(1.12)',
+        duration: 0.14,
+        ease: 'power1.out',
+      })
+      .to(flyingCardRef.value, {
+        scale: showcaseScale,
+        filter: 'brightness(1)',
+        duration: 0.18,
+        ease: 'power1.inOut',
+      })
+      .to({}, { duration: 0.42 })
+      .to(slashRef.value, {
+        opacity: 0,
+        scaleX: 1.22,
+        duration: 0.18,
+        ease: 'power2.in',
+      }, '<')
+      .to(ringRef.value, {
+        opacity: 0,
+        scale: 1.18,
+        rotation: 24,
+        duration: 0.2,
+        ease: 'power2.in',
+      }, '<')
+      .to(flyingCardRef.value, {
+        x: landX,
+        y: landY,
+        scale: landScale,
+        rotation: 2 + travelDirection * 1.5,
+        rotationX: 58,
+        duration: 0.42,
+        ease: 'power3.in',
+      }, '<+=0.06')
+      .to(shockwaveRef.value, {
+        opacity: 0.62,
+        scale: 1,
         duration: 0.08,
         ease: 'power2.out',
-      })
-
-      gsap.to(overlayEl.value, {
-        x: settleTargetX,
-        y: settleTargetY,
-        scaleX: settleScale,
-        scaleY: settleScale,
-        rotation: finalRotation,
-        rotationX: finalRotationX,
-        rotationY: 0,
-        duration: 0.18,
-        ease: 'power2.out',
-        onComplete: () => {
-          emit('card-arrived')
-          gsap.to(overlayEl.value, {
-            opacity: 0,
-            duration: 0.04,
-            ease: 'power1.out',
-          })
-        },
-      })
-
-      gsap.to(burstEl.value, {
+      }, '-=0.03')
+      .to(shockwaveRef.value, {
         opacity: 0,
-        scale: 1.45,
-        duration: 0.16,
+        scale: 1.55,
+        duration: 0.24,
         ease: 'power2.out',
       })
-
-      gsap.to(trailEl.value, {
+      .to(flyingCardRef.value, {
         opacity: 0,
-        duration: 0.12,
-        ease: 'power1.out',
-        onComplete: cleanup,
-      })
-    },
+        duration: 0.04,
+        ease: 'none',
+      }, '<')
+      .to(veilRef.value, {
+        opacity: 0,
+        duration: 0.2,
+        ease: 'power1.in',
+      }, '<')
   })
-
-    gsap.to(trailMotion, {
-    t: 1,
-    duration: 0.92,
-    ease: 'power2.in',
-    onUpdate: () => {
-      const p = trailMotion.t
-      let point
-
-      if (p < 0.38) {
-        point = getQuadraticPoint(startPoint, liftPoint, flyPoint, p / 0.38)
-      } else {
-        point = getQuadraticPoint(flyPoint, flyPoint, landPoint, (p - 0.38) / 0.62)
-      }
-
-      trailPoint.x = point.x
-      trailPoint.y = point.y
-
-      const fadeIn = p < 0.18 ? p / 0.18 : 1
-      const fadeOut = p > 0.8 ? 1 - (p - 0.8) / 0.2 : 1
-      gsap.set(trailEl.value, {
-        x: trailPoint.x,
-        y: trailPoint.y,
-        scale: lerp(1.02, 1.08, Math.min(p / 0.45, 1)),
-        opacity: 0.58 * Math.min(fadeIn, fadeOut),
-      })
-    },
-  })
-  }
 }
 
-watch(
-  () => [props.activeCard, props.originRect, props.dragPoint, props.isDragging],
-  () => {
-    if (!hasActiveCard.value) {
-      resetLayer()
-      return
-    }
+onUnmounted(() => {
+  stop()
+})
 
-    if (stage.value === 'playing') {
-      return
-    }
-
-    if (props.isDragging) {
-      stage.value = 'dragging'
-      updateDragLayer()
-      return
-    }
-
-    if (stage.value === 'dragging') {
-      updateDragLayer()
-    }
-  },
-  { immediate: true, deep: true },
-)
-
-watch(
-  () => props.isOverPlayZone,
-  () => {
-    if (stage.value === 'dragging') {
-      updateDragLayer()
-    }
-  },
-)
-
-watch(
-  () => props.playTicket,
-  () => {
-    animatePlay()
-  },
-)
+defineExpose({
+  play,
+  stop,
+})
 </script>
 
 <template>
   <Teleport to="body">
+    <div ref="veilRef" class="card-play-animation__veil"></div>
+    <div ref="slashRef" class="card-play-animation__slash"></div>
+    <div ref="ringRef" class="card-play-animation__ring"></div>
     <div
-      v-if="hasActiveCard"
-      ref="trailEl"
-      class="card-play-trail fixed pointer-events-none"
-      :style="trailStyle"
-      aria-hidden="true"
-    >
-      <GameCard
-        :name="activeCard.name"
-        :background-url="activeCard.backgroundUrl"
-        :frame-url="activeCard.frameUrl"
-      />
-    </div>
-
-    <div
-      v-if="hasActiveCard"
-      ref="burstEl"
-      class="card-play-burst fixed pointer-events-none"
-      :style="burstStyle"
-      aria-hidden="true"
+      ref="shockwaveRef"
+      class="card-play-animation__shockwave"
+      :style="shockwaveStyle"
     ></div>
 
     <div
-      v-if="hasActiveCard"
-      ref="showcaseEl"
-      class="card-play-showcase fixed pointer-events-none"
-      :style="showcaseStyle"
-      aria-hidden="true"
-    ></div>
-
-    <div
-      v-if="hasActiveCard"
-      ref="overlayEl"
-      class="card-play-layer fixed pointer-events-none"
-      :class="{ 'card-play-layer--active': isOverPlayZone || stage === 'playing' }"
-      :style="overlayStyle"
+      v-if="activeCard"
+      ref="flyingCardRef"
+      class="card-play-animation__flying-card"
+      :style="flyingStyle"
       aria-hidden="true"
     >
-      <div class="card-play-layer__glow"></div>
-      <GameCard
-        :name="activeCard.name"
-        :background-url="activeCard.backgroundUrl"
-        :frame-url="activeCard.frameUrl"
-      />
+      <div class="card-play-animation__card-glow" :style="{ '--accent': activeCard.color }"></div>
+      <div ref="flipperRef" class="card-play-animation__flipper">
+        <div class="card-play-animation__face card-play-animation__face--front">
+          <img :src="activeCard.backgroundUrl" alt="" draggable="false" />
+          <img :src="activeCard.frameUrl" alt="" draggable="false" />
+        </div>
+        <div class="card-play-animation__face card-play-animation__face--back">
+          <img :src="cardBackUrl" alt="" draggable="false" />
+        </div>
+      </div>
     </div>
   </Teleport>
 </template>
 
 <style scoped>
-.card-play-layer {
-  will-change: transform, opacity;
-  transform-origin: 50% 50%;
-  perspective: 900px;
-  filter: drop-shadow(0 18px 28px rgba(0, 19, 50, 0.42));
+.card-play-animation__veil,
+.card-play-animation__slash,
+.card-play-animation__ring,
+.card-play-animation__shockwave {
+  position: fixed;
+  pointer-events: none;
 }
 
-.card-play-trail {
-  z-index: 75;
-  will-change: transform, opacity;
-  transform-origin: 50% 50%;
-  filter: blur(7px) saturate(1.12);
+.card-play-animation__veil {
+  inset: 0;
+  z-index: 50;
   opacity: 0;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.06), rgba(0, 0, 0, 0.7) 68%),
+    linear-gradient(115deg, rgba(2, 6, 23, 0.76), rgba(15, 23, 42, 0.42));
 }
 
-.card-play-layer__glow {
+.card-play-animation__slash {
+  top: 50%;
+  left: 50%;
+  z-index: 54;
+  width: min(92vw, 980px);
+  height: min(46vh, 330px);
+  opacity: 0;
+  background:
+    linear-gradient(105deg, transparent 0 18%, rgba(125, 211, 252, 0.14) 22%, transparent 27%),
+    linear-gradient(105deg, transparent 18%, rgba(255, 255, 255, 0.58) 44%, rgba(250, 204, 21, 0.52) 49%, transparent 57%),
+    linear-gradient(105deg, transparent 58%, rgba(56, 189, 248, 0.24) 64%, transparent 72%);
+  filter: blur(0.3px) drop-shadow(0 0 16px rgba(125, 211, 252, 0.5));
+  mix-blend-mode: screen;
+}
+
+.card-play-animation__ring {
+  top: 50%;
+  left: 50%;
+  z-index: 53;
+  width: min(62vmin, 560px);
+  aspect-ratio: 1;
+  border: 3px solid rgba(250, 204, 21, 0.72);
+  border-radius: 50%;
+  opacity: 0;
+  background:
+    conic-gradient(from 20deg, transparent 0 7%, rgba(125, 211, 252, 0.58) 8% 12%, transparent 13% 24%, rgba(250, 204, 21, 0.72) 25% 29%, transparent 30% 100%),
+    radial-gradient(circle, transparent 46%, rgba(56, 189, 248, 0.12) 47% 58%, transparent 60%);
+  box-shadow:
+    inset 0 0 30px rgba(125, 211, 252, 0.26),
+    0 0 40px rgba(250, 204, 21, 0.34);
+  mix-blend-mode: screen;
+}
+
+.card-play-animation__shockwave {
+  z-index: 55;
+  width: min(34vmin, 280px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  opacity: 0;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.38) 0 6%, transparent 8%),
+    radial-gradient(circle, transparent 42%, rgba(250, 204, 21, 0.52) 43% 47%, transparent 49%),
+    radial-gradient(circle, rgba(125, 211, 252, 0.24), transparent 66%);
+  filter: blur(1px);
+  mix-blend-mode: screen;
+}
+
+.card-play-animation__flying-card {
+  position: fixed;
+  z-index: 57;
+  perspective: 1200px;
+  transform-origin: 50% 50%;
+  image-rendering: auto;
+  will-change: transform, opacity, filter;
+}
+
+.card-play-animation__card-glow {
   position: absolute;
-  inset: -12%;
+  inset: -20%;
   border-radius: 18px;
   background:
-    radial-gradient(circle at 50% 44%, rgba(255, 255, 255, 0.5), transparent 38%),
-    radial-gradient(circle at 50% 50%, rgba(107, 184, 212, 0.55), transparent 64%);
-  filter: blur(14px);
-  opacity: 0;
-  transform: scale(0.82);
-  transition:
-    opacity 0.14s ease,
-    transform 0.14s ease;
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.42), transparent 32%),
+    radial-gradient(circle at 50% 50%, var(--accent), transparent 66%);
+  filter: blur(16px);
+  opacity: 0.78;
 }
 
-.card-play-layer--active .card-play-layer__glow {
-  opacity: 1;
-  transform: scale(1);
+.card-play-animation__flipper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
 }
 
-.card-play-burst {
-  z-index: 74;
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.28) 14%, transparent 52%),
-    radial-gradient(circle at 50% 50%, rgba(107, 184, 212, 1), rgba(107, 184, 212, 0.1) 38%, transparent 74%);
-  filter: blur(12px);
-  mix-blend-mode: screen;
-  transform-origin: 50% 50%;
+.card-play-animation__face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  filter:
+    drop-shadow(0 0 16px rgba(250, 204, 21, 0.34))
+    drop-shadow(0 24px 32px rgba(0, 0, 0, 0.5));
 }
 
-.card-play-showcase {
-  z-index: 73;
-  width: min(58vmin, 520px);
-  aspect-ratio: 1;
-  border-radius: 999px;
-  background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.9) 0 5%, transparent 22%),
-    radial-gradient(circle, rgba(107, 184, 212, 0.92) 0 18%, rgba(107, 184, 212, 0.24) 42%, transparent 68%);
-  filter: blur(14px);
-  mix-blend-mode: screen;
-  transform: translate(-50%, -50%);
-  transform-origin: 50% 50%;
+.card-play-animation__face img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+}
+
+.card-play-animation__face--back {
+  transform: rotateY(180deg);
 }
 </style>
