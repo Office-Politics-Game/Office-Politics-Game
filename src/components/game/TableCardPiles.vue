@@ -37,6 +37,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  isDeckHidden: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['draw'])
@@ -68,11 +72,35 @@ const topDiscardCard = computed(() => {
 })
 
 const isDeckInteractionDisabled = computed(
-  () => props.isDrawDisabled || isDeckPressing.value,
+  () => props.isDrawDisabled || props.isDeckHidden || isDeckPressing.value,
 )
 
 function getDeckRect() {
   return deckPile.value?.getBoundingClientRect() ?? null
+}
+
+function getDeckAnimationPose() {
+  const rect = getDeckRect()
+  if (!rect || !deckPile.value) {
+    return null
+  }
+
+  return {
+    rect: {
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      width: rect.width,
+      height: rect.height,
+    },
+    width: deckPile.value.offsetWidth,
+    height: deckPile.value.offsetHeight,
+    rotationX: TABLE_ROTATION_X,
+    rotationY: 0,
+    rotationZ: -2,
+    transformPerspective: 900,
+  }
 }
 
 function resetDeckPose() {
@@ -229,6 +257,7 @@ watch(
 
 defineExpose({
   getDeckRect,
+  getDeckAnimationPose,
   getDiscardRect() {
     const topDiscardCard = discardPile.value?.querySelector('.table-card-pile__card:last-child')
     return topDiscardCard?.getBoundingClientRect() ?? discardPile.value?.getBoundingClientRect() ?? null
@@ -307,6 +336,7 @@ onUnmounted(() => {
         ref="deckPile"
         type="button"
         class="table-card-pile table-card-pile--deck card-stack relative aspect-[3/4] h-[clamp(108px,25vh,220px)]"
+        :class="{ 'table-card-pile--hidden': isDeckHidden }"
         :disabled="isDeckInteractionDisabled"
         :aria-label="`抽牌，牌庫剩餘 ${deckCount} 張`"
         @click="handleDeckDraw"
@@ -414,6 +444,10 @@ onUnmounted(() => {
 
 .table-card-pile--deck:disabled {
   cursor: not-allowed;
+}
+
+.table-card-pile--hidden {
+  visibility: hidden;
 }
 
 .table-card-pile--discard {
