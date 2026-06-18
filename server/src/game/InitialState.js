@@ -1,6 +1,6 @@
-import { createDeck } from "./Deck.js"
+import { createDeck } from "./GameDeck.js"
 
-function createInitialGameState (players) {
+function createInitialState (players) {
     const deck = createDeck()
     // shuffleDeck() 洗牌，等issue34補上
 
@@ -22,7 +22,7 @@ function createInitialGameState (players) {
         }
     })
 
-    const randomIndex = Math.floor( Math.random() * gamePlayers.length )
+    const randomIndex = Math.floor(Math.random() * gamePlayers.length)
     const currentTurnPlayerId = gamePlayers[randomIndex].playerId
 
     return {
@@ -35,4 +35,4 @@ function createInitialGameState (players) {
     }
 }
 
-export { createInitialGameState }
+export { createInitialState }
