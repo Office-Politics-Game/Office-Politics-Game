@@ -44,6 +44,7 @@ AGENTS.md
 
 # Markdown files
 *.md
+docs/superpowers/
 .spectra.yaml
 .spectra/
 openspec/
