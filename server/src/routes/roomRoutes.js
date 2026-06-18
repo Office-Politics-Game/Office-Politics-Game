@@ -4,7 +4,7 @@ import {
   handleJoinRoom,
   handleUpdateReady,
   handleStartGame,
-} from "../controllers/RoomController.js"
+} from "../controllers/roomController.js"
 
 const router = express.Router()
 

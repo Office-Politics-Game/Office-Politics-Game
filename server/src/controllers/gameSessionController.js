@@ -1,6 +1,6 @@
-import { getState } from "../services/GameStateService.js"
+import { getState } from "../services/gameStateService.js"
 
-async function handleGetState(req, res) {
+async function handleGetState(req, res){
   try {
     const { roomCode } = req.params
     const viewerPlayerId = Number(req.query.playerId)

@@ -1,5 +1,5 @@
 import pool from "../db/index.js"
-import { createInitialState } from "../game/InitialState.js"
+import { createInitialState } from "../game/initialState.js"
 
 function createServiceError(message, statusCode = 400){
   const error = new Error(message)
@@ -93,7 +93,7 @@ async function joinRoom({ roomCode, playerId }){
   }
 }
 
-async function updateReady({ roomCode, playerId, isReady }) {
+async function updateReady({ roomCode, playerId, isReady }){
   const roomResult = await pool.query(
     `SELECT * FROM game_rooms WHERE room_code = $1`,
     [roomCode]

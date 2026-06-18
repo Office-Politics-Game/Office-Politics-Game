@@ -1,10 +1,10 @@
-import { createDeck } from "./GameDeck.js"
+import { createDeck } from "./gameDeck.js"
+import { shuffleDeck } from "../services/deckService.js"
 
-function createInitialState (players) {
-    const deck = createDeck()
-    // shuffleDeck() 洗牌，等issue34補上
+function createInitialState (players){
+    const deck = shuffleDeck(createDeck())
 
-    const sortedPlayers = [...players].sort((a, b) => {
+    const sortedPlayers = [...players].sort((a, b)=>{
         return a.seat_order - b.seat_order
     })
 

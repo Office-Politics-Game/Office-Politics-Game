@@ -1,5 +1,5 @@
 import express from "express"
-import { handleGetState } from "../controllers/GameSessionController.js"
+import { handleGetState } from "../controllers/gameSessionController.js"
 
 const router = express.Router()
 

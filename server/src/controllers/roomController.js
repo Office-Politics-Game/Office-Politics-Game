@@ -3,7 +3,7 @@ import {
   joinRoom,
   updateReady,
   startGame,
-} from "../services/RoomService.js"
+} from "../services/roomService.js"
 
 function getErrorStatus(error){
   return error.statusCode || 500

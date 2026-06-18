@@ -1,5 +1,5 @@
 import express from "express"
-import { handleCreateGuest } from "../controllers/PlayerController.js"
+import { handleCreateGuest } from "../controllers/playerController.js"
 
 const router = express.Router()
 

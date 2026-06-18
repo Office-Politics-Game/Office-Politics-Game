@@ -20,9 +20,7 @@ function getPublicState(state, viewerPlayerId){
     players: players.map((player)=>{
       const isSelf = player.playerId === viewerPlayerId
       const hand = Array.isArray(player.hand) ? player.hand : []
-      const discardedCards = Array.isArray(player.discardedCards)
-        ? player.discardedCards
-        : []
+      const discardedCards = Array.isArray(player.discardedCards) ? player.discardedCards : []
 
       return {
         playerId: player.playerId,
@@ -38,7 +36,7 @@ function getPublicState(state, viewerPlayerId){
   }
 }
 
-async function getState({ roomCode, viewerPlayerId }) {
+async function getState({ roomCode, viewerPlayerId }){
   const result = await pool.query(
     `SELECT gs.*
      FROM game_sessions gs
