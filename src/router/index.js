@@ -11,6 +11,8 @@ import JoinRoomModal from "@/components/gameRoom/JoinRoomModal.vue";
 import CustomRoomView from "@/views/CustomRoomView.vue";
 import InviteFriendModal from "@/components/gameRoom/InviteFriendModal.vue";
 import CardDealDemoView from "@/views/CardDealDemoView.vue";
+import AnimationDemoView from "@/views/AnimationDemoView.vue";
+import CardPlayTestView from "@/views/CardPlayTestView.vue";
 
 const routes = [
   {
@@ -73,6 +75,16 @@ const routes = [
     path: "/card-deal-demo",
     name: "CardDealDemo",
     component: CardDealDemoView,
+  },
+  {
+    path: "/enemycardplay_demo",
+    name: "enemycardplay_demo",
+    component: AnimationDemoView,
+  },
+  {
+    path: "/cardplay_test",
+    name: "cardplay_test",
+    component: CardPlayTestView,
   },
 ];
 
