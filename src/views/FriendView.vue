@@ -11,6 +11,7 @@
       <!-- 關閉 -->
       <button
         class="absolute top-3 right-4 md:top-5 md:right-5 text-2xl md:text-3xl text-gray-600 hover:text-black z-20"
+        @click="$router.push('/lobby')"
       >
         ×
       </button>
@@ -26,13 +27,9 @@
             class="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover"
           />
 
-          <h2 class="mt-2 md:mt-3 text-base md:text-lg font-bold">
-            CEO小陳
-          </h2>
+          <h2 class="mt-2 md:mt-3 text-base md:text-lg font-bold">CEO小陳</h2>
 
-          <div class="text-gray-500 text-xs md:text-sm">
-            👑 稱號
-          </div>
+          <div class="text-gray-500 text-xs md:text-sm">👑 稱號</div>
 
           <!-- 等級 -->
           <div class="w-full mt-2 ml-3 md:mt-8">
@@ -51,34 +48,22 @@
 
           <!-- 功能選單 -->
           <div class="w-full ml-3 md:mt-8 space-y-2">
-            <button class="menu-item">
-              個人資料
-            </button>
+            <button class="menu-item">個人資料</button>
 
-            <button class="menu-item">
-              成就徽章
-            </button>
+            <button class="menu-item">成就徽章</button>
 
-            <button class="menu-item">
-              遊戲統計
-            </button>
+            <button class="menu-item">遊戲統計</button>
           </div>
         </div>
 
         <!-- 右側 -->
         <div class="flex-1 p-3 md:p-4 flex flex-col min-h-0">
           <div class="flex border-b shrink-0">
-            <button class="tab active">
-              好友列表
-            </button>
+            <button class="tab active">好友列表</button>
 
-            <button class="tab">
-              邀請區
-            </button>
+            <button class="tab">邀請區</button>
 
-            <button class="tab">
-              對戰紀錄
-            </button>
+            <button class="tab">對戰紀錄</button>
           </div>
 
           <!-- 好友列表 -->
@@ -117,9 +102,9 @@
 </template>
 
 <script setup>
-import BG_Personal from '@/assets/images/bg-personal.webp'
-import WaitingRoom from '@/assets/images/waiting-room.png'
-import FriendItem from '@/components/menu/FriendItem.vue'
+import BG_Personal from "@/assets/images/bg-personal.webp";
+import WaitingRoom from "@/assets/images/waiting-room.webp";
+import FriendItem from "@/components/menu/FriendItem.vue";
 </script>
 
 <style scoped>

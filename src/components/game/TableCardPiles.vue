@@ -188,7 +188,7 @@ function handleDeckDraw() {
 
 function createPileTilt(element, rotationZ) {
   if (!element) {
-    return () => {}
+    return () => {};
   }
 
   gsap.set(element, {
@@ -196,22 +196,22 @@ function createPileTilt(element, rotationZ) {
     rotationY: 0,
     rotationZ,
     transformPerspective: 900,
-    transformOrigin: '50% 100%',
+    transformOrigin: "50% 100%",
     y: 0,
-  })
+  });
 
-  const moveX = gsap.quickTo(element, 'rotationY', {
+  const moveX = gsap.quickTo(element, "rotationY", {
     duration: 0.45,
-    ease: 'power3.out',
-  })
-  const moveY = gsap.quickTo(element, 'rotationX', {
+    ease: "power3.out",
+  });
+  const moveY = gsap.quickTo(element, "rotationX", {
     duration: 0.45,
-    ease: 'power3.out',
-  })
-  const lift = gsap.quickTo(element, 'y', {
+    ease: "power3.out",
+  });
+  const lift = gsap.quickTo(element, "y", {
     duration: 0.35,
-    ease: 'power3.out',
-  })
+    ease: "power3.out",
+  });
 
   function handlePointerMove(event) {
     if (isDeckInteractionDisabled.value && element === deckPile.value) {
@@ -222,9 +222,9 @@ function createPileTilt(element, rotationZ) {
     const offsetX = (event.clientX - bounds.left) / bounds.width - 0.5
     const offsetY = (event.clientY - bounds.top) / bounds.height - 0.5
 
-    moveX(offsetX * 4)
-    moveY(TABLE_ROTATION_X + offsetY * -4)
-    lift(-2)
+    moveX(offsetX * 4);
+    moveY(TABLE_ROTATION_X + offsetY * -4);
+    lift(-2);
   }
 
   function handlePointerLeave() {
@@ -237,13 +237,13 @@ function createPileTilt(element, rotationZ) {
     lift(0)
   }
 
-  element.addEventListener('pointermove', handlePointerMove, { passive: true })
-  element.addEventListener('pointerleave', handlePointerLeave)
+  element.addEventListener("pointermove", handlePointerMove, { passive: true });
+  element.addEventListener("pointerleave", handlePointerLeave);
 
   return () => {
-    element.removeEventListener('pointermove', handlePointerMove)
-    element.removeEventListener('pointerleave', handlePointerLeave)
-  }
+    element.removeEventListener("pointermove", handlePointerMove);
+    element.removeEventListener("pointerleave", handlePointerLeave);
+  };
 }
 
 watch(
@@ -289,31 +289,31 @@ onMounted(() => {
       rotationY: 0,
       rotationZ: -2,
       transformPerspective: 900,
-      transformOrigin: '50% 100%',
-    })
+      transformOrigin: "50% 100%",
+    });
     gsap.set(discardPile.value, {
       rotationX: TABLE_ROTATION_X,
       rotationY: 0,
       rotationZ: 2,
       transformPerspective: 900,
-      transformOrigin: '50% 100%',
-    })
+      transformOrigin: "50% 100%",
+    });
 
-    gsapMedia = gsap.matchMedia()
+    gsapMedia = gsap.matchMedia();
     gsapMedia.add(
-      '(pointer: fine) and (prefers-reduced-motion: no-preference)',
+      "(pointer: fine) and (prefers-reduced-motion: no-preference)",
       () => {
-        const clearDeckTilt = createPileTilt(deckPile.value, -2)
-        const clearDiscardTilt = createPileTilt(discardPile.value, 2)
+        const clearDeckTilt = createPileTilt(deckPile.value, -2);
+        const clearDiscardTilt = createPileTilt(discardPile.value, 2);
 
         return () => {
-          clearDeckTilt()
-          clearDiscardTilt()
-        }
+          clearDeckTilt();
+          clearDiscardTilt();
+        };
       },
-    )
-  }, pileArea.value)
-})
+    );
+  }, pileArea.value);
+});
 
 onUnmounted(() => {
   pressTimeline?.kill()
@@ -399,8 +399,7 @@ onUnmounted(() => {
   isolation: isolate;
   transform-origin: 50% 100%;
   transform-style: preserve-3d;
-  filter:
-    drop-shadow(0 3px 3px rgba(0, 19, 50, 0.34))
+  filter: drop-shadow(0 3px 3px rgba(0, 19, 50, 0.34))
     drop-shadow(0 9px 10px rgba(0, 19, 50, 0.24));
   will-change: transform;
 }
@@ -412,7 +411,7 @@ onUnmounted(() => {
   bottom: -5%;
   left: 5%;
   height: 12%;
-  content: '';
+  content: "";
   background: rgba(0, 19, 50, 0.46);
   filter: blur(7px);
   transform: translateZ(-1px) scaleX(0.96);

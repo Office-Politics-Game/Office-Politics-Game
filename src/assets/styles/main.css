@@ -81,6 +81,17 @@ body {
   }
 }
 
+@keyframes swing {
+  0% { transform: rotate(0deg); }
+  15% { transform: rotate(12deg); }
+  30% { transform: rotate(-10deg); }
+  45% { transform: rotate(8deg); }
+  60% { transform: rotate(-6deg); }
+  75% { transform: rotate(4deg); }
+  90% { transform: rotate(-2deg); }
+  100% { transform: rotate(0deg); }
+}
+
 button,
 input,
 textarea,
@@ -106,10 +117,54 @@ button {
 @media (min-width: 1024px) {
   :root {
     --text-xs: 13px;
-    --text-sm: 15px;
+    --text-sm: 16px;
     --text-md: 18px;
     --text-lg: 22px;
     --text-xl: 36px;
     --text-display: 64px;
   }
 }
+
+@layer components {
+  .btn-glass {
+    @apply relative
+      px-3 py-1.5
+      lg:px-8 lg:py-2
+      /* rounded-full */
+      font-medium
+      text-white
+      bg-white/10
+      border
+      border-white/20
+      backdrop-blur
+      transition-all
+      
+      hover:bg-(--brand-hover)
+      hover:font-bold;
+
+    font-size: var(--text-md);
+
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+      0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+  .btn-dark {
+    @apply border
+    border-(--brand-primary)
+    bg-(--brand-active)
+    text-white
+    /* shadow-[0_10px_24px_rgba(70,85,99,0.24)] */
+    hover:border-(--brand-hover)
+    hover:bg-(--brand-hover)
+    hover:text-white
+    /* hover:shadow-[0_10px_24px_rgba(0,70,244,0.24)] */
+    focus-visible:outline-0
+    focus-visible:shadow-[0_0_0_4px_var(--brand-focus)];
+  }
+}
+.tap-pop {
+  @apply transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98];
+}
+
+

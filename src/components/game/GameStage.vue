@@ -45,10 +45,10 @@ const props = defineProps({
     validator: (cards) =>
       cards.every(
         (card) =>
-          typeof card?.id === 'string' &&
-          typeof card?.name === 'string' &&
-          typeof card?.backgroundUrl === 'string' &&
-          typeof card?.frameUrl === 'string',
+          typeof card?.id === "string" &&
+          typeof card?.name === "string" &&
+          typeof card?.backgroundUrl === "string" &&
+          typeof card?.frameUrl === "string",
       ),
   },
   drawCard: {
@@ -56,12 +56,12 @@ const props = defineProps({
     default: null,
     validator: (card) =>
       card === null ||
-      (typeof card?.id === 'string' &&
-        typeof card?.name === 'string' &&
-        typeof card?.backgroundUrl === 'string' &&
-        typeof card?.frameUrl === 'string'),
+      (typeof card?.id === "string" &&
+        typeof card?.name === "string" &&
+        typeof card?.backgroundUrl === "string" &&
+        typeof card?.frameUrl === "string"),
   },
-})
+});
 
 const emit = defineEmits(['return-lobby', 'restart-game', 'draw-complete'])
 const isSettingsOpen = ref(false)
@@ -105,57 +105,57 @@ const {
   setMusicVolume,
   setSoundEnabled,
   setSoundVolume,
-} = useAudioSettings()
+} = useAudioSettings();
 
 const hasActivePlay = computed(() => Boolean(activeCard.value && originRect.value))
 
 function openSettings() {
-  isSettingsOpen.value = true
+  isSettingsOpen.value = true;
 }
 
 function closeSettings() {
-  isSettingsOpen.value = false
+  isSettingsOpen.value = false;
 }
 
 function handleReturnLobby() {
-  emit('return-lobby')
+  emit("return-lobby");
 }
 
 function handleRestartGame() {
-  emit('restart-game')
+  emit("restart-game");
 }
 
 async function playDrawAnimation() {
   if (isDrawAnimating.value || !props.drawCard) {
-    return
+    return;
   }
 
-  isDrawAnimating.value = true
-  activeDrawCard.value = { ...props.drawCard }
-  playerHand.value?.prepareDrawTarget()
-  await nextTick()
+  isDrawAnimating.value = true;
+  activeDrawCard.value = { ...props.drawCard };
+  playerHand.value?.prepareDrawTarget();
+  await nextTick();
 
   const startRect = tableCardPilesRef.value?.getDeckRect()
   const targetRect = playerHand.value?.getDrawTargetRect()
 
   if (!startRect || !targetRect) {
-    playerHand.value?.finishDraw()
-    activeDrawCard.value = null
-    isDrawAnimating.value = false
-    return
+    playerHand.value?.finishDraw();
+    activeDrawCard.value = null;
+    isDrawAnimating.value = false;
+    return;
   }
 
   try {
     await cardDrawAnimation.value?.play({
       startRect,
       targetRect,
-      onLanded: () => emit('draw-complete', activeDrawCard.value),
-    })
-    await nextTick()
+      onLanded: () => emit("draw-complete", activeDrawCard.value),
+    });
+    await nextTick();
   } finally {
-    playerHand.value?.finishDraw()
-    activeDrawCard.value = null
-    isDrawAnimating.value = false
+    playerHand.value?.finishDraw();
+    activeDrawCard.value = null;
+    isDrawAnimating.value = false;
   }
 }
 
@@ -751,11 +751,13 @@ onBeforeUnmount(() => {
 
 defineExpose({
   playDrawAnimation,
-})
+});
 </script>
 
 <template>
-  <main class="relative min-h-[100dvh] w-full overflow-hidden bg-[var(--brand-navy)]">
+  <main
+    class="relative min-h-[100dvh] w-full overflow-hidden bg-[var(--brand-navy)]"
+  >
     <section
       class="game-stage relative hidden h-[100dvh] w-[100dvw] overflow-hidden bg-cover bg-center bg-no-repeat"
       :style="{ backgroundImage: `url(${gameTableBackgroundUrl})` }"
@@ -763,9 +765,7 @@ defineExpose({
     >
       <PlayerSeats :players="players" />
 
-      <div
-        class="turn-controls absolute top-[clamp(20px,6vh,40px)] left-[clamp(16px,2.6vw,40px)]"
-      >
+      <div class="turn-controls absolute top-5 left-3 lg:top-8 lg:left-6">
         <TurnStatus
           :round-number="roundNumber"
           :current-phase="currentPhase"
@@ -774,18 +774,20 @@ defineExpose({
       </div>
 
       <div
-        class="game-brand-tools absolute top-[clamp(16px,5vh,36px)] right-[clamp(10px,2.5vw,40px)] flex items-center gap-[clamp(8px,1.2vw,16px)]"
+        class="game-brand-tools absolute top-2 right-3 flex items-center gap-2 lg:top-4 lg:right-4 lg:gap-6"
       >
         <img
           :src="gameLogoUrl"
           alt="Office Politics"
-          class="block h-auto w-[clamp(104px,11vw,150px)] select-none object-contain drop-shadow-[0_3px_10px_rgba(0,19,50,0.48)]"
+          class="block h-auto w-24 select-none object-contain drop-shadow-[0_3px_10px_rgba(0,19,50,0.48)] lg:w-40"
           draggable="false"
         />
         <GameSettingsIcon @open="openSettings" />
       </div>
 
-      <div class="table-card-piles absolute top-[42%] left-1/2 -translate-x-1/2">
+      <div
+        class="table-card-piles absolute top-[42%] left-1/2 -translate-x-1/2"
+      >
         <TableCardPiles
           ref="tableCardPilesRef"
           :deck-count="deckCount"
@@ -942,20 +944,6 @@ defineExpose({
 @media (orientation: landscape), (min-width: 768px) {
   .game-stage {
     display: block;
-  }
-}
-
-@media (max-height: 480px) {
-  .turn-controls {
-    top: 10px;
-  }
-
-  .game-brand-tools {
-    top: 10px;
-  }
-
-  .table-card-piles {
-    top: 35%;
   }
 }
 </style>
