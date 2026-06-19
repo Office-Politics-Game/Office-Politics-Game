@@ -37,8 +37,9 @@ const props = defineProps({
   },
 });
 
-const handTargetElements = ref({});
-const dealtPlayerIdSet = computed(() => new Set(props.dealtPlayerIds));
+const seatElements = ref({})
+const handTargetElements = ref({})
+const dealtPlayerIdSet = computed(() => new Set(props.dealtPlayerIds))
 
 const positionClasses = {
   top: "top-[48px] left-1/2 -translate-x-1/2 lg:top-28",
@@ -47,6 +48,19 @@ const positionClasses = {
   bottom:
     "bottom-3 left-[calc(50%-220px)] lg:bottom-10 lg:left-[calc(50%-400px)]",
 };
+
+function setSeatElement(playerId, element) {
+  if (!playerId) {
+    return
+  }
+
+  if (element) {
+    seatElements.value[playerId] = element
+    return
+  }
+
+  delete seatElements.value[playerId]
+}
 
 function setHandTargetElement(playerId, element) {
   if (element) {
@@ -62,6 +76,9 @@ function getHandTargetRect(playerId) {
 }
 
 defineExpose({
+  getSeatRect(playerId) {
+    return seatElements.value[playerId]?.getBoundingClientRect() ?? null
+  },
   getHandTargetRect,
 });
 </script>
@@ -74,6 +91,7 @@ defineExpose({
     <div
       v-for="player in players"
       :key="player.id"
+      :ref="(element) => setSeatElement(player.id, element)"
       class="player-seats__seat absolute"
       :class="positionClasses[player.position]"
     >
