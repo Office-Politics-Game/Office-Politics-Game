@@ -32,6 +32,14 @@ const props = defineProps({
     validator: (playerIds) =>
       playerIds.every((playerId) => typeof playerId === 'string'),
   },
+  playerHandCardCounts: {
+    type: Object,
+    default: () => ({}),
+    validator: (counts) =>
+      Object.values(counts).every(
+        (count) => Number.isInteger(count) && count >= 0,
+      ),
+  },
 })
 
 const seatElements = ref({})
@@ -75,6 +83,27 @@ function getHandTargetRect(playerId) {
   return handTargetElements.value[playerId]?.getBoundingClientRect() ?? null
 }
 
+function getHandCardCount(playerId) {
+  if (Number.isInteger(props.playerHandCardCounts[playerId])) {
+    return props.playerHandCardCounts[playerId]
+  }
+
+  return dealtPlayerIdSet.value.has(playerId) ? 1 : 0
+}
+
+function getHandCardBacks(playerId) {
+  const count = getHandCardCount(playerId)
+  const visibleCount = Math.min(count, 4)
+  const center = (visibleCount - 1) / 2
+
+  return Array.from({ length: visibleCount }, (_, index) => ({
+    id: `${playerId}-hand-card-${index}`,
+    offset: `${(index - center) * 9}px`,
+    rotation: `${(index - center) * 7}deg`,
+    zIndex: index + 1,
+  }))
+}
+
 defineExpose({
   getSeatRect(playerId) {
     return seatElements.value[playerId]?.getBoundingClientRect() ?? null
@@ -107,10 +136,16 @@ defineExpose({
         aria-hidden="true"
       >
         <img
-          v-if="dealtPlayerIdSet.has(player.id)"
+          v-for="cardBack in getHandCardBacks(player.id)"
+          :key="cardBack.id"
           :src="cardBackUrl"
           alt=""
           class="player-seat-hand-target__card block size-full select-none object-contain"
+          :style="{
+            '--hand-card-offset': cardBack.offset,
+            '--hand-card-rotation': cardBack.rotation,
+            zIndex: cardBack.zIndex,
+          }"
           draggable="false"
         />
       </div>
@@ -122,6 +157,11 @@ defineExpose({
 .player-seat-hand-target {
   z-index: 0;
   filter: drop-shadow(0 8px 12px rgba(0, 19, 50, 0.34));
+}
+
+.player-seat-hand-target__card {
+  position: absolute;
+  inset: 0;
 }
 
 .player-seat-hand-target--top {
@@ -143,15 +183,21 @@ defineExpose({
 }
 
 .player-seat-hand-target--top .player-seat-hand-target__card {
-  transform: rotate(180deg);
+  transform:
+    translateX(var(--hand-card-offset))
+    rotate(calc(180deg - var(--hand-card-rotation)));
 }
 
 .player-seat-hand-target--left .player-seat-hand-target__card {
-  transform: rotate(90deg);
+  transform:
+    translateY(var(--hand-card-offset))
+    rotate(calc(90deg + var(--hand-card-rotation)));
 }
 
 .player-seat-hand-target--right .player-seat-hand-target__card {
-  transform: rotate(-90deg);
+  transform:
+    translateY(var(--hand-card-offset))
+    rotate(calc(-90deg - var(--hand-card-rotation)));
 }
 
 .player-seats__seat--top {
