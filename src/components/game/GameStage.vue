@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import gameTableBackgroundUrl from '@/assets/images/bg-game-table.webp'
 import gameLogoUrl from '@/assets/images/logo-en-white.png'
 import { useAudioSettings } from '@/composables/UseAudioSettings'
@@ -59,15 +59,36 @@ const props = defineProps({
         typeof card?.backgroundUrl === 'string' &&
         typeof card?.frameUrl === 'string'),
   },
+  drawPlayerId: {
+    type: String,
+    default: null,
+  },
+  currentPlayerId: {
+    type: String,
+    default: null,
+  },
 })
 
-const emit = defineEmits(['return-lobby', 'restart-game', 'draw-complete'])
+const emit = defineEmits([
+  'return-lobby',
+  'restart-game',
+  'draw-complete',
+  'opponent-draw-complete',
+])
 const isSettingsOpen = ref(false)
 const isDrawAnimating = ref(false)
 const activeDrawCard = ref(null)
 const tableCardPiles = ref(null)
+const playerSeats = ref(null)
 const playerHand = ref(null)
 const cardDrawAnimation = ref(null)
+const opponentDrawnPlayerIds = ref([])
+const resolvedCurrentPlayerId = computed(
+  () =>
+    props.currentPlayerId ??
+    props.players.find((player) => player.isCurrentPlayer)?.id ??
+    null,
+)
 const {
   musicEnabled,
   musicVolume,
@@ -95,18 +116,43 @@ function handleRestartGame() {
   emit('restart-game')
 }
 
+function isSelfDraw(playerId) {
+  return !playerId || playerId === resolvedCurrentPlayerId.value
+}
+
+function markOpponentDrawn(playerId) {
+  if (opponentDrawnPlayerIds.value.includes(playerId)) {
+    return
+  }
+
+  opponentDrawnPlayerIds.value = [
+    ...opponentDrawnPlayerIds.value,
+    playerId,
+  ]
+}
+
 async function playDrawAnimation() {
   if (isDrawAnimating.value || !props.drawCard) {
     return
   }
 
+  const activeDrawPlayerId =
+    props.drawPlayerId ?? resolvedCurrentPlayerId.value
+  const shouldDrawSelf = isSelfDraw(activeDrawPlayerId)
+
   isDrawAnimating.value = true
   activeDrawCard.value = { ...props.drawCard }
-  playerHand.value?.prepareDrawTarget()
+
+  if (shouldDrawSelf) {
+    playerHand.value?.prepareDrawTarget()
+  }
+
   await nextTick()
 
   const startRect = tableCardPiles.value?.getDeckRect()
-  const targetRect = playerHand.value?.getDrawTargetRect()
+  const targetRect = shouldDrawSelf
+    ? playerHand.value?.getDrawTargetRect()
+    : playerSeats.value?.getHandTargetRect(activeDrawPlayerId)
 
   if (!startRect || !targetRect) {
     playerHand.value?.finishDraw()
@@ -116,11 +162,32 @@ async function playDrawAnimation() {
   }
 
   try {
-    await cardDrawAnimation.value?.play({
-      startRect,
-      targetRect,
-      onLanded: () => emit('draw-complete', activeDrawCard.value),
-    })
+    const onLanded = () => {
+      if (shouldDrawSelf) {
+        emit('draw-complete', activeDrawCard.value)
+        return
+      }
+
+      markOpponentDrawn(activeDrawPlayerId)
+      emit('opponent-draw-complete', {
+        playerId: activeDrawPlayerId,
+        card: activeDrawCard.value,
+      })
+    }
+
+    if (shouldDrawSelf) {
+      await cardDrawAnimation.value?.selfDraw({
+        startRect,
+        targetRect,
+        onLanded,
+      })
+    } else {
+      await cardDrawAnimation.value?.othersDraw({
+        startRect,
+        targetRect,
+        onLanded,
+      })
+    }
     await nextTick()
   } finally {
     playerHand.value?.finishDraw()
@@ -141,7 +208,11 @@ defineExpose({
       :style="{ backgroundImage: `url(${gameTableBackgroundUrl})` }"
       aria-label="Office Politics 遊戲桌"
     >
-      <PlayerSeats :players="players" />
+      <PlayerSeats
+        ref="playerSeats"
+        :players="players"
+        :dealt-player-ids="opponentDrawnPlayerIds"
+      />
 
       <div
         class="turn-controls absolute top-[clamp(20px,6vh,40px)] left-[clamp(16px,2.6vw,40px)]"

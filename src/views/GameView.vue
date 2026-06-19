@@ -41,6 +41,8 @@ const cardAssets = {
 }
 
 const gameState = reactive(createMockGameState())
+const currentPlayerId = computed(() => gameState.currentPlayer.id)
+const drawPlayerId = computed(() => currentPlayerId.value)
 const deckCount = computed(() => gameState.deck.length)
 const handCards = computed(() =>
   gameState.currentPlayer.hand.map(resolveCardAssets),
@@ -123,6 +125,8 @@ function handleDrawComplete(card) {
     :players="players"
     :hand-cards="handCards"
     :draw-card="drawCard"
+    :draw-player-id="drawPlayerId"
+    :current-player-id="currentPlayerId"
     @draw-complete="handleDrawComplete"
     @return-lobby="handleReturnLobby"
     @restart-game="handleRestartGame"

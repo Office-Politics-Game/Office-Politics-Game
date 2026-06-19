@@ -76,7 +76,7 @@ test('game view owns four complete player records and passes them through the st
   assert.doesNotMatch(gameViewSource, /victoryTokens|132|32|12/)
   assert.match(gameViewSource, /:players="players"/)
   assert.match(gameStageSource, /players:/)
-  assert.match(gameStageSource, /<PlayerSeats :players="players"/)
+  assert.match(gameStageSource, /<PlayerSeats[\s\S]*:players="players"/)
 })
 
 test('the selected bonus cheque badge exists as a PNG asset', async () => {
