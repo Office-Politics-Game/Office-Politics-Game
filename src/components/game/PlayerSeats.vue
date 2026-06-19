@@ -35,11 +35,27 @@ const props = defineProps({
     validator: (playerIds) =>
       playerIds.every((playerId) => typeof playerId === "string"),
   },
+  isTargetSelectionActive: {
+    type: Boolean,
+    default: false,
+  },
+  selectablePlayerIds: {
+    type: Array,
+    default: () => [],
+    validator: (playerIds) =>
+      playerIds.every((playerId) => typeof playerId === "string"),
+  },
+  selectedTargetPlayerId: {
+    type: String,
+    default: null,
+  },
 });
 
+const emit = defineEmits(['target-select'])
 const seatElements = ref({})
 const handTargetElements = ref({})
 const dealtPlayerIdSet = computed(() => new Set(props.dealtPlayerIds))
+const selectablePlayerIdSet = computed(() => new Set(props.selectablePlayerIds))
 
 const positionClasses = {
   top: "top-[48px] left-1/2 -translate-x-1/2 lg:top-28",
@@ -75,6 +91,18 @@ function getHandTargetRect(playerId) {
   return handTargetElements.value[playerId]?.getBoundingClientRect() ?? null;
 }
 
+function isSelectableTarget(playerId) {
+  return props.isTargetSelectionActive && selectablePlayerIdSet.value.has(playerId)
+}
+
+function handleTargetSelect(player) {
+  if (!isSelectableTarget(player.id)) {
+    return
+  }
+
+  emit('target-select', player.id)
+}
+
 defineExpose({
   getSeatRect(playerId) {
     return seatElements.value[playerId]?.getBoundingClientRect() ?? null
@@ -104,6 +132,20 @@ defineExpose({
         :is-mirrored="player.position === 'right'"
       />
 
+      <button
+        v-if="isTargetSelectionActive"
+        type="button"
+        class="player-seats__target-button"
+        :class="{
+          'player-seats__target-button--selectable': isSelectableTarget(player.id),
+          'player-seats__target-button--selected': selectedTargetPlayerId === player.id,
+        }"
+        :disabled="!isSelectableTarget(player.id)"
+        :aria-label="`指定 ${player.name}`"
+        :aria-pressed="selectedTargetPlayerId === player.id"
+        @click="handleTargetSelect(player)"
+      ></button>
+
       <div
         v-if="player.position !== 'bottom'"
         :ref="(element) => setHandTargetElement(player.id, element)"
@@ -122,3 +164,42 @@ defineExpose({
     </div>
   </div>
 </template>
+
+<style scoped>
+.player-seats__seat {
+  position: absolute;
+}
+
+.player-seats__target-button {
+  position: absolute;
+  inset: -8px;
+  z-index: 3;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  padding: 0;
+  cursor: not-allowed;
+  background: rgba(2, 6, 23, 0.22);
+  opacity: 0.4;
+  pointer-events: auto;
+}
+
+.player-seats__target-button--selectable {
+  cursor: pointer;
+  border-color: rgba(250, 204, 21, 0.78);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(250, 204, 21, 0.28), transparent 64%),
+    rgba(2, 6, 23, 0.08);
+  box-shadow:
+    0 0 0 6px rgba(250, 204, 21, 0.12),
+    0 0 26px rgba(250, 204, 21, 0.34);
+  opacity: 1;
+}
+
+.player-seats__target-button--selectable:hover,
+.player-seats__target-button--selected {
+  border-color: #ffffff;
+  box-shadow:
+    0 0 0 8px rgba(250, 204, 21, 0.18),
+    0 0 36px rgba(250, 204, 21, 0.58);
+}
+</style>

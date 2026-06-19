@@ -5,6 +5,12 @@ import advisorHandBackgroundUrl from '@/assets/images/card-bg-advisor.webp'
 import advisorFrameUrl from '@/assets/images/card-frame-advisor.webp'
 import ceoBackgroundUrl from '@/assets/images/card-bg-ceo.webp'
 import ceoFrameUrl from '@/assets/images/card-frame-ceo.webp'
+import cleanerBackgroundUrl from '@/assets/images/card-bg-cleaner.webp'
+import cleanerFrameUrl from '@/assets/images/card-frame-cleaner.webp'
+import internBackgroundUrl from '@/assets/images/card-bg-intern.webp'
+import internFrameUrl from '@/assets/images/card-frame-intern.webp'
+import pmBackgroundUrl from '@/assets/images/card-bg-pm.webp'
+import pmFrameUrl from '@/assets/images/card-frame-pm.webp'
 import playerOneUrl from '@/assets/images/player-1.png'
 import playerTwoUrl from '@/assets/images/player-2.png'
 import playerThreeUrl from '@/assets/images/player-3.png'
@@ -13,6 +19,7 @@ import GameStage from '@/components/game/GameStage.vue'
 import {
   createMockGameState,
   drawMockCard,
+  playMockCard,
 } from '@/mocks/mockGameState.js'
 
 const turnStatus = {
@@ -30,6 +37,18 @@ const cardPiles = {
 }
 
 const cardAssets = {
+  intern: {
+    backgroundUrl: internBackgroundUrl,
+    frameUrl: internFrameUrl,
+  },
+  cleaner: {
+    backgroundUrl: cleanerBackgroundUrl,
+    frameUrl: cleanerFrameUrl,
+  },
+  pm: {
+    backgroundUrl: pmBackgroundUrl,
+    frameUrl: pmFrameUrl,
+  },
   ceo: {
     backgroundUrl: ceoBackgroundUrl,
     frameUrl: ceoFrameUrl,
@@ -45,6 +64,13 @@ const deckCount = computed(() => gameState.deck.length)
 const handCards = computed(() =>
   gameState.currentPlayer.hand.map(resolveCardAssets),
 )
+const discardCard = computed(() => {
+  const latestDiscardCard = gameState.discardPile.at(-1)
+
+  return latestDiscardCard
+    ? resolveCardAssets(latestDiscardCard)
+    : cardPiles.discardCard
+})
 const drawCard = computed(() => {
   if (gameState.currentPlayer.hand.length >= 2) {
     return null
@@ -115,6 +141,10 @@ function handleRestartGame() {
 function handleDrawComplete(card) {
   drawMockCard(gameState, card.id)
 }
+
+function handlePlayCard(payload) {
+  playMockCard(gameState, payload)
+}
 </script>
 
 <template>
@@ -123,11 +153,12 @@ function handleDrawComplete(card) {
     :current-phase="turnStatus.currentPhase"
     :current-step="turnStatus.currentStep"
     :deck-count="deckCount"
-    :discard-card="cardPiles.discardCard"
+    :discard-card="discardCard"
     :players="players"
     :hand-cards="handCards"
     :draw-card="drawCard"
     @draw-complete="handleDrawComplete"
+    @play-card="handlePlayCard"
     @return-lobby="handleReturnLobby"
     @restart-game="handleRestartGame"
   />
