@@ -1,5 +1,6 @@
 import pool from "../db/index.js"
 import { runCardEffect } from "../services/cardEffectService.js"
+import { addLog } from "../services/actionLogService.js"
 
 async function handlePlayCard(req, res){
     try {
@@ -63,9 +64,22 @@ async function handlePlayCard(req, res){
             [state, gameSession.id]
         )
 
+        const actionLog = await addLog(
+            gameSession.room_id,
+            Number(playerId),
+            "play_card",
+            JSON.stringify({
+                card,
+                targetPlayerId,
+                guessedCardName,
+                result: effectResult,
+            })
+        )
+
         return res.status(200).json({
             message: "卡牌效果已執行",
             result: effectResult,
+            actionLog,
             state,
         })
     } catch (error) {
