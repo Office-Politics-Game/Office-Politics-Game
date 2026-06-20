@@ -251,7 +251,7 @@ const requiresTarget = computed(() =>
   pendingPlay.value?.card.targetMode === 'anyPlayer',
 )
 
-const selectableTargetPlayers = computed(() => {
+const selectableTargetPlayerIds = computed(() => {
   if (!requiresTarget.value) {
     return []
   }
@@ -262,7 +262,7 @@ const selectableTargetPlayers = computed(() => {
     }
 
     return true
-  })
+  }).map((player) => player.id)
 })
 
 const selectedTargetPlayer = computed(() =>
@@ -406,7 +406,7 @@ function selectTargetPlayer(playerId) {
     return
   }
 
-  const isSelectable = selectableTargetPlayers.value.some((player) => player.id === playerId)
+  const isSelectable = selectableTargetPlayerIds.value.includes(playerId)
   if (!isSelectable) {
     return
   }
@@ -700,30 +700,19 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <PlayerSeats :players="players" />
+    <div
+      v-if="pendingPlay"
+      class="cardplay-test__target-backdrop"
+      aria-hidden="true"
+    ></div>
 
-    <section
-      v-if="pendingPlay && requiresTarget"
-      class="cardplay-test__avatar-targets"
-      aria-label="選擇指定玩家"
-    >
-      <button
-        v-for="player in selectableTargetPlayers"
-        :key="`target-${player.id}`"
-        type="button"
-        class="cardplay-test__avatar-target"
-        :class="[
-          `cardplay-test__avatar-target--${player.position}`,
-          { 'cardplay-test__avatar-target--selected': selectedTargetPlayerId === player.id },
-        ]"
-        :aria-pressed="selectedTargetPlayerId === player.id"
-        :aria-label="`指定 ${player.name}`"
-        @click="selectTargetPlayer(player.id)"
-      >
-        <img :src="player.avatarUrl" alt="" draggable="false" />
-        <span>{{ player.name }}</span>
-      </button>
-    </section>
+    <PlayerSeats
+      :players="players"
+      :is-target-selection-active="Boolean(pendingPlay) && requiresTarget"
+      :selectable-player-ids="selectableTargetPlayerIds"
+      :selected-target-player-id="selectedTargetPlayerId"
+      @target-select="selectTargetPlayer"
+    />
 
     <button
       v-for="source in opponentSources"
@@ -887,6 +876,16 @@ onUnmounted(() => {
     linear-gradient(180deg, rgba(7, 17, 29, 0.72), rgba(7, 17, 29, 0.2) 48%, rgba(7, 17, 29, 0.74));
 }
 
+.cardplay-test__target-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 42;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.42);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+}
+
 .cardplay-test__hud {
   position: absolute;
   top: clamp(16px, 3vh, 28px);
@@ -1035,109 +1034,6 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-.cardplay-test__avatar-targets {
-  position: absolute;
-  inset: 0;
-  z-index: 34;
-  pointer-events: none;
-}
-
-.cardplay-test__avatar-target {
-  position: absolute;
-  display: grid;
-  place-items: center;
-  width: clamp(72px, 7vw, 102px);
-  aspect-ratio: 1;
-  border: 2px solid rgba(250, 204, 21, 0.72);
-  border-radius: 50%;
-  padding: 0;
-  cursor: pointer;
-  background:
-    radial-gradient(circle at 50% 50%, rgba(250, 204, 21, 0.3), rgba(15, 23, 42, 0.16) 62%),
-    rgba(7, 17, 29, 0.18);
-  box-shadow:
-    0 0 0 6px rgba(250, 204, 21, 0.14),
-    0 0 24px rgba(250, 204, 21, 0.34),
-    0 14px 24px rgba(0, 0, 0, 0.38);
-  transform-origin: 50% 50%;
-  transition:
-    border-color 0.16s ease,
-    box-shadow 0.16s ease,
-    transform 0.16s ease;
-  pointer-events: auto;
-}
-
-.cardplay-test__avatar-target:hover,
-.cardplay-test__avatar-target--selected {
-  border-color: #ffffff;
-  box-shadow:
-    0 0 0 8px rgba(250, 204, 21, 0.22),
-    0 0 34px rgba(250, 204, 21, 0.58),
-    0 18px 28px rgba(0, 0, 0, 0.46);
-  transform: translateY(-4px) scale(1.06);
-}
-
-.cardplay-test__avatar-target img {
-  display: block;
-  width: 72%;
-  height: 72%;
-  object-fit: contain;
-  user-select: none;
-  filter: drop-shadow(0 5px 7px rgba(0, 0, 0, 0.32));
-}
-
-.cardplay-test__avatar-target span {
-  position: absolute;
-  bottom: -22px;
-  left: 50%;
-  width: max-content;
-  max-width: 120px;
-  transform: translateX(-50%);
-  color: #f8fafc;
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.78);
-}
-
-.cardplay-test__avatar-target--top {
-  top: clamp(44px, 9vh, 104px);
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.cardplay-test__avatar-target--top:hover,
-.cardplay-test__avatar-target--top.cardplay-test__avatar-target--selected {
-  transform: translate(-50%, -4px) scale(1.06);
-}
-
-.cardplay-test__avatar-target--left {
-  top: 42%;
-  left: clamp(16px, 5vw, 76px);
-  transform: translateY(-50%);
-}
-
-.cardplay-test__avatar-target--left:hover,
-.cardplay-test__avatar-target--left.cardplay-test__avatar-target--selected {
-  transform: translate(4px, -50%) scale(1.06);
-}
-
-.cardplay-test__avatar-target--right {
-  top: 42%;
-  right: clamp(16px, 5vw, 76px);
-  transform: translateY(-50%);
-}
-
-.cardplay-test__avatar-target--right:hover,
-.cardplay-test__avatar-target--right.cardplay-test__avatar-target--selected {
-  transform: translate(-4px, -50%) scale(1.06);
-}
-
-.cardplay-test__avatar-target--bottom {
-  bottom: clamp(42px, 10vh, 96px);
-  left: clamp(38px, 13vw, 260px);
-}
-
 .cardplay-test__table-piles {
   position: absolute;
   top: 42%;
@@ -1243,12 +1139,13 @@ onUnmounted(() => {
 
 .cardplay-test__pending-panel {
   position: fixed;
-  right: clamp(18px, 4vw, 54px);
-  bottom: clamp(118px, 20vh, 190px);
+  left: 50%;
+  top: 30%;
+  transform: translate(-50%, -50%);
   z-index: 60;
   display: grid;
   gap: 12px;
-  width: min(360px, calc(100vw - 36px));
+  width: min(340px, calc(100vw - 36px));
   border: 1px solid rgba(250, 204, 21, 0.58);
   border-radius: 8px;
   padding: 16px;

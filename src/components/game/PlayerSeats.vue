@@ -95,6 +95,10 @@ function isSelectableTarget(playerId) {
   return props.isTargetSelectionActive && selectablePlayerIdSet.value.has(playerId)
 }
 
+function isSelectedTarget(playerId) {
+  return props.selectedTargetPlayerId === playerId
+}
+
 function handleTargetSelect(player) {
   if (!isSelectableTarget(player.id)) {
     return
@@ -114,6 +118,7 @@ defineExpose({
 <template>
   <div
     class="player-seats pointer-events-none absolute inset-0 z-10"
+    :class="{ 'player-seats--target-selection-active': isTargetSelectionActive }"
     aria-label="玩家座位"
   >
     <div
@@ -121,7 +126,13 @@ defineExpose({
       :key="player.id"
       :ref="(element) => setSeatElement(player.id, element)"
       class="player-seats__seat absolute"
-      :class="positionClasses[player.position]"
+      :class="[
+        positionClasses[player.position],
+        {
+          'player-seats__seat--target-selectable': isSelectableTarget(player.id),
+          'player-seats__seat--target-selected': isSelectedTarget(player.id),
+        },
+      ]"
     >
       <PlayerAvatar
         :name="player.name"
@@ -138,11 +149,11 @@ defineExpose({
         class="player-seats__target-button"
         :class="{
           'player-seats__target-button--selectable': isSelectableTarget(player.id),
-          'player-seats__target-button--selected': selectedTargetPlayerId === player.id,
+          'player-seats__target-button--selected': isSelectedTarget(player.id),
         }"
         :disabled="!isSelectableTarget(player.id)"
         :aria-label="`指定 ${player.name}`"
-        :aria-pressed="selectedTargetPlayerId === player.id"
+        :aria-pressed="isSelectedTarget(player.id)"
         @click="handleTargetSelect(player)"
       ></button>
 
@@ -168,38 +179,98 @@ defineExpose({
 <style scoped>
 .player-seats__seat {
   position: absolute;
+  isolation: isolate;
+}
+
+.player-seats--target-selection-active {
+  z-index: 46;
 }
 
 .player-seats__target-button {
   position: absolute;
-  inset: -8px;
-  z-index: 3;
-  border: 2px solid transparent;
-  border-radius: 999px;
+  inset: -10px -14px;
+  z-index: 30;
+  border: 0;
+  border-radius: 8px;
   padding: 0;
   cursor: not-allowed;
-  background: rgba(2, 6, 23, 0.22);
-  opacity: 0.4;
+  background: transparent;
+  opacity: 0;
   pointer-events: auto;
 }
 
 .player-seats__target-button--selectable {
   cursor: pointer;
-  border-color: rgba(250, 204, 21, 0.78);
-  background:
-    radial-gradient(circle at 50% 50%, rgba(250, 204, 21, 0.28), transparent 64%),
-    rgba(2, 6, 23, 0.08);
-  box-shadow:
-    0 0 0 6px rgba(250, 204, 21, 0.12),
-    0 0 26px rgba(250, 204, 21, 0.34);
-  opacity: 1;
 }
 
-.player-seats__target-button--selectable:hover,
-.player-seats__target-button--selected {
+.player-seats__seat--target-selectable {
+  pointer-events: auto;
+}
+
+.player-seats__seat--target-selectable :deep(.player-avatar__frame) {
+  animation: target-choice-pulse 1.08s ease-in-out infinite;
+  border-color: #facc15;
+  box-shadow:
+    0 0 0 5px rgba(250, 204, 21, 0.22),
+    0 0 28px rgba(250, 204, 21, 0.68),
+    0 7px 20px rgba(0, 19, 50, 0.36);
+}
+
+.player-seats__seat--target-selectable :deep(.player-avatar__info) {
+  box-shadow:
+    inset 0 0 0 1px rgba(250, 204, 21, 0.54),
+    0 0 22px rgba(250, 204, 21, 0.28);
+}
+
+.player-seats__seat--target-selectable:hover :deep(.player-avatar__frame),
+.player-seats__seat--target-selected :deep(.player-avatar__frame) {
   border-color: #ffffff;
   box-shadow:
-    0 0 0 8px rgba(250, 204, 21, 0.18),
-    0 0 36px rgba(250, 204, 21, 0.58);
+    0 0 0 7px rgba(250, 204, 21, 0.3),
+    0 0 38px rgba(250, 204, 21, 0.82),
+    0 0 58px rgba(255, 255, 255, 0.34),
+    0 7px 20px rgba(0, 19, 50, 0.36);
+}
+
+.player-seats__seat--target-selected :deep(.player-avatar__info) {
+  background: linear-gradient(
+    90deg,
+    rgba(161, 98, 7, 0.9) 0%,
+    rgba(202, 138, 4, 0.74) 44%,
+    rgba(15, 23, 42, 0.08) 100%
+  );
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.82),
+    0 0 28px rgba(250, 204, 21, 0.44);
+}
+
+.player-seats__seat--target-selected :deep(.player-avatar__info--mirrored) {
+  background: linear-gradient(
+    270deg,
+    rgba(161, 98, 7, 0.9) 0%,
+    rgba(202, 138, 4, 0.74) 52%,
+    rgba(15, 23, 42, 0.08) 100%
+  );
+}
+
+.player-seats__seat--target-selected :deep(.player-avatar__frame img) {
+  filter: hue-rotate(18deg) saturate(1.35) brightness(1.16);
+}
+
+@keyframes target-choice-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 4px rgba(250, 204, 21, 0.18),
+      0 0 24px rgba(250, 204, 21, 0.48),
+      0 7px 20px rgba(0, 19, 50, 0.36);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 10px rgba(250, 204, 21, 0.28),
+      0 0 44px rgba(250, 204, 21, 0.82),
+      0 7px 20px rgba(0, 19, 50, 0.36);
+  }
 }
 </style>

@@ -876,6 +876,12 @@ defineExpose({
       :style="{ backgroundImage: `url(${gameTableBackgroundUrl})` }"
       aria-label="Office Politics 遊戲舞台"
     >
+      <div
+        v-if="pendingPlay"
+        class="play-target-backdrop"
+        aria-hidden="true"
+      ></div>
+
       <PlayerSeats
         :players="players"
         :is-target-selection-active="Boolean(pendingPlay) && pendingRequiresTarget"
@@ -1104,14 +1110,25 @@ defineExpose({
   transform-origin: 50% 50%;
 }
 
+.play-target-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 44;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.42);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+}
+
 .play-confirm-panel {
   position: fixed;
-  right: clamp(16px, 4vw, 54px);
-  bottom: clamp(112px, 20vh, 188px);
+  left: 50%;
+  top: 30%;
+  transform: translate(-50%, -50%);
   z-index: 78;
   display: grid;
   gap: 12px;
-  width: min(360px, calc(100vw - 32px));
+  width: min(340px, calc(100vw - 32px));
   border: 1px solid rgba(250, 204, 21, 0.58);
   border-radius: 8px;
   padding: 16px;
