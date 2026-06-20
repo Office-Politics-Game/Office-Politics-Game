@@ -1,36 +1,39 @@
 <script setup>
-import { computed, ref } from 'vue'
-import cardBackUrl from '@/assets/images/card-bg-back.webp'
-import PlayerAvatar from './PlayerAvatar.vue'
+import { computed, ref } from "vue";
+import cardBackUrl from "@/assets/images/card-bg-back.webp";
+import PlayerAvatar from "./PlayerAvatar.vue";
 
 const props = defineProps({
   players: {
     type: Array,
     required: true,
     validator: (players) => {
-      const positions = ['top', 'left', 'right', 'bottom']
+      const positions = ["top", "left", "right", "bottom"];
 
       return (
         players.length === 4 &&
         players.every(
           (player) =>
-            typeof player?.id === 'string' &&
-            typeof player?.name === 'string' &&
-            typeof player?.avatarUrl === 'string' &&
+            typeof player?.id === "string" &&
+            typeof player?.name === "string" &&
+            typeof player?.avatarUrl === "string" &&
             Number.isInteger(player?.roundWins) &&
             player?.roundWins >= 0 &&
             player?.roundWins <= 3 &&
+            (player?.level === undefined ||
+              typeof player?.level === "number" ||
+              typeof player?.level === "string") &&
             positions.includes(player?.position) &&
-            typeof player?.isCurrentPlayer === 'boolean',
+            typeof player?.isCurrentPlayer === "boolean",
         )
-      )
+      );
     },
   },
   dealtPlayerIds: {
     type: Array,
     default: () => [],
     validator: (playerIds) =>
-      playerIds.every((playerId) => typeof playerId === 'string'),
+      playerIds.every((playerId) => typeof playerId === "string"),
   },
   playerHandCardCounts: {
     type: Object,
@@ -47,11 +50,12 @@ const handTargetElements = ref({})
 const dealtPlayerIdSet = computed(() => new Set(props.dealtPlayerIds))
 
 const positionClasses = {
-  top: 'player-seats__seat--top',
-  left: 'player-seats__seat--left',
-  right: 'player-seats__seat--right',
-  bottom: 'player-seats__seat--bottom',
-}
+  top: "top-[48px] left-1/2 -translate-x-1/2 lg:top-28",
+  left: "top-[42%] left-3 -translate-y-1/2 lg:left-7",
+  right: "top-[42%] right-3 -translate-y-1/2 lg:right-7",
+  bottom:
+    "bottom-3 left-[calc(50%-220px)] lg:bottom-10 lg:left-[calc(50%-400px)]",
+};
 
 function setSeatElement(playerId, element) {
   if (!playerId) {
@@ -72,15 +76,15 @@ function setHandTargetElement(playerId, element) {
   }
 
   if (element) {
-    handTargetElements.value[playerId] = element
-    return
+    handTargetElements.value[playerId] = element;
+    return;
   }
 
-  delete handTargetElements.value[playerId]
+  delete handTargetElements.value[playerId];
 }
 
 function getHandTargetRect(playerId) {
-  return handTargetElements.value[playerId]?.getBoundingClientRect() ?? null
+  return handTargetElements.value[playerId]?.getBoundingClientRect() ?? null;
 }
 
 function getHandCardCount(playerId) {
@@ -109,11 +113,14 @@ defineExpose({
     return seatElements.value[playerId]?.getBoundingClientRect() ?? null
   },
   getHandTargetRect,
-})
+});
 </script>
 
 <template>
-  <div class="player-seats pointer-events-none absolute inset-0 z-10" aria-label="玩家座位">
+  <div
+    class="player-seats pointer-events-none absolute inset-0 z-10"
+    aria-label="玩家座位"
+  >
     <div
       v-for="player in players"
       :key="player.id"
@@ -125,7 +132,9 @@ defineExpose({
         :name="player.name"
         :avatar-url="player.avatarUrl"
         :round-wins="player.roundWins"
+        :level="player.level"
         :is-current-player="player.isCurrentPlayer"
+        :is-mirrored="player.position === 'right'"
       />
 
       <div

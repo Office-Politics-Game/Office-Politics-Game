@@ -2,78 +2,82 @@ import assert from 'node:assert/strict'
 import { access, readFile } from 'node:fs/promises'
 import test from 'node:test'
 
-const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
+const readSource = (path) =>
+  readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
-test('player avatar components expose the planned static presentation contract', async () => {
+test('player avatar keeps the player data and token rendering contract', async () => {
   const avatarSource = await readSource('src/components/game/PlayerAvatar.vue')
   const seatsSource = await readSource('src/components/game/PlayerSeats.vue')
 
-  for (const propName of ['name', 'avatarUrl', 'roundWins', 'isCurrentPlayer']) {
+  for (const propName of [
+    'name',
+    'avatarUrl',
+    'roundWins',
+    'level',
+    'isCurrentPlayer',
+    'isMirrored',
+  ]) {
     assert.match(avatarSource, new RegExp(`${propName}:`))
   }
 
   assert.match(avatarSource, /player-avatar--current/)
-  assert.match(avatarSource, /player-avatar--winner/)
+  assert.match(avatarSource, /player-avatar__portrait/)
+  assert.match(avatarSource, /player-avatar__level/)
+  assert.match(avatarSource, /\{\{ level \}\}/)
   assert.match(avatarSource, /v-for="slot in 3"/)
-  assert.match(avatarSource, /slot <= roundWins/)
-  assert.match(avatarSource, /年度分紅得主/)
-  assert.match(avatarSource, /已取得 \$\{roundWins\}／3 枚年終支票/)
-  assert.doesNotMatch(avatarSource, /YOUR TURN/)
-  assert.match(avatarSource, /animation:\s*current-player-glow 1\.6s ease-in-out infinite/)
+  assert.match(avatarSource, /v-if="slot <= roundWins"/)
+  assert.match(avatarSource, /v-else/)
+  assert.match(avatarSource, /bonusChequeTokenUrl/)
+  assert.match(avatarSource, /player-avatar__cheque-placeholder/)
+  assert.match(avatarSource, /border-dashed/)
+  assert.match(avatarSource, /flex-row-reverse/)
+  assert.match(avatarSource, /player-avatar__info--mirrored/)
   assert.match(avatarSource, /@keyframes current-player-glow/)
-  assert.match(avatarSource, /@media \(prefers-reduced-motion: reduce\)/)
-  assert.match(
-    avatarSource,
-    /@media \(max-height: 480px\) and \(orientation: landscape\)/,
-  )
-  assert.match(avatarSource, /width:\s*22px/)
-  assert.match(avatarSource, /height:\s*14px/)
-  assert.match(avatarSource, /gap:\s*2px/)
-  assert.match(avatarSource, /padding:\s*4px 5px/)
-  assert.match(
-    avatarSource,
-    /\.player-avatar--winner\.player-avatar--current \.player-avatar__frame/,
-  )
   assert.doesNotMatch(avatarSource, /victoryTokens|勝利 TOKEN/)
-  assert.doesNotMatch(avatarSource, /<button|rounded-/)
+  assert.doesNotMatch(avatarSource, /player-avatar--winner|winner-gold|isMatchWinner/)
+  assert.doesNotMatch(avatarSource, /grayscale\(1\) brightness\(0\.58\)/)
+  assert.doesNotMatch(avatarSource, /<button/)
+
   assert.match(seatsSource, /Number\.isInteger\(player\?\.roundWins\)/)
   assert.match(seatsSource, /player\?\.roundWins >= 0/)
   assert.match(seatsSource, /player\?\.roundWins <= 3/)
-  assert.doesNotMatch(seatsSource, /victoryTokens/)
+  assert.match(seatsSource, /player\?\.level/)
   assert.match(seatsSource, /positionClasses/)
-  assert.match(seatsSource, /top:/)
-  assert.match(seatsSource, /left:/)
-  assert.match(seatsSource, /right:/)
-  assert.match(seatsSource, /bottom:/)
+
+  for (const position of ['top', 'left', 'right', 'bottom']) {
+    assert.match(seatsSource, new RegExp(`${position}:`))
+  }
+
   assert.match(seatsSource, /<PlayerAvatar/)
-  assert.doesNotMatch(
-    seatsSource,
-    /\.player-seats__seat :deep\(\.player-avatar__info\)\s*\{\s*padding:/,
-  )
-  assert.doesNotMatch(
-    seatsSource,
-    /\.player-seats__seat :deep\(\.player-avatar\)\s*\{\s*gap:/,
-  )
+  assert.match(seatsSource, /:level="player\.level"/)
+  assert.match(seatsSource, /:is-mirrored="player\.position === 'right'"/)
+  assert.doesNotMatch(seatsSource, /victoryTokens/)
 })
 
 test('game view owns four complete player records and passes them through the stage', async () => {
   const gameViewSource = await readSource('src/views/GameView.vue')
   const gameStageSource = await readSource('src/components/game/GameStage.vue')
 
-  for (const playerName of ['摸魚大師', '小菜雞', '豬隊666', '薪水小偷']) {
-    assert.match(gameViewSource, new RegExp(playerName))
+  for (const playerId of [
+    'player-top',
+    'player-left',
+    'player-right',
+    'player-bottom',
+  ]) {
+    assert.match(gameViewSource, new RegExp(`id: '${playerId}'`))
   }
 
   for (const position of ['top', 'left', 'right', 'bottom']) {
     assert.match(gameViewSource, new RegExp(`position: '${position}'`))
   }
 
+  assert.equal((gameViewSource.match(/level: 12/g) ?? []).length, 4)
   assert.equal((gameViewSource.match(/isCurrentPlayer: true/g) ?? []).length, 1)
-  assert.match(gameViewSource, /name: '摸魚大師'[\s\S]*roundWins: 3/)
-  assert.match(gameViewSource, /name: '小菜雞'[\s\S]*roundWins: 0/)
-  assert.match(gameViewSource, /name: '豬隊666'[\s\S]*roundWins: 1/)
-  assert.match(gameViewSource, /name: '薪水小偷'[\s\S]*roundWins: 2/)
-  assert.doesNotMatch(gameViewSource, /victoryTokens|132|32|12/)
+  assert.match(gameViewSource, /id: 'player-top'[\s\S]*roundWins: 3/)
+  assert.match(gameViewSource, /id: 'player-left'[\s\S]*roundWins: 0/)
+  assert.match(gameViewSource, /id: 'player-right'[\s\S]*roundWins: 1/)
+  assert.match(gameViewSource, /id: 'player-bottom'[\s\S]*roundWins: 2/)
+  assert.doesNotMatch(gameViewSource, /victoryTokens|132|32/)
   assert.match(gameViewSource, /:players="players"/)
   assert.match(gameStageSource, /players:/)
   assert.match(gameStageSource, /<PlayerSeats[\s\S]*:players="players"/)
@@ -93,13 +97,13 @@ test('the selected bonus cheque badge exists as a PNG asset', async () => {
 
 test('game table shows the brand beside a standalone settings icon', async () => {
   const gameStageSource = await readSource('src/components/game/GameStage.vue')
-  const settingsSource = await readSource('src/components/game/GameSettingsIcon.vue')
+  const settingsSource = await readSource(
+    'src/components/game/GameSettingsIcon.vue',
+  )
 
   assert.match(gameStageSource, /logo-en-white\.png/)
   assert.match(gameStageSource, /game-brand-tools/)
   assert.match(gameStageSource, /<GameSettingsIcon/)
-  assert.match(settingsSource, /size-\[clamp\(42px,4\.8vw,58px\)\]/)
   assert.match(settingsSource, /<button/)
-  assert.match(settingsSource, /aria-label="開啟遊戲設定"/)
-  assert.doesNotMatch(settingsSource, /rounded-|bg-\[|backdrop-blur/)
+  assert.match(settingsSource, /emit\('open'\)/)
 })

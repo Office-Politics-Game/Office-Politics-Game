@@ -1,14 +1,19 @@
 <script setup>
-import { ref } from 'vue';
-import { DoorOpen } from '@lucide/vue';
-import joinRoomBackground from '@/assets/images/waiting-room.png';
+import { ref } from "vue";
+import { DoorOpen } from "@lucide/vue";
+import joinRoomBackground from "@/assets/images/waiting-room.webp";
 
-const roomId = ref("")
+const roomId = ref("");
 </script>
 
 <template>
-  <div class="lobby-modal-backdrop absolute inset-0 z-[8] grid place-items-center" aria-label="加入房間彈窗">
-    <article class="lobby-modal-paper join-room-panel relative overflow-visible">
+  <div
+    class="lobby-modal-backdrop absolute inset-0 z-[8] grid place-items-center"
+    aria-label="加入房間彈窗"
+  >
+    <article
+      class="lobby-modal-paper join-room-panel relative overflow-visible"
+    >
       <img
         class="modal-paper-image pointer-events-none absolute inset-0 h-full w-full select-none object-contain"
         :src="joinRoomBackground"
@@ -18,9 +23,7 @@ const roomId = ref("")
       <header class="text-center">
         <div class="join-room-title-row flex items-center justify-center">
           <span class="join-room-title-rule block h-px min-w-7 flex-1"></span>
-          <h2 class="join-room-title leading-none tracking-normal">
-            加入房間
-          </h2>
+          <h2 class="join-room-title leading-none tracking-normal">加入房間</h2>
           <span class="join-room-title-rule block h-px min-w-7 flex-1"></span>
         </div>
       </header>
@@ -31,11 +34,11 @@ const roomId = ref("")
         </label>
         <div class="join-room-input grid grid-cols-1 items-center">
           <input
-                id="roomId"
-                v-model="roomId"
-                class="join-room-real-input min-w-0 w-full border-0 bg-transparent outline-0"
-                type="text"
-                placeholder="ABCD12"
+            id="roomId"
+            v-model="roomId"
+            class="join-room-real-input min-w-0 w-full border-0 bg-transparent outline-0"
+            type="text"
+            placeholder="ABCD12"
           />
         </div>
       </section>
@@ -59,14 +62,25 @@ const roomId = ref("")
 
 <style scoped>
 .lobby-modal-backdrop {
-  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.22), rgba(0, 19, 50, 0.38) 70%);
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.22),
+    rgba(0, 19, 50, 0.38) 70%
+  );
   padding: 8px;
 }
 
 .lobby-modal-paper {
   width: min(55vw, calc((100svh - 16px) * 1361 / 801), 900px);
   color: var(--brand-active, #465563);
-  font-family: var(--font-sans, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
+  font-family: var(
+    --font-sans,
+    "Noto Sans TC",
+    "PingFang TC",
+    "Microsoft JhengHei",
+    Arial,
+    sans-serif
+  );
 }
 
 .join-room-panel {
@@ -129,10 +143,19 @@ const roomId = ref("")
   border-radius: var(--radius-md, 0);
   background: rgba(255, 255, 255, 0.54);
   color: var(--brand-active, #465563);
-  font-family: var(--font-sans, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
+  font-family: var(
+    --font-sans,
+    "Noto Sans TC",
+    "PingFang TC",
+    "Microsoft JhengHei",
+    Arial,
+    sans-serif
+  );
   font-weight: 500;
   letter-spacing: 0.08em;
-  box-shadow: 0 10px 20px rgba(0, 19, 50, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 10px 20px rgba(0, 19, 50, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
   transition:
     border-color 180ms ease,
     background-color 180ms ease,
@@ -148,7 +171,14 @@ const roomId = ref("")
 .join-room-real-input {
   color: var(--brand-active, #465563);
   padding: 0 clamp(10px, 1.2vw, 14px);
-  font-family: var(--font-sans, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
+  font-family: var(
+    --font-sans,
+    "Noto Sans TC",
+    "PingFang TC",
+    "Microsoft JhengHei",
+    Arial,
+    sans-serif
+  );
   font-size: clamp(15px, 1.7vw, 22px);
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -174,7 +204,14 @@ const roomId = ref("")
   border-radius: var(--radius-md, 0);
   background: var(--surface-glass, rgba(255, 255, 255, 0.3));
   color: var(--brand-active, #465563);
-  font-family: var(--font-sans, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
+  font-family: var(
+    --font-sans,
+    "Noto Sans TC",
+    "PingFang TC",
+    "Microsoft JhengHei",
+    Arial,
+    sans-serif
+  );
   font-size: clamp(13px, 1.2vw, 15px);
   font-weight: 700;
   line-height: 1;
