@@ -1,5 +1,7 @@
+import { checkRoundEnd } from "./winnerService.js"
+
 function findPlayerIndex(state, playerId){
-    return state.players,findIndex((player)=>{
+    return state.players.findIndex((player)=>{
         return player.playerId === Number(playerId)
     })
 }
@@ -17,7 +19,7 @@ function findNextPlayer(state, currentIndex){
     return null
 }
 
-function endTurn(state, player){
+function endTurn(state, playerId){
     if (checkRoundEnd(state)){
         return state
     }

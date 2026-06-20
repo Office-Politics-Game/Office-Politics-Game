@@ -1,4 +1,4 @@
-const targetRequiredCardId = [1, 2, 3, 5, 6]
+const targetRequiredCardIds = [1, 2, 3, 5, 6]
 const advisorCardId = 7
 const hrCardId = 6
 const ceoCardId = 8
@@ -59,7 +59,7 @@ function checkCard(state, playerId, cardId){
 
 function checkTarget(state, playerId, cardId, targetPlayerId){
     const card = checkCard(state ,playerId, cardId)
-    const needsTarget = targetRequiredCardId.includes(Number(card.id))
+    const needsTarget = targetRequiredCardIds.includes(Number(card.id))
 
     if (!needsTarget){
         return null
