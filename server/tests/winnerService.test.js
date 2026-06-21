@@ -1,7 +1,4 @@
-import {
-  checkRoundEnd,
-  checkWinner,
-} from "../src/services/winnerService.js"
+import { checkRoundEnd, checkWinner } from "../src/services/winnerService.js"
 
 //假資料
 function createState() {
@@ -50,7 +47,7 @@ describe("贏家判定邏輯", ()=>{
     test("還有多名玩家存活，且牌庫未空時，當輪遊戲繼續", ()=>{
         const state = createState()
 
-        expect(checkRoundEnd(state).toBe(false))
+        expect(checkRoundEnd(state)).toBe(false)
     })
 
     test("還未滿足遊戲勝利條件時，不回傳贏家", ()=>{

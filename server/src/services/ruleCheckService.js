@@ -1,7 +1,7 @@
 const targetRequiredCardIds = [1, 2, 3, 5, 6]
 const advisorCardId = 7
+const pmCardId = 5
 const hrCardId = 6
-const ceoCardId = 8
 
 function createRuleError(message, statusCode = 400){
     const error = new Error(message)
@@ -103,20 +103,20 @@ function checkAdvisorRule(state, playerId, cardId){
     const hasAdvisor = player.hand.some((card)=>{
         return card.id === advisorCardId
     })
-    const hasHrOrCeo = player.hand.some((card)=>{
-        return card.id === hrCardId || card.id === ceoCardId
+    const hasPmOrHr = player.hand.some((card)=>{
+        return card.id === pmCardId || card.id === hrCardId
     })
 
-    if (hasAdvisor && hasHrOrCeo && Number(cardId) !== advisorCardId){
-        throw createRuleError("同時持有資深顧問與人資主管或執行長時，必須先打出資深顧問")
+    if (hasAdvisor && hasPmOrHr && Number(cardId) !== advisorCardId){
+        throw createRuleError("同時持有資深顧問與人資主管或專案經理時，必須先打出資深顧問")
     }
 }
 
-export {
-  checkTurn,
-  checkPlayer,
-  checkCard,
-  checkTarget,
-  checkProtected,
-  checkAdvisorRule,
+export { 
+    checkTurn, 
+    checkPlayer, 
+    checkCard, 
+    checkTarget, 
+    checkProtected, 
+    checkAdvisorRule 
 }
