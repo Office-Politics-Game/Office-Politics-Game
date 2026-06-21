@@ -104,10 +104,35 @@ async function handleStartGame(req, res) {
   }
 }
 
+async function handleDrawCard(req, res) {
+  try {
+    const { roomCode } = req.params
+    const { playerId } = req.body
+
+    if (!playerId) {
+      return res.status(400).json({ message: "缺少玩家ID" })
+    }
+
+    return res.status(200).json({
+      message: "收到抽牌請求",
+      data: {
+        roomCode,
+        playerId,
+      },
+    })
+  }catch (error){
+    return res.status(500).json({
+      message: "抽牌失敗",
+      error: error.message,
+    })
+  }
+}
+
 export {
   handleCreateRoom,
   handleJoinRoom,
   handleUpdateReady,
   handleGetRoomState,
   handleStartGame,
+  handleDrawCard,
 };
