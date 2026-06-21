@@ -13,6 +13,7 @@ defineProps({
 
 const drawCardElement = ref(null)
 const cardFlipper = ref(null)
+const revealFront = ref(true)
 let timeline
 
 function waitForTimeline(buildTimeline) {
@@ -22,7 +23,7 @@ function waitForTimeline(buildTimeline) {
   })
 }
 
-function playReducedMotion({ targetRect, onLanded }) {
+function playReducedMotion({ targetRect, onLanded, revealFront }) {
   return waitForTimeline((resolve) => {
     const nextTimeline = gsap.timeline({
       onComplete: resolve,
@@ -45,11 +46,16 @@ function playReducedMotion({ targetRect, onLanded }) {
         duration: 0.18,
         ease: 'power1.out',
       })
-      .to(cardFlipper.value, {
+
+    if (revealFront) {
+      nextTimeline.to(cardFlipper.value, {
         rotationY: 180,
         duration: 0.18,
         ease: 'power1.inOut',
       })
+    }
+
+    nextTimeline
       .call(onLanded)
       .to(drawCardElement.value, { autoAlpha: 0, duration: 0.12 }, '+=0.18')
 
@@ -57,7 +63,7 @@ function playReducedMotion({ targetRect, onLanded }) {
   })
 }
 
-function playFullMotion({ startRect, targetRect, onLanded }) {
+function playFullMotion({ startRect, targetRect, onLanded, revealFront }) {
   return waitForTimeline((resolve) => {
     const startScale = startRect.width / targetRect.width
     const startX = startRect.left + (startRect.width - targetRect.width) / 2
@@ -112,11 +118,16 @@ function playFullMotion({ startRect, targetRect, onLanded }) {
         duration: 0.45,
         ease: 'back.out(1.35)',
       })
-      .to(cardFlipper.value, {
+
+    if (revealFront) {
+      nextTimeline.to(cardFlipper.value, {
         rotationY: 180,
         duration: 0.42,
         ease: 'power2.inOut',
       })
+    }
+
+    nextTimeline
       .call(onLanded)
       .to(drawCardElement.value, { autoAlpha: 0, duration: 0.12 })
 
@@ -129,11 +140,31 @@ function play(options) {
     return Promise.resolve()
   }
 
+  const drawOptions = {
+    ...options,
+    revealFront: options.revealFront ?? true,
+  }
+
+  revealFront.value = drawOptions.revealFront
   const reduceMotion = window.matchMedia(
     '(prefers-reduced-motion: reduce)',
   ).matches
 
-  return reduceMotion ? playReducedMotion(options) : playFullMotion(options)
+  return reduceMotion ? playReducedMotion(drawOptions) : playFullMotion(drawOptions)
+}
+
+function selfDraw(options) {
+  return play({
+    ...options,
+    revealFront: true,
+  })
+}
+
+function othersDraw(options) {
+  return play({
+    ...options,
+    revealFront: false,
+  })
 }
 
 onUnmounted(() => {
@@ -141,6 +172,8 @@ onUnmounted(() => {
 })
 
 defineExpose({
+  selfDraw,
+  othersDraw,
   play,
 })
 </script>
@@ -159,6 +192,7 @@ defineExpose({
         draggable="false"
       />
       <div
+        v-show="revealFront"
         class="card-draw__face card-draw__face--front absolute inset-0 size-full"
       >
         <GameCard
