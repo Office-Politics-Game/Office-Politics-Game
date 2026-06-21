@@ -1,6 +1,31 @@
 import pool from "../db/index.js"
 import { runCardEffect } from "../services/cardEffectService.js"
 import { addLog } from "../services/actionLogService.js"
+import { discardCard } from "../services/discardService.js"
+
+function getNextTurnPlayerId(players, currentPlayerId) {
+    const activePlayers = players
+        .filter((player) => {
+            return !player.isEliminated
+        })
+        .sort((a, b) => {
+            return a.seatOrder - b.seatOrder
+        })
+
+    if (activePlayers.length === 0) {
+        return null
+    }
+
+    const currentIndex = activePlayers.findIndex((player) => {
+        return player.playerId === currentPlayerId
+    })
+
+    const nextIndex = currentIndex === -1
+        ? 0
+        : (currentIndex + 1) % activePlayers.length
+
+    return activePlayers[nextIndex].playerId
+}
 
 async function handlePlayCard(req, res){
     try {
@@ -48,6 +73,10 @@ async function handlePlayCard(req, res){
             return res.status(403).json({ message: "此玩家不在該局遊戲中" })
         }
 
+        const currentPlayer = players.find((player) => {
+            return player.playerId === Number(playerId)
+        })
+
         const effectResult = runCardEffect({
             state,
             card,
@@ -55,6 +84,21 @@ async function handlePlayCard(req, res){
             targetPlayerId: targetPlayerId ? Number(targetPlayerId) : undefined,
             guessedCardName,
         })
+
+        const discardedCard = discardCard(
+            currentPlayer,
+            card.id,
+            state.discardPile
+        )
+
+        if (!discardedCard) {
+            return res.status(400).json({ message: "玩家沒有此手牌" })
+        }
+
+        state.currentTurnPlayerId = getNextTurnPlayerId(
+            players,
+            Number(playerId)
+        )
 
         await pool.query(
             `UPDATE game_sessions
@@ -73,12 +117,15 @@ async function handlePlayCard(req, res){
                 targetPlayerId,
                 guessedCardName,
                 result: effectResult,
+                discardedCard,
+                nextTurnPlayerId: state.currentTurnPlayerId,
             })
         )
 
         return res.status(200).json({
             message: "卡牌效果已執行",
             result: effectResult,
+            discardedCard,
             actionLog,
             state,
         })
