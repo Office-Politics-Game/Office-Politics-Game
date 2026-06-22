@@ -2,10 +2,12 @@ import { createRouter, createWebHistory } from "vue-router";
 import EntryPage from "../views/EntryPage.vue";
 import LoginPage from "../components/login/LoginPage.vue";
 import Lobby from "../views/Lobby.vue";
+import LobbyMenu from "@/components/menu/LobbyMenu.vue";
 import GameView from "../views/GameView.vue";
 import FriendView from "@/views/FriendView.vue";
 import Result from "@/views/Result.vue";
-import GameRoomView from "@/views/GameRoomView.vue";
+import LoadingView from "@/views/LoadingView.vue";
+import GameMenuPanel from "@/components/gameRoom/GameMenuPanel.vue";
 import MatchingModal from "@/components/gameRoom/MatchingModal.vue";
 import JoinRoomModal from "@/components/gameRoom/JoinRoomModal.vue";
 import CustomRoomView from "@/views/CustomRoomView.vue";
@@ -29,6 +31,18 @@ const routes = [
     path: "/lobby",
     name: "Lobby",
     component: Lobby,
+    children: [
+      {
+        path: "",
+        name: "LobbyHome",
+        component: LobbyMenu,
+      },
+      {
+        path: "game-menu",
+        name: "LobbyGameMenu",
+        component: GameMenuPanel,
+      },
+    ],
   },
   {
     path: "/result",
@@ -42,6 +56,11 @@ const routes = [
     component: GameView,
   },
   {
+    path: "/loading",
+    name: "Loading",
+    component: LoadingView,
+  },
+  {
     path: "/friend",
     name: "Friend",
     component: FriendView,
@@ -49,7 +68,7 @@ const routes = [
   {
     path: "/game-menu",
     name: "GameMenu",
-    component: GameRoomView,
+    redirect: "/lobby/game-menu",
   },
   {
     path: "/matching",

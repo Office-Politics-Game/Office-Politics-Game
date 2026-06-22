@@ -41,6 +41,8 @@ const cardAssets = {
 }
 
 const gameState = reactive(createMockGameState())
+const currentPlayerId = computed(() => gameState.currentPlayer.id)
+const drawPlayerId = computed(() => currentPlayerId.value)
 const deckCount = computed(() => gameState.deck.length)
 const handCards = computed(() =>
   gameState.currentPlayer.hand.map(resolveCardAssets),
@@ -71,6 +73,7 @@ const players = [
     name: '摸魚大師',
     avatarUrl: playerTwoUrl,
     roundWins: 3,
+    level: 12,
     position: 'top',
     isCurrentPlayer: false,
   },
@@ -79,6 +82,7 @@ const players = [
     name: '小菜雞',
     avatarUrl: playerThreeUrl,
     roundWins: 0,
+    level: 12,
     position: 'left',
     isCurrentPlayer: false,
   },
@@ -87,6 +91,7 @@ const players = [
     name: '豬隊666',
     avatarUrl: playerFourUrl,
     roundWins: 1,
+    level: 12,
     position: 'right',
     isCurrentPlayer: false,
   },
@@ -95,6 +100,7 @@ const players = [
     name: '薪水小偷',
     avatarUrl: playerOneUrl,
     roundWins: 2,
+    level: 12,
     position: 'bottom',
     isCurrentPlayer: true,
   },
@@ -123,6 +129,8 @@ function handleDrawComplete(card) {
     :players="players"
     :hand-cards="handCards"
     :draw-card="drawCard"
+    :draw-player-id="drawPlayerId"
+    :current-player-id="currentPlayerId"
     @draw-complete="handleDrawComplete"
     @return-lobby="handleReturnLobby"
     @restart-game="handleRestartGame"

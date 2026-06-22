@@ -1,6 +1,23 @@
 <script setup>
-import { LogOut, X } from '@lucide/vue';
-import matchingBackground from '@/assets/images/modal-matching-screen.webp';
+import { onBeforeUnmount, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { LogOut, X } from "@lucide/vue";
+import matchingBackground from "@/assets/images/modal-matching-screen.webp";
+
+const router = useRouter();
+let matchingTimer = null;
+
+onMounted(() => {
+  matchingTimer = window.setTimeout(() => {
+    router.replace("/game");
+  }, 3000);
+});
+
+onBeforeUnmount(() => {
+  if (matchingTimer) {
+    window.clearTimeout(matchingTimer);
+  }
+});
 </script>
 
 <template>
@@ -8,32 +25,37 @@ import matchingBackground from '@/assets/images/modal-matching-screen.webp';
     class="matching-modal-backdrop absolute inset-0 z-[8] grid place-items-center overflow-hidden"
     aria-label="配對中彈窗"
   >
-    <article class="matching-panel relative overflow-visible" aria-live="polite">
+    <article class="matching-panel grid place-items-center overflow-visible" aria-live="polite">
       <img
-        class="matching-background pointer-events-none absolute inset-0 h-full w-full select-none object-contain"
+        class="matching-background pointer-events-none col-start-1 row-start-1 h-full w-full self-center justify-self-center select-none object-contain"
         :src="matchingBackground"
         alt=""
         aria-hidden="true"
       />
-      <div class="matching-screen-content absolute left-1/2 z-[1] grid text-center">
-        <section class="matching-loading-group flex min-h-0 flex-col items-center justify-center" aria-label="配對進度">
-          <h2 class="matching-title">LOADING...</h2>
+      <div
+        class="matching-screen-content col-start-1 row-start-1 z-[1] grid self-start justify-self-center text-center"
+      >
+        <section
+          class="matching-loading-group flex flex-col items-center justify-center"
+          aria-label="配對進度"
+        >
+          <h2 class="matching-title text-[var(--text-md)]">LOADING...</h2>
           <div class="matching-progress" aria-hidden="true"></div>
         </section>
         <footer class="matching-actions grid grid-cols-2">
           <button
-            class="matching-action-button matching-action-button-blue relative flex cursor-pointer items-center justify-center"
+            class="matching-action-button matching-action-button-blue relative flex cursor-pointer items-center justify-center "
             type="button"
           >
             <LogOut class="matching-action-icon" :stroke-width="2.5" />
-            <span>返回大廳</span>
+            <span class="text-xs">返回大廳</span>
           </button>
           <button
             class="matching-action-button matching-action-button-red relative flex cursor-pointer items-center justify-center"
             type="button"
           >
             <X class="matching-action-icon" :stroke-width="3.2" />
-            <span>取消遊戲</span>
+            <span class="text-xs">取消遊戲</span>
           </button>
         </footer>
       </div>
@@ -43,23 +65,24 @@ import matchingBackground from '@/assets/images/modal-matching-screen.webp';
 
 <style scoped>
 .matching-modal-backdrop {
-  background: radial-gradient(circle at center, rgba(0, 19, 50, 0.16), rgba(0, 19, 50, 0.62) 72%);
-  padding: 8px;
+  background: radial-gradient(
+    circle at center,
+    rgba(0, 19, 50, 0.16),
+    rgba(0, 19, 50, 0.62) 72%
+  );
 }
 
 .matching-panel {
   width: min(100vw, calc(100svh * 1536 / 1024), 1536px);
   aspect-ratio: 1536 / 1024;
-  font-family: var(--font-sans, Inter, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
   color: #f3f8ff;
 }
 
 .matching-screen-content {
-  top: 17%;
   width: 58%;
   height: 61%;
-  transform: translateX(-50%);
-  grid-template-rows: 42% 26% 32%;
+  margin-top: 21%;
+  grid-template-rows: 45% 17% 38%;
   align-items: center;
 }
 
@@ -71,7 +94,6 @@ import matchingBackground from '@/assets/images/modal-matching-screen.webp';
 .matching-title {
   margin: 0;
   color: #eaf4ff;
-  font-size: clamp(var(--text-md, 16px), 1.4vw, 26px);
   font-weight: 800;
   letter-spacing: 0.16em;
   line-height: 1;
@@ -102,7 +124,13 @@ import matchingBackground from '@/assets/images/modal-matching-screen.webp';
   bottom: 0;
   left: -22%;
   width: 22%;
-  background: linear-gradient(90deg, transparent, #ffffff 45%, #86b3e0 65%, transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #ffffff 45%,
+    #86b3e0 65%,
+    transparent
+  );
   box-shadow:
     0 0 8px rgba(255, 255, 255, 0.95),
     0 0 18px rgba(0, 70, 244, 0.78);
@@ -125,7 +153,7 @@ import matchingBackground from '@/assets/images/modal-matching-screen.webp';
 .matching-actions {
   width: 68%;
   justify-self: center;
-  align-self: center;
+  align-self: flex-start;
   grid-row: 3;
   gap: clamp(10px, 2vw, 28px);
 }
@@ -143,8 +171,6 @@ import matchingBackground from '@/assets/images/modal-matching-screen.webp';
     linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 48%),
     var(--button-bg);
   color: #f3f8ff;
-  font-family: var(--font-sans, Inter, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
-  font-size: clamp(11px, 0.9vw, 14px);
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.08em;
@@ -240,67 +266,14 @@ import matchingBackground from '@/assets/images/modal-matching-screen.webp';
 }
 
 @media (min-width: 768px) {
-  .matching-modal-backdrop {
-    padding: 16px;
-  }
-
   .matching-panel {
     width: min(100vw, calc(100svh * 1536 / 1024), 1536px);
   }
 }
 
 @media (min-width: 1024px) {
-  .matching-modal-backdrop {
-    padding: 24px;
-  }
-
   .matching-panel {
     width: min(100vw, calc(100svh * 1536 / 1024), 1536px);
-  }
-
-  .matching-title {
-    font-size: clamp(var(--text-md, 18px), 1.4vw, 26px);
-  }
-}
-
-@media (orientation: landscape) and (max-height: 500px) {
-  .matching-modal-backdrop {
-    padding: 4px;
-  }
-
-  .matching-panel {
-    width: min(calc(100vw - 8px), calc((100svh - 8px) * 1536 / 1024), 960px);
-  }
-
-  .matching-screen-content {
-    grid-template-rows: 41% 27% 32%;
-  }
-
-  .matching-title {
-    font-size: clamp(12px, 3vh, 17px);
-    letter-spacing: 0.12em;
-  }
-
-  .matching-progress {
-    /* width: 62%; */
-    height: clamp(3px, 1.2vh, 5px);
-    margin-top: clamp(5px, 1.5vh, 9px);
-  }
-
-  .matching-actions {
-    width: 64%;
-    gap: clamp(6px, 2vw, 20px);
-  }
-
-  .matching-action-button {
-    min-height: clamp(20px, 5vh, 28px);
-    gap: 4px;
-    font-size: clamp(9px, 2.35vh, 11px);
-  }
-
-  .matching-action-icon {
-    width: clamp(10px, 3vh, 13px);
-    height: clamp(10px, 3vh, 13px);
   }
 }
 </style>
