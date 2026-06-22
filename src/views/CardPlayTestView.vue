@@ -1140,14 +1140,16 @@ onUnmounted(() => {
 .cardplay-test__pending-panel {
   position: fixed;
   left: 50%;
-  top: 30%;
+  top: 50%;
   transform: translate(-50%, -50%);
   z-index: 60;
   display: grid;
   gap: 12px;
   width: min(340px, calc(100vw - 36px));
+  max-height: min(420px, calc(100dvh - 224px));
+  overflow: auto;
   border: 1px solid rgba(250, 204, 21, 0.58);
-  border-radius: 8px;
+  border-radius: var(--radius-md, 0);
   padding: 16px;
   background:
     linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(7, 17, 29, 0.88)),
@@ -1198,7 +1200,7 @@ onUnmounted(() => {
 .cardplay-test__pending-actions button {
   min-height: 38px;
   border: 1px solid rgba(148, 163, 184, 0.48);
-  border-radius: 8px;
+  border-radius: var(--radius-md, 0);
   padding: 0 10px;
   cursor: pointer;
   background: rgba(15, 23, 42, 0.72);

@@ -58,7 +58,7 @@ const availableGuessOptions = computed(() =>
 .card-guess-selector__option {
   min-height: 38px;
   border: 1px solid rgba(148, 163, 184, 0.5);
-  border-radius: 8px;
+  border-radius: var(--radius-md, 0);
   padding: 0 10px;
   cursor: pointer;
   background: rgba(15, 23, 42, 0.76);

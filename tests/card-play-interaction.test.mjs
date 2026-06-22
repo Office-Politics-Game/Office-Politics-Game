@@ -60,5 +60,6 @@ test('game stage coordinates pending play target and guess confirmation', async 
   assert.match(source, /<CardGuessSelector/)
   assert.match(source, /@target-select="selectTargetPlayer"/)
   assert.match(source, /:disabled="!canConfirmPendingPlay"/)
-  assert.match(source, /\.play-confirm-panel \{[\s\S]*left: 50%[\s\S]*top: 30%[\s\S]*transform: translate\(-50%, -50%\)/)
+  assert.match(source, /\.play-confirm-panel \{[\s\S]*left: 50%[\s\S]*top: 50%[\s\S]*transform: translate\(-50%, -50%\)/)
+  assert.match(source, /\.play-confirm-panel \{[\s\S]*max-height: min\(420px, calc\(100dvh - 224px\)\)[\s\S]*overflow: auto/)
 })
