@@ -2,11 +2,11 @@
   <section class="guest-modal" aria-labelledby="guest-login-title">
     <button
       type="button"
-      class="guest-close btn-dark tap-pop"
+      class="btn-dark tap-pop absolute right-3 top-3 grid h-9 w-9 place-items-center"
       aria-label="關閉訪客登入彈窗"
       @click="emit('close')"
     >
-      <X class="h-5 w-5" aria-hidden="true" />
+      <span aria-hidden="true">×</span>
     </button>
 
     <h2
@@ -115,7 +115,7 @@
 
 <script setup>
 import { computed, ref } from "vue";
-import { ChevronLeft, ChevronRight, Dice5, X } from "lucide-vue-next";
+import { ChevronLeft, ChevronRight, Dice5 } from "lucide-vue-next";
 import { guestAvatars, guestNicknames } from "@/constants/guestOptions";
 import { createGuestPlayer } from "@/services/playerService";
 
@@ -175,10 +175,6 @@ async function submitGuest() {
 
 .guest-modal {
   @apply relative w-full max-w-[420px] rounded-[var(--radius-lg)] border border-[rgba(134,179,224,0.38)] bg-[rgba(255,255,255,0.92)] px-5 py-6 text-[var(--brand-active)] shadow-[var(--shadow)] animate-[popIn_0.42s_cubic-bezier(0.18,1.35,0.25,1)_both] [font-family:var(--font-sans)] lg:px-8 lg:py-8;
-}
-
-.guest-close {
-  @apply absolute right-4 top-4 grid h-6 w-6 place-items-center lg:right-5 lg:top-5;
 }
 
 .avatar-nav {
