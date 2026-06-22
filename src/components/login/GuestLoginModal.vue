@@ -2,19 +2,34 @@
   <section class="guest-modal" aria-labelledby="guest-login-title">
     <button
       type="button"
-      class="guest-close tap-pop"
+      class="guest-close btn-dark tap-pop"
       aria-label="關閉訪客登入彈窗"
       @click="emit('close')"
     >
-      <X class="h-7 w-7" aria-hidden="true" />
+      <X class="h-5 w-5" aria-hidden="true" />
     </button>
 
-    <h2 id="guest-login-title" class="guest-title">訪客遊玩</h2>
-    <div class="guest-rule" aria-hidden="true"></div>
+    <h2
+      id="guest-login-title"
+      class="m-0 text-center text-xl font-black leading-none tracking-normal text-[var(--brand-navy)]"
+    >
+      訪客遊玩
+    </h2>
+    <div
+      class="my-2 h-px w-full bg-[var(--brand-primary)] lg:my-4"
+      aria-hidden="true"
+    ></div>
 
-    <p class="guest-subtitle">選擇你的職場分身</p>
+    <p
+      class="mb-2 text-center text-[var(--text-md)] font-bold text-[var(--brand-active)]"
+    >
+      選擇你的職場分身
+    </p>
 
-    <div class="avatar-picker" aria-label="選擇訪客頭像">
+    <div
+      class="grid grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-1 lg:grid-cols-[72px_minmax(0,1fr)_72px] lg:gap-2"
+      aria-label="選擇訪客頭像"
+    >
       <button
         type="button"
         class="avatar-nav tap-pop"
@@ -26,7 +41,7 @@
 
       <div class="avatar-frame">
         <img
-          class="avatar-image"
+          class="h-full w-full object-cover"
           :src="selectedAvatar.image"
           :alt="selectedAvatar.name"
         />
@@ -42,10 +57,12 @@
       </button>
     </div>
 
-    <form class="guest-form" @submit.prevent="submitGuest">
-      <label class="guest-field">
-        <span class="guest-label">暱稱</span>
-        <span class="nickname-control">
+    <form class="mt-2 grid gap-3" @submit.prevent="submitGuest">
+      <label class="grid gap-1 lg:gap-2">
+        <span class="text-sm font-bold text-[var(--brand-active)]">暱稱</span>
+        <span
+          class="grid grid-cols-[minmax(0,1fr)_40px] border border-[var(--brand-primary)] bg-[rgba(255,255,255,0.58)]"
+        >
           <input
             v-model.trim="nickname"
             class="nickname-input"
@@ -67,14 +84,18 @@
         </span>
       </label>
 
-      <p v-if="errorMessage" class="error-message" role="alert">
+      <p
+        v-if="errorMessage"
+        class="m-0 text-sm font-bold text-[var(--brand-hover)]"
+        role="alert"
+      >
         {{ errorMessage }}
       </p>
 
-      <div class="guest-actions">
+      <div class="grid grid-cols-2 gap-3 lg:mt-0">
         <button
           type="button"
-          class="guest-button is-secondary tap-pop"
+          class="guest-button is-secondary btn-glass tap-pop"
           :disabled="isSubmitting"
           @click="emit('close')"
         >
@@ -82,7 +103,7 @@
         </button>
         <button
           type="submit"
-          class="guest-button is-primary tap-pop"
+          class="guest-button is-primary btn-dark tap-pop"
           :disabled="isSubmitting"
         >
           {{ isSubmitting ? "建立中..." : "開始遊玩" }}
@@ -153,122 +174,66 @@ async function submitGuest() {
 @reference "tailwindcss";
 
 .guest-modal {
-  @apply relative w-full max-w-[680px] bg-white px-8 py-10 text-[var(--brand-navy)] shadow-[0_24px_80px_rgba(0,19,50,0.32)] sm:px-11 sm:py-12;
-  border: 1px solid rgba(0, 19, 50, 0.28);
-  animation: popIn 0.38s cubic-bezier(0.18, 1.35, 0.25, 1) both;
+  @apply relative w-full max-w-[420px] rounded-[var(--radius-lg)] border border-[rgba(134,179,224,0.38)] bg-[rgba(255,255,255,0.92)] px-5 py-6 text-[var(--brand-active)] shadow-[var(--shadow)] animate-[popIn_0.42s_cubic-bezier(0.18,1.35,0.25,1)_both] [font-family:var(--font-sans)] lg:px-8 lg:py-8;
 }
 
 .guest-close {
-  @apply absolute right-4 top-4 grid h-12 w-12 place-items-center border border-[var(--brand-active)] bg-[var(--brand-navy)] text-white transition-colors duration-200 hover:bg-[var(--brand-hover)] sm:right-5 sm:top-5;
-}
-
-.guest-title {
-  @apply m-0 text-center text-[42px] font-black leading-none tracking-normal text-[var(--brand-navy)] sm:text-[56px];
-}
-
-.guest-rule {
-  @apply my-7 h-px w-full bg-[var(--gray-100)] sm:my-8;
-}
-
-.guest-subtitle {
-  @apply mb-8 mt-0 text-center text-[24px] font-black text-[var(--brand-navy)] sm:text-[30px];
-}
-
-.avatar-picker {
-  @apply grid grid-cols-[52px_minmax(0,1fr)_52px] items-center gap-2 sm:grid-cols-[72px_minmax(0,1fr)_72px] sm:gap-5;
+  @apply absolute right-4 top-4 grid h-6 w-6 place-items-center lg:right-5 lg:top-5;
 }
 
 .avatar-nav {
-  @apply grid h-14 w-14 place-items-center border-0 bg-transparent text-[var(--brand-navy)] transition-colors duration-200 hover:text-[var(--brand-hover)] sm:h-16 sm:w-16;
+  @apply grid h-11 w-11 place-items-center border-0 bg-transparent transition-colors duration-200 lg:h-16 lg:w-16;
+  color: var(--brand-navy);
+}
+
+.avatar-nav:hover {
+  color: var(--brand-hover);
 }
 
 .avatar-frame {
-  @apply mx-auto grid aspect-square w-full max-w-[300px] place-items-center overflow-hidden rounded-full border border-[rgba(70,85,99,0.38)] bg-[linear-gradient(145deg,#f6f8fa,#e8edf2)] sm:max-w-[330px];
-}
-
-.avatar-image {
-  @apply h-full w-full object-cover;
-}
-
-.guest-form {
-  @apply mt-8 grid gap-5 sm:mt-10;
-}
-
-.guest-field {
-  @apply grid gap-3;
-}
-
-.guest-label {
-  @apply text-[22px] font-black text-[var(--brand-navy)] sm:text-[26px];
-}
-
-.nickname-control {
-  @apply grid min-h-[64px] grid-cols-[minmax(0,1fr)_76px] border border-[var(--brand-navy)] bg-white;
+  @apply mx-auto grid aspect-square w-full max-w-[100px] place-items-center overflow-hidden rounded-full border lg:max-w-[200px];
+  background: var(--surface-glass-hover);
+  border-color: var(--brand-primary);
 }
 
 .nickname-input {
-  @apply min-w-0 border-0 bg-transparent px-6 text-[22px] font-black text-[var(--brand-navy)] outline-0 placeholder:text-[var(--gray-300)] disabled:cursor-not-allowed disabled:opacity-60 sm:text-[26px];
+  @apply min-w-0 border-0 bg-transparent px-2 text-[var(--text-md)] font-bold text-[var(--brand-active)] outline-0 transition-[background-color,box-shadow] duration-[180ms] disabled:cursor-not-allowed disabled:opacity-60 lg:px-4;
+}
+
+.nickname-input::placeholder {
+  @apply font-semibold text-[var(--brand-disabled)];
+}
+
+.nickname-input:focus {
+  @apply bg-[var(--surface-glass-hover)] shadow-[0_0_0_4px_var(--brand-focus)];
 }
 
 .dice-button {
-  @apply grid place-items-center border-0 border-l border-[var(--brand-navy)] bg-white text-[var(--brand-navy)] transition-colors duration-200 hover:bg-[var(--brand-navy)] hover:text-white disabled:cursor-not-allowed disabled:opacity-60;
+  @apply grid place-items-center border-0 border-l border-[var(--brand-primary)] bg-transparent text-[var(--brand-active)] transition-[background-color,color] duration-[180ms] disabled:cursor-not-allowed disabled:opacity-60;
 }
 
-.error-message {
-  @apply m-0 text-sm font-bold text-red-600;
-}
-
-.guest-actions {
-  @apply mt-3 grid grid-cols-2 gap-5 sm:mt-5 sm:gap-9;
+.dice-button:hover {
+  @apply bg-[var(--brand-hover)] text-white;
 }
 
 .guest-button {
-  @apply min-h-[66px] border text-[24px] font-black transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60 sm:text-[28px];
+  @apply flex min-h-11 items-center justify-center rounded-[var(--radius-md)] border border-[var(--brand-primary)] px-3 text-[var(--text-sm)] font-extrabold transition-[border-color,background-color,box-shadow,color] duration-[180ms] disabled:cursor-not-allowed disabled:opacity-60 lg:min-h-[46px] lg:px-6;
 }
 
 .guest-button.is-secondary {
-  @apply border-[var(--brand-navy)] bg-white text-[var(--brand-navy)] hover:bg-[var(--gray-100)];
+  @apply bg-[var(--surface-glass)] text-[var(--brand-active)];
 }
 
 .guest-button.is-primary {
-  @apply border-[var(--brand-navy)] bg-[var(--brand-navy)] text-white hover:border-[var(--brand-hover)] hover:bg-[var(--brand-hover)];
+  @apply bg-[var(--brand-active)] text-white shadow-[0_10px_24px_rgba(70,85,99,0.24)];
 }
 
-@media (max-width: 520px) {
-  .guest-modal {
-    @apply px-5 py-8;
-  }
+.guest-button:hover {
+  @apply border-[var(--brand-hover)] bg-[var(--brand-hover)] text-white shadow-[0_10px_24px_rgba(0,70,244,0.24)];
+}
 
-  .guest-title {
-    @apply text-[36px];
-  }
-
-  .guest-subtitle {
-    @apply text-[21px];
-  }
-
-  .avatar-picker {
-    @apply grid-cols-[44px_minmax(0,1fr)_44px];
-  }
-
-  .avatar-nav {
-    @apply h-11 w-11;
-  }
-
-  .nickname-control {
-    @apply grid-cols-[minmax(0,1fr)_58px];
-  }
-
-  .nickname-input {
-    @apply px-4 text-[20px];
-  }
-
-  .guest-actions {
-    @apply gap-3;
-  }
-
-  .guest-button {
-    @apply min-h-[56px] text-[20px];
-  }
+.guest-button:focus-visible,
+.dice-button:focus-visible {
+  @apply outline-0 shadow-[0_0_0_4px_var(--brand-focus)];
 }
 </style>
