@@ -1,4 +1,5 @@
 import pool from "../db/index.js"
+import { startNextRound } from "./roundService.js"
 
 function createServiceError(message, statusCode = 400){
   const error = new Error(message)
@@ -16,6 +17,7 @@ function getPublicState(state, viewerPlayerId){
     deckCount: deck.length,
     discardPile,
     currentTurnPlayerId: state.currentTurnPlayerId,
+    roundWinnerPlayerId: state.roundWinnerPlayerId,
     winnerPlayerId: state.winnerPlayerId,
     players: players.map((player)=>{
       const isSelf = player.playerId === viewerPlayerId
