@@ -21,6 +21,12 @@ function checkRoundEnd(state){
 }
 
 function checkWinner(state){
+    if (state.roundWinnerPlayerId != null){
+        return state.players.find((player)=>{
+            return player.playerId === state.roundWinnerPlayerId
+        })
+    }
+
     if (!checkRoundEnd(state)){
         return null
     }
@@ -34,6 +40,7 @@ function checkWinner(state){
         return null
     }
 
+    state.roundWinnerPlayerId = roundWinner.playerId
     roundWinner.roundWins = (roundWinner.roundWins || 0) +1
 
     if (roundWinner.roundWins >= matchWinCount){
