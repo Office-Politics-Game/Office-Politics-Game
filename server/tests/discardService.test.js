@@ -1,4 +1,4 @@
-import { discardCard } from "./discardService.js";
+import { discardCard } from "../src/services/discardService.js";
 
 describe("discardCard", () => {
   test("出牌", () => {
