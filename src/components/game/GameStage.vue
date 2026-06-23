@@ -36,9 +36,17 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  discardCards: {
+    type: Array,
+    default: () => [],
+  },
   players: {
     type: Array,
     required: true,
+  },
+  playerHandCardCounts: {
+    type: Object,
+    default: () => ({}),
   },
   handCards: {
     type: Array,
@@ -69,6 +77,14 @@ const props = defineProps({
   currentPlayerId: {
     type: String,
     default: null,
+  },
+  currentTurnPlayerId: {
+    type: [Number, String],
+    default: null,
+  },
+  isLoading: {
+    type: Boolean,
+    default: false,
   },
 })
 
@@ -132,6 +148,13 @@ const {
 } = useAudioSettings();
 
 const hasActivePlay = computed(() => Boolean(activeCard.value && originRect.value))
+const isCurrentPlayerTurn = computed(() => {
+  if (!props.currentTurnPlayerId || !resolvedCurrentPlayerId.value) {
+    return true
+  }
+
+  return String(props.currentTurnPlayerId) === String(resolvedCurrentPlayerId.value)
+})
 const pendingTargetMode = computed(() => pendingPlay.value?.card.targetMode ?? 'none')
 const pendingRequiresTarget = computed(() =>
   pendingTargetMode.value === 'opponent' ||
@@ -153,9 +176,13 @@ const selectableTargetPlayerIds = computed(() => {
     })
     .map((player) => player.id)
 })
-const playerHandCardCounts = computed(() =>
+const resolvedPlayerHandCardCounts = computed(() =>
   Object.fromEntries(
     props.players.map((player) => {
+      if (Number.isInteger(props.playerHandCardCounts[player.id])) {
+        return [player.id, props.playerHandCardCounts[player.id]]
+      }
+
       if (player.isCurrentPlayer) {
         return [player.id, handCards.value.length]
       }
@@ -187,6 +214,8 @@ const canConfirmPendingPlay = computed(() => {
   return true
 })
 const isPlayInteractionLocked = computed(() =>
+  props.isLoading ||
+  !isCurrentPlayerTurn.value ||
   Boolean(activeCard.value) ||
   Boolean(pendingPlay.value) ||
   isDrawAnimating.value,
@@ -394,6 +423,7 @@ function confirmPendingPlay() {
   handCards.value = handCards.value.filter((card) => card.id !== playedCard.id)
 
   emit('play-card', {
+    card: playedCard,
     cardId: playedCard.id,
     cardRank: playedCard.rank,
     effectKey: playedCard.effectKey,
@@ -543,8 +573,18 @@ watch(
 watch(
   () => props.discardCard,
   (card) => {
-    if (!activeCard.value && !pendingPlay.value) {
+    if (!activeCard.value && !pendingPlay.value && props.discardCards.length === 0) {
       discardCards.value = [card]
+    }
+  },
+  { immediate: true, deep: true },
+)
+
+watch(
+  () => props.discardCards,
+  (cards) => {
+    if (!activeCard.value && !pendingPlay.value) {
+      discardCards.value = cards.length > 0 ? [...cards] : [props.discardCard]
     }
   },
   { immediate: true, deep: true },
@@ -578,7 +618,7 @@ defineExpose({
       <PlayerSeats
         ref="playerSeats"
         :players="players"
-        :player-hand-card-counts="playerHandCardCounts"
+        :player-hand-card-counts="resolvedPlayerHandCardCounts"
         :is-target-selection-active="Boolean(pendingPlay) && pendingRequiresTarget"
         :selectable-player-ids="selectableTargetPlayerIds"
         :selected-target-player-id="selectedTargetPlayerId"

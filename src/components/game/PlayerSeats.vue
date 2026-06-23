@@ -24,7 +24,9 @@ const props = defineProps({
               typeof player?.level === "number" ||
               typeof player?.level === "string") &&
             positions.includes(player?.position) &&
-            typeof player?.isCurrentPlayer === "boolean",
+            typeof player?.isCurrentPlayer === "boolean" &&
+            (player?.isTurnPlayer === undefined ||
+              typeof player?.isTurnPlayer === "boolean"),
         )
       );
     },
@@ -175,6 +177,7 @@ defineExpose({
         :round-wins="player.roundWins"
         :level="player.level"
         :is-current-player="player.isCurrentPlayer"
+        :is-turn-player="player.isTurnPlayer"
         :is-mirrored="player.position === 'right'"
       />
 

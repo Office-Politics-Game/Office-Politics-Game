@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, ref } from "vue";
+import { storeToRefs } from "pinia";
 import { useRouter } from "vue-router";
 import matchIcon from "@/assets/images/icon-match.png";
 import joinIcon from "@/assets/images/icon-join.png";
@@ -7,38 +8,44 @@ import createIcon from "@/assets/images/icon-create.png";
 import waitingRoomOne from "@/assets/images/waiting-room-1.webp";
 import waitingRoomTwo from "@/assets/images/waiting-room-2.webp";
 import waitingRoomThree from "@/assets/images/waiting-room-3.webp";
+import { usePlayerStore } from "@/stores/playerStore.js";
+import { useRoomStore } from "@/stores/roomStore.js";
 
 const roomActions = [
   {
     title: "開始配對",
-    description: ["快速匹配玩家", "開始對局"],
+    description: ["保留原本展示流程", "目前仍為前端展示"],
     icon: matchIcon,
     paper: waitingRoomOne,
-    alt: "尋找玩家圖示",
+    alt: "Match room",
   },
   {
     title: "加入房間",
-    description: ["輸入房間代號", "加入好友對局"],
+    description: ["輸入房號直接加入", "成功後前往等待房"],
     icon: joinIcon,
     paper: waitingRoomTwo,
-    alt: "文件夾板圖示",
+    alt: "Join room",
   },
   {
     title: "建立房間",
-    description: ["自訂專屬房間", "邀請好友加入"],
+    description: ["建立新房間", "成功後前往等待房"],
     icon: createIcon,
     paper: waitingRoomThree,
-    alt: "辦公大樓圖示",
+    alt: "Create room",
   },
 ];
 
 const router = useRouter();
+const roomStore = useRoomStore();
+const playerStore = usePlayerStore();
+
 const roomId = ref("");
 const activeAction = ref("");
 const matchElapsedSeconds = ref(0);
 const matchTimerId = ref(null);
+const { isLoading, errorMessage } = storeToRefs(roomStore);
 
-const Matching = computed(() => {
+const matching = computed(() => {
   const minutes = Math.floor(matchElapsedSeconds.value / 60)
     .toString()
     .padStart(2, "0");
@@ -64,7 +71,30 @@ function startMatchTimer() {
   }, 1000);
 }
 
-function handleActionClick(action) {
+async function handleCreateRoom() {
+  await roomStore.createRoom({
+    hostPlayerId: playerStore.currentPlayerId,
+  });
+
+  router.push("/custom-room");
+}
+
+async function handleJoinRoom() {
+  const normalizedRoomId = roomId.value.trim().toUpperCase();
+
+  if (!normalizedRoomId) {
+    roomStore.errorMessage = "請先輸入房號。";
+    return;
+  }
+
+  await roomStore.joinRoom(normalizedRoomId, {
+    playerId: playerStore.currentPlayerId,
+  });
+
+  router.push("/custom-room");
+}
+
+async function handleActionClick(action) {
   activeAction.value = action.title;
 
   if (action.title === "開始配對") {
@@ -75,8 +105,7 @@ function handleActionClick(action) {
   stopMatchTimer();
 
   if (action.title === "建立房間") {
-    router.push("/custom-room");
-    return;
+    await handleCreateRoom();
   }
 }
 
@@ -86,7 +115,7 @@ onBeforeUnmount(stopMatchTimer);
 <template>
   <div
     class="waiting-room-menu pointer-events-none absolute inset-0"
-    aria-label="遊戲入口選單"
+    aria-label="Room actions"
   >
     <div
       v-for="action in roomActions"
@@ -110,64 +139,80 @@ onBeforeUnmount(stopMatchTimer);
           class="waiting-room-content pointer-events-none flex h-full w-full flex-col items-center"
         >
           <img
-            class="w-10 opacity-80 object-contain mix-blend-multiply contrast-125 lg:w-24"
+            class="w-10 object-contain opacity-80 mix-blend-multiply contrast-125 lg:w-24"
             :src="action.icon"
             :alt="action.alt"
           />
 
           <span class="waiting-room-copy block w-full">
             <span
-              class="title text-lg text-[var(--brand-active)] block font-black leading-none"
+              class="title block text-lg font-black leading-none text-[var(--brand-active)]"
             >
               {{ action.title }}
             </span>
             <span
-              class="desc text-xs text-[var(--brand-active)] block font-medium mt-2 lg:text-sm"
+              class="desc mt-2 block text-xs font-medium text-[var(--brand-active)] lg:text-sm"
             >
               <span
                 v-for="line in action.description"
                 :key="line"
                 class="block"
-                >{{ line }}</span
               >
+                {{ line }}
+              </span>
             </span>
           </span>
 
-          <span class="waiting-room-rule flex items-center w-[70%]">
-            <span class="waiting-room-line flex-1 mt-1"></span>
+          <span class="waiting-room-rule flex w-[70%] items-center">
+            <span class="waiting-room-line mt-1 flex-1"></span>
           </span>
 
           <span
             v-if="action.title === '開始配對' && activeAction === '開始配對'"
-            class="match-timer-inline text-xs lg:text-sm mt-2"
+            class="match-timer-inline mt-2 text-xs lg:text-sm"
           >
-            配對中 {{ Matching }}
+            配對中 {{ matching }}
           </span>
 
           <span
-            v-if="action.title === '加入房間' && activeAction === '加入房間'"
+            v-if="action.title === '加入房間'"
             class="join-room-inline pointer-events-auto w-[70%]"
             @click.stop
           >
             <input
               id="inlineRoomId"
               v-model="roomId"
-              class="join-room-inline-input !text-[11px] block w-full text-center lg:!text-[14px]"
+              class="join-room-inline-input block w-full !text-[11px] text-center lg:!text-[14px]"
               type="text"
-              placeholder="請輸入房號"
+              placeholder="輸入房號"
               @click.stop
             />
             <button
               class="btn-dark mt-1 block w-full !text-[11px] lg:!text-[14px]"
               type="button"
-              @click.stop
+              :disabled="isLoading"
+              @click.stop="handleJoinRoom"
             >
-              確認
+              {{ isLoading ? "加入中" : "加入" }}
             </button>
+          </span>
+
+          <span
+            v-if="action.title === '建立房間' && isLoading && activeAction === '建立房間'"
+            class="match-timer-inline mt-2 text-xs lg:text-sm"
+          >
+            建立中
           </span>
         </span>
       </button>
     </div>
+
+    <p
+      v-if="errorMessage"
+      class="pointer-events-auto absolute bottom-5 left-1/2 z-20 -translate-x-1/2 rounded bg-white/85 px-4 py-2 text-sm font-bold text-red-700"
+    >
+      {{ errorMessage }}
+    </p>
   </div>
 </template>
 
@@ -242,11 +287,13 @@ onBeforeUnmount(stopMatchTimer);
   outline: 0;
 }
 
-.waiting-room-line {
-  height: 2px;
+.join-room-inline-input:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 
 .waiting-room-line {
+  height: 2px;
   background-color: var(--room-line-color);
   transition:
     background-color 180ms ease,
