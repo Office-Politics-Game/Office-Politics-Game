@@ -28,7 +28,7 @@ function createState() {
   }
 }
 
-describe("回合輪替邏輯", ()=>{
+describe("回合輪替玩家切換邏輯", ()=>{
     test("回合結束會輪到下一位未出局玩家", ()=>{
         const state =  createState()
         endTurn(state, 1)

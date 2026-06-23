@@ -30,7 +30,7 @@ function createState() {
   }
 }
 
-describe("出牌規則及回合判斷", ()=>{
+describe("出牌規則判斷", ()=>{
     test("只有目前輪次的玩家可以行動", ()=>{
         const state = createState()
 
