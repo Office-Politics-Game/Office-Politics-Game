@@ -6,7 +6,7 @@ import {
     useVeteran,
     usePm,
     useHr,
-    checkCeoRule,
+    useCeo,
     checkGuess,
 } from "../src/services/cardEffectService.js"
 
@@ -130,10 +130,10 @@ describe("useHr", () => {
     })
 })
 
-describe("checkCeoRule", () => {
+describe("useCeo", () => {
     test("被迫棄掉 CEO 時淘汰玩家", () => {
         const state = createState()
-        const player = checkCeoRule(state, 1, { id: 8, name: "CEO" })
+        const player = useCeo(state, 1, { id: 8, name: "CEO" })
 
         expect(player.isEliminated).toBe(true)
     })

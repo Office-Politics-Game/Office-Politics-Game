@@ -116,7 +116,7 @@ function usePm(state, targetPlayerId) {
         state.deck
     )
     if (result) {
-        checkCeoRule(state, targetPlayerId, result.discardedCard)
+        useCeo(state, targetPlayerId, result.discardedCard)
     }
     return result
 }
@@ -132,7 +132,7 @@ function useHr(state, playerId, targetPlayerId) {
 }
 
 // 執行長：被迫棄牌時直接淘汰
-function checkCeoRule(state, playerId, discardedCard) {
+function useCeo(state, playerId, discardedCard) {
     if (discardedCard && discardedCard.name === "CEO") {
         return killPlayer(state, playerId)
     }
@@ -152,6 +152,6 @@ export {
     useVeteran,
     usePm,
     useHr,
-    checkCeoRule,
+    useCeo,
     checkGuess
 }
