@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onUnmounted, reactive, ref } from 'vue'
 import cardBackUrl from '@/assets/images/card-bg-back.webp'
 import ceoBackgroundUrl from '@/assets/images/card-bg-ceo.webp'
 import ceoFrameUrl from '@/assets/images/card-frame-ceo.webp'
@@ -17,9 +17,11 @@ import playerFourUrl from '@/assets/images/player-4.png'
 import CardDrawAnimation from '@/components/game/CardDrawAnimation.vue'
 import CardPlayAnimation from '@/components/game/CardPlayAnimation.vue'
 import CardShuffleAnimation from '@/components/game/CardShuffleAnimation.vue'
+import CardSwapAnimation from '@/components/game/CardSwapAnimation.vue'
 import GameCard from '@/components/game/GameCard.vue'
 import PlayerSeats from '@/components/game/PlayerSeats.vue'
 import TableCardPiles from '@/components/game/TableCardPiles.vue'
+import { createMockGameState } from '@/mocks/mockGameState.js'
 
 const INITIAL_DECK_COUNT = 28
 
@@ -58,6 +60,21 @@ const cards = [
   },
 ]
 
+const mockCardAssets = {
+  ceo: {
+    type: 'Boss',
+    color: '#facc15',
+    backgroundUrl: ceoBackgroundUrl,
+    frameUrl: ceoFrameUrl,
+  },
+  advisor: {
+    type: 'Tactic',
+    color: '#38bdf8',
+    backgroundUrl: advisorBackgroundUrl,
+    frameUrl: advisorFrameUrl,
+  },
+}
+
 const players = [
   {
     id: 'player-top',
@@ -93,26 +110,17 @@ const players = [
   },
 ]
 
-const opponentSources = [
-  {
-    playerId: 'player-top',
-    position: 'top',
-    label: '上方玩家出牌',
-    card: cards[0],
-  },
-  {
-    playerId: 'player-left',
-    position: 'left',
-    label: '左方玩家出牌',
-    card: cards[1],
-  },
-  {
-    playerId: 'player-right',
-    position: 'right',
-    label: '右方玩家出牌',
-    card: cards[2],
-  },
-]
+const opponentActionLabels = {
+  top: '上方玩家出牌',
+  left: '左方玩家出牌',
+  right: '右方玩家出牌',
+}
+
+const swapActionLabels = {
+  top: '與上方玩家交換',
+  left: '與左方玩家交換',
+  right: '與右方玩家交換',
+}
 
 const initialHandCards = [
   { ...cards[3], id: 'hand-hr-talk' },
@@ -128,19 +136,60 @@ const drawDeck = [
   { ...cards[3], id: 'draw-hr-talk' },
 ]
 
+const gameState = reactive(createMockGameState())
+
+function resolveMockCardAssets(card) {
+  if (!card) {
+    return null
+  }
+
+  const background = mockCardAssets[card.backgroundUrlKey] ?? mockCardAssets.ceo
+  const frame = mockCardAssets[card.frameUrlKey] ?? background
+
+  return {
+    ...card,
+    type: background.type,
+    color: background.color,
+    backgroundUrl: background.backgroundUrl,
+    frameUrl: frame.frameUrl,
+  }
+}
+
+function createSwapDemoCard(card) {
+  const resolvedCard = resolveMockCardAssets(card)
+
+  return resolvedCard
+    ? {
+        ...resolvedCard,
+        isSwapDemoCard: true,
+      }
+    : null
+}
+
+function createInitialPlayerHandCards() {
+  const swapDemoCard = createSwapDemoCard(gameState.currentPlayer.hand[0])
+
+  return [
+    ...(swapDemoCard ? [swapDemoCard] : []),
+    ...initialHandCards,
+  ]
+}
+
 const sourceElements = ref({})
-const playerHandCards = ref([...initialHandCards])
+const playerHandCards = ref(createInitialPlayerHandCards())
 const tableCardPilesRef = ref(null)
 const drawTargetRef = ref(null)
 const cardDrawAnimationRef = ref(null)
 const cardPlayAnimationRef = ref(null)
 const cardShuffleAnimationRef = ref(null)
+const cardSwapAnimationRef = ref(null)
 
 const activeSourceId = ref(null)
 const activeDrawCard = ref(null)
 const isPlaying = ref(false)
 const isDrawAnimating = ref(false)
 const isShuffleAnimating = ref(false)
+const isSwapAnimating = ref(false)
 const deckCount = ref(INITIAL_DECK_COUNT)
 const draggingCard = ref(null)
 const dragOriginRect = ref(null)
@@ -155,6 +204,35 @@ const discardCards = ref([
   },
 ])
 
+const isInteractionLocked = computed(
+  () =>
+    isPlaying.value ||
+    isDrawAnimating.value ||
+    isShuffleAnimating.value ||
+    isSwapAnimating.value ||
+    Boolean(draggingCard.value),
+)
+
+const opponentSources = computed(() =>
+  players
+    .filter((player) => !player.isCurrentPlayer)
+    .map((player) => {
+      const opponent = gameState.opponents.find(
+        (candidate) => candidate.id === player.id,
+      )
+      const card = resolveMockCardAssets(opponent?.hand?.[0]) ?? cards[0]
+
+      return {
+        playerId: player.id,
+        position: player.position,
+        label: opponentActionLabels[player.position],
+        swapLabel: swapActionLabels[player.position],
+        card,
+        opponent,
+      }
+    }),
+)
+
 let pointerMoveHandler = null
 let pointerUpHandler = null
 
@@ -165,6 +243,48 @@ function setSourceElement(sourceId, element) {
   }
 
   delete sourceElements.value[sourceId]
+}
+
+function getSwapPlayerHandCard() {
+  return gameState.currentPlayer.hand[0] ?? null
+}
+
+function syncSwapDemoHandCard() {
+  const swapDemoCard = createSwapDemoCard(getSwapPlayerHandCard())
+  const otherCards = playerHandCards.value.filter((card) => !card.isSwapDemoCard)
+
+  playerHandCards.value = [
+    ...(swapDemoCard ? [swapDemoCard] : []),
+    ...otherCards,
+  ]
+}
+
+function getOpponentById(playerId) {
+  return gameState.opponents.find((opponent) => opponent.id === playerId)
+}
+
+function canSwapWith(source) {
+  return Boolean(
+    source?.opponent?.hand?.[0] &&
+      getSwapPlayerHandCard() &&
+      sourceElements.value[source.playerId],
+  )
+}
+
+function swapMockHands(playerId) {
+  const opponent = getOpponentById(playerId)
+  const selfCard = getSwapPlayerHandCard()
+  const opponentCard = opponent?.hand?.[0]
+
+  if (!opponent || !selfCard || !opponentCard) {
+    return false
+  }
+
+  gameState.currentPlayer.hand.splice(0, 1, opponentCard)
+  opponent.hand.splice(0, 1, selfCard)
+  syncSwapDemoHandCard()
+
+  return true
 }
 
 // 為動畫疊加層建立一個更大的固定矩形，以便卡片可以從其原始位置放大
@@ -267,10 +387,7 @@ function getNextDrawCard() {
 // 這個 function 會從牌庫抓一張牌，播放它飛進手牌的動畫，等卡片落地後再真的把它加入我方手牌。
 async function playDrawAnimation() {
   if (
-    isPlaying.value ||
-    isDrawAnimating.value ||
-    isShuffleAnimating.value ||
-    draggingCard.value ||
+    isInteractionLocked.value ||
     deckCount.value <= 0
   ) {
     return
@@ -309,7 +426,7 @@ async function playDrawAnimation() {
 }
 
 async function playShuffleAnimation() {
-  if (isPlaying.value || isDrawAnimating.value || isShuffleAnimating.value || draggingCard.value) {
+  if (isInteractionLocked.value) {
     return
   }
 
@@ -330,8 +447,48 @@ async function playShuffleAnimation() {
   }
 }
 
+async function playSwapAnimation(source) {
+  if (isInteractionLocked.value || !canSwapWith(source)) {
+    return
+  }
+
+  await nextTick()
+
+  const selfCard = createSwapDemoCard(getSwapPlayerHandCard())
+  const opponentCard = resolveMockCardAssets(source.opponent.hand[0])
+  const selfElement = sourceElements.value[selfCard?.id]
+  const opponentElement = sourceElements.value[source.playerId]
+
+  if (!selfCard || !opponentCard || !selfElement || !opponentElement) {
+    return
+  }
+
+  isSwapAnimating.value = true
+  activeSourceId.value = source.playerId
+  let didSwap = false
+
+  try {
+    await cardSwapAnimationRef.value?.play({
+      selfCard,
+      opponentCard,
+      selfRect: selfElement.getBoundingClientRect(),
+      opponentRect: opponentElement.getBoundingClientRect(),
+      onSwap: () => {
+        if (didSwap) {
+          return
+        }
+
+        didSwap = swapMockHands(source.playerId)
+      },
+    })
+  } finally {
+    activeSourceId.value = null
+    isSwapAnimating.value = false
+  }
+}
+
 function handleHandPointerDown(card, event) {
-  if (isPlaying.value || isDrawAnimating.value || isShuffleAnimating.value || draggingCard.value) {
+  if (isInteractionLocked.value) {
     return
   }
 
@@ -398,7 +555,7 @@ function handleHandPointerDown(card, event) {
 }
 
 async function playCard(source) {
-  if (isPlaying.value || isDrawAnimating.value || isShuffleAnimating.value) {
+  if (isPlaying.value || isDrawAnimating.value || isShuffleAnimating.value || isSwapAnimating.value) {
     return
   }
 
@@ -435,6 +592,10 @@ async function playCard(source) {
 
       if (source.removeFromHand) {
         playerHandCards.value = playerHandCards.value.filter((card) => card.id !== source.card.id)
+
+        if (source.card.isSwapDemoCard) {
+          gameState.currentPlayer.hand.splice(0, 1)
+        }
       }
     }
   } finally {
@@ -467,6 +628,7 @@ function playHandCard(card) {
 
 onUnmounted(() => {
   cardPlayAnimationRef.value?.stop?.()
+  cardSwapAnimationRef.value?.stop?.()
   clearPointerListeners()
 })
 </script>
@@ -485,21 +647,31 @@ onUnmounted(() => {
           v-for="source in opponentSources"
           :key="`hud-${source.playerId}`"
           type="button"
-          :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard)"
+          :disabled="isInteractionLocked"
           @click="playOpponentCard(source)"
         >
           {{ source.label }}
         </button>
         <button
+          v-for="source in opponentSources"
+          :key="`swap-${source.playerId}`"
           type="button"
-          :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard)"
+          class="cardplay-test__hud-button--swap"
+          :disabled="isInteractionLocked || !canSwapWith(source)"
+          @click="playSwapAnimation(source)"
+        >
+          {{ isSwapAnimating && activeSourceId === source.playerId ? '交換中' : source.swapLabel }}
+        </button>
+        <button
+          type="button"
+          :disabled="isInteractionLocked"
           @click="playShuffleAnimation"
         >
           {{ isShuffleAnimating ? 'Shuffling' : 'Shuffle' }}
         </button>
         <button
           type="button"
-          :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard)"
+          :disabled="isInteractionLocked"
           @click="playDrawAnimation"
         >
           {{ isDrawAnimating ? '抽牌中' : '抽牌' }}
@@ -519,7 +691,7 @@ onUnmounted(() => {
         `cardplay-test__source-card--${source.position}`,
         { 'cardplay-test__source-card--playing': activeSourceId === source.playerId },
       ]"
-      :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard)"
+      :disabled="isInteractionLocked"
       :style="{ '--accent': source.card.color }"
       :aria-label="source.label"
       @click="playOpponentCard(source)"
@@ -533,9 +705,9 @@ onUnmounted(() => {
         ref="tableCardPilesRef"
         :deck-count="deckCount"
         :discard-cards="discardCards"
-        :is-draw-disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard)"
+        :is-draw-disabled="isInteractionLocked"
         :is-deck-hidden="isShuffleAnimating"
-        :is-drop-target-active="isPlaying || isOverPlayZone"
+        :is-drop-target-active="isPlaying || isSwapAnimating || isOverPlayZone"
         @draw="playDrawAnimation"
       />
     </section>
@@ -551,7 +723,7 @@ onUnmounted(() => {
           'cardplay-test__hand-card--playing': activeSourceId === card.id,
           'cardplay-test__hand-card--dragging': draggingCard?.id === card.id,
         }"
-        :disabled="isPlaying || isDrawAnimating || isShuffleAnimating"
+        :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || isSwapAnimating"
         :style="{
           '--accent': card.color,
           '--fan-index': index - (playerHandCards.length - 1) / 2,
@@ -592,6 +764,7 @@ onUnmounted(() => {
 
     <CardShuffleAnimation ref="cardShuffleAnimationRef" />
     <CardPlayAnimation ref="cardPlayAnimationRef" />
+    <CardSwapAnimation ref="cardSwapAnimationRef" />
   </main>
 </template>
 
@@ -675,6 +848,54 @@ onUnmounted(() => {
 .cardplay-test__hud button:disabled {
   cursor: wait;
   opacity: 0.55;
+}
+
+.cardplay-test__hud-button--swap {
+  min-width: 144px;
+  min-height: 48px;
+  border-color: rgba(255, 255, 255, 0.72);
+  border-radius: 0;
+  padding: 12px 22px;
+  background: var(--surface-glass);
+  color: var(--brand-navy);
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),
+    var(--shadow);
+  backdrop-filter: blur(16px);
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.cardplay-test__hud-button--swap:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--brand-hover);
+  background: var(--brand-hover);
+  color: #fff;
+}
+
+.cardplay-test__hud-button--swap:active:not(:disabled) {
+  transform: translateY(1px);
+  border-color: var(--brand-active);
+  background: var(--brand-active);
+  color: #fff;
+}
+
+.cardplay-test__hud-button--swap:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 5px var(--brand-focus);
+}
+
+.cardplay-test__hud-button--swap:disabled {
+  border-color: transparent;
+  background: rgba(160, 166, 179, 0.62);
+  color: #fff;
+  box-shadow: none;
 }
 
 .cardplay-test__source-card {
@@ -879,6 +1100,10 @@ onUnmounted(() => {
 
   .cardplay-test__hud-actions {
     max-width: 48vw;
+  }
+
+  .cardplay-test__hud-button--swap {
+    width: 100%;
   }
 
   .cardplay-test__source-card--left {
