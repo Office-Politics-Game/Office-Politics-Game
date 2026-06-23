@@ -1,88 +1,91 @@
 <script setup>
-import { onMounted, ref } from "vue";
+import { computed, onMounted } from "vue";
+import { storeToRefs } from "pinia";
 import { Copy, Play } from "@lucide/vue";
+import { useRouter } from "vue-router";
 import PlayerList from "@/components/gameRoom/CustomRoomPlayerList.vue";
-import { getRankingList } from "@/services/rankingService.js";
 import BG from "@/assets/images/bg-dashboard.webp";
+import { usePlayerStore } from "@/stores/playerStore.js";
+import { useRoomStore } from "@/stores/roomStore.js";
 
-const roomId = "JO7K3L";
-const availablePlayers = ref([]);
+const router = useRouter();
+const roomStore = useRoomStore();
+const playerStore = usePlayerStore();
+
+const { roomCode, players, errorMessage, isLoading, isRoomReadyToStart } =
+  storeToRefs(roomStore);
 
 const emptyPlayerSlots = [
-  {
-    isHost: true,
-    option1: "等待玩家",
-  },
-  {
-    isHost: false,
-    option1: "加入電腦",
-    option2: "邀請好友",
-  },
-  {
-    isHost: false,
-    option1: "加入電腦",
-    option2: "邀請好友",
-  },
-  {
-    isHost: false,
-    option1: "加入電腦",
-    option2: "邀請好友",
-  },
+  { isHost: true, option1: "等待房主" },
+  { isHost: false, option1: "等待加入" },
+  { isHost: false, option1: "等待加入" },
+  { isHost: false, option1: "等待加入" },
 ];
 
-const playerSlots = ref(emptyPlayerSlots);
+const playerSlots = computed(() =>
+  emptyPlayerSlots.map((slot, index) => {
+    const player = players.value[index];
 
-function createPlayerSlot(player, index) {
-  return {
-    id: player.id,
-    isHost: index === 0,
-    isReady: index !== 0,
-    name: player.name,
-    level: player.level,
-    stars: player.stars,
-    avatar: player.avatar,
-  };
-}
+    if (!player) {
+      return { ...slot };
+    }
 
-function createEmptySlot(index) {
-  return { ...emptyPlayerSlots[index] };
-}
+    return {
+      id: player.playerId,
+      isHost: player.role === "host",
+      isReady: Boolean(player.isReady),
+      name: player.username,
+      avatar: null,
+      canToggleReady:
+        player.playerId === playerStore.currentPlayerId && player.role !== "host",
+    };
+  }),
+);
 
-function handleAddComputer(index) {
-  if (index === 0) {
+const currentPlayerEntry = computed(() =>
+  players.value.find((player) => player.playerId === playerStore.currentPlayerId),
+);
+
+const isHostPlayer = computed(
+  () => currentPlayerEntry.value?.role === "host",
+);
+
+async function toggleReady(slot) {
+  if (!roomCode.value || slot.isHost) {
     return;
   }
 
-  const player = availablePlayers.value.find(
-    (candidate) => !playerSlots.value.some((slot) => slot.id === candidate.id),
-  );
-
-  if (!player) {
-    return;
-  }
-
-  playerSlots.value[index] = createPlayerSlot(player, index);
+  await roomStore.updateRoomState(roomCode.value, {
+    playerId: slot.id,
+    isReady: !slot.isReady,
+  });
 }
 
-function handleRemovePlayer(index) {
-  if (index === 0) {
+async function handleStartRoom() {
+  if (!roomCode.value) {
+    roomStore.errorMessage = "目前沒有房間可以開始。";
     return;
   }
 
-  playerSlots.value[index] = createEmptySlot(index);
+  await roomStore.startRoom(roomCode.value, {
+    playerId: playerStore.currentPlayerId,
+  });
+
+  router.push("/loading");
+}
+
+async function copyRoomCode() {
+  if (!roomCode.value || !navigator?.clipboard?.writeText) {
+    return;
+  }
+
+  await navigator.clipboard.writeText(roomCode.value);
 }
 
 onMounted(async () => {
-  const players = await getRankingList();
-  availablePlayers.value = players;
-  const occupiedSlots = players
-    .slice(0, 3)
-    .map((player, index) => createPlayerSlot(player, index));
-
-  playerSlots.value = emptyPlayerSlots.map((slot, index) => ({
-    ...slot,
-    ...occupiedSlots[index],
-  }));
+  if (roomCode.value && !players.value.length) {
+    await roomStore.fetchRoomState();
+  }
 });
 </script>
 
@@ -96,40 +99,61 @@ onMounted(async () => {
   >
     <section
       class="flex h-90 w-600 flex-col items-center overflow-hidden pt-5 lg:h-170 lg:w-400 lg:pt-14"
-      aria-label="自訂遊戲局"
+      aria-label="Custom room"
     >
       <div
         class="flex w-52 items-center justify-center gap-2 text-sm font-bold leading-none text-white lg:w-80 lg:text-2xl"
       >
-        <span>房間ID：</span>
-        <span class="tracking-[0.08em]">{{ roomId }}</span>
-        <Copy class="h-4 w-4 lg:h-5 lg:w-5" :stroke-width="2.3" />
+        <span>Room ID</span>
+        <span class="tracking-[0.08em]">{{ roomCode || "------" }}</span>
+        <button
+          class="pointer-events-auto cursor-pointer border-0 bg-transparent p-0 text-white"
+          type="button"
+          @click="copyRoomCode"
+        >
+          <Copy class="h-4 w-4 lg:h-5 lg:w-5" :stroke-width="2.3" />
+        </button>
       </div>
+
+      <p
+        v-if="errorMessage"
+        class="mt-3 rounded bg-white/80 px-4 py-2 text-sm font-bold text-red-700"
+      >
+        {{ errorMessage }}
+      </p>
+
       <PlayerList
         :slots="playerSlots"
-        @add-computer="handleAddComputer"
-        @remove-player="handleRemovePlayer"
+        @toggle-ready="toggleReady"
         class="mt-3 lg:mt-5"
       />
+
+      <div class="mt-4 text-sm font-bold text-white">
+        {{ players.length }}/4 players
+        <span class="ml-3">{{ roomStore.readyPlayerCount }} ready</span>
+      </div>
+
       <div
         class="pointer-events-auto mt-5 grid w-72 grid-cols-2 gap-3 lg:mt-10 lg:w-[416px] lg:gap-8"
       >
         <button
           class="btn-glass tap-pop pointer-events-auto flex h-9 cursor-pointer items-center justify-center overflow-hidden text-sm lg:h-12 lg:text-base"
           type="button"
+          @click="router.push({ name: 'LobbyHome' })"
         >
           返回大廳
         </button>
         <button
           class="btn-dark tap-pop pointer-events-auto flex h-9 cursor-pointer items-center justify-center gap-2 overflow-hidden text-sm font-bold lg:h-12 lg:text-base"
           type="button"
-          @click="$router.push('/loading')"
+          :disabled="isLoading || !isHostPlayer || !isRoomReadyToStart"
+          @click="handleStartRoom"
         >
           <Play
             class="h-4 w-4 fill-current lg:h-5 lg:w-5"
             :stroke-width="2.4"
           />
-          開始遊戲
+          {{ isLoading ? "處理中" : "開始遊戲" }}
         </button>
       </div>
     </section>
