@@ -39,7 +39,7 @@ async function requestRoomApi(path, options) {
 
   if (!response.ok) {
     const error = new Error(
-      data?.message || data?.error || `API 請求失敗（${response.status}）`,
+      data?.message || data?.error || `API請求失敗 (${response.status})`,
     );
 
     error.status = response.status;
@@ -75,6 +75,13 @@ function joinRoom(roomCode, payload) {
   );
 }
 
+function getRoomState(roomCode) {
+  return requestRoomApi(
+    `${ROOM_API_PATH}/${encodeURIComponent(roomCode)}/state`,
+    createRequestOptions("GET"),
+  );
+}
+
 function updateRoomState(roomCode, payload) {
   return requestRoomApi(
     buildRoomPath(roomCode, "state"),
@@ -89,4 +96,20 @@ function startRoom(roomCode, payload) {
   );
 }
 
-export { createRoom, joinRoom, updateRoomState, startRoom };
+function getRoomGameState(roomCode, playerId) {
+  const query = new URLSearchParams({ playerId: String(playerId) });
+
+  return requestRoomApi(
+    `${GAME_STATE_API_PATH}/room/${encodeURIComponent(roomCode)}?${query.toString()}`,
+    createRequestOptions("GET"),
+  );
+}
+
+export {
+  createRoom,
+  joinRoom,
+  getRoomState,
+  getRoomGameState,
+  updateRoomState,
+  startRoom,
+};
