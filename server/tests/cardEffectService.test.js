@@ -117,6 +117,22 @@ describe("usePm", () => {
         expect(state.players[1].hand).toEqual([{ id: 2, name: "Cleaner" }])
         expect(state.discardPile).toEqual([{ id: 5, name: "PM" }])
     })
+    test("棄掉 CEO 時淘汰玩家且不抽新牌", () => {
+        const state = createState()
+        state.players[1].hand = [{ id: 8, name: "CEO" }]
+
+        const result = usePm(state, 2)
+
+        expect(result.discardedCard).toEqual({ id: 8, name: "CEO" })
+        expect(result.newCard).toBeNull()
+        expect(state.players[1].hand).toEqual([])
+        expect(state.players[1].isEliminated).toBe(true)
+        expect(state.discardPile).toEqual([{ id: 8, name: "CEO" }])
+        expect(state.deck).toEqual([
+            { id: 2, name: "Cleaner" },
+            { id: 1, name: "Intern" },
+        ])
+    })
 })
 
 describe("useHr", () => {
