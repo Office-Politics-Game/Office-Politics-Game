@@ -1,5 +1,4 @@
 import pool from "../db/index.js"
-import { startNextRound } from "./roundService.js"
 
 function createServiceError(message, statusCode = 400){
   const error = new Error(message)

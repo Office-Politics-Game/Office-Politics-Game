@@ -8,7 +8,7 @@ function startNextRound(state){
 
     const deck = shuffleDeck(createDeck())
     const players = [...state.players].sort((playerA, playerB)=>{
-        return playerA.searOrder - playerB.searOrder
+        return playerA.seatOrder - playerB.seatOrder
     })
 
     players.forEach((player)=>{

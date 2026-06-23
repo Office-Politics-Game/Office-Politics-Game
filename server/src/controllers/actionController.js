@@ -2,30 +2,8 @@ import pool from "../db/index.js"
 import { runCardEffect } from "../services/cardEffectService.js"
 import { addLog } from "../services/actionLogService.js"
 import { discardCard } from "../services/discardService.js"
-
-function getNextTurnPlayerId(players, currentPlayerId) {
-    const activePlayers = players
-        .filter((player) => {
-            return !player.isEliminated
-        })
-        .sort((a, b) => {
-            return a.seatOrder - b.seatOrder
-        })
-
-    if (activePlayers.length === 0) {
-        return null
-    }
-
-    const currentIndex = activePlayers.findIndex((player) => {
-        return player.playerId === currentPlayerId
-    })
-
-    const nextIndex = currentIndex === -1
-        ? 0
-        : (currentIndex + 1) % activePlayers.length
-
-    return activePlayers[nextIndex].playerId
-}
+import { finishTurn } from "../services/roundFlowService.js"
+import { getPublicState } from "../services/gameStateService.js"
 
 async function handlePlayCard(req, res){
     try {
@@ -77,14 +55,6 @@ async function handlePlayCard(req, res){
             return player.playerId === Number(playerId)
         })
 
-        const effectResult = runCardEffect({
-            state,
-            card,
-            playerId: Number(playerId),
-            targetPlayerId: targetPlayerId ? Number(targetPlayerId) : undefined,
-            guessedCardName,
-        })
-
         const discardedCard = discardCard(
             currentPlayer,
             card.id,
@@ -95,17 +65,23 @@ async function handlePlayCard(req, res){
             return res.status(400).json({ message: "玩家沒有此手牌" })
         }
 
-        state.currentTurnPlayerId = getNextTurnPlayerId(
-            players,
-            Number(playerId)
-        )
+        const effectResult = runCardEffect({
+            state,
+            card,
+            playerId: Number(playerId),
+            targetPlayerId: targetPlayerId ? Number(targetPlayerId) : undefined,
+            guessedCardName,
+        })
+
+        finishTurn(state, Number(playerId))
 
         await pool.query(
             `UPDATE game_sessions
             SET state_json = $1,
+                current_turn_player_id = $2,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = $2`,
-            [state, gameSession.id]
+            WHERE id = $3`,
+            [state, state.currentTurnPlayerId, gameSession.id]
         )
 
         const actionLog = await addLog(
@@ -125,9 +101,8 @@ async function handlePlayCard(req, res){
         return res.status(200).json({
             message: "卡牌效果已執行",
             result: effectResult,
-            discardedCard,
             actionLog,
-            state,
+            state: getPublicState(state, Number(playerId))
         })
     } catch (error) {
         return res.status(500).json({
