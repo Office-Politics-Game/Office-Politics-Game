@@ -2,33 +2,9 @@ import pool from "../db/index.js"
 import { runCardEffect } from "../services/cardEffectService.js"
 import { addLog } from "../services/actionLogService.js"
 import { discardCard } from "../services/discardService.js"
+import { finishTurn } from "../services/roundFlowService.js"
 import { getPublicState } from "../services/gameStateService.js"
 import { drawCard } from "../services/drawService.js"
-import { clearPlayerProtection } from "../services/playerStateService.js"
-
-function getNextTurnPlayerId(players, currentPlayerId) {
-    const activePlayers = players
-        .filter((player) => {
-            return !player.isEliminated
-        })
-        .sort((a, b) => {
-            return a.seatOrder - b.seatOrder
-        })
-
-    if (activePlayers.length === 0) {
-        return null
-    }
-
-    const currentIndex = activePlayers.findIndex((player) => {
-        return player.playerId === currentPlayerId
-    })
-
-    const nextIndex = currentIndex === -1
-        ? 0
-        : (currentIndex + 1) % activePlayers.length
-
-    return activePlayers[nextIndex].playerId
-}
 
 async function handlePlayCard(req, res){
     try {
@@ -98,23 +74,15 @@ async function handlePlayCard(req, res){
             guessedCardName,
         })
 
-        const nextTurnPlayerId = getNextTurnPlayerId(
-            players,
-            Number(playerId)
-        )
-
-        if (nextTurnPlayerId) {
-            clearPlayerProtection(state, nextTurnPlayerId)
-        }
-
-        state.currentTurnPlayerId = nextTurnPlayerId
+        finishTurn(state, Number(playerId))
 
         await pool.query(
             `UPDATE game_sessions
             SET state_json = $1,
+                current_turn_player_id = $2,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = $2`,
-            [state, gameSession.id]
+            WHERE id = $3`,
+            [state, state.currentTurnPlayerId, gameSession.id]
         )
 
         const actionLog = await addLog(
