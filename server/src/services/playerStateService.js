@@ -35,9 +35,21 @@ function clearProtection(state) {
   return state
 }
 
+function clearPlayerProtection(state, playerId) {
+  const player = findPlayer(state, playerId)
+
+  if (!player) {
+    return null
+  }
+
+  player.isProtected = false
+  return player
+}
+
 export {
   findPlayer,
   killPlayer,
   protectPlayer,
-  clearProtection
+  clearProtection,
+  clearPlayerProtection
 }
