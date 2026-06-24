@@ -24,15 +24,18 @@
       登入
     </h2>
 
-    <form class="grid gap-3.5 max-lg:landscape:gap-2" @submit.prevent>
+    <form class="grid gap-3.5 max-lg:landscape:gap-2" @submit.prevent = "handleLogin">
       <label class="relative block">
         <span class="sr-only">帳號</span>
         <input
           class="login-input w-full border outline-0 pr-[78px]"
-          type="text"
+          type="text" v-model="username"
           autocomplete="username"
           placeholder="帳號"
         />
+        <p v-if="usernameError" class="login-error">
+          {{ usernameError }}
+        </p>
         <span
           class="absolute right-2 top-1/2 flex -translate-y-1/2 gap-1"
           aria-hidden="true"
@@ -46,10 +49,13 @@
         <span class="sr-only">密碼</span>
         <input
           class="login-input w-full border outline-0"
-          type="password"
+          type="password" v-model="password"
           autocomplete="current-password"
           placeholder="密碼"
         />
+        <p v-if="passwordError" class="login-error">
+          {{ passwordError }}
+        </p>
       </label>
 
       <div
@@ -137,7 +143,24 @@
 </template>
 
 <script setup>
+import { ref } from "vue";
 const emit = defineEmits(["close"]);
+const username = ref("");
+const password = ref("");
+const usernameError = ref("");
+const passwordError = ref("");
+function validateLoginForm(){
+  usernameError.value = username.value.trim() ? "" : "請輸入帳號";
+  passwordError.value = password.value.trim() ? "" : "請輸入密碼";
+  return !usernameError.value && !passwordError.value
+}
+function handleLogin(){
+  const isValid = validateLoginForm()
+  if(!isValid){
+    return;
+  }
+  console.log("表單登入成功")
+}
 </script>
 
 <style scoped>
