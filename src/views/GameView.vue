@@ -2,33 +2,20 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import advisorBackgroundUrl from '@/assets/images/card-bg-advisor.webp'
-import advisorFrameUrl from '@/assets/images/card-frame-advisor.webp'
-import ceoBackgroundUrl from '@/assets/images/card-bg-ceo.webp'
-import ceoFrameUrl from '@/assets/images/card-frame-ceo.webp'
-import cleanerBackgroundUrl from '@/assets/images/card-bg-cleaner.webp'
-import cleanerFrameUrl from '@/assets/images/card-frame-cleaner.webp'
-import hrBackgroundUrl from '@/assets/images/card-bg-hr.webp'
-import hrFrameUrl from '@/assets/images/card-frame-hr.webp'
-import internBackgroundUrl from '@/assets/images/card-bg-intern.webp'
-import internFrameUrl from '@/assets/images/card-frame-intern.webp'
-import managerBackgroundUrl from '@/assets/images/card-bg-manager.webp'
-import managerFrameUrl from '@/assets/images/card-frame-manager.webp'
-import pmBackgroundUrl from '@/assets/images/card-bg-pm.webp'
-import pmFrameUrl from '@/assets/images/card-frame-pm.webp'
-import seniorBackgroundUrl from '@/assets/images/card-bg-senior.webp'
-import seniorFrameUrl from '@/assets/images/card-frame-senior.webp'
-import playerOneUrl from '@/assets/images/player-1.png'
-import playerTwoUrl from '@/assets/images/player-2.png'
-import playerThreeUrl from '@/assets/images/player-3.png'
-import playerFourUrl from '@/assets/images/player-4.png'
 import GameStage from '@/components/game/GameStage.vue'
+import {
+  cardAssetKeyByRank,
+  cardAssetsByKey,
+} from '@/constants/cardAssets'
+import { playerAvatars } from '@/constants/playerAssets'
 import {
   drawCard as drawGameCard,
   getRoomGameState,
   playCard as playGameCard,
 } from '@/services/gameActionApi'
 import { useGameStateStore } from '@/stores/gameStateStore'
+import { normalizeCard } from '@/utils/cardUtils'
+import { resolveAvatarUrl } from '@/utils/playerUtils'
 
 const route = useRoute()
 const gameStateStore = useGameStateStore()
@@ -41,13 +28,12 @@ const {
 } = storeToRefs(gameStateStore)
 
 const seatPositions = ['top', 'left', 'right', 'bottom']
-const fallbackAvatars = [playerTwoUrl, playerThreeUrl, playerFourUrl, playerOneUrl]
 const roomPlayerMetadata = ref({})
 const fallbackPlayers = [
   {
     id: 'player-top',
     name: 'Waiting',
-    avatarUrl: playerTwoUrl,
+    avatarUrl: playerAvatars[1],
     roundWins: 0,
     level: 1,
     position: 'top',
@@ -56,7 +42,7 @@ const fallbackPlayers = [
   {
     id: 'player-left',
     name: 'Waiting',
-    avatarUrl: playerThreeUrl,
+    avatarUrl: playerAvatars[2],
     roundWins: 0,
     level: 1,
     position: 'left',
@@ -65,7 +51,7 @@ const fallbackPlayers = [
   {
     id: 'player-right',
     name: 'Waiting',
-    avatarUrl: playerFourUrl,
+    avatarUrl: playerAvatars[3],
     roundWins: 0,
     level: 1,
     position: 'right',
@@ -74,7 +60,7 @@ const fallbackPlayers = [
   {
     id: 'player-bottom',
     name: 'You',
-    avatarUrl: playerOneUrl,
+    avatarUrl: playerAvatars[0],
     roundWins: 0,
     level: 1,
     position: 'bottom',
@@ -84,127 +70,9 @@ const fallbackPlayers = [
 
 const turnStatus = computed(() => ({
   roundNumber: gameState.value?.roundNumber ?? gameState.value?.round ?? 1,
-  currentPhase: gameState.value?.phase ?? 'playing',
-  currentStep: canCurrentPlayerAct.value ? 'Your turn' : 'Waiting',
+  currentPhase: selfPlayer.value?.username ?? selfPlayer.value?.name ?? '無資料',
+  currentStep: canCurrentPlayerAct.value ? '輪到你' : '等待對手出牌',
 }))
-
-const cardAssetsByKey = {
-  intern: {
-    backgroundUrl: internBackgroundUrl,
-    frameUrl: internFrameUrl,
-    color: '#fb923c',
-    type: 'Guess',
-    name: 'Intern',
-    effectKey: 'guess',
-    targetMode: 'opponent',
-    requiresGuess: true,
-  },
-  cleaner: {
-    backgroundUrl: cleanerBackgroundUrl,
-    frameUrl: cleanerFrameUrl,
-    color: '#22c55e',
-    type: 'Peek',
-    name: 'Cleaner',
-    effectKey: 'peek',
-    targetMode: 'opponent',
-    requiresGuess: false,
-  },
-  manager: {
-    backgroundUrl: managerBackgroundUrl,
-    frameUrl: managerFrameUrl,
-    color: '#fb7185',
-    type: 'Duel',
-    name: 'Manager',
-    effectKey: 'compare',
-    targetMode: 'opponent',
-    requiresGuess: false,
-  },
-  senior: {
-    backgroundUrl: seniorBackgroundUrl,
-    frameUrl: seniorFrameUrl,
-    color: '#60a5fa',
-    type: 'Shield',
-    name: 'Senior',
-    effectKey: 'protect',
-    targetMode: 'none',
-    requiresGuess: false,
-  },
-  pm: {
-    backgroundUrl: pmBackgroundUrl,
-    frameUrl: pmFrameUrl,
-    color: '#f97316',
-    type: 'Redraw',
-    name: 'PM',
-    effectKey: 'redraw',
-    targetMode: 'anyPlayer',
-    requiresGuess: false,
-  },
-  hr: {
-    backgroundUrl: hrBackgroundUrl,
-    frameUrl: hrFrameUrl,
-    color: '#a78bfa',
-    type: 'Swap',
-    name: 'HR',
-    effectKey: 'swap',
-    targetMode: 'opponent',
-    requiresGuess: false,
-  },
-  advisor: {
-    backgroundUrl: advisorBackgroundUrl,
-    frameUrl: advisorFrameUrl,
-    color: '#38bdf8',
-    type: 'Force',
-    name: 'Advisor',
-    effectKey: 'force-discard',
-    targetMode: 'none',
-    requiresGuess: false,
-  },
-  ceo: {
-    backgroundUrl: ceoBackgroundUrl,
-    frameUrl: ceoFrameUrl,
-    color: '#facc15',
-    type: 'Boss',
-    name: 'CEO',
-    effectKey: 'self-eliminate',
-    targetMode: 'none',
-    requiresGuess: false,
-  },
-}
-
-const cardAssetKeyByRank = {
-  1: 'intern',
-  2: 'cleaner',
-  3: 'manager',
-  4: 'senior',
-  5: 'pm',
-  6: 'hr',
-  7: 'advisor',
-  8: 'ceo',
-}
-
-const cardAssetKeyByName = {
-  intern: 'intern',
-  cleaner: 'cleaner',
-  manager: 'manager',
-  senior: 'senior',
-  veteran: 'senior',
-  pm: 'pm',
-  hr: 'hr',
-  advisor: 'advisor',
-  adviser: 'advisor',
-  ceo: 'ceo',
-}
-
-const cardAssetKeyByEffect = {
-  guess: 'intern',
-  peek: 'cleaner',
-  compare: 'manager',
-  protect: 'senior',
-  redraw: 'pm',
-  swap: 'hr',
-  'force-discard': 'advisor',
-  'self-eliminate': 'ceo',
-}
 
 const defaultDiscardCard = normalizeCard({
   id: 'discard-placeholder',
@@ -397,21 +265,6 @@ function getPublicHandCount(player) {
   return Number.isInteger(count) ? Math.max(count, 0) : 0
 }
 
-function resolveAvatarUrl(value, index) {
-  const avatarMap = {
-    1: playerOneUrl,
-    2: playerTwoUrl,
-    3: playerThreeUrl,
-    4: playerFourUrl,
-    'player-1': playerOneUrl,
-    'player-2': playerTwoUrl,
-    'player-3': playerThreeUrl,
-    'player-4': playerFourUrl,
-  }
-
-  return avatarMap[value] ?? avatarMap[String(value)] ?? fallbackAvatars[index] ?? playerOneUrl
-}
-
 function rememberRoomPlayerMetadata(players = []) {
   roomPlayerMetadata.value = Object.fromEntries(
     players.map((player) => [
@@ -425,52 +278,6 @@ function rememberRoomPlayerMetadata(players = []) {
       },
     ]),
   )
-}
-
-function inferAssetKeyFromText(value) {
-  if (!value) {
-    return null
-  }
-
-  const text = String(value).toLowerCase()
-
-  return Object.entries(cardAssetKeyByName).find(([name]) => text.includes(name))?.[1] ?? null
-}
-
-function normalizeCard(rawCard = {}, fallbackIndex = 0) {
-  const rawRank = Number(rawCard.rank ?? rawCard.cardRank ?? rawCard.id)
-  const inferredAssetKeyFromName = inferAssetKeyFromText(rawCard.name)
-  const fallbackRank = fallbackIndex + 1
-  const rank = Number.isFinite(rawRank)
-    ? rawRank
-    : Number(Object.entries(cardAssetKeyByRank).find(
-        ([, key]) => key === inferredAssetKeyFromName,
-      )?.[0] ?? fallbackRank)
-  const assetKey =
-    rawCard.backgroundUrlKey ??
-    rawCard.frameUrlKey ??
-    rawCard.assetKey ??
-    rawCard.cardKey ??
-    inferredAssetKeyFromName ??
-    cardAssetKeyByEffect[rawCard.effectKey] ??
-    cardAssetKeyByRank[rank] ??
-    inferAssetKeyFromText(rawCard.id) ??
-    'intern'
-  const assets = cardAssetsByKey[assetKey] ?? cardAssetsByKey.intern
-
-  return {
-    ...rawCard,
-    id: String(rawCard.id ?? `${assetKey}-${fallbackIndex}`),
-    name: rawCard.name ?? assets.name,
-    type: rawCard.type ?? assets.type,
-    rank: Number.isFinite(rank) ? rank : 1,
-    effectKey: rawCard.effectKey ?? assets.effectKey,
-    targetMode: rawCard.targetMode ?? assets.targetMode,
-    requiresGuess: Boolean(rawCard.requiresGuess ?? assets.requiresGuess),
-    backgroundUrl: rawCard.backgroundUrl ?? assets.backgroundUrl,
-    frameUrl: rawCard.frameUrl ?? assets.frameUrl,
-    color: rawCard.color ?? assets.color,
-  }
 }
 
 function getGuessedCardName(rank) {
