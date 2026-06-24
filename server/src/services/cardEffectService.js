@@ -1,5 +1,6 @@
 import {findPlayer, protectPlayer, killPlayer} from "./playerStateService.js"
-import {replaceCard, swapHands} from "./handService.js"
+import {addHandCard, removeHandCard, swapHands} from "./handService.js"
+import { drawCard } from "./deckService.js"
 
 function findTargetPlayer(state, targetPlayerId) {
     const targetPlayer = findPlayer(state, targetPlayerId)
@@ -109,16 +110,41 @@ function usePm(state, targetPlayerId) {
     if (!targetCard) {
         return null
     }
-    const result = replaceCard(
-        targetPlayer,
-        targetCard.id,
-        state.discardPile,
-        state.deck
-    )
-    if (result) {
-        checkCeoRule(state, targetPlayerId, result.discardedCard)
+    const discardedCard = removeHandCard(targetPlayer, targetCard.id)
+
+    if (!discardedCard) {
+        return null
     }
-    return result
+
+    state.discardPile.push(discardedCard)
+
+    if (discardedCard.name === "CEO") {
+        const eliminatedPlayer = useCeo(state, targetPlayerId, discardedCard)
+
+        return {
+            discardedCard,
+            newCard: null,
+            player: eliminatedPlayer,
+            deck: state.deck,
+            discardPile: state.discardPile,
+        }
+    }
+
+    const newCard = drawCard(state.deck)
+
+    if (!newCard) {
+        return null
+    }
+
+    addHandCard(targetPlayer, newCard)
+
+    return {
+        discardedCard,
+        newCard,
+        player: targetPlayer,
+        deck: state.deck,
+        discardPile: state.discardPile,
+    }
 }
 
 // 人資主管：與一名玩家秘密交換手牌
@@ -132,7 +158,7 @@ function useHr(state, playerId, targetPlayerId) {
 }
 
 // 執行長：被迫棄牌時直接淘汰
-function checkCeoRule(state, playerId, discardedCard) {
+function useCeo(state, playerId, discardedCard) {
     if (discardedCard && discardedCard.name === "CEO") {
         return killPlayer(state, playerId)
     }
@@ -152,6 +178,6 @@ export {
     useVeteran,
     usePm,
     useHr,
-    checkCeoRule,
+    useCeo,
     checkGuess
 }

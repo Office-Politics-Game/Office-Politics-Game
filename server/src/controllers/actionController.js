@@ -4,6 +4,7 @@ import { addLog } from "../services/actionLogService.js"
 import { discardCard } from "../services/discardService.js"
 import { getPublicState } from "../services/gameStateService.js"
 import { drawCard } from "../services/drawService.js"
+import { clearPlayerProtection } from "../services/playerStateService.js"
 
 function getNextTurnPlayerId(players, currentPlayerId) {
     const activePlayers = players
@@ -79,14 +80,6 @@ async function handlePlayCard(req, res){
             return player.playerId === Number(playerId)
         })
 
-        const effectResult = runCardEffect({
-            state,
-            card,
-            playerId: Number(playerId),
-            targetPlayerId: targetPlayerId ? Number(targetPlayerId) : undefined,
-            guessedCardName,
-        })
-
         const discardedCard = discardCard(
             currentPlayer,
             card.id,
@@ -97,10 +90,24 @@ async function handlePlayCard(req, res){
             return res.status(400).json({ message: "玩家沒有此手牌" })
         }
 
-        state.currentTurnPlayerId = getNextTurnPlayerId(
+        const effectResult = runCardEffect({
+            state,
+            card,
+            playerId: Number(playerId),
+            targetPlayerId: targetPlayerId ? Number(targetPlayerId) : undefined,
+            guessedCardName,
+        })
+
+        const nextTurnPlayerId = getNextTurnPlayerId(
             players,
             Number(playerId)
         )
+
+        if (nextTurnPlayerId) {
+            clearPlayerProtection(state, nextTurnPlayerId)
+        }
+
+        state.currentTurnPlayerId = nextTurnPlayerId
 
         await pool.query(
             `UPDATE game_sessions

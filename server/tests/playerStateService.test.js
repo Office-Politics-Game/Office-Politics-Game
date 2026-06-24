@@ -3,6 +3,7 @@ import {
     killPlayer,
     protectPlayer,
     clearProtection,
+    clearPlayerProtection,
 } from "../src/services/playerStateService.js"
 
 function createState() {
@@ -76,6 +77,18 @@ describe("clearProtection", () => {
         clearProtection(state)
 
         expect(state.players[0].isProtected).toBe(false)
+        expect(state.players[1].isProtected).toBe(false)
+    })
+})
+
+describe("clearPlayerProtection", () => {
+    test("只清除指定玩家的保護狀態", () => {
+        const state = createState()
+        state.players[0].isProtected = true
+
+        clearPlayerProtection(state, 2)
+
+        expect(state.players[0].isProtected).toBe(true)
         expect(state.players[1].isProtected).toBe(false)
     })
 })
