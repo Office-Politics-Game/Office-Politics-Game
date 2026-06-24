@@ -5,13 +5,14 @@ import { discardCard } from "../services/discardService.js"
 import { finishTurn } from "../services/roundFlowService.js"
 import { getPublicState } from "../services/gameStateService.js"
 import { drawCard } from "../services/drawService.js"
+import { checkTurn, checkPlayer, checkCard, checkTarget, checkProtected, checkAdvisorRule } from "../services/ruleCheckService.js"
 
 async function handlePlayCard(req, res){
     try {
         const {
             roomCode,
             playerId,
-            card,
+            cardId,
             targetPlayerId,
             guessedCardName,
         } = req.body
@@ -24,7 +25,7 @@ async function handlePlayCard(req, res){
             return res.status(400).json({ message: "缺少玩家ID" })
         }
 
-        if (!card) {
+        if (!cardId) {
             return res.status(400).json({ message: "缺少卡牌資料" })
         }
 
@@ -43,21 +44,33 @@ async function handlePlayCard(req, res){
 
         const gameSession = sessionResult.rows[0]
         const state = gameSession.state_json
-        const players = Array.isArray(state.players) ? state.players : []
-        const playerInGame = players.some((player) => {
-            return player.playerId === Number(playerId)
-        })
 
-        if (!playerInGame) {
-            return res.status(403).json({ message: "此玩家不在該局遊戲中" })
+        if (state.phase !== "playing") {
+            return res.status(400).json({ message: "目前不是可行動階段" })
         }
 
-        const currentPlayer = players.find((player) => {
-            return player.playerId === Number(playerId)
-        })
+        checkPlayer(state, playerId)
+        checkTurn(state, playerId)
+
+        const card = checkCard(state, playerId, cardId)
+
+        checkAdvisorRule(state, playerId, cardId)
+
+        const targetPlayer = checkTarget(
+            state,
+            playerId,
+            cardId,
+            targetPlayerId
+        )
+
+        if (targetPlayer) {
+            checkProtected(state, targetPlayerId)
+        }
+
+        const player = checkPlayer(state, playerId)
 
         const discardedCard = discardCard(
-            currentPlayer,
+            player,
             card.id,
             state.discardPile
         )
@@ -68,7 +81,7 @@ async function handlePlayCard(req, res){
 
         const effectResult = runCardEffect({
             state,
-            card,
+            card: discardedCard,
             playerId: Number(playerId),
             targetPlayerId: targetPlayerId ? Number(targetPlayerId) : undefined,
             guessedCardName,
@@ -90,7 +103,7 @@ async function handlePlayCard(req, res){
             Number(playerId),
             "play_card",
             JSON.stringify({
-                card,
+                cardId,
                 targetPlayerId,
                 guessedCardName,
                 result: effectResult,
@@ -98,7 +111,9 @@ async function handlePlayCard(req, res){
                 nextTurnPlayerId: state.currentTurnPlayerId,
             })
         )
+
         const publicState = getPublicState(state, Number(playerId))
+
         return res.status(200).json({
             message: "卡牌效果已執行",
             result: effectResult,
@@ -107,8 +122,8 @@ async function handlePlayCard(req, res){
             state: publicState,
         })
     } catch (error) {
-        return res.status(500).json({
-        message: "出牌失敗",
+        return res.status(error.statusCode || 500).json({
+        message: error.statusCode ? error.message : "出牌失敗",
         error: error.message,
     })
   }
@@ -140,6 +155,10 @@ async function handleDrawCard(req, res) {
     const gameSession = sessionResult.rows[0]
     const state = gameSession.state_json
 
+    if (state.phase !== "playing") {
+        return res.status(400).json({ message: "目前不是可行動階段" })
+    }
+
     const drawResult = drawCard({
         state,
         playerId: Number(playerId),
@@ -165,8 +184,8 @@ async function handleDrawCard(req, res) {
         state: publicState,
     })
   }catch (error){
-    return res.status(500).json({
-      message: "抽牌失敗",
+    return res.status(error.statusCode || 500).json({
+      message: error.statusCode ? error.message : "抽牌失敗",
       error: error.message,
     })
   }
