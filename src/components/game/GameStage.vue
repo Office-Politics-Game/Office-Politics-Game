@@ -34,7 +34,8 @@ const props = defineProps({
   },
   discardCard: {
     type: Object,
-    required: true,
+    default: null,
+    validator: (card) => card === null || typeof card === 'object',
   },
   discardCards: {
     type: Array,
@@ -574,7 +575,7 @@ watch(
   () => props.discardCard,
   (card) => {
     if (!activeCard.value && !pendingPlay.value && props.discardCards.length === 0) {
-      discardCards.value = [card]
+      discardCards.value = card ? [card] : []
     }
   },
   { immediate: true, deep: true },
@@ -584,7 +585,11 @@ watch(
   () => props.discardCards,
   (cards) => {
     if (!activeCard.value && !pendingPlay.value) {
-      discardCards.value = cards.length > 0 ? [...cards] : [props.discardCard]
+      discardCards.value = cards.length > 0
+        ? [...cards]
+        : props.discardCard
+          ? [props.discardCard]
+          : []
     }
   },
   { immediate: true, deep: true },

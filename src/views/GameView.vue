@@ -1,13 +1,13 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
+import LoadingScreen from '@/components/common/LoadingScreen.vue'
 import GameStage from '@/components/game/GameStage.vue'
 import {
   cardAssetKeyByRank,
   cardAssetsByKey,
 } from '@/constants/cardAssets'
-import { playerAvatars } from '@/constants/playerAssets'
 import {
   drawCard as drawGameCard,
   getRoomGameState,
@@ -28,59 +28,17 @@ const {
 } = storeToRefs(gameStateStore)
 
 const seatPositions = ['top', 'left', 'right', 'bottom']
+const LOADING_PROGRESS_TRANSITION_MS = 240
 const roomPlayerMetadata = ref({})
-const fallbackPlayers = [
-  {
-    id: 'player-top',
-    name: 'Waiting',
-    avatarUrl: playerAvatars[1],
-    roundWins: 0,
-    level: 1,
-    position: 'top',
-    isCurrentPlayer: false,
-  },
-  {
-    id: 'player-left',
-    name: 'Waiting',
-    avatarUrl: playerAvatars[2],
-    roundWins: 0,
-    level: 1,
-    position: 'left',
-    isCurrentPlayer: false,
-  },
-  {
-    id: 'player-right',
-    name: 'Waiting',
-    avatarUrl: playerAvatars[3],
-    roundWins: 0,
-    level: 1,
-    position: 'right',
-    isCurrentPlayer: false,
-  },
-  {
-    id: 'player-bottom',
-    name: 'You',
-    avatarUrl: playerAvatars[0],
-    roundWins: 0,
-    level: 1,
-    position: 'bottom',
-    isCurrentPlayer: true,
-  },
-]
+const hasLoadedInitialState = ref(false)
+const initialLoadError = ref('')
+const loadingProgress = ref(0)
 
 const turnStatus = computed(() => ({
   roundNumber: gameState.value?.roundNumber ?? gameState.value?.round ?? 1,
   currentPhase: selfPlayer.value?.username ?? selfPlayer.value?.name ?? '無資料',
   currentStep: canCurrentPlayerAct.value ? '輪到你' : '等待對手出牌',
 }))
-
-const defaultDiscardCard = normalizeCard({
-  id: 'discard-placeholder',
-  name: 'Advisor',
-  rank: 7,
-  backgroundUrlKey: 'advisor',
-  frameUrlKey: 'advisor',
-})
 
 const normalizedRoomCode = computed(() => normalizeQueryValue(route.query.roomCode))
 const requestedPlayerId = computed(() => normalizeQueryValue(route.query.playerId))
@@ -116,15 +74,6 @@ const players = computed(() => {
     (a, b) => Number(a.seatOrder ?? 0) - Number(b.seatOrder ?? 0),
   )
 
-  if (sortedPlayers.length === 0) {
-    return fallbackPlayers.map((player) => ({
-      ...player,
-      id: player.isCurrentPlayer && resolvedCurrentPlayerId.value
-        ? resolvedCurrentPlayerId.value
-        : player.id,
-    }))
-  }
-
   const selfIndex = sortedPlayers.findIndex(
     (player) => String(getPlayerId(player)) === resolvedCurrentPlayerId.value,
   )
@@ -137,7 +86,7 @@ const players = computed(() => {
       ].filter(Boolean)
     : sortedPlayers
 
-  const resolvedPlayers = viewerRelativePlayers.slice(0, 4).map((player, index) => {
+  return viewerRelativePlayers.slice(0, 4).map((player, index) => {
     const playerId = String(getPlayerId(player) ?? `player-${index + 1}`)
 
     return {
@@ -153,8 +102,6 @@ const players = computed(() => {
       isEliminated: Boolean(player.isEliminated),
     }
   })
-
-  return fallbackPlayers.map((fallback, index) => resolvedPlayers[index] ?? fallback)
 })
 
 const handCards = computed(() => {
@@ -171,7 +118,7 @@ const discardCards = computed(() => {
     : []
 })
 
-const discardCard = computed(() => discardCards.value.at(-1) ?? defaultDiscardCard)
+const discardCard = computed(() => discardCards.value.at(-1) ?? null)
 const deckCount = computed(() => gameState.value?.deckCount ?? 0)
 const drawPlayerId = computed(() => resolvedCurrentPlayerId.value || null)
 const canCurrentPlayerAct = computed(() => {
@@ -295,10 +242,10 @@ function restoreApiCard(card) {
   }
 }
 
-async function refreshRoomState() {
+async function refreshRoomState({ onProgress } = {}) {
   if (!normalizedRoomCode.value || !requestedPlayerId.value) {
     logStoreState('missing-query')
-    return
+    throw new Error('Missing roomCode or playerId')
   }
 
   logStoreState('refresh:start')
@@ -306,14 +253,21 @@ async function refreshRoomState() {
   const roomStateResponse = await gameStateStore.fetchRoomState(normalizedRoomCode.value, {
     playerId: requestedPlayerId.value,
   })
+  onProgress?.(40)
   rememberRoomPlayerMetadata(roomStateResponse?.players ?? [])
   logStoreState('room-state:fetched', { roomStateResponse })
 
   const data = await getRoomGameState(normalizedRoomCode.value, requestedPlayerId.value)
+  onProgress?.(80)
   logStoreState('game-state:fetched', { gameStateResponse: data })
 
   const nextGameState = data.state ?? data.gameState ?? null
   const nextPlayers = Array.isArray(nextGameState?.players) ? nextGameState.players : []
+
+  if (nextPlayers.length !== 4) {
+    throw new Error('Game state must contain exactly four players')
+  }
+
   const nextCurrentPlayer = nextPlayers.find(
     (player) => String(getPlayerId(player)) === String(requestedPlayerId.value),
   ) ?? null
@@ -327,8 +281,33 @@ async function refreshRoomState() {
       data.currentTurnPlayerId ??
       null,
   })
+  onProgress?.(100)
 
   logStoreState('store:patched')
+}
+
+async function loadInitialRoomState() {
+  hasLoadedInitialState.value = false
+  initialLoadError.value = ''
+  loadingProgress.value = 0
+
+  try {
+    await refreshRoomState({
+      onProgress: (progress) => {
+        loadingProgress.value = progress
+      },
+    })
+    await nextTick()
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, LOADING_PROGRESS_TRANSITION_MS)
+    })
+    hasLoadedInitialState.value = true
+  } catch (error) {
+    initialLoadError.value =
+      error instanceof Error ? error.message : 'Failed to load game state'
+    console.warn('[game] fetch initial room state failed', error)
+    logStoreState('refresh:error', { error })
+  }
 }
 
 async function handleDrawComplete() {
@@ -385,10 +364,7 @@ function handleRestartGame() {
 
 onMounted(() => {
   logStoreState('mounted')
-  refreshRoomState().catch((error) => {
-    console.warn('[game] fetch room state failed', error)
-    logStoreState('refresh:error', { error })
-  })
+  loadInitialRoomState()
 })
 
 watch(
@@ -402,16 +378,21 @@ watch(
       previousRoomCode,
       previousPlayerId,
     })
-    refreshRoomState().catch((error) => {
-      console.warn('[game] fetch room state failed after route query change', error)
-      logStoreState('refresh:error', { error })
-    })
+    loadInitialRoomState()
   },
 )
 </script>
 
 <template>
+  <LoadingScreen
+    v-if="!hasLoadedInitialState"
+    :error-message="initialLoadError"
+    :progress="loadingProgress"
+    @retry="loadInitialRoomState"
+  />
+
   <GameStage
+    v-else
     :round-number="turnStatus.roundNumber"
     :current-phase="turnStatus.currentPhase"
     :current-step="turnStatus.currentStep"
