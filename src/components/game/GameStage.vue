@@ -5,11 +5,15 @@ import gameTableBackgroundUrl from '@/assets/images/bg-game-table.webp'
 import gameLogoUrl from '@/assets/images/logo-en-white.png'
 import { useAudioSettings } from '@/composables/UseAudioSettings'
 import CardDrawAnimation from './CardDrawAnimation.vue'
+import CleanerAnimation from './CleanerAnimation.vue'
 import GameCard from './GameCard.vue'
 import GameSettingsIcon from './GameSettingsIcon.vue'
 import GameSettingsModal from './GameSettingsModal.vue'
+import InternAnimation from './InternAnimation.vue'
+import ManagerAnimation from './ManagerAnimation.vue'
 import PlayerHand from './PlayerHand.vue'
 import PlayerSeats from './PlayerSeats.vue'
+import PMAnimation from './PMAnimation.vue'
 import RotateDeviceNotice from './RotateDeviceNotice.vue'
 import TableCardPiles from './TableCardPiles.vue'
 import TurnStatus from './TurnStatus.vue'
@@ -69,6 +73,10 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  effectResult: {
+    type: Object,
+    default: null,
+  },
 })
 
 const emit = defineEmits([
@@ -76,6 +84,7 @@ const emit = defineEmits([
   'restart-game',
   'draw-complete',
   'opponent-draw-complete',
+  'effect-result-complete',
 ])
 const isSettingsOpen = ref(false)
 const isDrawAnimating = ref(false)
@@ -147,6 +156,14 @@ function handleRestartGame() {
 
 function isSelfDraw(playerId) {
   return !playerId || playerId === resolvedCurrentPlayerId.value
+}
+
+function getEffectPlayerHandRect(playerId) {
+  if (playerId === resolvedCurrentPlayerId.value) {
+    return playerHand.value?.getHandRect?.() ?? null
+  }
+
+  return playerSeats.value?.getHandTargetRect?.(playerId) ?? null
 }
 
 function markOpponentDrawn(playerId) {
@@ -880,6 +897,32 @@ defineExpose({
       <CardDrawAnimation
         ref="cardDrawAnimation"
         :card="activeDrawCard"
+      />
+
+      <InternAnimation
+        :result="effectResult?.type === 'intern' ? effectResult : null"
+        :get-player-hand-rect="getEffectPlayerHandRect"
+        :get-discard-rect="tableCardPilesRef?.getDiscardRect"
+        @complete="emit('effect-result-complete', $event)"
+      />
+      <CleanerAnimation
+        :result="effectResult?.type === 'cleaner' ? effectResult : null"
+        :get-player-hand-rect="getEffectPlayerHandRect"
+        @complete="emit('effect-result-complete', $event)"
+      />
+      <ManagerAnimation
+        :result="effectResult?.type === 'manager' ? effectResult : null"
+        :get-player-hand-rect="getEffectPlayerHandRect"
+        :get-discard-rect="tableCardPilesRef?.getDiscardRect"
+        @complete="emit('effect-result-complete', $event)"
+      />
+      <PMAnimation
+        :result="effectResult?.type === 'pm' ? effectResult : null"
+        :get-player-hand-rect="getEffectPlayerHandRect"
+        :get-discard-rect="tableCardPilesRef?.getDiscardRect"
+        :get-deck-rect="tableCardPilesRef?.getDeckRect"
+        :is-self-player="(playerId) => playerId === resolvedCurrentPlayerId"
+        @complete="emit('effect-result-complete', $event)"
       />
 
       <Teleport to="body">

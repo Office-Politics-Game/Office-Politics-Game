@@ -9,6 +9,12 @@ import managerBackgroundUrl from '@/assets/images/card-bg-manager.webp'
 import managerFrameUrl from '@/assets/images/card-frame-manager.webp'
 import hrBackgroundUrl from '@/assets/images/card-bg-hr.webp'
 import hrFrameUrl from '@/assets/images/card-frame-hr.webp'
+import internBackgroundUrl from '@/assets/images/card-bg-intern.webp'
+import internFrameUrl from '@/assets/images/card-frame-intern.webp'
+import cleanerBackgroundUrl from '@/assets/images/card-bg-cleaner.webp'
+import cleanerFrameUrl from '@/assets/images/card-frame-cleaner.webp'
+import pmBackgroundUrl from '@/assets/images/card-bg-pm.webp'
+import pmFrameUrl from '@/assets/images/card-frame-pm.webp'
 import gameTableBackgroundUrl from '@/assets/images/bg-game-table.webp'
 import playerOneUrl from '@/assets/images/player-1.png'
 import playerTwoUrl from '@/assets/images/player-2.png'
@@ -17,8 +23,12 @@ import playerFourUrl from '@/assets/images/player-4.png'
 import CardDrawAnimation from '@/components/game/CardDrawAnimation.vue'
 import CardPlayAnimation from '@/components/game/CardPlayAnimation.vue'
 import CardShuffleAnimation from '@/components/game/CardShuffleAnimation.vue'
+import CleanerAnimation from '@/components/game/CleanerAnimation.vue'
 import GameCard from '@/components/game/GameCard.vue'
+import InternAnimation from '@/components/game/InternAnimation.vue'
+import ManagerAnimation from '@/components/game/ManagerAnimation.vue'
 import PlayerSeats from '@/components/game/PlayerSeats.vue'
+import PMAnimation from '@/components/game/PMAnimation.vue'
 import TableCardPiles from '@/components/game/TableCardPiles.vue'
 
 const INITIAL_DECK_COUNT = 28
@@ -55,6 +65,108 @@ const cards = [
     backgroundUrl: hrBackgroundUrl,
     frameUrl: hrFrameUrl,
     color: '#a78bfa',
+  },
+]
+
+const effectCards = {
+  intern: {
+    name: '實習生',
+    value: 1,
+    backgroundUrl: internBackgroundUrl,
+    frameUrl: internFrameUrl,
+  },
+  cleaner: {
+    name: '打掃阿姨',
+    value: 2,
+    backgroundUrl: cleanerBackgroundUrl,
+    frameUrl: cleanerFrameUrl,
+  },
+  manager: {
+    name: '部門主管',
+    value: 3,
+    backgroundUrl: managerBackgroundUrl,
+    frameUrl: managerFrameUrl,
+  },
+  pm: {
+    name: '專案經理',
+    value: 5,
+    backgroundUrl: pmBackgroundUrl,
+    frameUrl: pmFrameUrl,
+  },
+  hr: {
+    name: '人資主管',
+    value: 6,
+    backgroundUrl: hrBackgroundUrl,
+    frameUrl: hrFrameUrl,
+  },
+  ceo: {
+    name: '執行長',
+    value: 8,
+    backgroundUrl: ceoBackgroundUrl,
+    frameUrl: ceoFrameUrl,
+  },
+}
+
+const effectDemos = [
+  {
+    key: 'intern-correct',
+    label: '實習生：猜中',
+    result: {
+      type: 'intern',
+      outcome: 'correct',
+      title: '猜測成功',
+      guessedCardName: '專案經理',
+      targetPlayerId: 'player-top',
+      targetCard: effectCards.pm,
+    },
+  },
+  {
+    key: 'intern-incorrect',
+    label: '實習生：猜錯',
+    result: {
+      type: 'intern',
+      outcome: 'incorrect',
+      title: '猜測失敗',
+      guessedCardName: '部門主管',
+      targetPlayerId: 'player-top',
+      targetCard: effectCards.pm,
+    },
+  },
+  {
+    key: 'manager',
+    label: '部門主管：比大小',
+    result: {
+      type: 'manager',
+      outcome: 'win',
+      title: '秘密比大小',
+      sourcePlayerId: 'player-bottom',
+      targetPlayerId: 'player-right',
+      sourceCard: effectCards.hr,
+      targetCard: effectCards.cleaner,
+    },
+  },
+  {
+    key: 'cleaner',
+    label: '打掃阿姨：查看',
+    result: {
+      type: 'cleaner',
+      outcome: 'revealed',
+      title: '查看對方手牌',
+      targetPlayerId: 'player-left',
+      targetCard: effectCards.ceo,
+    },
+  },
+  {
+    key: 'pm',
+    label: '專案經理：重抽',
+    result: {
+      type: 'pm',
+      outcome: 'redrawn',
+      title: '指定玩家棄牌重抽',
+      targetPlayerId: 'player-left',
+      discardedCard: effectCards.intern,
+      newCard: effectCards.manager,
+    },
   },
 ]
 
@@ -135,6 +247,8 @@ const drawTargetRef = ref(null)
 const cardDrawAnimationRef = ref(null)
 const cardPlayAnimationRef = ref(null)
 const cardShuffleAnimationRef = ref(null)
+const playerSeatsRef = ref(null)
+const activeEffectResult = ref(null)
 
 const activeSourceId = ref(null)
 const activeDrawCard = ref(null)
@@ -157,6 +271,29 @@ const discardCards = ref([
 
 let pointerMoveHandler = null
 let pointerUpHandler = null
+
+function playEffectDemo(demo) {
+  if (activeEffectResult.value) {
+    return
+  }
+
+  activeEffectResult.value = {
+    ...demo.result,
+    id: `${demo.key}-${Date.now()}`,
+  }
+}
+
+function handleEffectComplete() {
+  activeEffectResult.value = null
+}
+
+function getEffectPlayerHandRect(playerId) {
+  if (playerId === 'player-bottom') {
+    return drawTargetRef.value?.getBoundingClientRect?.() ?? null
+  }
+
+  return playerSeatsRef.value?.getHandTargetRect?.(playerId) ?? null
+}
 
 function setSourceElement(sourceId, element) {
   if (element) {
@@ -485,29 +622,38 @@ onUnmounted(() => {
           v-for="source in opponentSources"
           :key="`hud-${source.playerId}`"
           type="button"
-          :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard)"
+          :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard) || Boolean(activeEffectResult)"
           @click="playOpponentCard(source)"
         >
           {{ source.label }}
         </button>
         <button
           type="button"
-          :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard)"
+          :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard) || Boolean(activeEffectResult)"
           @click="playShuffleAnimation"
         >
           {{ isShuffleAnimating ? 'Shuffling' : 'Shuffle' }}
         </button>
         <button
           type="button"
-          :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard)"
+          :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard) || Boolean(activeEffectResult)"
           @click="playDrawAnimation"
         >
           {{ isDrawAnimating ? '抽牌中' : '抽牌' }}
         </button>
+        <button
+          v-for="demo in effectDemos"
+          :key="demo.key"
+          type="button"
+          :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard) || Boolean(activeEffectResult)"
+          @click="playEffectDemo(demo)"
+        >
+          {{ demo.label }}
+        </button>
       </div>
     </section>
 
-    <PlayerSeats :players="players" />
+    <PlayerSeats ref="playerSeatsRef" :players="players" />
 
     <button
       v-for="source in opponentSources"
@@ -519,7 +665,7 @@ onUnmounted(() => {
         `cardplay-test__source-card--${source.position}`,
         { 'cardplay-test__source-card--playing': activeSourceId === source.playerId },
       ]"
-      :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard)"
+      :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard) || Boolean(activeEffectResult)"
       :style="{ '--accent': source.card.color }"
       :aria-label="source.label"
       @click="playOpponentCard(source)"
@@ -533,7 +679,7 @@ onUnmounted(() => {
         ref="tableCardPilesRef"
         :deck-count="deckCount"
         :discard-cards="discardCards"
-        :is-draw-disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard)"
+        :is-draw-disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard) || Boolean(activeEffectResult)"
         :is-deck-hidden="isShuffleAnimating"
         :is-drop-target-active="isPlaying || isOverPlayZone"
         @draw="playDrawAnimation"
@@ -551,7 +697,7 @@ onUnmounted(() => {
           'cardplay-test__hand-card--playing': activeSourceId === card.id,
           'cardplay-test__hand-card--dragging': draggingCard?.id === card.id,
         }"
-        :disabled="isPlaying || isDrawAnimating || isShuffleAnimating"
+        :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(activeEffectResult)"
         :style="{
           '--accent': card.color,
           '--fan-index': index - (playerHandCards.length - 1) / 2,
@@ -592,6 +738,31 @@ onUnmounted(() => {
 
     <CardShuffleAnimation ref="cardShuffleAnimationRef" />
     <CardPlayAnimation ref="cardPlayAnimationRef" />
+    <InternAnimation
+      :result="activeEffectResult?.type === 'intern' ? activeEffectResult : null"
+      :get-player-hand-rect="getEffectPlayerHandRect"
+      :get-discard-rect="tableCardPilesRef?.getDiscardRect"
+      @complete="handleEffectComplete"
+    />
+    <CleanerAnimation
+      :result="activeEffectResult?.type === 'cleaner' ? activeEffectResult : null"
+      :get-player-hand-rect="getEffectPlayerHandRect"
+      @complete="handleEffectComplete"
+    />
+    <ManagerAnimation
+      :result="activeEffectResult?.type === 'manager' ? activeEffectResult : null"
+      :get-player-hand-rect="getEffectPlayerHandRect"
+      :get-discard-rect="tableCardPilesRef?.getDiscardRect"
+      @complete="handleEffectComplete"
+    />
+    <PMAnimation
+      :result="activeEffectResult?.type === 'pm' ? activeEffectResult : null"
+      :get-player-hand-rect="getEffectPlayerHandRect"
+      :get-discard-rect="tableCardPilesRef?.getDiscardRect"
+      :get-deck-rect="tableCardPilesRef?.getDeckRect"
+      :is-self-player="(playerId) => playerId === 'player-bottom'"
+      @complete="handleEffectComplete"
+    />
   </main>
 </template>
 
