@@ -9,13 +9,13 @@ defineProps({
   },
 });
 
-defineEmits(["add-computer", "toggle-ready"]);
+defineEmits(["add-computer", "remove-player", "toggle-ready"]);
 </script>
 
 <template>
   <section
     class="pointer-events-none flex justify-center"
-    aria-label="Room players"
+    aria-label="玩家席位"
   >
     <div
       class="flex h-[232px] w-[572px] items-center justify-center gap-5 lg:h-[420px] lg:w-[1034px] lg:gap-4"
@@ -38,32 +38,55 @@ defineEmits(["add-computer", "toggle-ready"]);
         >
           <img
             v-if="slot.avatar"
-            class="room-player-avatar-image mt-10 h-[42px] w-[42px] flex-none rounded-full border-2 border-white/70 object-cover lg:mt-20 lg:h-[76px] lg:w-[76px]"
+            class="room-player-avatar-image h-[42px] w-[42px] mt-10 flex-none rounded-full border-2 border-white/70 object-cover lg:h-[76px] lg:w-[76px] lg:mt-20"
             :src="slot.avatar"
             :alt="slot.name"
           />
           <UserPlus
             v-else
-            class="room-player-avatar mt-10 h-[34px] w-[34px] flex-none lg:mt-20 lg:h-[68px] lg:w-[68px]"
+            class="room-player-avatar h-[34px] w-[34px] mt-10 flex-none lg:h-[68px] lg:w-[68px] lg:mt-20"
             :stroke-width="1.9"
           />
 
           <div
-            v-if="slot.name"
-            class="room-player-options mt-[10px] flex w-full flex-col items-center gap-[6px] lg:mt-[24px] lg:gap-[14px]"
+            v-if="slot.isHost"
+            class="room-host-info mt-[10px] flex w-full flex-col items-center gap-[6px] lg:mt-[24px] lg:gap-[14px]"
           >
             <p
-              v-if="slot.isHost"
               class="room-host-label m-0 text-[11px] font-black leading-none lg:text-[16px]"
             >
-              HOST
+              房主
             </p>
+            <p
+              class="room-player-title m-0 w-full whitespace-nowrap text-center text-[14px] font-black leading-[1.12] lg:text-[28px]"
+            >
+              {{ slot.name ?? slot.option1 }}
+            </p>
+            <p
+              v-if="slot.level"
+              class="room-player-level m-0 text-[10px] font-extrabold leading-none lg:text-[14px]"
+            >
+              Lv. {{ slot.level }}
+            </p>
+          </div>
+
+          <div
+            v-else-if="slot.name"
+            class="room-player-options mt-[10px] flex w-full flex-col items-center gap-[6px] lg:mt-[24px] lg:gap-[14px]"
+          >
             <p
               class="room-player-title m-0 w-full whitespace-nowrap text-center text-[14px] font-black leading-[1.12] lg:text-[28px]"
             >
               {{ slot.name }}
             </p>
             <p
+              v-if="slot.level"
+              class="room-player-level m-0 text-[10px] font-extrabold leading-none lg:text-[14px]"
+            >
+              Lv. {{ slot.level }}
+            </p>
+            <p
+              v-else
               class="room-player-level m-0 text-[10px] font-extrabold leading-none lg:text-[14px]"
             >
               {{ slot.isReady ? "Ready" : "Not Ready" }}
@@ -91,12 +114,16 @@ defineEmits(["add-computer", "toggle-ready"]);
           </div>
 
           <button
-            v-if="slot.canToggleReady"
+            v-if="!slot.isHost && slot.name"
             class="btn-dark tap-pop room-ready-button relative z-[1] mt-3 self-center rounded px-3 py-[5px] text-[11px] font-black leading-none lg:mt-[30px] lg:px-5 lg:py-2 lg:text-[15px]"
             type="button"
-            @click="$emit('toggle-ready', slot)"
+            @click="
+              slot.canToggleReady
+                ? $emit('toggle-ready', slot)
+                : $emit('remove-player', index)
+            "
           >
-            {{ slot.isReady ? "取消準備" : "準備" }}
+            {{ slot.canToggleReady ? (slot.isReady ? "取消準備" : "準備") : "踢除" }}
           </button>
         </div>
       </article>

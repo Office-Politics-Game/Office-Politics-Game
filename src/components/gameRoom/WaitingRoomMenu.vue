@@ -14,24 +14,24 @@ import { useRoomStore } from "@/stores/roomStore.js";
 const roomActions = [
   {
     title: "開始配對",
-    description: ["保留原本展示流程", "目前仍為前端展示"],
+    description: ["快速匹配玩家", "開始對局"],
     icon: matchIcon,
     paper: waitingRoomOne,
-    alt: "Match room",
+    alt: "尋找玩家圖示",
   },
   {
     title: "加入房間",
-    description: ["輸入房號直接加入", "成功後前往等待房"],
+    description: ["輸入房間代號", "加入好友對局"],
     icon: joinIcon,
     paper: waitingRoomTwo,
-    alt: "Join room",
+    alt: "文件夾板圖示",
   },
   {
     title: "建立房間",
-    description: ["建立新房間", "成功後前往等待房"],
+    description: ["自訂專屬房間", "邀請好友加入"],
     icon: createIcon,
     paper: waitingRoomThree,
-    alt: "Create room",
+    alt: "辦公大樓圖示",
   },
 ];
 
@@ -45,7 +45,7 @@ const matchElapsedSeconds = ref(0);
 const matchTimerId = ref(null);
 const { isLoading, errorMessage } = storeToRefs(roomStore);
 
-const matching = computed(() => {
+const Matching = computed(() => {
   const minutes = Math.floor(matchElapsedSeconds.value / 60)
     .toString()
     .padStart(2, "0");
@@ -115,7 +115,7 @@ onBeforeUnmount(stopMatchTimer);
 <template>
   <div
     class="waiting-room-menu pointer-events-none absolute inset-0"
-    aria-label="Room actions"
+    aria-label="遊戲入口選單"
   >
     <div
       v-for="action in roomActions"
@@ -139,52 +139,51 @@ onBeforeUnmount(stopMatchTimer);
           class="waiting-room-content pointer-events-none flex h-full w-full flex-col items-center"
         >
           <img
-            class="w-10 object-contain opacity-80 mix-blend-multiply contrast-125 lg:w-24"
+            class="w-10 opacity-80 object-contain mix-blend-multiply contrast-125 lg:w-24"
             :src="action.icon"
             :alt="action.alt"
           />
 
           <span class="waiting-room-copy block w-full">
             <span
-              class="title block text-lg font-black leading-none text-[var(--brand-active)]"
+              class="title text-lg text-[var(--brand-active)] block font-black leading-none"
             >
               {{ action.title }}
             </span>
             <span
-              class="desc mt-2 block text-xs font-medium text-[var(--brand-active)] lg:text-sm"
+              class="desc text-xs text-[var(--brand-active)] block font-medium mt-2 lg:text-sm"
             >
               <span
                 v-for="line in action.description"
                 :key="line"
                 class="block"
+                >{{ line }}</span
               >
-                {{ line }}
-              </span>
             </span>
           </span>
 
-          <span class="waiting-room-rule flex w-[70%] items-center">
-            <span class="waiting-room-line mt-1 flex-1"></span>
+          <span class="waiting-room-rule flex items-center w-[70%]">
+            <span class="waiting-room-line flex-1 mt-1"></span>
           </span>
 
           <span
             v-if="action.title === '開始配對' && activeAction === '開始配對'"
-            class="match-timer-inline mt-2 text-xs lg:text-sm"
+            class="match-timer-inline text-xs lg:text-sm mt-2"
           >
-            配對中 {{ matching }}
+            配對中 {{ Matching }}
           </span>
 
           <span
-            v-if="action.title === '加入房間'"
+            v-if="action.title === '加入房間' && activeAction === '加入房間'"
             class="join-room-inline pointer-events-auto w-[70%]"
             @click.stop
           >
             <input
               id="inlineRoomId"
               v-model="roomId"
-              class="join-room-inline-input block w-full !text-[11px] text-center lg:!text-[14px]"
+              class="join-room-inline-input !text-[11px] block w-full text-center lg:!text-[14px]"
               type="text"
-              placeholder="輸入房號"
+              placeholder="請輸入房號"
               @click.stop
             />
             <button
@@ -193,13 +192,13 @@ onBeforeUnmount(stopMatchTimer);
               :disabled="isLoading"
               @click.stop="handleJoinRoom"
             >
-              {{ isLoading ? "加入中" : "加入" }}
+              {{ isLoading ? "加入中" : "確認" }}
             </button>
           </span>
 
           <span
             v-if="action.title === '建立房間' && isLoading && activeAction === '建立房間'"
-            class="match-timer-inline mt-2 text-xs lg:text-sm"
+            class="match-timer-inline text-xs lg:text-sm mt-2"
           >
             建立中
           </span>
@@ -294,6 +293,9 @@ onBeforeUnmount(stopMatchTimer);
 
 .waiting-room-line {
   height: 2px;
+}
+
+.waiting-room-line {
   background-color: var(--room-line-color);
   transition:
     background-color 180ms ease,
