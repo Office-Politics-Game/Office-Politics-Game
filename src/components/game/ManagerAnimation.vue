@@ -2,6 +2,15 @@
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { gsap } from 'gsap'
 import cardBackUrl from '@/assets/images/card-bg-back.webp'
+import {
+  createFixedCardRect,
+  getEffectCardHeight,
+  getRectCenter,
+  getScaleForHeight,
+  getTranslation,
+  getViewportCenter,
+  rectToFixedStyle,
+} from '@/composables/useGameAnimationRects'
 import GameCard from './GameCard.vue'
 
 const props = defineProps({
@@ -50,44 +59,53 @@ async function play(result) {
   stop()
   activeResult.value = result
   activeId = result.id
-  const height = Math.min(Math.max(Math.max(sourceRect.height, targetRect.height) * 2.2, 210), Math.min(window.innerHeight * 0.56, 380))
+  const height = getEffectCardHeight()
   const width = height * 0.75
-  const sourceCenter = { x: sourceRect.left + sourceRect.width / 2, y: sourceRect.top + sourceRect.height / 2 }
-  const targetCenter = { x: targetRect.left + targetRect.width / 2, y: targetRect.top + targetRect.height / 2 }
+  const sourceCenter = getRectCenter(sourceRect)
+  const targetCenter = getRectCenter(targetRect)
+  const viewportCenter = getViewportCenter()
   const gap = Math.min(width * 0.72, window.innerWidth * 0.17)
-  const sourceStartScale = sourceRect.height / height
-  const targetStartScale = targetRect.height / height
+  const sourceStartScale = getScaleForHeight(sourceRect, height)
+  const targetStartScale = getScaleForHeight(targetRect, height)
   const sourceWins = result.outcome === 'win'
   const targetWins = result.outcome === 'lose'
   const draw = !sourceWins && !targetWins
+  const revealAtCenter = result.revealCards !== false
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const travel = reduced ? 0.12 : 0.48
   const flip = reduced ? 0.12 : 0.34
 
-  sourceStyle.value = { display: 'block', left: `${sourceCenter.x - width / 2}px`, top: `${sourceCenter.y - height / 2}px`, width: `${width}px`, height: `${height}px` }
-  targetStyle.value = { display: 'block', left: `${targetCenter.x - width / 2}px`, top: `${targetCenter.y - height / 2}px`, width: `${width}px`, height: `${height}px` }
+  sourceStyle.value = rectToFixedStyle(createFixedCardRect(sourceRect, height))
+  targetStyle.value = rectToFixedStyle(createFixedCardRect(targetRect, height))
   await nextTick()
   if (activeId !== result.id || !sourceRef.value || !targetRef.value || !sourceFlipperRef.value || !targetFlipperRef.value || !loserGlowRef.value || !veilRef.value) return
 
-  gsap.set(sourceRef.value, { x: 0, y: 0, scale: sourceStartScale, opacity: 1, transformPerspective: 1200 })
-  gsap.set(targetRef.value, { x: 0, y: 0, scale: targetStartScale, opacity: 1, transformPerspective: 1200 })
+  gsap.set(sourceRef.value, { x: 0, y: 0, scale: sourceStartScale, transformPerspective: 1200 })
+  gsap.set(targetRef.value, { x: 0, y: 0, scale: targetStartScale, transformPerspective: 1200 })
   gsap.set([sourceFlipperRef.value, targetFlipperRef.value], { rotationY: 180, transformPerspective: 1200, transformStyle: 'preserve-3d' })
   gsap.set(loserGlowRef.value, { opacity: 0, scale: 0.7, x: sourceWins ? gap : -gap })
-  gsap.set(veilRef.value, { opacity: 0 })
 
   const winner = sourceWins ? sourceRef.value : targetRef.value
   const loser = sourceWins ? targetRef.value : sourceRef.value
+  const loserFlipper = sourceWins
+    ? targetFlipperRef.value
+    : sourceFlipperRef.value
   const winnerScale = sourceWins ? sourceStartScale : targetStartScale
-  const loserCenter = sourceWins ? targetCenter : sourceCenter
-  const discardX = discardRect.left + discardRect.width / 2 - loserCenter.x
-  const discardY = discardRect.top + discardRect.height / 2 - loserCenter.y
+  const loserRect = sourceWins ? targetRect : sourceRect
+  const discardTranslation = getTranslation(loserRect, discardRect)
 
   timeline = gsap.timeline({ onComplete: () => finish(result) })
   timeline
-    .to(veilRef.value, { opacity: 1, duration: reduced ? 0.08 : 0.14 })
-    .to(sourceRef.value, { x: window.innerWidth / 2 - gap - sourceCenter.x, y: window.innerHeight / 2 - sourceCenter.y, scale: 1, duration: travel, ease: reduced ? 'none' : 'expo.out' }, '<')
-    .to(targetRef.value, { x: window.innerWidth / 2 + gap - targetCenter.x, y: window.innerHeight / 2 - targetCenter.y, scale: 1, duration: travel, ease: reduced ? 'none' : 'expo.out' }, '<')
-    .to([sourceFlipperRef.value, targetFlipperRef.value], { rotationY: 0, duration: flip, ease: 'power2.inOut' })
+    .to(sourceRef.value, { x: viewportCenter.x - gap - sourceCenter.x, y: viewportCenter.y - sourceCenter.y, scale: 1, duration: travel, ease: reduced ? 'none' : 'expo.out' })
+    .to(targetRef.value, { x: viewportCenter.x + gap - targetCenter.x, y: viewportCenter.y - targetCenter.y, scale: 1, duration: travel, ease: reduced ? 'none' : 'expo.out' }, '<')
+  if (revealAtCenter) {
+    timeline.to(
+      [sourceFlipperRef.value, targetFlipperRef.value],
+      { rotationY: 0, duration: flip, ease: 'power2.inOut' },
+    )
+  }
+
+  timeline
     .to({}, { duration: 0.5 })
 
   if (draw) {
@@ -99,14 +117,26 @@ async function play(result) {
     timeline
       .to(winner, { scale: 1.18, duration: reduced ? 0.08 : 0.22, ease: 'back.out(1.7)' })
       .to(loser, { scale: 0.76, duration: reduced ? 0.08 : 0.22 }, '<')
-      .to(loserGlowRef.value, { opacity: 1, scale: 1, duration: reduced ? 0.08 : 0.2 }, '<')
+      .set(loserGlowRef.value, { opacity: 1, scale: 1 }, '<')
+
+    if (!revealAtCenter) {
+      timeline.to(
+        loserFlipper,
+        {
+          rotationY: 0,
+          duration: flip,
+          ease: 'power2.inOut',
+        },
+        '<',
+      )
+    }
+
+    timeline
       .to({}, { duration: 0.9 })
-      .to(loserGlowRef.value, { opacity: 0, scale: 1.15, duration: reduced ? 0.08 : 0.18 })
+      .set(loserGlowRef.value, { opacity: 0 })
       .to(winner, { x: 0, y: 0, scale: winnerScale, duration: travel, ease: reduced ? 'none' : 'power3.in' }, '<')
-      .to(loser, { x: discardX, y: discardY, scale: discardRect.height / height, rotation: 2, rotationX: 58, duration: travel, ease: reduced ? 'none' : 'power3.in' }, '<')
-      .to(loser, { opacity: 0, duration: 0.04 })
+      .to(loser, { x: discardTranslation.x, y: discardTranslation.y, scale: getScaleForHeight(discardRect, height), rotation: 2, rotationX: 58, duration: travel, ease: reduced ? 'none' : 'power3.in' }, '<')
   }
-  timeline.to(veilRef.value, { opacity: 0, duration: reduced ? 0.08 : 0.2 }, '<')
 }
 
 watch(() => props.result?.id, (id) => {
@@ -139,7 +169,7 @@ onBeforeUnmount(stop)
 <style scoped>
 .manager-animation { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
 .manager-animation__veil { position: fixed; inset: 0; background: radial-gradient(circle at 50% 50%,rgba(15,23,42,.08),rgba(0,0,0,.72) 68%),linear-gradient(115deg,rgba(2,6,23,.76),rgba(15,23,42,.42)); }
-.manager-animation__card { position: fixed; z-index: 2; perspective: 1200px; transform-origin: 50% 50%; will-change: transform,opacity; }
+.manager-animation__card { position: fixed; z-index: 2; perspective: 1200px; transform-origin: 50% 50%; will-change: transform; }
 .manager-animation__flipper { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
 .manager-animation__face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; filter: drop-shadow(0 20px 28px rgba(0,0,0,.48)); }
 .manager-animation__face--back { transform: rotateY(180deg); }

@@ -2,6 +2,14 @@
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { gsap } from 'gsap'
 import cardBackUrl from '@/assets/images/card-bg-back.webp'
+import {
+  createFixedCardRect,
+  getEffectCardHeight,
+  getScaleForHeight,
+  getTranslation,
+  getViewportCenterTranslation,
+  rectToFixedStyle,
+} from '@/composables/useGameAnimationRects'
 import GameCard from './GameCard.vue'
 
 const props = defineProps({
@@ -40,19 +48,16 @@ async function playIncorrect(result) {
   if (activeId !== result.id || !veilRef.value || !glowRef.value || !textRef.value) return
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const flash = reduced ? 0.08 : 0.16
-  gsap.set(veilRef.value, { opacity: 0 })
   gsap.set(glowRef.value, { opacity: 0, scale: 0.72 })
   gsap.set(textRef.value, { opacity: 0, scale: 0.82 })
   timeline = gsap.timeline({ onComplete: () => finish(result) })
   timeline
-    .to(veilRef.value, { opacity: 1, duration: reduced ? 0.08 : 0.14 })
-    .to(glowRef.value, { opacity: 1, scale: 1, duration: flash }, '<')
+    .to(glowRef.value, { opacity: 1, scale: 1, duration: flash })
     .to(glowRef.value, { opacity: 0.12, scale: 0.86, duration: flash })
     .to(glowRef.value, { opacity: 1, scale: 1.06, duration: flash })
-    .to(textRef.value, { opacity: 1, scale: 1, duration: flash, ease: 'back.out(1.8)' }, '<')
+    .set(textRef.value, { opacity: 1, scale: 1 }, '<')
     .to({}, { duration: 0.85 })
-    .to([glowRef.value, textRef.value], { opacity: 0, scale: 1.16, duration: reduced ? 0.08 : 0.2 })
-    .to(veilRef.value, { opacity: 0, duration: reduced ? 0.08 : 0.2 }, '<')
+    .set([glowRef.value, textRef.value], { opacity: 0 })
 }
 
 async function playCorrect(result) {
@@ -62,36 +67,29 @@ async function playCorrect(result) {
     finish(result)
     return
   }
-  const height = Math.min(Math.max(originRect.height * 2.4, 220), Math.min(window.innerHeight * 0.62, 420))
-  const width = height * 0.75
-  const originX = originRect.left + originRect.width / 2
-  const originY = originRect.top + originRect.height / 2
-  const discardX = discardRect.left + discardRect.width / 2 - originX
-  const discardY = discardRect.top + discardRect.height / 2 - originY
-  const startScale = originRect.height / height
+  const height = getEffectCardHeight()
+  const fixedRect = createFixedCardRect(originRect, height)
+  const discardTranslation = getTranslation(originRect, discardRect)
+  const centerTranslation = getViewportCenterTranslation(originRect)
+  const startScale = getScaleForHeight(originRect, height)
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const travel = reduced ? 0.12 : 0.46
   const flip = reduced ? 0.12 : 0.34
-  cardStyle.value = { display: 'block', left: `${originX - width / 2}px`, top: `${originY - height / 2}px`, width: `${width}px`, height: `${height}px` }
+  cardStyle.value = rectToFixedStyle(fixedRect)
   await nextTick()
   if (activeId !== result.id || !cardRef.value || !flipperRef.value || !veilRef.value || !glowRef.value || !textRef.value) return
 
-  gsap.set(cardRef.value, { x: 0, y: 0, scale: startScale, opacity: 1, transformPerspective: 1200 })
+  gsap.set(cardRef.value, { x: 0, y: 0, scale: startScale, transformPerspective: 1200 })
   gsap.set(flipperRef.value, { rotationY: 180, transformPerspective: 1200, transformStyle: 'preserve-3d' })
   gsap.set([glowRef.value, textRef.value], { opacity: 0, scale: 0.72 })
-  gsap.set(veilRef.value, { opacity: 0 })
   timeline = gsap.timeline({ onComplete: () => finish(result) })
   timeline
-    .to(veilRef.value, { opacity: 1, duration: reduced ? 0.08 : 0.14 })
-    .to(cardRef.value, { x: window.innerWidth / 2 - originX, y: window.innerHeight / 2 - originY, scale: Math.min(1.2, Math.max(1, window.innerHeight * 0.52 / height)), duration: travel, ease: reduced ? 'none' : 'expo.out' }, '<')
+    .to(cardRef.value, { x: centerTranslation.x, y: centerTranslation.y, scale: Math.min(1.2, Math.max(1, window.innerHeight * 0.52 / height)), duration: travel, ease: reduced ? 'none' : 'expo.out' })
     .to(flipperRef.value, { rotationY: 0, duration: flip, ease: 'power2.inOut' })
-    .to(glowRef.value, { opacity: 1, scale: 1, duration: reduced ? 0.08 : 0.22 }, '<+=0.04')
-    .to(textRef.value, { opacity: 1, scale: 1, duration: reduced ? 0.08 : 0.2, ease: 'back.out(1.8)' }, '<')
+    .set([glowRef.value, textRef.value], { opacity: 1, scale: 1 }, '<+=0.04')
     .to({}, { duration: 1 })
-    .to([glowRef.value, textRef.value], { opacity: 0, scale: 1.12, duration: reduced ? 0.08 : 0.18 })
-    .to(cardRef.value, { x: discardX, y: discardY, scale: discardRect.height / height, rotation: 2, rotationX: 58, duration: travel, ease: reduced ? 'none' : 'power3.in' }, '<+=0.02')
-    .to(cardRef.value, { opacity: 0, duration: 0.04 })
-    .to(veilRef.value, { opacity: 0, duration: reduced ? 0.08 : 0.2 }, '<')
+    .set([glowRef.value, textRef.value], { opacity: 0 })
+    .to(cardRef.value, { x: discardTranslation.x, y: discardTranslation.y, scale: getScaleForHeight(discardRect, height), rotation: 2, rotationX: 58, duration: travel, ease: reduced ? 'none' : 'power3.in' }, '<+=0.02')
 }
 
 async function play(result) {
@@ -134,7 +132,7 @@ onBeforeUnmount(stop)
 .intern-animation--incorrect .intern-animation__glow { background: radial-gradient(circle,rgba(251,113,133,.76),rgba(225,29,72,.26) 42%,transparent 72%); }
 .intern-animation__text { z-index: 3; margin-top: min(33vmin,250px); color: #86efac; font-size: clamp(34px,7vw,72px); font-weight: 1000; letter-spacing: .08em; text-shadow: 0 0 10px rgba(74,222,128,.9),0 0 28px rgba(34,197,94,.72); white-space: nowrap; }
 .intern-animation--incorrect .intern-animation__text { margin-top: 0; color: #fb7185; text-shadow: 0 0 10px rgba(251,113,133,.92),0 0 30px rgba(225,29,72,.76); }
-.intern-animation__card { position: fixed; z-index: 2; perspective: 1200px; transform-origin: 50% 50%; will-change: transform,opacity; }
+.intern-animation__card { position: fixed; z-index: 2; perspective: 1200px; transform-origin: 50% 50%; will-change: transform; }
 .intern-animation__flipper { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
 .intern-animation__face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; filter: drop-shadow(0 20px 28px rgba(0,0,0,.48)); }
 .intern-animation__face--back { transform: rotateY(180deg); }

@@ -1,6 +1,5 @@
 <script setup>
 import { nextTick, onUnmounted, ref } from 'vue'
-import cardBackUrl from '@/assets/images/card-bg-back.webp'
 import ceoBackgroundUrl from '@/assets/images/card-bg-ceo.webp'
 import ceoFrameUrl from '@/assets/images/card-frame-ceo.webp'
 import advisorBackgroundUrl from '@/assets/images/card-bg-advisor.webp'
@@ -133,6 +132,30 @@ const effectDemos = [
     },
   },
   {
+    key: 'intern-targeted-correct',
+    label: '別人猜我：猜對',
+    result: {
+      type: 'intern',
+      outcome: 'correct',
+      title: '手牌被猜中',
+      guessedCardName: '人資主管',
+      targetPlayerId: 'player-bottom',
+      targetCard: effectCards.hr,
+    },
+  },
+  {
+    key: 'intern-targeted-incorrect',
+    label: '別人猜我：猜錯',
+    result: {
+      type: 'intern',
+      outcome: 'incorrect',
+      title: '對方猜錯',
+      guessedCardName: '打掃阿姨',
+      targetPlayerId: 'player-bottom',
+      targetCard: effectCards.hr,
+    },
+  },
+  {
     key: 'manager',
     label: '部門主管：比大小',
     result: {
@@ -140,6 +163,20 @@ const effectDemos = [
       outcome: 'win',
       title: '秘密比大小',
       sourcePlayerId: 'player-bottom',
+      targetPlayerId: 'player-right',
+      sourceCard: effectCards.hr,
+      targetCard: effectCards.cleaner,
+    },
+  },
+  {
+    key: 'manager-opponents',
+    label: '對手互相比大小',
+    result: {
+      type: 'manager',
+      outcome: 'win',
+      title: '對手秘密比大小',
+      revealCards: false,
+      sourcePlayerId: 'player-left',
       targetPlayerId: 'player-right',
       sourceCard: effectCards.hr,
       targetCard: effectCards.cleaner,
@@ -154,6 +191,32 @@ const effectDemos = [
       title: '查看對方手牌',
       targetPlayerId: 'player-left',
       targetCard: effectCards.ceo,
+    },
+  },
+  {
+    key: 'cleaner-opponent-opponent',
+    label: '別人看別人手牌',
+    result: {
+      type: 'cleaner',
+      outcome: 'revealed',
+      title: '對手秘密查看',
+      revealCard: false,
+      viewerPlayerId: 'player-left',
+      targetPlayerId: 'player-right',
+      targetCard: effectCards.ceo,
+    },
+  },
+  {
+    key: 'cleaner-opponent-self',
+    label: '別人看我的手牌',
+    result: {
+      type: 'cleaner',
+      outcome: 'revealed',
+      title: '我的手牌被查看',
+      revealCard: false,
+      viewerPlayerId: 'player-left',
+      targetPlayerId: 'player-bottom',
+      targetCard: effectCards.hr,
     },
   },
   {
@@ -289,7 +352,12 @@ function handleEffectComplete() {
 
 function getEffectPlayerHandRect(playerId) {
   if (playerId === 'player-bottom') {
-    return drawTargetRef.value?.getBoundingClientRect?.() ?? null
+    const handCard = playerHandCards.value[0]
+    return (
+      sourceElements.value[handCard?.id]?.getBoundingClientRect?.() ??
+      drawTargetRef.value?.getBoundingClientRect?.() ??
+      null
+    )
   }
 
   return playerSeatsRef.value?.getHandTargetRect?.(playerId) ?? null
@@ -621,6 +689,7 @@ onUnmounted(() => {
         <button
           v-for="source in opponentSources"
           :key="`hud-${source.playerId}`"
+          :ref="(element) => setSourceElement(source.playerId, element)"
           type="button"
           :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard) || Boolean(activeEffectResult)"
           @click="playOpponentCard(source)"
@@ -654,25 +723,6 @@ onUnmounted(() => {
     </section>
 
     <PlayerSeats ref="playerSeatsRef" :players="players" />
-
-    <button
-      v-for="source in opponentSources"
-      :key="source.playerId"
-      :ref="(element) => setSourceElement(source.playerId, element)"
-      type="button"
-      class="cardplay-test__source-card"
-      :class="[
-        `cardplay-test__source-card--${source.position}`,
-        { 'cardplay-test__source-card--playing': activeSourceId === source.playerId },
-      ]"
-      :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard) || Boolean(activeEffectResult)"
-      :style="{ '--accent': source.card.color }"
-      :aria-label="source.label"
-      @click="playOpponentCard(source)"
-    >
-      <span class="cardplay-test__source-card-label">{{ source.card.type }}</span>
-      <img :src="cardBackUrl" alt="" draggable="false" />
-    </button>
 
     <section class="cardplay-test__table-piles">
       <TableCardPiles
@@ -747,6 +797,7 @@ onUnmounted(() => {
     <CleanerAnimation
       :result="activeEffectResult?.type === 'cleaner' ? activeEffectResult : null"
       :get-player-hand-rect="getEffectPlayerHandRect"
+      :is-self-player="(playerId) => playerId === 'player-bottom'"
       @complete="handleEffectComplete"
     />
     <ManagerAnimation
@@ -846,94 +897,6 @@ onUnmounted(() => {
 .cardplay-test__hud button:disabled {
   cursor: wait;
   opacity: 0.55;
-}
-
-.cardplay-test__source-card {
-  position: absolute;
-  z-index: 24;
-  width: clamp(56px, 5.5vw, 78px);
-  aspect-ratio: 3 / 4;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-  background: transparent;
-  filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.48));
-  transform-origin: 50% 50%;
-  transition:
-    filter 0.16s ease,
-    transform 0.16s ease,
-    opacity 0.16s ease;
-}
-
-.cardplay-test__source-card:disabled {
-  cursor: wait;
-  opacity: 0.58;
-}
-
-.cardplay-test__source-card:hover:not(:disabled),
-.cardplay-test__source-card--playing {
-  filter:
-    drop-shadow(0 0 13px var(--accent))
-    drop-shadow(0 12px 14px rgba(0, 0, 0, 0.5));
-}
-
-.cardplay-test__source-card--top {
-  top: clamp(126px, 19vh, 168px);
-  left: 50%;
-  transform: translateX(-50%) rotateX(26deg) rotateZ(-8deg);
-}
-
-.cardplay-test__source-card--top:hover:not(:disabled),
-.cardplay-test__source-card--top.cardplay-test__source-card--playing {
-  transform: translate(-50%, -10px) rotateX(20deg) rotateZ(-8deg);
-}
-
-.cardplay-test__source-card--left {
-  top: 50%;
-  left: clamp(118px, 14vw, 206px);
-  transform: translateY(-50%) rotateX(20deg) rotateZ(8deg);
-}
-
-.cardplay-test__source-card--left:hover:not(:disabled),
-.cardplay-test__source-card--left.cardplay-test__source-card--playing {
-  transform: translate(10px, -50%) rotateX(16deg) rotateZ(8deg);
-}
-
-.cardplay-test__source-card--right {
-  top: 50%;
-  right: clamp(118px, 14vw, 206px);
-  transform: translateY(-50%) rotateX(20deg) rotateZ(-8deg);
-}
-
-.cardplay-test__source-card--right:hover:not(:disabled),
-.cardplay-test__source-card--right.cardplay-test__source-card--playing {
-  transform: translate(-10px, -50%) rotateX(16deg) rotateZ(-8deg);
-}
-
-.cardplay-test__source-card img {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  user-select: none;
-}
-
-.cardplay-test__source-card-label {
-  position: absolute;
-  left: 50%;
-  bottom: -20px;
-  z-index: 1;
-  width: max-content;
-  max-width: 120px;
-  transform: translateX(-50%);
-  color: #e2e8f0;
-  font-size: 11px;
-  font-weight: 900;
-  line-height: 1;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.72);
-  pointer-events: none;
 }
 
 .cardplay-test__table-piles {
@@ -1050,14 +1013,6 @@ onUnmounted(() => {
 
   .cardplay-test__hud-actions {
     max-width: 48vw;
-  }
-
-  .cardplay-test__source-card--left {
-    left: 88px;
-  }
-
-  .cardplay-test__source-card--right {
-    right: 88px;
   }
 
   .cardplay-test__player-hand {

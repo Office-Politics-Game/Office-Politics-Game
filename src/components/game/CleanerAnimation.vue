@@ -2,11 +2,20 @@
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { gsap } from 'gsap'
 import cardBackUrl from '@/assets/images/card-bg-back.webp'
+import {
+  createFixedCardRect,
+  getEffectCardHeight,
+  getScaleForHeight,
+  getTranslation,
+  getViewportCenterTranslation,
+  rectToFixedStyle,
+} from '@/composables/useGameAnimationRects'
 import GameCard from './GameCard.vue'
 
 const props = defineProps({
   result: { type: Object, default: null },
   getPlayerHandRect: { type: Function, default: null },
+  isSelfPlayer: { type: Function, default: null },
 })
 const emit = defineEmits(['complete'])
 
@@ -34,7 +43,18 @@ function finish(result) {
 
 async function play(result) {
   const originRect = props.getPlayerHandRect?.(result.targetPlayerId)
-  if (!originRect || !result.targetCard) {
+  const viewerRect = result.viewerPlayerId
+    ? props.getPlayerHandRect?.(result.viewerPlayerId)
+    : null
+  const hiddenFromViewer = result.revealCard === false
+  const startsFaceUp =
+    hiddenFromViewer && props.isSelfPlayer?.(result.targetPlayerId)
+
+  if (
+    !originRect ||
+    !result.targetCard ||
+    (hiddenFromViewer && !viewerRect)
+  ) {
     finish(result)
     return
   }
@@ -42,44 +62,105 @@ async function play(result) {
   stop()
   activeResult.value = result
   activeId = result.id
-  const height = Math.min(Math.max(originRect.height * 2.4, 220), Math.min(window.innerHeight * 0.62, 420))
-  const width = height * 0.75
-  const originX = originRect.left + originRect.width / 2
-  const originY = originRect.top + originRect.height / 2
-  const startScale = originRect.height / height
+  const height = getEffectCardHeight()
+  const fixedRect = createFixedCardRect(originRect, height)
+  const viewerTranslation = getTranslation(originRect, viewerRect)
+  const centerTranslation = getViewportCenterTranslation(originRect)
+  const startScale = getScaleForHeight(originRect, height)
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const travelDuration = reduceMotion ? 0.12 : 0.46
   const flipDuration = reduceMotion ? 0.12 : 0.34
 
-  cardStyle.value = {
-    display: 'block',
-    left: `${originX - width / 2}px`,
-    top: `${originY - height / 2}px`,
-    width: `${width}px`,
-    height: `${height}px`,
-  }
+  cardStyle.value = rectToFixedStyle(fixedRect)
   await nextTick()
-  if (activeId !== result.id || !cardRef.value || !flipperRef.value || !veilRef.value) return
+  if (
+    activeId !== result.id ||
+    !cardRef.value ||
+    !flipperRef.value ||
+    (!hiddenFromViewer && !veilRef.value)
+  ) return
 
-  gsap.set(cardRef.value, { x: 0, y: 0, scale: startScale, opacity: 1, transformPerspective: 1200 })
-  gsap.set(flipperRef.value, { rotationY: 180, transformPerspective: 1200, transformStyle: 'preserve-3d' })
-  gsap.set(veilRef.value, { opacity: 0 })
-
+  gsap.set(cardRef.value, {
+    x: 0,
+    y: 0,
+    scale: startScale,
+    transformPerspective: 1200,
+  })
+  gsap.set(flipperRef.value, {
+    rotationY: startsFaceUp ? 0 : 180,
+    transformPerspective: 1200,
+    transformStyle: 'preserve-3d',
+  })
   timeline = gsap.timeline({ onComplete: () => finish(result) })
+
   timeline
-    .to(veilRef.value, { opacity: 1, duration: reduceMotion ? 0.08 : 0.14 })
     .to(cardRef.value, {
-      x: window.innerWidth / 2 - originX,
-      y: window.innerHeight / 2 - originY,
-      scale: Math.min(1.2, Math.max(1, window.innerHeight * 0.52 / height)),
+      x: hiddenFromViewer
+        ? viewerTranslation.x
+        : centerTranslation.x,
+      y: hiddenFromViewer
+        ? viewerTranslation.y
+        : centerTranslation.y,
+      scale: hiddenFromViewer
+        ? getScaleForHeight(viewerRect, height) * 2
+        : Math.min(1.2, Math.max(1, window.innerHeight * 0.52 / height)),
       duration: travelDuration,
       ease: reduceMotion ? 'none' : 'expo.out',
-    }, '<')
-    .to(flipperRef.value, { rotationY: 0, duration: flipDuration, ease: 'power2.inOut' })
-    .to({}, { duration: 2 })
-    .to(flipperRef.value, { rotationY: 180, duration: flipDuration, ease: 'power2.inOut' })
-    .to(cardRef.value, { x: 0, y: 0, scale: startScale, duration: travelDuration, ease: reduceMotion ? 'none' : 'power3.in' })
-    .to(veilRef.value, { opacity: 0, duration: reduceMotion ? 0.08 : 0.2 }, '<')
+    })
+
+  if (startsFaceUp) {
+    timeline.to(
+      flipperRef.value,
+      {
+        rotationY: 180,
+        duration: flipDuration,
+        ease: 'power2.inOut',
+      },
+      '<',
+    )
+  }
+
+  if (!hiddenFromViewer) {
+    timeline.to(flipperRef.value, {
+      rotationY: 0,
+      duration: flipDuration,
+      ease: 'power2.inOut',
+    })
+  }
+
+  timeline.to({}, { duration: 2 })
+
+  if (!hiddenFromViewer) {
+    timeline.to(flipperRef.value, {
+      rotationY: 180,
+      duration: flipDuration,
+      ease: 'power2.inOut',
+    })
+  }
+
+  timeline.to(
+    cardRef.value,
+    {
+      x: 0,
+      y: 0,
+      scale: startScale,
+      duration: travelDuration,
+      ease: reduceMotion ? 'none' : 'power3.in',
+    },
+  )
+
+  if (startsFaceUp) {
+    timeline.to(
+      flipperRef.value,
+      {
+        rotationY: 0,
+        duration: flipDuration,
+        ease: 'power2.inOut',
+      },
+      '<',
+    )
+  }
+
 }
 
 watch(() => props.result?.id, (id) => {
@@ -92,7 +173,11 @@ onBeforeUnmount(stop)
 <template>
   <Teleport to="body">
     <div v-if="activeResult" class="cleaner-animation" aria-hidden="true">
-      <div ref="veilRef" class="cleaner-animation__veil"></div>
+      <div
+        v-if="activeResult.revealCard !== false"
+        ref="veilRef"
+        class="cleaner-animation__veil"
+      ></div>
       <div ref="cardRef" class="cleaner-animation__card" :style="cardStyle">
         <div ref="flipperRef" class="cleaner-animation__flipper">
           <div class="cleaner-animation__face">
