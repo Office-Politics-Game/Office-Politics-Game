@@ -29,6 +29,8 @@ import GameCard from '@/components/game/GameCard.vue'
 import PlayerSeats from '@/components/game/PlayerSeats.vue'
 import TableCardPiles from '@/components/game/TableCardPiles.vue'
 
+const INITIAL_DECK_COUNT = 28
+
 const cards = [
   {
     id: 'intern-guess',
@@ -222,6 +224,7 @@ const activeDrawCard = ref(null)
 const isPlaying = ref(false)
 const isDrawAnimating = ref(false)
 const isShuffleAnimating = ref(false)
+const deckCount = ref(INITIAL_DECK_COUNT)
 const draggingCard = ref(null)
 const dragOriginRect = ref(null)
 const dragPoint = ref(null)
@@ -467,7 +470,7 @@ function getNextDrawCard() {
 
 // 這個 function 會從牌庫抓一張牌，播放它飛進手牌的動畫，等卡片落地後再真的把它加入我方手牌。
 async function playDrawAnimation() {
-  if (isInteractionLocked.value) {
+  if (isInteractionLocked.value || deckCount.value <= 0) {
     return
   }
 
@@ -480,6 +483,8 @@ async function playDrawAnimation() {
 
   isDrawAnimating.value = true
   activeDrawCard.value = getNextDrawCard()
+  let didLand = false
+  deckCount.value = Math.max(deckCount.value - 1, 0)
   await nextTick()
 
   try {
@@ -487,10 +492,15 @@ async function playDrawAnimation() {
       startRect,
       targetRect,
       onLanded: () => {
+        didLand = true
         playerHandCards.value = [...playerHandCards.value, activeDrawCard.value]
       },
     })
   } finally {
+    if (!didLand) {
+      deckCount.value = Math.min(deckCount.value + 1, INITIAL_DECK_COUNT)
+    }
+
     activeDrawCard.value = null
     isDrawAnimating.value = false
   }
@@ -511,7 +521,7 @@ async function playShuffleAnimation() {
   try {
     await cardShuffleAnimationRef.value?.play({
       deckPose,
-      deckCount: 28,
+      deckCount: deckCount.value,
     })
   } finally {
     isShuffleAnimating.value = false
@@ -736,7 +746,7 @@ onUnmounted(() => {
     <section class="cardplay-test__table-piles">
       <TableCardPiles
         ref="tableCardPilesRef"
-        :deck-count="28"
+        :deck-count="deckCount"
         :discard-cards="discardCards"
         :is-draw-disabled="isInteractionLocked"
         :is-deck-hidden="isShuffleAnimating"

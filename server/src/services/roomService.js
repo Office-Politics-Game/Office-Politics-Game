@@ -118,6 +118,56 @@ async function updateReady({ roomCode, playerId, isReady }){
   }
 }
 
+async function getRoomState({ roomCode }){
+  const roomResult = await pool.query(
+    `SELECT id, room_code, host_player_id, status
+     FROM game_rooms
+     WHERE room_code = $1`,
+    [roomCode]
+  )
+
+  if (roomResult.rows.length === 0){
+    throw createServiceError("查無此房間", 404)
+  }
+
+  const room = roomResult.rows[0]
+  const playerResult = await pool.query(
+    `SELECT
+       grp.player_id,
+       p.username,
+       p.avatar_id,
+       grp.role,
+       grp.seat_order,
+       grp.is_ready,
+       grp.is_alive
+     FROM game_room_players grp
+     JOIN players p ON p.id = grp.player_id
+     WHERE grp.room_id = $1
+     ORDER BY grp.seat_order ASC`,
+    [room.id]
+  )
+
+  return {
+    room: {
+      id: room.id,
+      roomCode: room.room_code,
+      hostPlayerId: room.host_player_id,
+      status: room.status,
+    },
+    players: playerResult.rows.map((player)=>{
+      return {
+        playerId: player.player_id,
+        username: player.username,
+        avatarId: player.avatar_id,
+        role: player.role,
+        seatOrder: player.seat_order,
+        isReady: player.is_ready,
+        isAlive: player.is_alive,
+      }
+    }),
+  }
+}
+
 async function startGame({ roomCode, playerId }){
   const client = await pool.connect()
 
@@ -204,5 +254,6 @@ export {
   createRoom,
   joinRoom,
   updateReady,
+  getRoomState,
   startGame,
 }

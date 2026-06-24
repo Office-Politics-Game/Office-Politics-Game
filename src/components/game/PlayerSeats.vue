@@ -35,6 +35,14 @@ const props = defineProps({
     validator: (playerIds) =>
       playerIds.every((playerId) => typeof playerId === "string"),
   },
+  playerHandCardCounts: {
+    type: Object,
+    default: () => ({}),
+    validator: (counts) =>
+      Object.values(counts).every(
+        (count) => Number.isInteger(count) && count >= 0,
+      ),
+  },
   isTargetSelectionActive: {
     type: Boolean,
     default: false,
@@ -49,7 +57,7 @@ const props = defineProps({
     type: String,
     default: null,
   },
-});
+})
 
 const emit = defineEmits(['target-select'])
 const seatElements = ref({})
@@ -79,6 +87,10 @@ function setSeatElement(playerId, element) {
 }
 
 function setHandTargetElement(playerId, element) {
+  if (!playerId) {
+    return
+  }
+
   if (element) {
     handTargetElements.value[playerId] = element;
     return;
@@ -105,6 +117,27 @@ function handleTargetSelect(player) {
   }
 
   emit('target-select', player.id)
+}
+
+function getHandCardCount(playerId) {
+  if (Number.isInteger(props.playerHandCardCounts[playerId])) {
+    return props.playerHandCardCounts[playerId]
+  }
+
+  return dealtPlayerIdSet.value.has(playerId) ? 1 : 0
+}
+
+function getHandCardBacks(playerId) {
+  const count = getHandCardCount(playerId)
+  const visibleCount = Math.min(count, 4)
+  const center = (visibleCount - 1) / 2
+
+  return Array.from({ length: visibleCount }, (_, index) => ({
+    id: `${playerId}-hand-card-${index}`,
+    offset: `${(index - center) * 9}px`,
+    rotation: `${(index - center) * 7}deg`,
+    zIndex: index + 1,
+  }))
 }
 
 defineExpose({
@@ -165,10 +198,16 @@ defineExpose({
         aria-hidden="true"
       >
         <img
-          v-if="dealtPlayerIdSet.has(player.id)"
+          v-for="cardBack in getHandCardBacks(player.id)"
+          :key="cardBack.id"
           :src="cardBackUrl"
           alt=""
           class="player-seat-hand-target__card block size-full select-none object-contain"
+          :style="{
+            '--hand-card-offset': cardBack.offset,
+            '--hand-card-rotation': cardBack.rotation,
+            zIndex: cardBack.zIndex,
+          }"
           draggable="false"
         />
       </div>
@@ -191,7 +230,7 @@ defineExpose({
   inset: -10px -14px;
   z-index: 30;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-md, 0);
   padding: 0;
   cursor: not-allowed;
   background: transparent;
@@ -257,6 +296,79 @@ defineExpose({
   filter: hue-rotate(18deg) saturate(1.35) brightness(1.16);
 }
 
+.player-seat-hand-target {
+  z-index: 0;
+  filter: drop-shadow(0 8px 12px rgba(0, 19, 50, 0.34));
+}
+
+.player-seat-hand-target__card {
+  position: absolute;
+  inset: 0;
+}
+
+.player-seat-hand-target--top {
+  top: calc(100% + clamp(8px, 1.5vh, 14px));
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.player-seat-hand-target--left {
+  top: 50%;
+  left: calc(100% + clamp(8px, 1vw, 14px));
+  transform: translateY(-50%);
+}
+
+.player-seat-hand-target--right {
+  top: 50%;
+  right: calc(100% + clamp(8px, 1vw, 14px));
+  transform: translateY(-50%);
+}
+
+.player-seat-hand-target--top .player-seat-hand-target__card {
+  transform:
+    translateX(var(--hand-card-offset))
+    rotate(calc(180deg - var(--hand-card-rotation)));
+}
+
+.player-seat-hand-target--left .player-seat-hand-target__card {
+  transform:
+    translateY(var(--hand-card-offset))
+    rotate(calc(90deg + var(--hand-card-rotation)));
+}
+
+.player-seat-hand-target--right .player-seat-hand-target__card {
+  transform:
+    translateY(var(--hand-card-offset))
+    rotate(calc(-90deg - var(--hand-card-rotation)));
+}
+
+.player-seats__seat--right :deep(.player-avatar) {
+  flex-direction: row-reverse;
+}
+
+.player-seats__seat--right :deep(.player-avatar__info) {
+  border-right: 2px solid rgba(255, 255, 255, 0.72);
+  border-left: 0;
+  text-align: right;
+}
+
+.player-seats__seat--right :deep(.player-avatar--current .player-avatar__info) {
+  border-right-color: var(--brand-hover);
+}
+
+.player-seats__seat--right :deep(.player-avatar--winner .player-avatar__info) {
+  border-right-color: var(--winner-gold);
+}
+
+.player-seats__seat--right :deep(.player-avatar__winner-label) {
+  right: auto;
+  left: 0;
+}
+
+.player-seats__seat--right :deep(.player-avatar__info > div) {
+  justify-content: flex-end;
+}
+
 @keyframes target-choice-pulse {
   0%,
   100% {
@@ -271,6 +383,12 @@ defineExpose({
       0 0 0 10px rgba(250, 204, 21, 0.28),
       0 0 44px rgba(250, 204, 21, 0.82),
       0 7px 20px rgba(0, 19, 50, 0.36);
+  }
+}
+
+@media (max-height: 480px) {
+  .player-seat-hand-target {
+    height: 54px;
   }
 }
 </style>
