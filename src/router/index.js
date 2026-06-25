@@ -15,7 +15,6 @@ import InviteFriendModal from "@/components/gameRoom/InviteFriendModal.vue";
 import CardDealDemoView from "@/views/CardDealDemoView.vue";
 import AnimationDemoView from "@/views/AnimationDemoView.vue";
 import CardPlayTestView from "@/views/CardPlayTestView.vue";
-import RegisterPage from "@/components/register/RegisterPage.vue";
 
 const routes = [
   {
@@ -109,7 +108,7 @@ const routes = [
   {
     path: "/register",
     name: "register",
-    component: RegisterPage
+    component: LoginPage
   }
 ];
 
