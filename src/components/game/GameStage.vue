@@ -61,15 +61,9 @@ const props = defineProps({
           typeof card?.frameUrl === "string",
       ),
   },
-  drawCard: {
-    type: Object,
-    default: null,
-    validator: (card) =>
-      card === null ||
-      (typeof card?.id === "string" &&
-        typeof card?.name === "string" &&
-        typeof card?.backgroundUrl === "string" &&
-        typeof card?.frameUrl === "string"),
+  canDraw: {
+    type: Boolean,
+    default: false,
   },
   drawPlayerId: {
     type: String,
@@ -92,7 +86,7 @@ const props = defineProps({
 const emit = defineEmits([
   'return-lobby',
   'restart-game',
-  'draw-complete',
+  'draw-request',
   'opponent-draw-complete',
   'play-card',
 ])
@@ -266,17 +260,25 @@ function markOpponentDrawn(playerId) {
   ]
 }
 
-async function playDrawAnimation() {
-  if (isPlayInteractionLocked.value || !props.drawCard) {
-    return;
+function requestDraw() {
+  if (isPlayInteractionLocked.value || !props.canDraw) {
+    return
+  }
+
+  emit('draw-request')
+}
+
+async function playDrawAnimation(card, playerId = null) {
+  if (isDrawAnimating.value || !card) {
+    return false
   }
 
   const activeDrawPlayerId =
-    props.drawPlayerId ?? resolvedCurrentPlayerId.value
+    playerId ?? props.drawPlayerId ?? resolvedCurrentPlayerId.value
   const shouldDrawSelf = isSelfDraw(activeDrawPlayerId)
 
   isDrawAnimating.value = true
-  activeDrawCard.value = { ...props.drawCard }
+  activeDrawCard.value = { ...card }
 
   if (shouldDrawSelf) {
     playerHand.value?.prepareDrawTarget()
@@ -293,13 +295,12 @@ async function playDrawAnimation() {
     playerHand.value?.finishDraw();
     activeDrawCard.value = null;
     isDrawAnimating.value = false;
-    return;
+    return false;
   }
 
   try {
     const onLanded = () => {
       if (shouldDrawSelf) {
-        emit('draw-complete', activeDrawCard.value)
         return
       }
 
@@ -324,6 +325,7 @@ async function playDrawAnimation() {
       })
     }
     await nextTick()
+    return true
   } finally {
     playerHand.value?.finishDraw();
     activeDrawCard.value = null;
@@ -657,9 +659,9 @@ defineExpose({
           ref="tableCardPilesRef"
           :deck-count="deckCount"
           :discard-cards="discardCards"
-          :is-draw-disabled="isPlayInteractionLocked || !drawCard"
+          :is-draw-disabled="isPlayInteractionLocked || !canDraw"
           :is-drop-target-active="isOverPlayZone && hasActivePlay"
-          @draw="playDrawAnimation"
+          @draw="requestDraw"
         />
       </div>
 

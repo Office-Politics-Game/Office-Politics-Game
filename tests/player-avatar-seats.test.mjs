@@ -54,30 +54,17 @@ test('player avatar keeps the player data and token rendering contract', async (
   assert.doesNotMatch(seatsSource, /victoryTokens/)
 })
 
-test('game view owns four complete player records and passes them through the stage', async () => {
+test('game view derives four viewer-relative player records and passes them through the stage', async () => {
   const gameViewSource = await readSource('src/views/GameView.vue')
   const gameStageSource = await readSource('src/components/game/GameStage.vue')
 
-  for (const playerId of [
-    'player-top',
-    'player-left',
-    'player-right',
-    'player-bottom',
-  ]) {
-    assert.match(gameViewSource, new RegExp(`id: '${playerId}'`))
-  }
-
-  for (const position of ['top', 'left', 'right', 'bottom']) {
-    assert.match(gameViewSource, new RegExp(`position: '${position}'`))
-  }
-
-  assert.equal((gameViewSource.match(/level: 12/g) ?? []).length, 4)
-  assert.equal((gameViewSource.match(/isCurrentPlayer: true/g) ?? []).length, 1)
-  assert.match(gameViewSource, /id: 'player-top'[\s\S]*roundWins: 3/)
-  assert.match(gameViewSource, /id: 'player-left'[\s\S]*roundWins: 0/)
-  assert.match(gameViewSource, /id: 'player-right'[\s\S]*roundWins: 1/)
-  assert.match(gameViewSource, /id: 'player-bottom'[\s\S]*roundWins: 2/)
-  assert.doesNotMatch(gameViewSource, /victoryTokens|132|32/)
+  assert.match(gameViewSource, /const seatPositions = \['top', 'left', 'right', 'bottom'\]/)
+  assert.match(gameViewSource, /const players = computed\(\(\) =>/)
+  assert.match(gameViewSource, /viewerRelativePlayers\.slice\(0, 4\)\.map/)
+  assert.match(gameViewSource, /id: playerId/)
+  assert.match(gameViewSource, /position: seatPositions\[index\] \?\? 'bottom'/)
+  assert.match(gameViewSource, /roundWins: normalizeRoundWins/)
+  assert.match(gameViewSource, /isCurrentPlayer: playerId === resolvedCurrentPlayerId\.value/)
   assert.match(gameViewSource, /:players="players"/)
   assert.match(gameStageSource, /players:/)
   assert.match(gameStageSource, /<PlayerSeats[\s\S]*:players="players"/)

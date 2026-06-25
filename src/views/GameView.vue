@@ -33,6 +33,8 @@ const roomPlayerMetadata = ref({})
 const hasLoadedInitialState = ref(false)
 const initialLoadError = ref('')
 const loadingProgress = ref(0)
+const gameStage = ref(null)
+const isDrawing = ref(false)
 
 const turnStatus = computed(() => ({
   roundNumber: gameState.value?.roundNumber ?? gameState.value?.round ?? 1,
@@ -129,19 +131,12 @@ const canCurrentPlayerAct = computed(() => {
   return String(currentTurnPlayerId.value) === resolvedCurrentPlayerId.value
 })
 
-const drawCard = computed(() => {
-  if (!canCurrentPlayerAct.value || handCards.value.length >= 2 || deckCount.value <= 0) {
-    return null
-  }
-
-  return normalizeCard({
-    id: 'draw-preview',
-    name: 'Intern',
-    rank: 1,
-    backgroundUrlKey: 'intern',
-    frameUrlKey: 'intern',
-  })
-})
+const canDraw = computed(() =>
+  canCurrentPlayerAct.value &&
+  handCards.value.length < 2 &&
+  deckCount.value > 0 &&
+  !isDrawing.value,
+)
 
 const playerHandCardCounts = computed(() =>
   Object.fromEntries(
@@ -169,6 +164,7 @@ function getStoreDebugSnapshot(label, extra = {}) {
     resolvedCurrentPlayerId: resolvedCurrentPlayerId.value,
     currentTurnPlayerId: currentTurnPlayerId.value,
     isLoading: isLoading.value,
+    isDrawing: isDrawing.value,
     rawGameState: gameState.value,
     rawCurrentPlayer: currentPlayer.value,
     publicPlayers: publicPlayers.value,
@@ -177,7 +173,7 @@ function getStoreDebugSnapshot(label, extra = {}) {
     handCards: handCards.value,
     discardCards: discardCards.value,
     deckCount: deckCount.value,
-    drawCard: drawCard.value,
+    canDraw: canDraw.value,
     playerHandCardCounts: playerHandCardCounts.value,
     ...extra,
   }
@@ -310,16 +306,58 @@ async function loadInitialRoomState() {
   }
 }
 
-async function handleDrawComplete() {
-  if (!normalizedRoomCode.value || !resolvedCurrentPlayerId.value) {
+async function handleDrawRequest() {
+  if (
+    isDrawing.value ||
+    !canDraw.value ||
+    !normalizedRoomCode.value ||
+    !resolvedCurrentPlayerId.value
+  ) {
     return
   }
 
-  await drawGameCard(normalizedRoomCode.value, {
-    playerId: resolvedCurrentPlayerId.value,
-  })
-  logStoreState('draw-card:completed')
-  await refreshRoomState()
+  isDrawing.value = true
+
+  try {
+    const data = await drawGameCard(normalizedRoomCode.value, {
+      playerId: resolvedCurrentPlayerId.value,
+    })
+    const rawDrawnCard = data?.drawnCard ?? data?.card ?? null
+
+    if (!rawDrawnCard) {
+      throw new Error('Draw card response did not include a card')
+    }
+
+    const drawnCard = normalizeCard(rawDrawnCard)
+    logStoreState('draw-card:completed', { drawnCard })
+
+    await nextTick()
+
+    if (!gameStage.value?.playDrawAnimation) {
+      throw new Error('Game stage draw animation is unavailable')
+    }
+
+    await gameStage.value.playDrawAnimation(
+      drawnCard,
+      resolvedCurrentPlayerId.value,
+    )
+    await refreshRoomState()
+  } catch (error) {
+    console.warn('[game:view] draw-card:failed', {
+      roomCode: normalizedRoomCode.value,
+      playerId: resolvedCurrentPlayerId.value,
+      error,
+      errorData: error?.data,
+    })
+
+    try {
+      await refreshRoomState()
+    } catch (refreshError) {
+      console.warn('[game:view] draw-card:refresh-failed', refreshError)
+    }
+  } finally {
+    isDrawing.value = false
+  }
 }
 
 async function handlePlayCard(payload) {
@@ -393,6 +431,7 @@ watch(
 
   <GameStage
     v-else
+    ref="gameStage"
     :round-number="turnStatus.roundNumber"
     :current-phase="turnStatus.currentPhase"
     :current-step="turnStatus.currentStep"
@@ -402,12 +441,12 @@ watch(
     :players="players"
     :player-hand-card-counts="playerHandCardCounts"
     :hand-cards="handCards"
-    :draw-card="drawCard"
+    :can-draw="canDraw"
     :draw-player-id="drawPlayerId"
     :current-player-id="resolvedCurrentPlayerId"
     :current-turn-player-id="currentTurnPlayerId"
-    :is-loading="isLoading"
-    @draw-complete="handleDrawComplete"
+    :is-loading="isLoading || isDrawing"
+    @draw-request="handleDrawRequest"
     @play-card="handlePlayCard"
     @return-lobby="handleReturnLobby"
     @restart-game="handleRestartGame"
