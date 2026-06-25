@@ -31,6 +31,7 @@ function createInitialState (players){
         deck,
         discardPile: [],
         currentTurnPlayerId,
+        roundWinnerPlayerId: null,
         winnerPlayerId: null,
         players: gamePlayers,
     }
