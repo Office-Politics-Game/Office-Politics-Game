@@ -67,21 +67,40 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import GuestLoginModal from "@/components/login/GuestLoginModal.vue";
 import LoginContent from "@/components/login/LoginContent.vue";
+import { usePlayerStore } from "@/stores/playerStore.js";
 import bgEntryVideo from "@/assets/videos/EntryPage_BgVideo.mp4";
 
 const router = useRouter();
+const playerStore = usePlayerStore();
 const showLoginModal = ref(false);
 const showGuestLoginModal = ref(false);
 
 function handleGuestCreated(player) {
   localStorage.setItem("guestPlayer", JSON.stringify(player));
+  playerStore.setCurrentPlayer(player);
   showGuestLoginModal.value = false;
   router.push("/lobby");
 }
+
+onMounted(() => {
+  if (playerStore.currentPlayer) {
+    return;
+  }
+
+  try {
+    const savedPlayer = JSON.parse(localStorage.getItem("guestPlayer") || "null");
+
+    if (savedPlayer?.id) {
+      playerStore.setCurrentPlayer(savedPlayer);
+    }
+  } catch {
+    localStorage.removeItem("guestPlayer");
+  }
+});
 </script>
 
 <style scoped>
