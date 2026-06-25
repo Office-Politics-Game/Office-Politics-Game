@@ -31,6 +31,7 @@ function getPublicState(state, viewerPlayerId){
         isProtected: player.isProtected,
         isEliminated: player.isEliminated,
         discardedCards,
+        roundWins: player.roundWins || 0
       }
     }),
   }

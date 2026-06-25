@@ -18,7 +18,8 @@ function createInitialState (players){
             hand: [card],
             isProtected: false,
             isEliminated: false,
-            discardedCards: []
+            discardedCards: [],
+            roundWins: 0
         }
     })
 

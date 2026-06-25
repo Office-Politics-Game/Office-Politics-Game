@@ -1,4 +1,4 @@
-import {dealCards, addHandCard, removeHandCard, replaceCard, swapHands} from "../src/services/handService.js";
+import { dealCards, addHandCard, removeHandCard, replaceCard, swapHands } from "../src/services/handService.js"
 
 describe("dealCards", () => {
   test("發初始手牌", () => {

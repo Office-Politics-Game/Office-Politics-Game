@@ -54,15 +54,24 @@ test('discard pile reuses the layered game card', async () => {
   const source = await readSource('src/components/game/TableCardPiles.vue')
 
   assert.match(source, /import GameCard from '\.\/GameCard\.vue'/)
+  assert.match(source, /discardCards:/)
+  assert.match(source, /normalizedDiscardCards/)
+  assert.match(source, /topDiscardCard/)
   assert.match(source, /<GameCard/)
-  assert.match(source, /:background-url="discardCard\.backgroundUrl"/)
-  assert.match(source, /:frame-url="discardCard\.frameUrl"/)
+  assert.match(source, /:background-url="card\.backgroundUrl"/)
+  assert.match(source, /:frame-url="card\.frameUrl"/)
 })
 
-test('player hand remains static and non-interactive', async () => {
+test('player hand exposes card pointer interaction without owning play logic', async () => {
   const source = await readSource('src/components/game/PlayerHand.vue')
 
-  assert.doesNotMatch(source, /gsap|<button|@click|@mouseenter|@mouseleave|tabindex|draggable|:hover/)
+  assert.match(source, /defineEmits\(\['card-pointerdown'\]\)/)
+  assert.match(source, /role="button"/)
+  assert.match(source, /tabindex="0"/)
+  assert.match(source, /@pointerdown="emit\('card-pointerdown', card, \$event\)"/)
+  assert.match(source, /draggingCardId:/)
+  assert.match(source, /game-card-arrangement--dragging/)
+  assert.doesNotMatch(source, /gsap|<button|@click|@mouseenter|@mouseleave|draggable|:hover/)
   assert.doesNotMatch(source, /rounded-/)
 })
 
