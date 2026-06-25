@@ -24,7 +24,10 @@
       登入
     </h2>
 
-    <form class="grid gap-3.5 max-lg:landscape:gap-2" @submit.prevent = "handleLogin">
+    <form
+      class="grid gap-3.5 max-lg:landscape:gap-2"
+      @submit.prevent="handleLogin"
+    >
       <label class="relative block">
         <span class="sr-only">帳號</span>
         <input
