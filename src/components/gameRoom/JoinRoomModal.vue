@@ -1,9 +1,33 @@
 <script setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
+import { storeToRefs } from "pinia";
+import { useRouter } from "vue-router";
 import { DoorOpen } from "@lucide/vue";
 import joinRoomBackground from "@/assets/images/waiting-room.webp";
+import { usePlayerStore } from "@/stores/playerStore.js";
+import { useRoomStore } from "@/stores/roomStore.js";
+
+const router = useRouter();
+const roomStore = useRoomStore();
+const playerStore = usePlayerStore();
 
 const roomId = ref("");
+const { isLoading, errorMessage } = storeToRefs(roomStore);
+
+const normalizedRoomId = computed(() => roomId.value.trim().toUpperCase());
+
+async function handleJoinRoom() {
+  if (!normalizedRoomId.value) {
+    roomStore.errorMessage = "請先輸入房號。";
+    return;
+  }
+
+  await roomStore.joinRoom(normalizedRoomId.value, {
+    playerId: playerStore.currentPlayerId,
+  });
+
+  router.push("/custom-room");
+}
 </script>
 
 <template>
@@ -41,19 +65,28 @@ const roomId = ref("");
             placeholder="ABCD12"
           />
         </div>
+        <p
+          v-if="errorMessage"
+          class="mt-3 text-center text-sm font-bold text-red-700"
+        >
+          {{ errorMessage }}
+        </p>
       </section>
       <footer class="join-room-actions grid grid-cols-2">
         <button
           class="modal-action-button modal-action-button-light relative flex cursor-pointer items-center justify-center"
           type="button"
+          @click="router.push({ name: 'LobbyHome' })"
         >
           <span>取消</span>
         </button>
         <button
           class="modal-action-button modal-action-button-primary relative flex cursor-pointer items-center justify-center"
           type="button"
+          :disabled="isLoading"
+          @click="handleJoinRoom"
         >
-          <span>加入</span>
+          <span>{{ isLoading ? "加入中" : "加入房間" }}</span>
         </button>
       </footer>
     </article>
@@ -224,6 +257,11 @@ const roomId = ref("");
     color 180ms ease;
 }
 
+.modal-action-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .modal-action-button span {
   position: relative;
   z-index: 1;
@@ -237,7 +275,7 @@ const roomId = ref("");
   background: rgba(134, 179, 224, 0.34);
 }
 
-.modal-action-button:hover {
+.modal-action-button:hover:not(:disabled) {
   transform: translateY(-2px);
   border-color: var(--brand-hover, #0046f4);
   background: var(--brand-hover, #0046f4);
@@ -245,7 +283,7 @@ const roomId = ref("");
   box-shadow: 0 10px 24px rgba(0, 70, 244, 0.24);
 }
 
-.modal-action-button:active {
+.modal-action-button:active:not(:disabled) {
   transform: translateY(1px);
   border-color: var(--brand-active, #465563);
   background: var(--brand-active, #465563);

@@ -1,4 +1,5 @@
 const ROOM_API_PATH = "/api/rooms";
+const GAME_STATE_API_PATH = "/api/game-states";
 
 function getTrimmedRoomCode(roomCode) {
   return typeof roomCode === "string" ? roomCode.trim() : "";
