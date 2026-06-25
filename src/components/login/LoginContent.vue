@@ -57,7 +57,9 @@
           {{ passwordError }}
         </p>
       </label>
-
+      <p v-if="authStore.errorMessage" class="login-error">
+        {{ authStore.errorMessage }}
+      </p>
       <div
         class="mt-1.5 grid grid-cols-2 gap-3 max-lg:landscape:mt-1 max-lg:landscape:gap-2"
       >
@@ -144,7 +146,11 @@
 
 <script setup>
 import { ref } from "vue";
+import { useAuthStore } from "../../stores/authStore.js";
+
 const emit = defineEmits(["close"]);
+const authStore = useAuthStore();
+
 const username = ref("");
 const password = ref("");
 const usernameError = ref("");
@@ -154,12 +160,19 @@ function validateLoginForm(){
   passwordError.value = password.value.trim() ? "" : "請輸入密碼";
   return !usernameError.value && !passwordError.value
 }
-function handleLogin(){
+async function handleLogin(){
   const isValid = validateLoginForm()
   if(!isValid){
     return;
   }
-  console.log("表單登入成功")
+  try {
+    await authStore.login({
+      username: username.value.trim(),
+      password: password.value,
+    });
+  } catch (error) {
+    console.error(error);
+  }
 }
 </script>
 
