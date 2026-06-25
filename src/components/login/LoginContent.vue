@@ -149,10 +149,12 @@
 
 <script setup>
 import { ref } from "vue";
+import { useRouter } from "vue-router";
 import { useAuthStore } from "../../stores/authStore.js";
 
 const emit = defineEmits(["close"]);
 const authStore = useAuthStore();
+const router = useRouter();
 
 const username = ref("");
 const password = ref("");
@@ -173,6 +175,9 @@ async function handleLogin(){
       username: username.value.trim(),
       password: password.value,
     });
+
+    emit("close");
+    await router.push("/lobby");
   } catch (error) {
     console.error(error);
   }
