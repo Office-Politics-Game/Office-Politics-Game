@@ -6,6 +6,7 @@ import gameLogoUrl from '@/assets/images/logo-en-white.png'
 import { useAudioSettings } from '@/composables/UseAudioSettings'
 import { useGameAnimationRects } from '@/composables/useGameAnimationRects'
 import CardDrawAnimation from './CardDrawAnimation.vue'
+import CardGuessSelector from './CardGuessSelector.vue'
 import CleanerAnimation from './CleanerAnimation.vue'
 import GameCard from './GameCard.vue'
 import GameSettingsIcon from './GameSettingsIcon.vue'
@@ -86,6 +87,7 @@ const emit = defineEmits([
   'draw-complete',
   'opponent-draw-complete',
   'effect-result-complete',
+  'play-card',
 ])
 const isSettingsOpen = ref(false)
 const isDrawAnimating = ref(false)

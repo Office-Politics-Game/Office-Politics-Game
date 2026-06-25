@@ -116,7 +116,12 @@ function usePm(state, targetPlayerId) {
         return null
     }
 
+    if (!Array.isArray(targetPlayer.discardedCards)) {
+        targetPlayer.discardedCards = []
+    }
+
     state.discardPile.push(discardedCard)
+    targetPlayer.discardedCards.push(discardedCard)
 
     if (discardedCard.name === "CEO") {
         const eliminatedPlayer = useCeo(state, targetPlayerId, discardedCard)
