@@ -38,7 +38,7 @@
         </button>
 
         <!-- 訪客遊玩按鈕 -->
-        <button @click="$router.push('/lobby')" class="btn-glass tap-pop">
+        <button @click="showGuestLoginModal = true" class="btn-glass tap-pop">
           訪客遊玩
         </button>
       </div>
@@ -51,18 +51,56 @@
       >
         <LoginContent @close="showLoginModal = false" />
       </div>
+
+      <div
+        v-if="showGuestLoginModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+        @click.self="showGuestLoginModal = false"
+      >
+        <GuestLoginModal
+          @close="showGuestLoginModal = false"
+          @success="handleGuestCreated"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import GuestLoginModal from "@/components/login/GuestLoginModal.vue";
 import LoginContent from "@/components/login/LoginContent.vue";
+import { usePlayerStore } from "@/stores/playerStore.js";
 import bgEntryVideo from "@/assets/videos/EntryPage_BgVideo.mp4";
 
 const router = useRouter();
+const playerStore = usePlayerStore();
 const showLoginModal = ref(false);
+const showGuestLoginModal = ref(false);
+
+function handleGuestCreated(player) {
+  localStorage.setItem("guestPlayer", JSON.stringify(player));
+  playerStore.setCurrentPlayer(player);
+  showGuestLoginModal.value = false;
+  router.push("/lobby");
+}
+
+onMounted(() => {
+  if (playerStore.currentPlayer) {
+    return;
+  }
+
+  try {
+    const savedPlayer = JSON.parse(localStorage.getItem("guestPlayer") || "null");
+
+    if (savedPlayer?.id) {
+      playerStore.setCurrentPlayer(savedPlayer);
+    }
+  } catch {
+    localStorage.removeItem("guestPlayer");
+  }
+});
 </script>
 
 <style scoped>
