@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onUnmounted, ref } from 'vue'
 import cardBackUrl from '@/assets/images/card-bg-back.webp'
 import ceoBackgroundUrl from '@/assets/images/card-bg-ceo.webp'
 import ceoFrameUrl from '@/assets/images/card-frame-ceo.webp'
@@ -9,6 +9,14 @@ import managerBackgroundUrl from '@/assets/images/card-bg-manager.webp'
 import managerFrameUrl from '@/assets/images/card-frame-manager.webp'
 import hrBackgroundUrl from '@/assets/images/card-bg-hr.webp'
 import hrFrameUrl from '@/assets/images/card-frame-hr.webp'
+import internBackgroundUrl from '@/assets/images/card-bg-intern.webp'
+import internFrameUrl from '@/assets/images/card-frame-intern.webp'
+import cleanerBackgroundUrl from '@/assets/images/card-bg-cleaner.webp'
+import cleanerFrameUrl from '@/assets/images/card-frame-cleaner.webp'
+import seniorBackgroundUrl from '@/assets/images/card-bg-senior.webp'
+import seniorFrameUrl from '@/assets/images/card-frame-senior.webp'
+import pmBackgroundUrl from '@/assets/images/card-bg-pm.webp'
+import pmFrameUrl from '@/assets/images/card-frame-pm.webp'
 import gameTableBackgroundUrl from '@/assets/images/bg-game-table.webp'
 import playerOneUrl from '@/assets/images/player-1.png'
 import playerTwoUrl from '@/assets/images/player-2.png'
@@ -25,37 +33,111 @@ const INITIAL_DECK_COUNT = 28
 
 const cards = [
   {
-    id: 'ceo-pressure',
-    name: '執行長壓力',
-    type: 'Boss',
-    backgroundUrl: ceoBackgroundUrl,
-    frameUrl: ceoFrameUrl,
-    color: '#facc15',
+    id: 'intern-guess',
+    name: '實習生',
+    type: 'Guess',
+    rank: 1,
+    effectKey: 'guess',
+    targetMode: 'opponent',
+    requiresGuess: true,
+    backgroundUrl: internBackgroundUrl,
+    frameUrl: internFrameUrl,
+    color: '#fb923c',
   },
   {
-    id: 'advisor-drop',
-    name: '顧問空降',
-    type: 'Tactic',
-    backgroundUrl: advisorBackgroundUrl,
-    frameUrl: advisorFrameUrl,
-    color: '#38bdf8',
+    id: 'cleaner-peek',
+    name: '打掃阿姨',
+    type: 'Peek',
+    rank: 2,
+    effectKey: 'peek',
+    targetMode: 'opponent',
+    requiresGuess: false,
+    backgroundUrl: cleanerBackgroundUrl,
+    frameUrl: cleanerFrameUrl,
+    color: '#22c55e',
   },
   {
-    id: 'manager-push',
-    name: '主管加碼',
-    type: 'Power',
+    id: 'manager-compare',
+    name: '部門主管',
+    type: 'Duel',
+    rank: 3,
+    effectKey: 'compare',
+    targetMode: 'opponent',
+    requiresGuess: false,
     backgroundUrl: managerBackgroundUrl,
     frameUrl: managerFrameUrl,
     color: '#fb7185',
   },
   {
-    id: 'hr-talk',
-    name: '人資約談',
-    type: 'Control',
+    id: 'senior-protect',
+    name: '職場老鳥',
+    type: 'Shield',
+    rank: 4,
+    effectKey: 'protect',
+    targetMode: 'none',
+    requiresGuess: false,
+    backgroundUrl: seniorBackgroundUrl,
+    frameUrl: seniorFrameUrl,
+    color: '#60a5fa',
+  },
+  {
+    id: 'pm-redraw',
+    name: '專案經理',
+    type: 'Redraw',
+    rank: 5,
+    effectKey: 'redraw',
+    targetMode: 'anyPlayer',
+    requiresGuess: false,
+    backgroundUrl: pmBackgroundUrl,
+    frameUrl: pmFrameUrl,
+    color: '#f97316',
+  },
+  {
+    id: 'hr-swap',
+    name: '人資主管',
+    type: 'Swap',
+    rank: 6,
+    effectKey: 'swap',
+    targetMode: 'opponent',
+    requiresGuess: false,
     backgroundUrl: hrBackgroundUrl,
     frameUrl: hrFrameUrl,
     color: '#a78bfa',
   },
+  {
+    id: 'advisor-force',
+    name: '資深顧問',
+    type: 'Force',
+    rank: 7,
+    effectKey: 'force-discard',
+    targetMode: 'none',
+    requiresGuess: false,
+    backgroundUrl: advisorBackgroundUrl,
+    frameUrl: advisorFrameUrl,
+    color: '#38bdf8',
+  },
+  {
+    id: 'ceo-pressure',
+    name: '執行長',
+    type: 'Boss',
+    rank: 8,
+    effectKey: 'self-eliminate',
+    targetMode: 'none',
+    requiresGuess: false,
+    backgroundUrl: ceoBackgroundUrl,
+    frameUrl: ceoFrameUrl,
+    color: '#facc15',
+  },
+]
+
+const guessOptions = [
+  { rank: 2, name: '打掃阿姨' },
+  { rank: 3, name: '部門主管' },
+  { rank: 4, name: '職場老鳥' },
+  { rank: 5, name: '專案經理' },
+  { rank: 6, name: '人資主管' },
+  { rank: 7, name: '資深顧問' },
+  { rank: 8, name: '執行長' },
 ]
 
 const players = [
@@ -98,13 +180,13 @@ const opponentSources = [
     playerId: 'player-top',
     position: 'top',
     label: '上方玩家出牌',
-    card: cards[0],
+    card: cards[7],
   },
   {
     playerId: 'player-left',
     position: 'left',
     label: '左方玩家出牌',
-    card: cards[1],
+    card: cards[6],
   },
   {
     playerId: 'player-right',
@@ -115,17 +197,18 @@ const opponentSources = [
 ]
 
 const initialHandCards = [
-  { ...cards[3], id: 'hand-hr-talk' },
-  { ...cards[0], id: 'hand-ceo-pressure' },
-  { ...cards[1], id: 'hand-advisor-drop' },
-  { ...cards[2], id: 'hand-manager-push' },
+  { ...cards[0], id: 'hand-intern-guess' },
+  { ...cards[1], id: 'hand-cleaner-peek' },
+  { ...cards[3], id: 'hand-senior-protect' },
+  { ...cards[4], id: 'hand-pm-redraw' },
+  { ...cards[5], id: 'hand-hr-swap' },
 ]
 
 const drawDeck = [
-  { ...cards[0], id: 'draw-ceo-pressure' },
-  { ...cards[2], id: 'draw-manager-push' },
-  { ...cards[1], id: 'draw-advisor-drop' },
-  { ...cards[3], id: 'draw-hr-talk' },
+  { ...cards[7], id: 'draw-ceo-pressure' },
+  { ...cards[2], id: 'draw-manager-compare' },
+  { ...cards[6], id: 'draw-advisor-force' },
+  { ...cards[5], id: 'draw-hr-swap' },
 ]
 
 const sourceElements = ref({})
@@ -148,12 +231,66 @@ const dragPoint = ref(null)
 const dragPreviewStyle = ref({ display: 'none' })
 const isOverPlayZone = ref(false)
 const drawIndex = ref(0)
+const pendingPlay = ref(null)
+const selectedTargetPlayerId = ref(null)
+const selectedGuessRank = ref(null)
 const discardCards = ref([
   {
-    ...cards[1],
+    ...cards[6],
     id: 'discard-start',
   },
 ])
+
+const isInteractionLocked = computed(() =>
+  isPlaying.value ||
+  isDrawAnimating.value ||
+  isShuffleAnimating.value ||
+  Boolean(draggingCard.value) ||
+  Boolean(pendingPlay.value),
+)
+
+const requiresTarget = computed(() =>
+  pendingPlay.value?.card.targetMode === 'opponent' ||
+  pendingPlay.value?.card.targetMode === 'anyPlayer',
+)
+
+const selectableTargetPlayerIds = computed(() => {
+  if (!requiresTarget.value) {
+    return []
+  }
+
+  return players.filter((player) => {
+    if (pendingPlay.value.card.targetMode === 'opponent') {
+      return !player.isCurrentPlayer
+    }
+
+    return true
+  }).map((player) => player.id)
+})
+
+const selectedTargetPlayer = computed(() =>
+  players.find((player) => player.id === selectedTargetPlayerId.value) ?? null,
+)
+
+const selectedGuessOption = computed(() =>
+  guessOptions.find((option) => option.rank === selectedGuessRank.value) ?? null,
+)
+
+const canConfirmPendingPlay = computed(() => {
+  if (!pendingPlay.value) {
+    return false
+  }
+
+  if (requiresTarget.value && !selectedTargetPlayerId.value) {
+    return false
+  }
+
+  if (pendingPlay.value.card.requiresGuess && !selectedGuessRank.value) {
+    return false
+  }
+
+  return true
+})
 
 let pointerMoveHandler = null
 let pointerUpHandler = null
@@ -238,6 +375,11 @@ function resetDragState() {
   isOverPlayZone.value = false
 }
 
+function resetPendingChoices() {
+  selectedTargetPlayerId.value = null
+  selectedGuessRank.value = null
+}
+
 // 算出卡片放開當下的位置矩形。系統需要知道：卡片最後是從畫面上的哪個位置開始接續播放出牌動畫。它是在把「放開的位置」轉成一個可供動畫使用的矩形資料。
 function getDragReleaseRect() {
   if (!dragOriginRect.value || !dragPoint.value) {
@@ -250,6 +392,68 @@ function getDragReleaseRect() {
     width: dragOriginRect.value.width,
     height: dragOriginRect.value.height,
   }
+}
+
+function preparePendingPlay(source) {
+  pendingPlay.value = {
+    sourceId: source.sourceId,
+    position: source.position,
+    card: source.card,
+    removeFromHand: source.removeFromHand,
+  }
+  resetPendingChoices()
+}
+
+function selectTargetPlayer(playerId) {
+  if (!pendingPlay.value) {
+    return
+  }
+
+  const isSelectable = selectableTargetPlayerIds.value.includes(playerId)
+  if (!isSelectable) {
+    return
+  }
+
+  selectedTargetPlayerId.value = playerId
+}
+
+function selectGuess(rank) {
+  if (!pendingPlay.value?.card.requiresGuess) {
+    return
+  }
+
+  selectedGuessRank.value = rank
+}
+
+function confirmPendingPlay() {
+  if (!canConfirmPendingPlay.value) {
+    return
+  }
+
+  const confirmedPlay = pendingPlay.value
+  discardCards.value = [
+    ...discardCards.value.slice(-2),
+    {
+      ...confirmedPlay.card,
+      id: `${confirmedPlay.card.id}-discard-${Date.now()}`,
+      targetPlayerId: selectedTargetPlayerId.value,
+      guessedRank: selectedGuessRank.value,
+    },
+  ]
+
+  if (confirmedPlay.removeFromHand) {
+    playerHandCards.value = playerHandCards.value.filter((card) => card.id !== confirmedPlay.card.id)
+  }
+
+  pendingPlay.value = null
+  activeSourceId.value = null
+  resetPendingChoices()
+}
+
+function cancelPendingPlay() {
+  pendingPlay.value = null
+  activeSourceId.value = null
+  resetPendingChoices()
 }
 
 // 決定卡片出場時的初始傾斜角度。它根據卡片來自哪個方向，回傳不同的旋轉值。這個 function 是在幫不同位置出來的卡，設定比較合理的起始旋轉角度，讓動畫看起來不那麼呆板。
@@ -266,13 +470,7 @@ function getNextDrawCard() {
 
 // 這個 function 會從牌庫抓一張牌，播放它飛進手牌的動畫，等卡片落地後再真的把它加入我方手牌。
 async function playDrawAnimation() {
-  if (
-    isPlaying.value ||
-    isDrawAnimating.value ||
-    isShuffleAnimating.value ||
-    draggingCard.value ||
-    deckCount.value <= 0
-  ) {
+  if (isInteractionLocked.value || deckCount.value <= 0) {
     return
   }
 
@@ -309,7 +507,7 @@ async function playDrawAnimation() {
 }
 
 async function playShuffleAnimation() {
-  if (isPlaying.value || isDrawAnimating.value || isShuffleAnimating.value || draggingCard.value) {
+  if (isInteractionLocked.value) {
     return
   }
 
@@ -331,7 +529,7 @@ async function playShuffleAnimation() {
 }
 
 function handleHandPointerDown(card, event) {
-  if (isPlaying.value || isDrawAnimating.value || isShuffleAnimating.value || draggingCard.value) {
+  if (isInteractionLocked.value) {
     return
   }
 
@@ -398,7 +596,7 @@ function handleHandPointerDown(card, event) {
 }
 
 async function playCard(source) {
-  if (isPlaying.value || isDrawAnimating.value || isShuffleAnimating.value) {
+  if (isPlaying.value || isDrawAnimating.value || isShuffleAnimating.value || pendingPlay.value) {
     return
   }
 
@@ -423,6 +621,11 @@ async function playCard(source) {
       position: source.position,
       faceUp: source.faceUp,
     })
+
+    if (didPlay && source.removeFromHand) {
+      preparePendingPlay(source)
+      return
+    }
 
     if (didPlay) {
       discardCards.value = [
@@ -485,21 +688,21 @@ onUnmounted(() => {
           v-for="source in opponentSources"
           :key="`hud-${source.playerId}`"
           type="button"
-          :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard)"
+          :disabled="isInteractionLocked"
           @click="playOpponentCard(source)"
         >
           {{ source.label }}
         </button>
         <button
           type="button"
-          :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard)"
+          :disabled="isInteractionLocked"
           @click="playShuffleAnimation"
         >
           {{ isShuffleAnimating ? 'Shuffling' : 'Shuffle' }}
         </button>
         <button
           type="button"
-          :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard)"
+          :disabled="isInteractionLocked"
           @click="playDrawAnimation"
         >
           {{ isDrawAnimating ? '抽牌中' : '抽牌' }}
@@ -507,7 +710,19 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <PlayerSeats :players="players" />
+    <div
+      v-if="pendingPlay"
+      class="cardplay-test__target-backdrop"
+      aria-hidden="true"
+    ></div>
+
+    <PlayerSeats
+      :players="players"
+      :is-target-selection-active="Boolean(pendingPlay) && requiresTarget"
+      :selectable-player-ids="selectableTargetPlayerIds"
+      :selected-target-player-id="selectedTargetPlayerId"
+      @target-select="selectTargetPlayer"
+    />
 
     <button
       v-for="source in opponentSources"
@@ -519,7 +734,7 @@ onUnmounted(() => {
         `cardplay-test__source-card--${source.position}`,
         { 'cardplay-test__source-card--playing': activeSourceId === source.playerId },
       ]"
-      :disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard)"
+      :disabled="isInteractionLocked"
       :style="{ '--accent': source.card.color }"
       :aria-label="source.label"
       @click="playOpponentCard(source)"
@@ -533,7 +748,7 @@ onUnmounted(() => {
         ref="tableCardPilesRef"
         :deck-count="deckCount"
         :discard-cards="discardCards"
-        :is-draw-disabled="isPlaying || isDrawAnimating || isShuffleAnimating || Boolean(draggingCard)"
+        :is-draw-disabled="isInteractionLocked"
         :is-deck-hidden="isShuffleAnimating"
         :is-drop-target-active="isPlaying || isOverPlayZone"
         @draw="playDrawAnimation"
@@ -551,7 +766,7 @@ onUnmounted(() => {
           'cardplay-test__hand-card--playing': activeSourceId === card.id,
           'cardplay-test__hand-card--dragging': draggingCard?.id === card.id,
         }"
-        :disabled="isPlaying || isDrawAnimating || isShuffleAnimating"
+        :disabled="isInteractionLocked"
         :style="{
           '--accent': card.color,
           '--fan-index': index - (playerHandCards.length - 1) / 2,
@@ -585,6 +800,60 @@ onUnmounted(() => {
       />
     </div>
 
+    <section
+      v-if="pendingPlay"
+      class="cardplay-test__pending-panel"
+      aria-label="出牌確認"
+    >
+      <div class="cardplay-test__pending-summary">
+        <span class="cardplay-test__pending-kicker">準備出牌</span>
+        <strong>{{ pendingPlay.card.name }}</strong>
+        <small>
+          {{
+            requiresTarget
+              ? selectedTargetPlayer
+                ? `目標：${selectedTargetPlayer.name}`
+                : '請點選玩家頭像'
+              : '此牌不需要指定目標'
+          }}
+        </small>
+      </div>
+
+      <div
+        v-if="pendingPlay.card.requiresGuess"
+        class="cardplay-test__guess-options"
+        aria-label="選擇猜測牌名"
+      >
+        <button
+          v-for="option in guessOptions"
+          :key="option.rank"
+          type="button"
+          class="cardplay-test__guess-option"
+          :class="{ 'cardplay-test__guess-option--selected': selectedGuessRank === option.rank }"
+          :aria-pressed="selectedGuessRank === option.rank"
+          @click="selectGuess(option.rank)"
+        >
+          {{ option.rank }} · {{ option.name }}
+        </button>
+      </div>
+
+      <p v-if="pendingPlay.card.requiresGuess" class="cardplay-test__pending-hint">
+        {{ selectedGuessOption ? `猜測：${selectedGuessOption.name}` : '實習生不能猜實習生，請選擇 2-8 的牌。' }}
+      </p>
+
+      <div class="cardplay-test__pending-actions">
+        <button type="button" @click="cancelPendingPlay">取消</button>
+        <button
+          type="button"
+          class="cardplay-test__pending-confirm"
+          :disabled="!canConfirmPendingPlay"
+          @click="confirmPendingPlay"
+        >
+          確認出牌
+        </button>
+      </div>
+    </section>
+
     <CardDrawAnimation
       ref="cardDrawAnimationRef"
       :card="activeDrawCard"
@@ -615,6 +884,16 @@ onUnmounted(() => {
     radial-gradient(circle at 50% 42%, rgba(56, 189, 248, 0.14), transparent 28%),
     radial-gradient(circle at 50% 62%, rgba(250, 204, 21, 0.1), transparent 34%),
     linear-gradient(180deg, rgba(7, 17, 29, 0.72), rgba(7, 17, 29, 0.2) 48%, rgba(7, 17, 29, 0.74));
+}
+
+.cardplay-test__target-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 42;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.42);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
 }
 
 .cardplay-test__hud {
@@ -866,6 +1145,100 @@ onUnmounted(() => {
 .cardplay-test__drag-preview--over .cardplay-test__drag-preview-glow {
   opacity: 0.82;
   transform: scale(1);
+}
+
+.cardplay-test__pending-panel {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 60;
+  display: grid;
+  gap: 12px;
+  width: min(340px, calc(100vw - 36px));
+  max-height: min(420px, calc(100dvh - 224px));
+  overflow: auto;
+  border: 1px solid rgba(250, 204, 21, 0.58);
+  border-radius: var(--radius-md, 0);
+  padding: 16px;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(7, 17, 29, 0.88)),
+    rgba(7, 17, 29, 0.82);
+  box-shadow:
+    0 0 24px rgba(250, 204, 21, 0.16),
+    0 22px 48px rgba(0, 0, 0, 0.46);
+  backdrop-filter: blur(10px);
+}
+
+.cardplay-test__pending-summary {
+  display: grid;
+  gap: 4px;
+}
+
+.cardplay-test__pending-kicker {
+  color: #facc15;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.cardplay-test__pending-summary strong {
+  font-size: 24px;
+  line-height: 1.05;
+}
+
+.cardplay-test__pending-summary small,
+.cardplay-test__pending-hint {
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.cardplay-test__pending-hint {
+  margin: 0;
+}
+
+.cardplay-test__guess-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cardplay-test__guess-option,
+.cardplay-test__pending-actions button {
+  min-height: 38px;
+  border: 1px solid rgba(148, 163, 184, 0.48);
+  border-radius: var(--radius-md, 0);
+  padding: 0 10px;
+  cursor: pointer;
+  background: rgba(15, 23, 42, 0.72);
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.cardplay-test__guess-option:hover,
+.cardplay-test__guess-option--selected {
+  border-color: rgba(250, 204, 21, 0.82);
+  background: rgba(250, 204, 21, 0.16);
+}
+
+.cardplay-test__pending-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cardplay-test__pending-confirm {
+  border-color: rgba(250, 204, 21, 0.72) !important;
+  background: rgba(250, 204, 21, 0.18) !important;
+}
+
+.cardplay-test__pending-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 @media (max-width: 860px) {

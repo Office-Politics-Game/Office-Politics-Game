@@ -80,7 +80,7 @@ test('game stage coordinates deck origin, hand target, data commit, and replay l
   assert.match(source, /emit\('draw-complete', activeDrawCard\.value\)/)
   assert.match(source, /emit\('opponent-draw-complete', \{[\s\S]*playerId: activeDrawPlayerId[\s\S]*card: activeDrawCard\.value/)
   assert.match(source, /finishDraw\(\)/)
-  assert.match(source, /:is-draw-disabled="isDrawAnimating \|\| !drawCard"/)
+  assert.match(source, /:is-draw-disabled="isPlayInteractionLocked \|\| !drawCard"/)
   assert.match(source, /@draw="playDrawAnimation"/)
   assert.match(source, /<PlayerSeats[\s\S]*ref="playerSeats"/)
   assert.match(source, /<CardDrawAnimation[\s\S]*:card="activeDrawCard"/)
