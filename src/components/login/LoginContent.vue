@@ -68,7 +68,7 @@
       >
         <button
           class="login-button is-secondary tap-pop flex cursor-pointer items-center justify-center"
-          type="button"
+          type="button" @click="goRegister"
         >
           註冊
         </button>
@@ -181,6 +181,9 @@ async function handleLogin(){
   } catch (error) {
     console.error(error);
   }
+
+function goRegister(){
+  router.push("/register")
 }
 </script>
 
