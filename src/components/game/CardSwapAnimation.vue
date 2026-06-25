@@ -53,6 +53,15 @@ function getShowcaseTravel(rect, offsetX) {
   }
 }
 
+function hideOverlay() {
+  gsap.set([veilRef.value, exchangeLineRef.value].filter(Boolean), {
+    autoAlpha: 0,
+  })
+
+  gsap.set(exchangeLineRef.value, {
+    scaleX: 0.42,
+  })
+}
 function resetLayer() {
   activeSelfCard.value = null
   activeOpponentCard.value = null
@@ -63,6 +72,7 @@ function resetLayer() {
 function stop() {
   timeline?.kill()
   timeline = null
+
   gsap.killTweensOf([
     selfCardRef.value,
     selfFlipperRef.value,
@@ -71,6 +81,8 @@ function stop() {
     veilRef.value,
     exchangeLineRef.value,
   ].filter(Boolean))
+
+  hideOverlay()
   resetLayer()
 }
 
@@ -94,6 +106,8 @@ function playReducedMotion({
       resolve(true)
     },
     onInterrupt: () => {
+      hideOverlay()
+      resetLayer()
       timeline = null
       resolve(false)
     },
@@ -377,6 +391,8 @@ defineExpose({
 .card-swap-animation__line {
   position: fixed;
   pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
 }
 
 .card-swap-animation__veil {
