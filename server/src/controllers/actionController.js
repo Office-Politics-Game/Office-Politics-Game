@@ -92,10 +92,11 @@ async function handlePlayCard(req, res){
         await pool.query(
             `UPDATE game_sessions
             SET state_json = $1,
-                current_turn_player_id = $2,
+                status = $2,
+                current_turn_player_id = $3,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = $3`,
-            [state, state.currentTurnPlayerId, gameSession.id]
+            WHERE id = $4`,
+            [state, state.phase, state.currentTurnPlayerId, gameSession.id]
         )
 
         const actionLog = await addLog(
@@ -171,9 +172,10 @@ async function handleDrawCard(req, res) {
     await pool.query(
         `UPDATE game_sessions
         SET state_json = $1,
+            status = $2,
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = $2`,
-        [state, gameSession.id]
+        WHERE id = $3`,
+        [state, state.phase, gameSession.id]
     )
 
     const publicState = getPublicState(state, Number(playerId))
