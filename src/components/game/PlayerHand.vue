@@ -24,6 +24,7 @@ const props = defineProps({
 const emit = defineEmits(['card-pointerdown'])
 const drawTarget = ref(null)
 const dealTarget = ref(null)
+const handRoot = ref(null)
 const isDrawing = ref(false)
 
 function prepareDrawTarget() {
@@ -38,6 +39,11 @@ function getDealTargetRect() {
   return dealTarget.value?.getBoundingClientRect() ?? null
 }
 
+function getHandRect() {
+  const card = handRoot.value?.querySelector('.game-card-arrangement:not(.game-card-arrangement--draw-target)')
+  return card?.getBoundingClientRect() ?? handRoot.value?.getBoundingClientRect() ?? null
+}
+
 function finishDraw() {
   isDrawing.value = false
 }
@@ -46,12 +52,14 @@ defineExpose({
   prepareDrawTarget,
   getDrawTargetRect,
   getDealTargetRect,
+  getHandRect,
   finishDraw,
 })
 </script>
 
 <template>
   <section
+    ref="handRoot"
     class="player-hand relative"
     :class="{
       'player-hand--drawing': isDrawing,

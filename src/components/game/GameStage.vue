@@ -4,13 +4,18 @@ import { gsap } from 'gsap'
 import gameTableBackgroundUrl from '@/assets/images/bg-game-table.webp'
 import gameLogoUrl from '@/assets/images/logo-en-white.png'
 import { useAudioSettings } from '@/composables/UseAudioSettings'
+import { useGameAnimationRects } from '@/composables/useGameAnimationRects'
 import CardDrawAnimation from './CardDrawAnimation.vue'
 import CardGuessSelector from './CardGuessSelector.vue'
+import CleanerAnimation from './CleanerAnimation.vue'
 import GameCard from './GameCard.vue'
 import GameSettingsIcon from './GameSettingsIcon.vue'
 import GameSettingsModal from './GameSettingsModal.vue'
+import InternAnimation from './InternAnimation.vue'
+import ManagerAnimation from './ManagerAnimation.vue'
 import PlayerHand from './PlayerHand.vue'
 import PlayerSeats from './PlayerSeats.vue'
+import PMAnimation from './PMAnimation.vue'
 import RotateDeviceNotice from './RotateDeviceNotice.vue'
 import TableCardPiles from './TableCardPiles.vue'
 import TurnStatus from './TurnStatus.vue'
@@ -70,6 +75,10 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  effectResult: {
+    type: Object,
+    default: null,
+  },
 })
 
 const emit = defineEmits([
@@ -77,6 +86,7 @@ const emit = defineEmits([
   'restart-game',
   'draw-complete',
   'opponent-draw-complete',
+  'effect-result-complete',
   'play-card',
 ])
 const isSettingsOpen = ref(false)
@@ -211,6 +221,13 @@ function handleRestartGame() {
 function isSelfDraw(playerId) {
   return !playerId || playerId === resolvedCurrentPlayerId.value
 }
+
+const animationRects = useGameAnimationRects({
+  playerHand,
+  playerSeats,
+  tableCardPiles: tableCardPilesRef,
+  currentPlayerId: resolvedCurrentPlayerId,
+})
 
 function markOpponentDrawn(playerId) {
   if (opponentDrawnPlayerIds.value.includes(playerId)) {
@@ -1049,6 +1066,33 @@ defineExpose({
       <CardDrawAnimation
         ref="cardDrawAnimation"
         :card="activeDrawCard"
+      />
+
+      <InternAnimation
+        :result="effectResult?.type === 'intern' ? effectResult : null"
+        :get-player-hand-rect="animationRects.getPlayerHandRect"
+        :get-discard-rect="animationRects.getDiscardRect"
+        @complete="emit('effect-result-complete', $event)"
+      />
+      <CleanerAnimation
+        :result="effectResult?.type === 'cleaner' ? effectResult : null"
+        :get-player-hand-rect="animationRects.getPlayerHandRect"
+        :is-self-player="animationRects.isSelfPlayer"
+        @complete="emit('effect-result-complete', $event)"
+      />
+      <ManagerAnimation
+        :result="effectResult?.type === 'manager' ? effectResult : null"
+        :get-player-hand-rect="animationRects.getPlayerHandRect"
+        :get-discard-rect="animationRects.getDiscardRect"
+        @complete="emit('effect-result-complete', $event)"
+      />
+      <PMAnimation
+        :result="effectResult?.type === 'pm' ? effectResult : null"
+        :get-player-hand-rect="animationRects.getPlayerHandRect"
+        :get-discard-rect="animationRects.getDiscardRect"
+        :get-deck-rect="animationRects.getDeckRect"
+        :is-self-player="animationRects.isSelfPlayer"
+        @complete="emit('effect-result-complete', $event)"
       />
 
       <Teleport to="body">
