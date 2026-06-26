@@ -181,6 +181,7 @@ async function handleLogin(){
   } catch (error) {
     console.error(error);
   }
+}
 
 function goRegister(){
   router.push("/register")

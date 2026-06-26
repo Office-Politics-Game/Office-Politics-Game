@@ -140,10 +140,10 @@
 <script setup>
 import { reactive, ref, onBeforeUnmount } from "vue"
 import { useRouter } from "vue-router"
-// import { useAuthStore } from "@/stores/authStore.js"
+import { useAuthStore } from "@/stores/authStore.js"
 
 const router = useRouter()
-// const authStore = useAuthStore()
+const authStore = useAuthStore()
 
 const form = reactive({
   username: "",
