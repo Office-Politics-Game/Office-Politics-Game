@@ -107,8 +107,8 @@ const routes = [
   },
   {
     path: "/register",
-    name: "register",
-    component: LoginPage
+    name: "Register",
+    component: LoginPage,
   }
 ];
 
