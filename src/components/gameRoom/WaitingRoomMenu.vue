@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, ref } from "vue";
+import { storeToRefs } from "pinia";
 import { useRouter } from "vue-router";
 import matchIcon from "@/assets/images/icon-match.png";
 import joinIcon from "@/assets/images/icon-join.png";
@@ -7,6 +8,8 @@ import createIcon from "@/assets/images/icon-create.png";
 import waitingRoomOne from "@/assets/images/waiting-room-1.webp";
 import waitingRoomTwo from "@/assets/images/waiting-room-2.webp";
 import waitingRoomThree from "@/assets/images/waiting-room-3.webp";
+import { usePlayerStore } from "@/stores/playerStore.js";
+import { useRoomStore } from "@/stores/roomStore.js";
 
 const roomActions = [
   {
@@ -33,10 +36,14 @@ const roomActions = [
 ];
 
 const router = useRouter();
+const roomStore = useRoomStore();
+const playerStore = usePlayerStore();
+
 const roomId = ref("");
 const activeAction = ref("");
 const matchElapsedSeconds = ref(0);
 const matchTimerId = ref(null);
+const { isLoading, errorMessage } = storeToRefs(roomStore);
 
 const Matching = computed(() => {
   const minutes = Math.floor(matchElapsedSeconds.value / 60)
@@ -64,7 +71,30 @@ function startMatchTimer() {
   }, 1000);
 }
 
-function handleActionClick(action) {
+async function handleCreateRoom() {
+  await roomStore.createRoom({
+    hostPlayerId: playerStore.currentPlayerId,
+  });
+
+  router.push("/custom-room");
+}
+
+async function handleJoinRoom() {
+  const normalizedRoomId = roomId.value.trim().toUpperCase();
+
+  if (!normalizedRoomId) {
+    roomStore.errorMessage = "請先輸入房號。";
+    return;
+  }
+
+  await roomStore.joinRoom(normalizedRoomId, {
+    playerId: playerStore.currentPlayerId,
+  });
+
+  router.push("/custom-room");
+}
+
+async function handleActionClick(action) {
   activeAction.value = action.title;
 
   if (action.title === "開始配對") {
@@ -75,8 +105,7 @@ function handleActionClick(action) {
   stopMatchTimer();
 
   if (action.title === "建立房間") {
-    router.push("/custom-room");
-    return;
+    await handleCreateRoom();
   }
 }
 
@@ -160,14 +189,29 @@ onBeforeUnmount(stopMatchTimer);
             <button
               class="btn-dark mt-1 block w-full !text-[11px] lg:!text-[14px]"
               type="button"
-              @click.stop
+              :disabled="isLoading"
+              @click.stop="handleJoinRoom"
             >
-              確認
+              {{ isLoading ? "加入中" : "確認" }}
             </button>
+          </span>
+
+          <span
+            v-if="action.title === '建立房間' && isLoading && activeAction === '建立房間'"
+            class="match-timer-inline text-xs lg:text-sm mt-2"
+          >
+            建立中
           </span>
         </span>
       </button>
     </div>
+
+    <p
+      v-if="errorMessage"
+      class="pointer-events-auto absolute bottom-5 left-1/2 z-20 -translate-x-1/2 rounded bg-white/85 px-4 py-2 text-sm font-bold text-red-700"
+    >
+      {{ errorMessage }}
+    </p>
   </div>
 </template>
 
@@ -240,6 +284,11 @@ onBeforeUnmount(stopMatchTimer);
   color: var(--brand-active, #465563);
   font-weight: 700;
   outline: 0;
+}
+
+.join-room-inline-input:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 
 .waiting-room-line {

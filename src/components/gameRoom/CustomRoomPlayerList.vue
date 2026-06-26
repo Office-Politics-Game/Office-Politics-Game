@@ -9,7 +9,7 @@ defineProps({
   },
 });
 
-defineEmits(["add-computer", "remove-player"]);
+defineEmits(["add-computer", "remove-player", "toggle-ready"]);
 </script>
 
 <template>
@@ -85,6 +85,12 @@ defineEmits(["add-computer", "remove-player"]);
             >
               Lv. {{ slot.level }}
             </p>
+            <p
+              v-else
+              class="room-player-level m-0 text-[10px] font-extrabold leading-none lg:text-[14px]"
+            >
+              {{ slot.isReady ? "Ready" : "Not Ready" }}
+            </p>
           </div>
 
           <div
@@ -111,9 +117,13 @@ defineEmits(["add-computer", "remove-player"]);
             v-if="!slot.isHost && slot.name"
             class="btn-dark tap-pop room-ready-button relative z-[1] mt-3 self-center rounded px-3 py-[5px] text-[11px] font-black leading-none lg:mt-[30px] lg:px-5 lg:py-2 lg:text-[15px]"
             type="button"
-            @click="$emit('remove-player', index)"
+            @click="
+              slot.canToggleReady
+                ? $emit('toggle-ready', slot)
+                : $emit('remove-player', index)
+            "
           >
-            踢除
+            {{ slot.canToggleReady ? (slot.isReady ? "取消準備" : "準備") : "踢除" }}
           </button>
         </div>
       </article>

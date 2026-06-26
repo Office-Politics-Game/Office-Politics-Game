@@ -167,14 +167,20 @@ function othersDraw(options) {
   })
 }
 
-onUnmounted(() => {
+function stop() {
   timeline?.kill()
+  timeline = null
+}
+
+onUnmounted(() => {
+  stop()
 })
 
 defineExpose({
   selfDraw,
   othersDraw,
   play,
+  stop,
 })
 </script>
 

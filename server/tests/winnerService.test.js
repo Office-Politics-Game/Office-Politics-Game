@@ -5,6 +5,7 @@ function createState() {
   return {
     phase: "playing",
     deck: [{ id: 1, name: "Intern" }],
+    roundWinnerPlayerId: null,
     winnerPlayerId: null,
     players: [
       {
@@ -76,6 +77,23 @@ describe("贏家判定邏輯", ()=>{
         expect(winner.playerId).toBe(2)
         expect(winner.roundWins).toBe(1)
         expect(state.phase).toBe("roundEnded")
+    })
+
+    test("重複呼叫checkWinner時，不會重複增加勝場", ()=>{
+      const state = createState()
+      state.deck = []
+
+      const first = checkWinner(state)
+      const second = checkWinner(state)
+
+      const winnerPlayer = state.players.find((player)=>{
+        return player.playerId === 2
+      })
+
+      expect(first.playerId).toBe(2)
+      expect(second.playerId).toBe(2)
+      expect(winnerPlayer.roundWins).toBe(1)
+      expect(state.roundWinnerPlayerId).toBe(2)
     })
 
     test("當玩家取得3輪遊戲勝利時，整場遊戲結束", ()=>{

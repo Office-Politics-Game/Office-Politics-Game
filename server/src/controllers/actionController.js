@@ -2,9 +2,9 @@ import pool from "../db/index.js"
 import { runCardEffect, checkGuess } from "../services/cardEffectService.js"
 import { addLog } from "../services/actionLogService.js"
 import { discardCard } from "../services/discardService.js"
+import { finishTurn } from "../services/roundFlowService.js"
 import { getPublicState } from "../services/gameStateService.js"
 import { drawCard } from "../services/drawService.js"
-import { clearPlayerProtection } from "../services/playerStateService.js"
 import {
     checkTurn,
     checkPlayer,
@@ -13,36 +13,12 @@ import {
     checkAdvisorRule,
 } from "../services/ruleCheckService.js"
 
-function getNextTurnPlayerId(players, currentPlayerId) {
-    const activePlayers = players
-        .filter((player) => {
-            return !player.isEliminated
-        })
-        .sort((a, b) => {
-            return a.seatOrder - b.seatOrder
-        })
-
-    if (activePlayers.length === 0) {
-        return null
-    }
-
-    const currentIndex = activePlayers.findIndex((player) => {
-        return player.playerId === currentPlayerId
-    })
-
-    const nextIndex = currentIndex === -1
-        ? 0
-        : (currentIndex + 1) % activePlayers.length
-
-    return activePlayers[nextIndex].playerId
-}
-
 async function handlePlayCard(req, res){
     try {
         const {
             roomCode,
             playerId,
-            card,
+            cardId,
             targetPlayerId,
             guessedCardName,
         } = req.body
@@ -55,8 +31,8 @@ async function handlePlayCard(req, res){
             return res.status(400).json({ message: "缺少玩家ID" })
         }
 
-        if (!card) {
-            return res.status(400).json({ message: "缺少卡牌資料" })
+        if (!cardId) {
+            return res.status(400).json({ message: "缺少卡牌ID" })
         }
 
         const sessionResult = await pool.query(
@@ -68,43 +44,35 @@ async function handlePlayCard(req, res){
             LIMIT 1`,
             [roomCode]
         )
+
         if (sessionResult.rows.length === 0) {
             return res.status(404).json({ message: "找不到遊戲狀態" })
         }
 
         const gameSession = sessionResult.rows[0]
         const state = gameSession.state_json
-        const players = Array.isArray(state.players) ? state.players : []
-        const playerInGame = players.some((player) => {
-            return player.playerId === Number(playerId)
-        })
+        const numericPlayerId = Number(playerId)
+        const numericTargetPlayerId = targetPlayerId
+            ? Number(targetPlayerId)
+            : undefined
 
-        if (!playerInGame) {
-            return res.status(403).json({ message: "此玩家不在該局遊戲中" })
+        if (state.phase !== "playing") {
+            return res.status(400).json({ message: "遊戲目前不是進行中" })
         }
 
-        const currentPlayer = players.find((player) => {
-            return player.playerId === Number(playerId)
-        })
+        const player = checkPlayer(state, numericPlayerId)
+        checkTurn(state, numericPlayerId)
+        const card = checkCard(state, numericPlayerId, cardId)
+        checkAdvisorRule(state, numericPlayerId, card.id)
+        checkTarget(state, numericPlayerId, card.id, numericTargetPlayerId)
 
-        checkTurn(state, Number(playerId))
-        checkPlayer(state, Number(playerId))
-        const playedCard = checkCard(state, Number(playerId), card.id)
-        checkTarget(
-            state,
-            Number(playerId),
-            playedCard.id,
-            targetPlayerId ? Number(targetPlayerId) : undefined
-        )
-        checkAdvisorRule(state, Number(playerId), playedCard.id)
-
-        if (playedCard.name === "Intern" && !checkGuess(guessedCardName)) {
+        if (card.name === "Intern" && !checkGuess(guessedCardName)) {
             return res.status(400).json({ message: "猜測卡牌不合法" })
         }
 
         const discardedCard = discardCard(
-            currentPlayer,
-            playedCard.id,
+            player,
+            card.id,
             state.discardPile
         )
 
@@ -114,37 +82,30 @@ async function handlePlayCard(req, res){
 
         const effectResult = runCardEffect({
             state,
-            card: playedCard,
-            playerId: Number(playerId),
-            targetPlayerId: targetPlayerId ? Number(targetPlayerId) : undefined,
+            card: discardedCard,
+            playerId: numericPlayerId,
+            targetPlayerId: numericTargetPlayerId,
             guessedCardName,
         })
 
-        const nextTurnPlayerId = getNextTurnPlayerId(
-            players,
-            Number(playerId)
-        )
-
-        if (nextTurnPlayerId) {
-            clearPlayerProtection(state, nextTurnPlayerId)
-        }
-
-        state.currentTurnPlayerId = nextTurnPlayerId
+        finishTurn(state, numericPlayerId)
 
         await pool.query(
             `UPDATE game_sessions
             SET state_json = $1,
+                status = $2,
+                current_turn_player_id = $3,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = $2`,
-            [state, gameSession.id]
+            WHERE id = $4`,
+            [state, state.phase, state.currentTurnPlayerId, gameSession.id]
         )
 
         const actionLog = await addLog(
             gameSession.room_id,
-            Number(playerId),
+            numericPlayerId,
             "play_card",
             JSON.stringify({
-                card: playedCard,
+                cardId,
                 targetPlayerId,
                 guessedCardName,
                 result: effectResult,
@@ -152,7 +113,9 @@ async function handlePlayCard(req, res){
                 nextTurnPlayerId: state.currentTurnPlayerId,
             })
         )
-        const publicState = getPublicState(state, Number(playerId))
+
+        const publicState = getPublicState(state, numericPlayerId)
+
         return res.status(200).json({
             message: "卡牌效果已執行",
             result: effectResult,
@@ -162,9 +125,9 @@ async function handlePlayCard(req, res){
         })
     } catch (error) {
         return res.status(error.statusCode || 500).json({
-        message: "出牌失敗",
-        error: error.message,
-    })
+            message: error.statusCode ? error.message : "出牌失敗",
+            error: error.message,
+        })
   }
 }
 
@@ -188,11 +151,15 @@ async function handleDrawCard(req, res) {
     )
 
     if (sessionResult.rows.length === 0) {
-        return res.status(404).json({ message: "找不到遊戲場次" })
+        return res.status(404).json({ message: "找不到遊戲狀態" })
     }
 
     const gameSession = sessionResult.rows[0]
     const state = gameSession.state_json
+
+    if (state.phase !== "playing") {
+        return res.status(400).json({ message: "遊戲目前不是進行中" })
+    }
 
     const drawResult = drawCard({
         state,
@@ -206,9 +173,10 @@ async function handleDrawCard(req, res) {
     await pool.query(
         `UPDATE game_sessions
         SET state_json = $1,
+            status = $2,
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = $2`,
-        [state, gameSession.id]
+        WHERE id = $3`,
+        [state, state.phase, gameSession.id]
     )
 
     const publicState = getPublicState(state, Number(playerId))
@@ -219,8 +187,8 @@ async function handleDrawCard(req, res) {
         state: publicState,
     })
   }catch (error){
-    return res.status(500).json({
-      message: "抽牌失敗",
+    return res.status(error.statusCode || 500).json({
+      message: error.statusCode ? error.message : "抽牌失敗",
       error: error.message,
     })
   }
