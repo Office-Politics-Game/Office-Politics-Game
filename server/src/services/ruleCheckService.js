@@ -22,7 +22,9 @@ function findCard(state, playerId, cardId){
         return null
     }
 
-    return player.hand.find((card)=>{
+    const hand = Array.isArray(player.hand) ? player.hand : []
+
+    return hand.find((card)=>{
         return card.id === Number(cardId)
     })
 }
@@ -69,7 +71,7 @@ function checkTarget(state, playerId, cardId, targetPlayerId){
         throw createRuleError("需要指定目標玩家")
     }
 
-    if (Number(targetPlayerId) === Number(playerId)){
+    if (Number(targetPlayerId) === Number(playerId) && Number(card.id) !== pmCardId){
         throw createRuleError("不能選擇自己作為目標")
     }
 
@@ -100,10 +102,11 @@ function checkProtected(state, targetPlayerId){
 
 function checkAdvisorRule(state, playerId, cardId){
     const player = checkPlayer(state, playerId)
-    const hasAdvisor = player.hand.some((card)=>{
+    const hand = Array.isArray(player.hand) ? player.hand : []
+    const hasAdvisor = hand.some((card)=>{
         return card.id === advisorCardId
     })
-    const hasPmOrHr = player.hand.some((card)=>{
+    const hasPmOrHr = hand.some((card)=>{
         return card.id === pmCardId || card.id === hrCardId
     })
 

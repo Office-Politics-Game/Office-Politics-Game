@@ -125,7 +125,7 @@ function usePm(state, targetPlayerId) {
             discardedCard,
             newCard: null,
             player: eliminatedPlayer,
-            deck: state.deck,
+            deckCount: state.deck.length,
             discardPile: state.discardPile,
         }
     }
@@ -142,7 +142,7 @@ function usePm(state, targetPlayerId) {
         discardedCard,
         newCard,
         player: targetPlayer,
-        deck: state.deck,
+        deckCount: state.deck.length,
         discardPile: state.discardPile,
     }
 }

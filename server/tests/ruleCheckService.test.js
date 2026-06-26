@@ -106,3 +106,16 @@ describe("出牌規則及回合判斷", ()=>{
         expect(()=> checkAdvisorRule(state, 1, 8)).not.toThrow()
     })
 })
+
+describe("PM target rule", ()=>{
+    test("allows PM to target self but keeps self-target limit for other cards", ()=>{
+        const state = createState()
+        state.players[1].hand = [{ id: 5, name: "PM" }]
+
+        expect(checkTarget(state, 2, 5, 2).playerId).toBe(2)
+
+        state.players[1].hand = [{ id: 6, name: "HR" }]
+
+        expect(()=> checkTarget(state, 2, 6, 2)).toThrow()
+    })
+})

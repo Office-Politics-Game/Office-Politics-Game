@@ -1,10 +1,17 @@
 import pool from "../db/index.js"
-import { runCardEffect } from "../services/cardEffectService.js"
+import { runCardEffect, checkGuess } from "../services/cardEffectService.js"
 import { addLog } from "../services/actionLogService.js"
 import { discardCard } from "../services/discardService.js"
 import { getPublicState } from "../services/gameStateService.js"
 import { drawCard } from "../services/drawService.js"
 import { clearPlayerProtection } from "../services/playerStateService.js"
+import {
+    checkTurn,
+    checkPlayer,
+    checkCard,
+    checkTarget,
+    checkAdvisorRule,
+} from "../services/ruleCheckService.js"
 
 function getNextTurnPlayerId(players, currentPlayerId) {
     const activePlayers = players
@@ -80,9 +87,24 @@ async function handlePlayCard(req, res){
             return player.playerId === Number(playerId)
         })
 
+        checkTurn(state, Number(playerId))
+        checkPlayer(state, Number(playerId))
+        const playedCard = checkCard(state, Number(playerId), card.id)
+        checkTarget(
+            state,
+            Number(playerId),
+            playedCard.id,
+            targetPlayerId ? Number(targetPlayerId) : undefined
+        )
+        checkAdvisorRule(state, Number(playerId), playedCard.id)
+
+        if (playedCard.name === "Intern" && !checkGuess(guessedCardName)) {
+            return res.status(400).json({ message: "猜測卡牌不合法" })
+        }
+
         const discardedCard = discardCard(
             currentPlayer,
-            card.id,
+            playedCard.id,
             state.discardPile
         )
 
@@ -92,7 +114,7 @@ async function handlePlayCard(req, res){
 
         const effectResult = runCardEffect({
             state,
-            card,
+            card: playedCard,
             playerId: Number(playerId),
             targetPlayerId: targetPlayerId ? Number(targetPlayerId) : undefined,
             guessedCardName,
@@ -122,7 +144,7 @@ async function handlePlayCard(req, res){
             Number(playerId),
             "play_card",
             JSON.stringify({
-                card,
+                card: playedCard,
                 targetPlayerId,
                 guessedCardName,
                 result: effectResult,
@@ -139,7 +161,7 @@ async function handlePlayCard(req, res){
             state: publicState,
         })
     } catch (error) {
-        return res.status(500).json({
+        return res.status(error.statusCode || 500).json({
         message: "出牌失敗",
         error: error.message,
     })

@@ -114,8 +114,20 @@ describe("usePm", () => {
 
         expect(result.discardedCard).toEqual({ id: 5, name: "PM" })
         expect(result.newCard).toEqual({ id: 2, name: "Cleaner" })
+        expect(result.deck).toBeUndefined()
+        expect(result.deckCount).toBe(1)
         expect(state.players[1].hand).toEqual([{ id: 2, name: "Cleaner" }])
         expect(state.discardPile).toEqual([{ id: 5, name: "PM" }])
+    })
+    test("PM can target self without returning deck order", () => {
+        const state = createState()
+        const result = usePm(state, 1)
+
+        expect(result.discardedCard).toEqual({ id: 3, name: "Manager" })
+        expect(result.newCard).toEqual({ id: 2, name: "Cleaner" })
+        expect(result.deck).toBeUndefined()
+        expect(result.deckCount).toBe(1)
+        expect(state.players[0].hand).toEqual([{ id: 2, name: "Cleaner" }])
     })
     test("棄掉 CEO 時淘汰玩家且不抽新牌", () => {
         const state = createState()
@@ -125,6 +137,8 @@ describe("usePm", () => {
 
         expect(result.discardedCard).toEqual({ id: 8, name: "CEO" })
         expect(result.newCard).toBeNull()
+        expect(result.deck).toBeUndefined()
+        expect(result.deckCount).toBe(2)
         expect(state.players[1].hand).toEqual([])
         expect(state.players[1].isEliminated).toBe(true)
         expect(state.discardPile).toEqual([{ id: 8, name: "CEO" }])
@@ -172,5 +186,21 @@ describe("runCardEffect", () => {
     const result = runCardEffect({ state, card: null, playerId: 1 })
 
     expect(result).toBeNull()
+  })
+})
+
+describe("protected target effects", () => {
+  test("does not apply target effect to protected player", () => {
+    const state = createState()
+    const result = runCardEffect({
+      state,
+      card: { id: 5, name: "PM" },
+      playerId: 1,
+      targetPlayerId: 3,
+    })
+
+    expect(result).toBeNull()
+    expect(state.players[2].hand).toEqual([{ id: 5, name: "PM" }])
+    expect(state.discardPile).toEqual([])
   })
 })
