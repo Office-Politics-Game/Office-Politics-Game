@@ -217,3 +217,18 @@ describe("protected target effects", () => {
     expect(state.discardPile).toEqual([])
   })
 })
+
+describe("CEO effect", () => {
+  test("eliminates player who plays CEO", () => {
+    const state = createState()
+    const player = runCardEffect({
+      state,
+      card: { id: 8, name: "CEO" },
+      playerId: 1,
+    })
+
+    expect(player.playerId).toBe(1)
+    expect(player.isEliminated).toBe(true)
+    expect(state.players[0].isEliminated).toBe(true)
+  })
+})

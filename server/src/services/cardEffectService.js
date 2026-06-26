@@ -44,6 +44,9 @@ function runCardEffect({
         case "HR":
         return useHr(state, playerId, targetPlayerId)
 
+        case "CEO":
+        return useCeo(state, playerId, card)
+
         default:
         return null
     }
