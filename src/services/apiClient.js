@@ -7,9 +7,9 @@ function normalizeApiError(error) {
     responseData?.message ||
     responseData?.error ||
     (error?.request
-      ? "Unable to connect to the server. Please check your network and try again."
+      ? "無法連線到伺服器，請檢查網路後再試。"
       : error?.message) ||
-    "Request failed.";
+    "API 請求失敗，請稍後再試。";
 
   const normalizedError = new Error(message);
   normalizedError.status = status;

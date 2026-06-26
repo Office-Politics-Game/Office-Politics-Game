@@ -34,10 +34,7 @@ export const useGameStateStore = defineStore("gameState", {
 
         return data;
       } catch (error) {
-        this.errorMessage = getErrorMessage(
-          error,
-          "Failed to create guest player.",
-        );
+        this.errorMessage = getErrorMessage(error, "建立訪客資料失敗。");
         throw error;
       } finally {
         this.isLoading = false;
@@ -63,10 +60,7 @@ export const useGameStateStore = defineStore("gameState", {
 
         return data;
       } catch (error) {
-        this.errorMessage = getErrorMessage(
-          error,
-          "Failed to fetch room state.",
-        );
+        this.errorMessage = getErrorMessage(error, "取得房間狀態失敗。");
         throw error;
       } finally {
         this.isLoading = false;
