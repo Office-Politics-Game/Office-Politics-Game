@@ -97,6 +97,17 @@ function buildCardEffectAnimationResult(context, effectResult) {
           }
         : null
 
+    case 'HR':
+      return sourceCard && targetCard
+        ? {
+            type: 'swap',
+            sourcePlayerId: playerId,
+            targetPlayerId,
+            sourceCard,
+            targetCard,
+          }
+        : null
+
     default:
       return null
   }

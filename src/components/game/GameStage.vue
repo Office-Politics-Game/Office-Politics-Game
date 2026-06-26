@@ -7,6 +7,7 @@ import { useGameAnimationRects } from '@/composables/useGameAnimationRects'
 import CardDrawAnimation from './CardDrawAnimation.vue'
 import CardGuessSelector from './CardGuessSelector.vue'
 import CardPlayAnimation from './CardPlayAnimation.vue'
+import CardSwapAnimation from './CardSwapAnimation.vue'
 import CleanerAnimation from './CleanerAnimation.vue'
 import GameCard from './GameCard.vue'
 import GameSettingsIcon from './GameSettingsIcon.vue'
@@ -825,6 +826,13 @@ defineExpose({
         :get-discard-rect="animationRects.getDiscardRect"
         :get-deck-rect="animationRects.getDeckRect"
         :is-self-player="animationRects.isSelfPlayer"
+        @complete="handleEffectAnimationComplete"
+      />
+
+      <CardSwapAnimation
+        v-if="activeEffectResult?.type === 'swap'"
+        :result="activeEffectResult"
+        :get-player-hand-rect="animationRects.getPlayerHandRect"
         @complete="handleEffectAnimationComplete"
       />
     </section>

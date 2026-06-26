@@ -8,6 +8,7 @@ import CardDealAnimation from '@/components/game/CardDealAnimation.vue'
 import CardDrawAnimation from '@/components/game/CardDrawAnimation.vue'
 import CardPlayAnimation from '@/components/game/CardPlayAnimation.vue'
 import CardShuffleAnimation from '@/components/game/CardShuffleAnimation.vue'
+import CardSwapAnimation from '@/components/game/CardSwapAnimation.vue'
 import CleanerAnimation from '@/components/game/CleanerAnimation.vue'
 import GameCard from '@/components/game/GameCard.vue'
 import InternAnimation from '@/components/game/InternAnimation.vue'
@@ -85,6 +86,7 @@ const cleanerResult = ref(null)
 const internResult = ref(null)
 const managerResult = ref(null)
 const pmResult = ref(null)
+const swapResult = ref(null)
 const lastAction = ref('Ready')
 const effectResolvers = new Map()
 const discardCards = ref([
@@ -120,6 +122,7 @@ const opponentCards = [
 ]
 
 const controls = computed(() => [
+  { label: 'HR Swap', action: playSwapAnimation },
   { label: '發牌', action: playDealAnimation },
   { label: '洗牌', action: playShuffleAnimation },
   { label: '自己抽牌', action: () => playDrawAnimation(SELF_PLAYER_ID) },
@@ -405,6 +408,20 @@ function playPMAnimation() {
   return complete
 }
 
+function playSwapAnimation() {
+  const id = uniqueId('swap')
+  const complete = waitForEffectComplete('swap', id)
+  swapResult.value = {
+    id,
+    sourcePlayerId: SELF_PLAYER_ID,
+    targetPlayerId: 'player-top',
+    sourceCard: createCard('cleaner', uniqueId('swap-source')),
+    targetCard: createCard('ceo', uniqueId('swap-target')),
+  }
+
+  return complete
+}
+
 function waitForEffectComplete(type, id) {
   return new Promise((resolve) => {
     const key = `${type}:${id}`
@@ -421,6 +438,7 @@ function clearEffectResult(type, result) {
   if (type === 'intern') internResult.value = null
   if (type === 'manager') managerResult.value = null
   if (type === 'pm') pmResult.value = null
+  if (type === 'swap') swapResult.value = null
   const key = `${type}:${result?.id}`
   const resolver = effectResolvers.get(key)
   if (resolver) {
@@ -436,6 +454,7 @@ function clearAllEffectResults() {
     ['intern', internResult.value],
     ['manager', managerResult.value],
     ['pm', pmResult.value],
+    ['swap', swapResult.value],
   ]
 
   activeResults.forEach(([type, result]) => {
@@ -575,6 +594,12 @@ onUnmounted(() => {
       :get-deck-rect="getDeckRect"
       :is-self-player="isSelfPlayer"
       @complete="(result) => clearEffectResult('pm', result)"
+    />
+    <CardSwapAnimation
+      v-if="swapResult"
+      :result="swapResult"
+      :get-player-hand-rect="getPlayerHandRect"
+      @complete="(result) => clearEffectResult('swap', result)"
     />
   </main>
 </template>

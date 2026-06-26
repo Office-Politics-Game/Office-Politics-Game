@@ -1,481 +1,180 @@
 <script setup>
-import { nextTick, onUnmounted, ref } from 'vue'
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { gsap } from 'gsap'
-import cardBackUrl from '@/assets/images/card-bg-back.webp'
+import { useCardEffectAnimation } from '@/composables/useCardEffectAnimation'
+import { getCardMotionTiming, getFlipVars, getMoveVars } from '@/composables/useCardMotionPresets'
+import { getRectCenter, getScaleForHeight, getTranslation, getViewportCenter, rectToFixedStyle } from '@/composables/useGameAnimationRects'
+import EffectCardLayer from './EffectCardLayer.vue'
 
-const selfCardRef = ref(null)
-const selfFlipperRef = ref(null)
-const opponentCardRef = ref(null)
-const opponentFlipperRef = ref(null)
+const props = defineProps({
+  result: { type: Object, default: null },
+  getPlayerHandRect: { type: Function, default: null },
+})
+const emit = defineEmits(['complete'])
+
+const sourceLayerRef = ref(null)
+const targetLayerRef = ref(null)
 const veilRef = ref(null)
 const exchangeLineRef = ref(null)
-const activeSelfCard = ref(null)
-const activeOpponentCard = ref(null)
-const selfStyle = ref({ display: 'none' })
-const opponentStyle = ref({ display: 'none' })
+const sourceStyle = ref({ display: 'none' })
+const targetStyle = ref({ display: 'none' })
 
-let timeline = null
+function getSourceElement() { return sourceLayerRef.value?.getCardElement?.() ?? null }
+function getSourceFlipperElement() { return sourceLayerRef.value?.getFlipperElement?.() ?? null }
+function getTargetElement() { return targetLayerRef.value?.getCardElement?.() ?? null }
+function getTargetFlipperElement() { return targetLayerRef.value?.getFlipperElement?.() ?? null }
 
-function rectToFixedStyle(rect) {
-  return {
-    display: 'block',
-    left: `${rect.left}px`,
-    top: `${rect.top}px`,
-    width: `${rect.width}px`,
-    height: `${rect.height}px`,
-  }
-}
-
-function getCenter(rect) {
-  return {
-    x: rect.left + rect.width / 2,
-    y: rect.top + rect.height / 2,
-  }
-}
-
-function getTravel(fromRect, toRect) {
-  const fromCenter = getCenter(fromRect)
-  const toCenter = getCenter(toRect)
-
-  return {
-    x: toCenter.x - fromCenter.x,
-    y: toCenter.y - fromCenter.y,
-    scale: toRect.height / fromRect.height,
-  }
-}
-
-function getShowcaseTravel(rect, offsetX) {
-  const center = getCenter(rect)
-
-  return {
-    x: window.innerWidth / 2 + offsetX - center.x,
-    y: window.innerHeight / 2 - center.y,
-  }
-}
-
-function hideOverlay() {
-  gsap.set([veilRef.value, exchangeLineRef.value].filter(Boolean), {
-    autoAlpha: 0,
-  })
-
-  gsap.set(exchangeLineRef.value, {
-    scaleX: 0.42,
-  })
-}
-function resetLayer() {
-  activeSelfCard.value = null
-  activeOpponentCard.value = null
-  selfStyle.value = { display: 'none' }
-  opponentStyle.value = { display: 'none' }
-}
-
-function stop() {
-  timeline?.kill()
-  timeline = null
-
-  gsap.killTweensOf([
-    selfCardRef.value,
-    selfFlipperRef.value,
-    opponentCardRef.value,
-    opponentFlipperRef.value,
+function getKillTargets() {
+  return [
+    getSourceElement(),
+    getSourceFlipperElement(),
+    getTargetElement(),
+    getTargetFlipperElement(),
     veilRef.value,
     exchangeLineRef.value,
-  ].filter(Boolean))
-
-  hideOverlay()
-  resetLayer()
+  ]
 }
 
-function playReducedMotion({
-  selfCardElement,
-  selfFlipperElement,
-  opponentCardElement,
-  opponentFlipperElement,
-  veilElement,
-  exchangeLineElement,
-  selfTravel,
-  opponentTravel,
-  onSwap,
-  resolve,
-}) {
-  timeline = gsap.timeline({
-    defaults: { ease: 'power1.out' },
-    onComplete: () => {
-      resetLayer()
-      timeline = null
-      resolve(true)
-    },
-    onInterrupt: () => {
-      hideOverlay()
-      resetLayer()
-      timeline = null
-      resolve(false)
-    },
-  })
+const {
+  activeResult,
+  activeId,
+  timeline,
+  begin,
+  setTimeline,
+  isStale,
+  stop: stopAnimation,
+  finish,
+  isReducedMotion,
+} = useCardEffectAnimation({
+  emitComplete: (result) => emit('complete', result),
+  reset: () => {
+    sourceStyle.value = { display: 'none' }
+    targetStyle.value = { display: 'none' }
+  },
+})
 
-  timeline
-    .set([selfCardElement, opponentCardElement], {
-      autoAlpha: 0,
-      scale: 1,
-      rotation: 0,
-    })
-    .set(selfFlipperElement, { rotationY: 0 })
-    .set(opponentFlipperElement, { rotationY: 180 })
-    .to(veilElement, { autoAlpha: 1, duration: 0.08 })
-    .to([selfCardElement, opponentCardElement], { autoAlpha: 1, duration: 0.12 }, '<')
-    .to(exchangeLineElement, { autoAlpha: 0.72, scaleX: 1, duration: 0.1 }, '<')
-    .call(() => onSwap?.())
-    .set(selfCardElement, {
-      x: selfTravel.x,
-      y: selfTravel.y,
-      scale: selfTravel.scale,
-    })
-    .set(opponentCardElement, {
-      x: opponentTravel.x,
-      y: opponentTravel.y,
-      scale: opponentTravel.scale,
-    })
-    .set(selfFlipperElement, { rotationY: 180 })
-    .set(opponentFlipperElement, { rotationY: 0 })
-    .to(exchangeLineElement, { autoAlpha: 0, duration: 0.12 })
-    .to([selfCardElement, opponentCardElement, veilElement], { autoAlpha: 0, duration: 0.12 }, '<')
+function stop() {
+  stopAnimation(getKillTargets)
 }
 
-function playFullMotion({
-  selfCardElement,
-  selfFlipperElement,
-  opponentCardElement,
-  opponentFlipperElement,
-  veilElement,
-  exchangeLineElement,
-  selfTravel,
-  opponentTravel,
-  selfShowcase,
-  opponentShowcase,
-  onSwap,
-  resolve,
-}) {
-  timeline = gsap.timeline({
-    defaults: { ease: 'power3.out' },
-    onComplete: () => {
-      resetLayer()
-      timeline = null
-      resolve(true)
-    },
-    onInterrupt: () => {
-      timeline = null
-      resolve(false)
-    },
-  })
-
-  timeline
-    .to(veilElement, { autoAlpha: 1, duration: 0.16, ease: 'power1.out' })
-    .to(selfFlipperElement, {
-      rotationY: 180,
-      duration: 0.24,
-      ease: 'power2.inOut',
-    }, '<')
-    .to(selfCardElement, {
-      x: selfShowcase.x,
-      y: selfShowcase.y,
-      scale: 1.24,
-      rotation: -7,
-      duration: 0.48,
-      ease: 'expo.out',
-    }, '-=0.04')
-    .to(opponentCardElement, {
-      x: opponentShowcase.x,
-      y: opponentShowcase.y,
-      scale: 1.24,
-      rotation: 7,
-      duration: 0.48,
-      ease: 'expo.out',
-    }, '<')
-    .to(exchangeLineElement, {
-      autoAlpha: 0.8,
-      scaleX: 1,
-      duration: 0.18,
-      ease: 'power2.out',
-    }, '-=0.16')
-    .to(selfCardElement, {
-      x: opponentShowcase.x,
-      y: opponentShowcase.y,
-      rotation: 7,
-      duration: 0.34,
-      ease: 'power2.inOut',
-    })
-    .to(opponentCardElement, {
-      x: selfShowcase.x,
-      y: selfShowcase.y,
-      rotation: -7,
-      duration: 0.34,
-      ease: 'power2.inOut',
-    }, '<')
-    .call(() => onSwap?.())
-    .to(exchangeLineElement, {
-      autoAlpha: 0,
-      scaleX: 1.16,
-      duration: 0.16,
-      ease: 'power2.in',
-    })
-    .to(selfCardElement, {
-      x: selfTravel.x,
-      y: selfTravel.y,
-      scale: selfTravel.scale,
-      rotation: -8,
-      duration: 0.42,
-      ease: 'power3.inOut',
-    }, '<')
-    .to(opponentCardElement, {
-      x: opponentTravel.x,
-      y: opponentTravel.y,
-      scale: opponentTravel.scale,
-      rotation: 3,
-      duration: 0.42,
-      ease: 'power3.inOut',
-    }, '<')
-    .to(opponentFlipperElement, {
-      rotationY: 0,
-      duration: 0.24,
-      ease: 'power2.inOut',
-    }, '-=0.18')
-    .to([selfCardElement, opponentCardElement, veilElement], {
-      autoAlpha: 0,
-      duration: 0.14,
-      ease: 'power1.in',
-    })
+function finishAnimation(result) {
+  finish(result, getKillTargets)
 }
 
-async function play({
-  selfCard,
-  opponentCard,
-  selfRect,
-  opponentRect,
-  onSwap,
-} = {}) {
-  if (!selfCard || !opponentCard || !selfRect || !opponentRect) {
-    return false
+function getShowcaseTranslation(rect, offsetX) {
+  const center = getRectCenter(rect)
+  const viewportCenter = getViewportCenter()
+
+  return center
+    ? { x: viewportCenter.x + offsetX - center.x, y: viewportCenter.y - center.y }
+    : null
+}
+
+async function play(result) {
+  const sourceRect = props.getPlayerHandRect?.(result.sourcePlayerId)
+  const targetRect = props.getPlayerHandRect?.(result.targetPlayerId)
+  if (!sourceRect || !targetRect || !result.sourceCard || !result.targetCard) {
+    finishAnimation(result)
+    return
   }
 
-  timeline?.kill()
-  activeSelfCard.value = selfCard
-  activeOpponentCard.value = opponentCard
-  selfStyle.value = rectToFixedStyle(selfRect)
-  opponentStyle.value = rectToFixedStyle(opponentRect)
-
+  begin(result, getKillTargets)
+  sourceStyle.value = rectToFixedStyle(sourceRect)
+  targetStyle.value = rectToFixedStyle(targetRect)
   await nextTick()
 
-  const elements = {
-    selfCardElement: selfCardRef.value,
-    selfFlipperElement: selfFlipperRef.value,
-    opponentCardElement: opponentCardRef.value,
-    opponentFlipperElement: opponentFlipperRef.value,
-    veilElement: veilRef.value,
-    exchangeLineElement: exchangeLineRef.value,
+  const sourceElement = getSourceElement()
+  const sourceFlipperElement = getSourceFlipperElement()
+  const targetElement = getTargetElement()
+  const targetFlipperElement = getTargetFlipperElement()
+  if (
+    isStale(result) ||
+    !sourceElement || !sourceFlipperElement ||
+    !targetElement || !targetFlipperElement ||
+    !veilRef.value || !exchangeLineRef.value
+  ) {
+    finishAnimation(result)
+    return
   }
 
-  if (Object.values(elements).some((element) => !element)) {
-    resetLayer()
-    return false
+  const sourceTravel = getTranslation(sourceRect, targetRect)
+  const targetTravel = getTranslation(targetRect, sourceRect)
+  const sourceShowcase = getShowcaseTranslation(sourceRect, -window.innerWidth * 0.09)
+  const targetShowcase = getShowcaseTranslation(targetRect, window.innerWidth * 0.09)
+  const sourceEndScale = getScaleForHeight(targetRect, sourceRect.height)
+  const targetEndScale = getScaleForHeight(sourceRect, targetRect.height)
+  if (!sourceTravel || !targetTravel || !sourceShowcase || !targetShowcase || sourceEndScale === null || targetEndScale === null) {
+    finishAnimation(result)
+    return
   }
 
-  const selfTravel = getTravel(selfRect, opponentRect)
-  const opponentTravel = getTravel(opponentRect, selfRect)
-  const selfShowcase = getShowcaseTravel(selfRect, -window.innerWidth * 0.09)
-  const opponentShowcase = getShowcaseTravel(opponentRect, window.innerWidth * 0.09)
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const reduced = isReducedMotion()
+  const timing = getCardMotionTiming(reduced, { showcase: 0.48, exchange: 0.34, settle: 0.42 })
 
-  gsap.set(elements.veilElement, { autoAlpha: 0 })
-  gsap.set(elements.exchangeLineElement, {
-    autoAlpha: 0,
-    xPercent: -50,
-    yPercent: -50,
-    scaleX: 0.42,
-    transformOrigin: '50% 50%',
-  })
-  gsap.set([elements.selfCardElement, elements.opponentCardElement], {
-    x: 0,
-    y: 0,
-    scale: 1,
-    rotation: 0,
-    autoAlpha: 1,
-    transformOrigin: '50% 50%',
-    transformPerspective: 1200,
-  })
-  gsap.set(elements.selfFlipperElement, {
-    rotationY: 0,
-    transformStyle: 'preserve-3d',
-  })
-  gsap.set(elements.opponentFlipperElement, {
-    rotationY: 180,
-    transformStyle: 'preserve-3d',
-  })
+  gsap.set(veilRef.value, { autoAlpha: 0 })
+  gsap.set(exchangeLineRef.value, { autoAlpha: 0, xPercent: -50, yPercent: -50, scaleX: 0.42, transformOrigin: '50% 50%' })
+  gsap.set([sourceElement, targetElement], { x: 0, y: 0, scale: 1, rotation: 0, autoAlpha: 1, transformOrigin: '50% 50%', transformPerspective: 1200 })
+  gsap.set(sourceFlipperElement, { rotationY: 0, transformStyle: 'preserve-3d' })
+  gsap.set(targetFlipperElement, { rotationY: 180, transformStyle: 'preserve-3d' })
 
-  return new Promise((resolve) => {
-    const options = {
-      ...elements,
-      selfTravel,
-      opponentTravel,
-      selfShowcase,
-      opponentShowcase,
-      onSwap,
-      resolve,
-    }
+  setTimeline(gsap.timeline({ onComplete: () => finishAnimation(result) }))
 
-    if (reduceMotion) {
-      playReducedMotion(options)
-      return
-    }
+  if (reduced) {
+    timeline.value
+      .to(veilRef.value, { autoAlpha: 1, duration: timing.flash })
+      .to(exchangeLineRef.value, { autoAlpha: 0.72, scaleX: 1, duration: timing.flash }, '<')
+      .set(sourceElement, getMoveVars(sourceTravel, { scale: sourceEndScale, duration: 0, reduced }))
+      .set(targetElement, getMoveVars(targetTravel, { scale: targetEndScale, duration: 0, reduced }))
+      .set(sourceFlipperElement, { rotationY: 180 })
+      .set(targetFlipperElement, { rotationY: 0 })
+      .to(exchangeLineRef.value, { autoAlpha: 0, duration: timing.flash })
+      .to([sourceElement, targetElement, veilRef.value], { autoAlpha: 0, duration: timing.travel }, '<')
+    return
+  }
 
-    playFullMotion(options)
-  })
+  timeline.value
+    .to(veilRef.value, { autoAlpha: 1, duration: timing.flash, ease: 'power1.out' })
+    .to(sourceFlipperElement, getFlipVars(180, timing.flip), '<')
+    .to(sourceElement, getMoveVars(sourceShowcase, { scale: 1.24, duration: timing.showcase, ease: 'expo.out', extra: { rotation: -7 } }), '-=0.04')
+    .to(targetElement, getMoveVars(targetShowcase, { scale: 1.24, duration: timing.showcase, ease: 'expo.out', extra: { rotation: 7 } }), '<')
+    .to(exchangeLineRef.value, { autoAlpha: 0.8, scaleX: 1, duration: timing.flash, ease: 'power2.out' }, '-=0.16')
+    .to(sourceElement, getMoveVars(targetShowcase, { scale: 1.24, duration: timing.exchange, ease: 'power2.inOut', extra: { rotation: 7 } }))
+    .to(targetElement, getMoveVars(sourceShowcase, { scale: 1.24, duration: timing.exchange, ease: 'power2.inOut', extra: { rotation: -7 } }), '<')
+    .to(exchangeLineRef.value, { autoAlpha: 0, scaleX: 1.16, duration: timing.flash, ease: 'power2.in' })
+    .to(sourceElement, getMoveVars(sourceTravel, { scale: sourceEndScale, duration: timing.settle, ease: 'power3.inOut', extra: { rotation: -8 } }), '<')
+    .to(targetElement, getMoveVars(targetTravel, { scale: targetEndScale, duration: timing.settle, ease: 'power3.inOut', extra: { rotation: 3 } }), '<')
+    .to(targetFlipperElement, getFlipVars(0, timing.flip), '-=0.18')
+    .to([sourceElement, targetElement, veilRef.value], { autoAlpha: 0, duration: timing.travel, ease: 'power1.in' })
 }
 
-onUnmounted(() => {
-  stop()
-})
+watch(() => props.result?.id, (id) => {
+  if (id && id !== activeId.value) play(props.result)
+}, { immediate: true })
 
-defineExpose({
-  play,
-  stop,
-})
+onBeforeUnmount(stop)
+defineExpose({ stop })
 </script>
 
 <template>
   <Teleport to="body">
-    <div ref="veilRef" class="card-swap-animation__veil"></div>
-    <div ref="exchangeLineRef" class="card-swap-animation__line"></div>
-
-    <div
-      v-if="activeSelfCard"
-      ref="selfCardRef"
-      class="card-swap-animation__card"
-      :style="selfStyle"
-      aria-hidden="true"
-    >
-      <div class="card-swap-animation__glow" :style="{ '--accent': activeSelfCard.color }"></div>
-      <div ref="selfFlipperRef" class="card-swap-animation__flipper">
-        <div class="card-swap-animation__face card-swap-animation__face--front">
-          <img :src="activeSelfCard.backgroundUrl" alt="" draggable="false" />
-          <img :src="activeSelfCard.frameUrl" alt="" draggable="false" />
-        </div>
-        <div class="card-swap-animation__face card-swap-animation__face--back">
-          <img :src="cardBackUrl" alt="" draggable="false" />
-        </div>
-      </div>
-    </div>
-
-    <div
-      v-if="activeOpponentCard"
-      ref="opponentCardRef"
-      class="card-swap-animation__card"
-      :style="opponentStyle"
-      aria-hidden="true"
-    >
-      <div class="card-swap-animation__glow" :style="{ '--accent': activeOpponentCard.color }"></div>
-      <div ref="opponentFlipperRef" class="card-swap-animation__flipper">
-        <div class="card-swap-animation__face card-swap-animation__face--front">
-          <img :src="activeOpponentCard.backgroundUrl" alt="" draggable="false" />
-          <img :src="activeOpponentCard.frameUrl" alt="" draggable="false" />
-        </div>
-        <div class="card-swap-animation__face card-swap-animation__face--back">
-          <img :src="cardBackUrl" alt="" draggable="false" />
-        </div>
-      </div>
+    <div v-if="activeResult" class="card-swap-animation" aria-hidden="true">
+      <div ref="veilRef" class="card-swap-animation__veil"></div>
+      <div ref="exchangeLineRef" class="card-swap-animation__line"></div>
+      <EffectCardLayer ref="sourceLayerRef" class="card-swap-animation__card" :card="activeResult.sourceCard" :style="sourceStyle" use-image-front overlay-behind-card>
+        <template #overlay><div class="card-swap-animation__glow" :style="{ '--accent': activeResult.sourceCard.color }"></div></template>
+      </EffectCardLayer>
+      <EffectCardLayer ref="targetLayerRef" class="card-swap-animation__card" :card="activeResult.targetCard" :style="targetStyle" use-image-front overlay-behind-card>
+        <template #overlay><div class="card-swap-animation__glow" :style="{ '--accent': activeResult.targetCard.color }"></div></template>
+      </EffectCardLayer>
     </div>
   </Teleport>
 </template>
 
 <style scoped>
-.card-swap-animation__veil,
-.card-swap-animation__line {
-  position: fixed;
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-}
-
-.card-swap-animation__veil {
-  inset: 0;
-  z-index: 60;
-  background:
-    radial-gradient(circle at 50% 50%, rgba(134, 179, 224, 0.24), transparent 30%),
-    linear-gradient(120deg, rgba(0, 19, 50, 0.78), rgba(70, 85, 99, 0.44));
-}
-
-.card-swap-animation__line {
-  top: 50%;
-  left: 50%;
-  z-index: 61;
-  width: min(72vw, 660px);
-  height: 3px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--brand-primary) 18%,
-    var(--surface-glass-hover) 50%,
-    var(--brand-primary) 82%,
-    transparent
-  );
-  box-shadow: 0 0 24px rgba(134, 179, 224, 0.82);
-}
-
-.card-swap-animation__card {
-  position: fixed;
-  z-index: 62;
-  perspective: 1200px;
-  pointer-events: none;
-  transform-origin: 50% 50%;
-  will-change: transform, opacity;
-}
-
-.card-swap-animation__glow {
-  position: absolute;
-  inset: -18%;
-  border-radius: 0;
-  background:
-    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.42), transparent 34%),
-    radial-gradient(circle at 50% 50%, var(--accent), transparent 66%);
-  filter: blur(16px);
-  opacity: 0.72;
-}
-
-.card-swap-animation__flipper {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transform-style: preserve-3d;
-  will-change: transform;
-}
-
-.card-swap-animation__face {
-  position: absolute;
-  inset: 0;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  filter:
-    drop-shadow(0 0 16px rgba(134, 179, 224, 0.36))
-    drop-shadow(0 22px 30px rgba(0, 19, 50, 0.52));
-}
-
-.card-swap-animation__face img {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  user-select: none;
-}
-
-.card-swap-animation__face--back {
-  transform: rotateY(180deg);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .card-swap-animation__card,
-  .card-swap-animation__flipper {
-    will-change: auto;
-  }
-}
+.card-swap-animation { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
+.card-swap-animation__veil { position: fixed; inset: 0; z-index: 0; background: radial-gradient(circle at 50% 50%, rgba(134, 179, 224, 0.24), transparent 30%), linear-gradient(120deg, rgba(0, 19, 50, 0.78), rgba(70, 85, 99, 0.44)); }
+.card-swap-animation__line { position: fixed; top: 50%; left: 50%; z-index: 1; width: min(72vw, 660px); height: 3px; background: linear-gradient(90deg, transparent, var(--brand-primary) 18%, var(--surface-glass-hover) 50%, var(--brand-primary) 82%, transparent); box-shadow: 0 0 24px rgba(134, 179, 224, 0.82); }
+.card-swap-animation__card { z-index: 2; --effect-card-face-filter: drop-shadow(0 0 16px rgba(134, 179, 224, 0.36)) drop-shadow(0 22px 30px rgba(0, 19, 50, 0.52)); }
+.card-swap-animation__glow { position: absolute; inset: -18%; border-radius: 0; background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.42), transparent 34%), radial-gradient(circle at 50% 50%, var(--accent), transparent 66%); filter: blur(16px); opacity: 0.72; }
+@media (prefers-reduced-motion: reduce) { .card-swap-animation__card { will-change: auto; } }
 </style>

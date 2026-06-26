@@ -333,6 +333,24 @@ function normalizeEffectAnimationResult(result) {
         : null
     }
 
+    case 'swap': {
+      const sourcePlayerId = normalizeAnimationPlayerId(result.sourcePlayerId)
+      const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
+      const sourceCard = result.sourceCard ? normalizeCard(result.sourceCard) : null
+      const targetCard = result.targetCard ? normalizeCard(result.targetCard) : null
+
+      return sourcePlayerId && targetPlayerId && sourceCard && targetCard
+        ? {
+            ...result,
+            id,
+            sourcePlayerId,
+            targetPlayerId,
+            sourceCard,
+            targetCard,
+          }
+        : null
+    }
+
     default:
       return null
   }
