@@ -116,6 +116,18 @@ function usePm(state, targetPlayerId) {
         return null
     }
 
+    const createPmResult = (newCard = null) => {
+        return {
+            discardedCard,
+            newCardDrawn: Boolean(newCard),
+            targetPlayerId: targetPlayer.playerId,
+            targetHandCount: Array.isArray(targetPlayer.hand) ? targetPlayer.hand.length : 0,
+            targetIsEliminated: targetPlayer.isEliminated,
+            deckCount: state.deck.length,
+            discardPile: state.discardPile,
+        }
+    }
+
     if (!Array.isArray(targetPlayer.discardedCards)) {
         targetPlayer.discardedCards = []
     }
@@ -124,15 +136,8 @@ function usePm(state, targetPlayerId) {
     targetPlayer.discardedCards.push(discardedCard)
 
     if (discardedCard.name === "CEO") {
-        const eliminatedPlayer = useCeo(state, targetPlayerId, discardedCard)
-
-        return {
-            discardedCard,
-            newCard: null,
-            player: eliminatedPlayer,
-            deckCount: state.deck.length,
-            discardPile: state.discardPile,
-        }
+        useCeo(state, targetPlayerId, discardedCard)
+        return createPmResult()
     }
 
     const newCard = drawCard(state.deck)
@@ -143,13 +148,7 @@ function usePm(state, targetPlayerId) {
 
     addHandCard(targetPlayer, newCard)
 
-    return {
-        discardedCard,
-        newCard,
-        player: targetPlayer,
-        deckCount: state.deck.length,
-        discardPile: state.discardPile,
-    }
+    return createPmResult(newCard)
 }
 
 // 人資主管：與一名玩家秘密交換手牌
