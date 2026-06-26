@@ -59,9 +59,14 @@ export const useRoomStore = defineStore("room", {
         return null;
       }
 
-      const roomState = await getRoomStateRequest(roomCode);
-      this.applyRoomState(roomState);
-      return roomState;
+      try {
+        const roomState = await getRoomStateRequest(roomCode);
+        this.applyRoomState(roomState);
+        return roomState;
+      } catch (error) {
+        this.errorMessage = getErrorMessage(error, "匹配房間失敗");
+        throw error;
+      }
     },
 
     async createRoom(payload) {
@@ -75,7 +80,6 @@ export const useRoomStore = defineStore("room", {
           response?.room?.roomCode ||
           response?.room?.room_code ||
           "";
-        this.players = [];
         this.gameState = null;
 
         if (this.roomCode) {

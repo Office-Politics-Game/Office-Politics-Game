@@ -16,6 +16,7 @@ function getPublicState(state, viewerPlayerId){
     deckCount: deck.length,
     discardPile,
     currentTurnPlayerId: state.currentTurnPlayerId,
+    roundWinnerPlayerId: state.roundWinnerPlayerId,
     winnerPlayerId: state.winnerPlayerId,
     players: players.map((player)=>{
       const isSelf = player.playerId === viewerPlayerId
@@ -31,6 +32,7 @@ function getPublicState(state, viewerPlayerId){
         isProtected: player.isProtected,
         isEliminated: player.isEliminated,
         discardedCards,
+        roundWins: player.roundWins || 0
       }
     }),
   }

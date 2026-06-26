@@ -18,7 +18,8 @@ function createInitialState (players){
             hand: [card],
             isProtected: false,
             isEliminated: false,
-            discardedCards: []
+            discardedCards: [],
+            roundWins: 0
         }
     })
 
@@ -30,6 +31,7 @@ function createInitialState (players){
         deck,
         discardPile: [],
         currentTurnPlayerId,
+        roundWinnerPlayerId: null,
         winnerPlayerId: null,
         players: gamePlayers,
     }

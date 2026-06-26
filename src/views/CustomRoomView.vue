@@ -1,9 +1,10 @@
 <script setup>
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { storeToRefs } from "pinia";
 import { Copy, Play } from "@lucide/vue";
 import { useRouter } from "vue-router";
 import PlayerList from "@/components/gameRoom/CustomRoomPlayerList.vue";
+import { getRankingList } from "@/services/rankingService.js";
 import BG from "@/assets/images/bg-dashboard.webp";
 import { usePlayerStore } from "@/stores/playerStore.js";
 import { useRoomStore } from "@/stores/roomStore.js";
@@ -15,30 +16,73 @@ const playerStore = usePlayerStore();
 const { roomCode, players, errorMessage, isLoading, isRoomReadyToStart } =
   storeToRefs(roomStore);
 
+const availablePlayers = ref([]);
+const localPlayerSlots = ref([]);
+
 const emptyPlayerSlots = [
-  { isHost: true, option1: "等待房主" },
-  { isHost: false, option1: "等待加入" },
-  { isHost: false, option1: "等待加入" },
-  { isHost: false, option1: "等待加入" },
+  {
+    isHost: true,
+    option1: "等待玩家",
+  },
+  {
+    isHost: false,
+    option1: "加入電腦",
+    option2: "邀請好友",
+  },
+  {
+    isHost: false,
+    option1: "加入電腦",
+    option2: "邀請好友",
+  },
+  {
+    isHost: false,
+    option1: "加入電腦",
+    option2: "邀請好友",
+  },
 ];
+
+function createPlayerSlot(player, index) {
+  return {
+    id: player.id,
+    isHost: index === 0,
+    isReady: index !== 0,
+    name: player.name,
+    level: player.level,
+    stars: player.stars,
+    avatar: player.avatar,
+    isComputer: true,
+  };
+}
+
+function createEmptySlot(index) {
+  return { ...emptyPlayerSlots[index] };
+}
+
+function createRoomPlayerSlot(player) {
+  return {
+    id: player.playerId,
+    isHost: player.role === "host",
+    isReady: Boolean(player.isReady),
+    name: player.username,
+    avatar: null,
+    canToggleReady:
+      player.playerId === playerStore.currentPlayerId && player.role !== "host",
+  };
+}
 
 const playerSlots = computed(() =>
   emptyPlayerSlots.map((slot, index) => {
-    const player = players.value[index];
+    const roomPlayer = players.value[index];
 
-    if (!player) {
-      return { ...slot };
+    if (roomPlayer) {
+      return createRoomPlayerSlot(roomPlayer);
     }
 
-    return {
-      id: player.playerId,
-      isHost: player.role === "host",
-      isReady: Boolean(player.isReady),
-      name: player.username,
-      avatar: null,
-      canToggleReady:
-        player.playerId === playerStore.currentPlayerId && player.role !== "host",
-    };
+    if (localPlayerSlots.value[index]) {
+      return localPlayerSlots.value[index];
+    }
+
+    return { ...slot };
   }),
 );
 
@@ -48,6 +92,24 @@ const currentPlayerEntry = computed(() =>
 
 const isHostPlayer = computed(
   () => currentPlayerEntry.value?.role === "host",
+);
+
+const occupiedSlotCount = computed(
+  () => playerSlots.value.filter((slot) => slot.name).length,
+);
+
+const readySlotCount = computed(
+  () => playerSlots.value.filter((slot) => slot.name && slot.isReady).length,
+);
+
+const hasLocalComputerPlayers = computed(() =>
+  localPlayerSlots.value.some((slot) => slot?.isComputer),
+);
+
+const isRoomReadyToStartWithLocalPlayers = computed(
+  () =>
+    occupiedSlotCount.value === 4 &&
+    playerSlots.value.every((slot) => !slot.name || slot.isReady),
 );
 
 async function toggleReady(slot) {
@@ -61,7 +123,46 @@ async function toggleReady(slot) {
   });
 }
 
+function handleAddComputer(index) {
+  if (index === 0 || players.value[index]) {
+    return;
+  }
+
+  const player = availablePlayers.value.find(
+    (candidate) =>
+      !playerSlots.value.some((slot) => slot.id === candidate.id),
+  );
+
+  if (!player) {
+    return;
+  }
+
+  localPlayerSlots.value[index] = createPlayerSlot(player, index);
+}
+
+function handleRemovePlayer(index) {
+  if (index === 0) {
+    return;
+  }
+
+  if (players.value[index]) {
+    players.value.splice(index, 1);
+    return;
+  }
+
+  localPlayerSlots.value[index] = createEmptySlot(index);
+}
+
 async function handleStartRoom() {
+  if (hasLocalComputerPlayers.value) {
+    if (!isRoomReadyToStartWithLocalPlayers.value) {
+      return;
+    }
+
+    router.push("/loading");
+    return;
+  }
+
   if (!roomCode.value) {
     roomStore.errorMessage = "目前沒有房間可以開始。";
     return;
@@ -83,8 +184,22 @@ async function copyRoomCode() {
 }
 
 onMounted(async () => {
+  const rankingPlayers = await getRankingList();
+  availablePlayers.value = rankingPlayers;
+
   if (roomCode.value && !players.value.length) {
     await roomStore.fetchRoomState();
+  }
+
+  if (!players.value.length) {
+    const occupiedSlots = rankingPlayers
+      .slice(0, 3)
+      .map((player, index) => createPlayerSlot(player, index));
+
+    localPlayerSlots.value = emptyPlayerSlots.map((slot, index) => ({
+      ...slot,
+      ...occupiedSlots[index],
+    }));
   }
 });
 </script>
@@ -99,12 +214,12 @@ onMounted(async () => {
   >
     <section
       class="flex h-90 w-600 flex-col items-center overflow-hidden pt-5 lg:h-170 lg:w-400 lg:pt-14"
-      aria-label="Custom room"
+      aria-label="自訂遊戲局"
     >
       <div
         class="flex w-52 items-center justify-center gap-2 text-sm font-bold leading-none text-white lg:w-80 lg:text-2xl"
       >
-        <span>Room ID</span>
+        <span>房間ID：</span>
         <span class="tracking-[0.08em]">{{ roomCode || "------" }}</span>
         <button
           class="pointer-events-auto cursor-pointer border-0 bg-transparent p-0 text-white"
@@ -124,13 +239,15 @@ onMounted(async () => {
 
       <PlayerList
         :slots="playerSlots"
+        @add-computer="handleAddComputer"
+        @remove-player="handleRemovePlayer"
         @toggle-ready="toggleReady"
         class="mt-3 lg:mt-5"
       />
 
       <div class="mt-4 text-sm font-bold text-white">
-        {{ players.length }}/4 players
-        <span class="ml-3">{{ roomStore.readyPlayerCount }} ready</span>
+        {{ occupiedSlotCount }}/4 players
+        <span class="ml-3">{{ readySlotCount }} ready</span>
       </div>
 
       <div
@@ -146,7 +263,10 @@ onMounted(async () => {
         <button
           class="btn-dark tap-pop pointer-events-auto flex h-9 cursor-pointer items-center justify-center gap-2 overflow-hidden text-sm font-bold lg:h-12 lg:text-base"
           type="button"
-          :disabled="isLoading || !isHostPlayer || !isRoomReadyToStart"
+          :disabled="
+            isLoading ||
+            (!hasLocalComputerPlayers && (!isHostPlayer || !isRoomReadyToStart))
+          "
           @click="handleStartRoom"
         >
           <Play

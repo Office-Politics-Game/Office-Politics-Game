@@ -33,7 +33,7 @@ async function handleJoinRoom() {
 <template>
   <div
     class="lobby-modal-backdrop absolute inset-0 z-[8] grid place-items-center"
-    aria-label="Join room"
+    aria-label="加入房間彈窗"
   >
     <article
       class="lobby-modal-paper join-room-panel relative overflow-visible"
@@ -51,10 +51,10 @@ async function handleJoinRoom() {
           <span class="join-room-title-rule block h-px min-w-7 flex-1"></span>
         </div>
       </header>
-      <section class="join-room-form" aria-label="Join room form">
+      <section class="join-room-form" aria-label="輸入房號">
         <label class="join-room-label flex items-center" for="roomId">
           <DoorOpen class="join-room-label-icon" :stroke-width="2.2" />
-          輸入房間 ID
+          請輸入房間 ID：
         </label>
         <div class="join-room-input grid grid-cols-1 items-center">
           <input
@@ -78,7 +78,7 @@ async function handleJoinRoom() {
           type="button"
           @click="router.push({ name: 'LobbyHome' })"
         >
-          <span>返回</span>
+          <span>取消</span>
         </button>
         <button
           class="modal-action-button modal-action-button-primary relative flex cursor-pointer items-center justify-center"
@@ -294,5 +294,150 @@ async function handleJoinRoom() {
 .modal-action-button:focus-visible {
   outline: 0;
   box-shadow: 0 0 0 4px var(--brand-focus, rgba(0, 70, 244, 0.24));
+}
+
+@media (min-width: 768px) {
+  .lobby-modal-paper {
+    width: min(55vw, calc((100svh - 48px) * 1361 / 801), 760px);
+  }
+
+  .join-room-title-row {
+    gap: 12px;
+  }
+
+  .join-room-title {
+    font-size: clamp(24px, 2.6vw, 30px);
+  }
+
+  .join-room-form {
+    top: 40%;
+    width: 54%;
+  }
+
+  .join-room-label {
+    gap: 10px;
+    font-size: 16px;
+  }
+
+  .join-room-input {
+    min-height: 44px;
+    margin-top: 14px;
+  }
+
+  .join-room-real-input {
+    letter-spacing: 0.1em;
+    padding: 0 14px;
+    font-size: 18px;
+  }
+
+  .join-room-actions {
+    bottom: 15%;
+    gap: 14px;
+    width: 40%;
+  }
+
+  .modal-action-button {
+    min-height: 38px;
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .lobby-modal-paper {
+    width: min(55vw, calc((100svh - 64px) * 1361 / 801), 900px);
+  }
+
+  .join-room-title {
+    font-size: 32px;
+  }
+
+  .join-room-form {
+    top: 40%;
+    width: 52%;
+  }
+
+  .join-room-label {
+    font-size: 18px;
+  }
+
+  .join-room-input {
+    min-height: 48px;
+    margin-top: 16px;
+  }
+
+  .join-room-real-input {
+    letter-spacing: 0.12em;
+    font-size: 22px;
+    padding: 0 16px;
+  }
+
+  .join-room-actions {
+    bottom: 15%;
+    gap: 16px;
+    width: 38%;
+  }
+
+  .modal-action-button {
+    min-height: 42px;
+    font-size: 15px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .lobby-modal-backdrop {
+    padding: 4px;
+  }
+
+  .lobby-modal-paper {
+    width: min(55vw, calc((100svh - 8px) * 1361 / 801), 680px);
+  }
+
+  .join-room-panel > header {
+    top: 21%;
+    width: 54%;
+  }
+
+  .join-room-title-row {
+    gap: 8px;
+  }
+
+  .join-room-title-rule {
+    min-width: 20px;
+  }
+
+  .join-room-title {
+    font-size: clamp(16px, 2.8vw, 22px);
+  }
+
+  .join-room-form {
+    top: 39%;
+    width: 54%;
+  }
+
+  .join-room-label {
+    gap: 6px;
+    font-size: clamp(12px, 2vw, 14px);
+  }
+
+  .join-room-input {
+    min-height: clamp(26px, 6.4vh, 32px);
+    margin-top: clamp(8px, 2.4vh, 12px);
+  }
+
+  .join-room-real-input {
+    padding: 0 10px;
+    font-size: clamp(14px, 2.6vw, 16px);
+  }
+
+  .join-room-actions {
+    bottom: 14%;
+    gap: clamp(8px, 2vw, 10px);
+    width: 40%;
+  }
+
+  .modal-action-button {
+    min-height: clamp(24px, 5.8vh, 30px);
+    font-size: clamp(12px, 2.4vw, 13px);
+  }
 }
 </style>
