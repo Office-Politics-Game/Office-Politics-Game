@@ -276,6 +276,7 @@ defineExpose({
       :card="activeCard"
       :style="flyingStyle"
       use-image-front
+      overlay-behind-card
       aria-hidden="true"
     >
       <template #overlay>

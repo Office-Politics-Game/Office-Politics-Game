@@ -35,6 +35,7 @@ const initialLoadError = ref('')
 const loadingProgress = ref(0)
 const gameStage = ref(null)
 const isDrawing = ref(false)
+let effectAnimationSequence = 0
 
 const turnStatus = computed(() => ({
   roundNumber: gameState.value?.roundNumber ?? gameState.value?.round ?? 1,
@@ -238,6 +239,105 @@ function restoreApiCard(card) {
   }
 }
 
+function normalizeAnimationPlayerId(playerId) {
+  if (playerId === null || playerId === undefined) {
+    return null
+  }
+
+  return String(playerId)
+}
+
+function normalizeEffectAnimationResult(result) {
+  if (!result?.type) {
+    return null
+  }
+
+  const id = result.id ?? `effect-${Date.now()}-${++effectAnimationSequence}`
+
+  switch (result.type) {
+    case 'cleaner': {
+      const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
+      const targetCard = result.targetCard ? normalizeCard(result.targetCard) : null
+
+      return targetPlayerId && targetCard
+        ? {
+            ...result,
+            id,
+            targetPlayerId,
+            viewerPlayerId:
+              normalizeAnimationPlayerId(result.viewerPlayerId) ??
+              resolvedCurrentPlayerId.value,
+            targetCard,
+            revealCard: result.revealCard !== false,
+          }
+        : null
+    }
+
+    case 'intern': {
+      const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
+      const targetCard = result.targetCard ? normalizeCard(result.targetCard) : null
+
+      return (
+        targetPlayerId &&
+        targetCard &&
+        ['correct', 'incorrect'].includes(result.outcome)
+      )
+        ? {
+            ...result,
+            id,
+            targetPlayerId,
+            targetCard,
+          }
+        : null
+    }
+
+    case 'manager': {
+      const sourcePlayerId = normalizeAnimationPlayerId(result.sourcePlayerId)
+      const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
+      const sourceCard = result.sourceCard ? normalizeCard(result.sourceCard) : null
+      const targetCard = result.targetCard ? normalizeCard(result.targetCard) : null
+
+      return (
+        sourcePlayerId &&
+        targetPlayerId &&
+        sourceCard &&
+        targetCard &&
+        ['win', 'lose', 'draw'].includes(result.outcome)
+      )
+        ? {
+            ...result,
+            id,
+            sourcePlayerId,
+            targetPlayerId,
+            sourceCard,
+            targetCard,
+            revealCards: result.revealCards !== false,
+          }
+        : null
+    }
+
+    case 'pm': {
+      const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
+      const discardedCard = result.discardedCard
+        ? normalizeCard(result.discardedCard)
+        : null
+
+      return targetPlayerId && discardedCard
+        ? {
+            ...result,
+            id,
+            targetPlayerId,
+            discardedCard,
+            newCard: result.newCard ? normalizeCard(result.newCard) : null,
+          }
+        : null
+    }
+
+    default:
+      return null
+  }
+}
+
 async function refreshRoomState({ onProgress } = {}) {
   if (!normalizedRoomCode.value || !requestedPlayerId.value) {
     logStoreState('missing-query')
@@ -367,7 +467,7 @@ async function handlePlayCard(payload) {
 
   const playPayload = {
     playerId: resolvedCurrentPlayerId.value,
-    card: restoreApiCard(payload.card),
+    cardId: restoreApiCard(payload.card).id,
     targetPlayerId: payload.targetPlayerId,
     guessedCardName: getGuessedCardName(payload.guessedRank),
   }
@@ -378,8 +478,21 @@ async function handlePlayCard(payload) {
   })
 
   try {
-    await playGameCard(normalizedRoomCode.value, playPayload)
-    logStoreState('play-card:completed', { playPayload })
+    const data = await playGameCard(normalizedRoomCode.value, playPayload)
+    const animationResult = normalizeEffectAnimationResult(data?.animationResult)
+    logStoreState('play-card:completed', { playPayload, animationResult })
+
+    if (animationResult && gameStage.value?.playEffectAnimation) {
+      try {
+        await gameStage.value.playEffectAnimation(animationResult)
+      } catch (animationError) {
+        console.warn('[game:view] play-card:animation-failed', {
+          animationResult,
+          error: animationError,
+        })
+      }
+    }
+
     await refreshRoomState()
   } catch (error) {
     console.warn('[game:view] play-card:failed', {

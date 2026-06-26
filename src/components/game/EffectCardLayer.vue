@@ -20,6 +20,10 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  overlayBehindCard: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const cardElement = ref(null)
@@ -39,7 +43,10 @@ defineExpose({
   <div
     ref="cardElement"
     class="effect-card-layer"
-    :class="{ 'effect-card-layer--front-flipped': frontFlipped }"
+    :class="{
+      'effect-card-layer--front-flipped': frontFlipped,
+      'effect-card-layer--overlay-behind-card': overlayBehindCard,
+    }"
   >
     <div class="effect-card-layer__overlay">
       <slot name="overlay"></slot>
@@ -91,6 +98,10 @@ defineExpose({
   inset: 0;
   z-index: 2;
   pointer-events: none;
+}
+
+.effect-card-layer--overlay-behind-card .effect-card-layer__overlay {
+  z-index: 0;
 }
 
 .effect-card-layer__face {

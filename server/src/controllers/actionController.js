@@ -1,5 +1,9 @@
 import pool from "../db/index.js"
 import { runCardEffect } from "../services/cardEffectService.js"
+import {
+    buildCardEffectAnimationResult,
+    createCardEffectAnimationContext,
+} from "../services/cardEffectAnimationService.js"
 import { addLog } from "../services/actionLogService.js"
 import { discardCard } from "../services/discardService.js"
 import { finishTurn } from "../services/roundFlowService.js"
@@ -79,6 +83,14 @@ async function handlePlayCard(req, res){
             return res.status(400).json({ message: "玩家沒有此手牌" })
         }
 
+        const effectAnimationContext = createCardEffectAnimationContext({
+            state,
+            card: discardedCard,
+            playerId: Number(playerId),
+            targetPlayerId: targetPlayerId ? Number(targetPlayerId) : undefined,
+            guessedCardName,
+        })
+
         const effectResult = runCardEffect({
             state,
             card: discardedCard,
@@ -86,6 +98,10 @@ async function handlePlayCard(req, res){
             targetPlayerId: targetPlayerId ? Number(targetPlayerId) : undefined,
             guessedCardName,
         })
+        const animationResult = buildCardEffectAnimationResult(
+            effectAnimationContext,
+            effectResult,
+        )
 
         finishTurn(state, Number(playerId))
 
@@ -108,6 +124,7 @@ async function handlePlayCard(req, res){
                 targetPlayerId,
                 guessedCardName,
                 result: effectResult,
+                animationResult,
                 discardedCard,
                 nextTurnPlayerId: state.currentTurnPlayerId,
             })
@@ -118,6 +135,7 @@ async function handlePlayCard(req, res){
         return res.status(200).json({
             message: "卡牌效果已執行",
             result: effectResult,
+            animationResult,
             discardedCard,
             actionLog,
             state: publicState,

@@ -7,9 +7,13 @@ import { useGameAnimationRects } from '@/composables/useGameAnimationRects'
 import CardDrawAnimation from './CardDrawAnimation.vue'
 import CardGuessSelector from './CardGuessSelector.vue'
 import CardPlayAnimation from './CardPlayAnimation.vue'
+import CleanerAnimation from './CleanerAnimation.vue'
 import GameCard from './GameCard.vue'
 import GameSettingsIcon from './GameSettingsIcon.vue'
 import GameSettingsModal from './GameSettingsModal.vue'
+import InternAnimation from './InternAnimation.vue'
+import ManagerAnimation from './ManagerAnimation.vue'
+import PMAnimation from './PMAnimation.vue'
 import PlayerHand from './PlayerHand.vue'
 import PlayerSeats from './PlayerSeats.vue'
 import RotateDeviceNotice from './RotateDeviceNotice.vue'
@@ -99,6 +103,7 @@ const playerSeats = ref(null)
 const playerHand = ref(null)
 const cardDrawAnimation = ref(null)
 const cardPlayAnimation = ref(null)
+const activeEffectResult = ref(null)
 const opponentDrawnPlayerIds = ref([])
 const handCards = ref([])
 const discardCards = ref([])
@@ -113,6 +118,9 @@ const isOverPlayZone = ref(false)
 const pendingPlay = ref(null)
 const selectedTargetPlayerId = ref(null)
 const selectedGuessRank = ref(null)
+let effectAnimationResolve = null
+let effectAnimationTimeout = null
+let effectAnimationSequence = 0
 let pointerMoveHandler = null
 let pointerUpHandler = null
 const resolvedCurrentPlayerId = computed(
@@ -220,7 +228,8 @@ const isPlayInteractionLocked = computed(() =>
   !isCurrentPlayerTurn.value ||
   Boolean(activeCard.value) ||
   Boolean(pendingPlay.value) ||
-  isDrawAnimating.value,
+  isDrawAnimating.value ||
+  Boolean(activeEffectResult.value),
 )
 const dragPreviewStyle = computed(() => {
   if (!hasActivePlay.value || !originRect.value || !dragPoint.value || !isDragging.value) {
@@ -338,6 +347,55 @@ async function playDrawAnimation(card, playerId = null) {
     activeDrawCard.value = null;
     isDrawAnimating.value = false;
   }
+}
+
+function settleEffectAnimation(result, completed = false) {
+  if (
+    result &&
+    activeEffectResult.value?.id &&
+    activeEffectResult.value.id !== result.id
+  ) {
+    return
+  }
+
+  if (effectAnimationTimeout) {
+    window.clearTimeout(effectAnimationTimeout)
+    effectAnimationTimeout = null
+  }
+
+  const resolve = effectAnimationResolve
+  effectAnimationResolve = null
+  activeEffectResult.value = null
+  resolve?.(completed)
+}
+
+function stopEffectAnimation() {
+  settleEffectAnimation(null, false)
+}
+
+function playEffectAnimation(result) {
+  if (!result?.type) {
+    return Promise.resolve(false)
+  }
+
+  stopEffectAnimation()
+
+  const nextResult = {
+    ...result,
+    id: result.id ?? `effect-${Date.now()}-${++effectAnimationSequence}`,
+  }
+
+  return new Promise((resolve) => {
+    effectAnimationResolve = resolve
+    effectAnimationTimeout = window.setTimeout(() => {
+      settleEffectAnimation(nextResult, false)
+    }, 8000)
+    activeEffectResult.value = nextResult
+  })
+}
+
+function handleEffectAnimationComplete(result) {
+  settleEffectAnimation(result, true)
 }
 
 function refreshDiscardRect() {
@@ -594,10 +652,12 @@ watch(
 onBeforeUnmount(() => {
   clearPointerListeners()
   cardPlayAnimation.value?.stop?.()
+  stopEffectAnimation()
 })
 
 defineExpose({
   playDrawAnimation,
+  playEffectAnimation,
 });
 </script>
 
@@ -733,6 +793,40 @@ defineExpose({
       </div>
 
       <CardPlayAnimation ref="cardPlayAnimation" />
+
+      <CleanerAnimation
+        v-if="activeEffectResult?.type === 'cleaner'"
+        :result="activeEffectResult"
+        :get-player-hand-rect="animationRects.getPlayerHandRect"
+        :is-self-player="animationRects.isSelfPlayer"
+        @complete="handleEffectAnimationComplete"
+      />
+
+      <InternAnimation
+        v-if="activeEffectResult?.type === 'intern'"
+        :result="activeEffectResult"
+        :get-player-hand-rect="animationRects.getPlayerHandRect"
+        :get-discard-rect="animationRects.getDiscardRect"
+        @complete="handleEffectAnimationComplete"
+      />
+
+      <ManagerAnimation
+        v-if="activeEffectResult?.type === 'manager'"
+        :result="activeEffectResult"
+        :get-player-hand-rect="animationRects.getPlayerHandRect"
+        :get-discard-rect="animationRects.getDiscardRect"
+        @complete="handleEffectAnimationComplete"
+      />
+
+      <PMAnimation
+        v-if="activeEffectResult?.type === 'pm'"
+        :result="activeEffectResult"
+        :get-player-hand-rect="animationRects.getPlayerHandRect"
+        :get-discard-rect="animationRects.getDiscardRect"
+        :get-deck-rect="animationRects.getDeckRect"
+        :is-self-player="animationRects.isSelfPlayer"
+        @complete="handleEffectAnimationComplete"
+      />
     </section>
 
     <GameSettingsModal

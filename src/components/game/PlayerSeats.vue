@@ -166,6 +166,7 @@ defineExpose({
       :class="[
         positionClasses[player.position],
         {
+          'player-seats__seat--eliminated': player.isEliminated,
           'player-seats__seat--target-selectable': isSelectableTarget(player.id),
           'player-seats__seat--target-selected': isSelectedTarget(player.id),
         },
@@ -224,6 +225,10 @@ defineExpose({
 .player-seats__seat {
   position: absolute;
   isolation: isolate;
+}
+
+.player-seats__seat--eliminated {
+  opacity: 0.45;
 }
 
 .player-seat-hand-target {
