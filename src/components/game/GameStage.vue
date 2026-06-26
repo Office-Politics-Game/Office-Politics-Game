@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import gameTableBackgroundUrl from '@/assets/images/bg-game-table.webp'
 import gameLogoUrl from '@/assets/images/logo-en-white.png'
 import { useAudioSettings } from '@/composables/UseAudioSettings'
+import { useGameAnimationRects } from '@/composables/useGameAnimationRects'
 import CardDrawAnimation from './CardDrawAnimation.vue'
 import CardGuessSelector from './CardGuessSelector.vue'
 import CardPlayAnimation from './CardPlayAnimation.vue'
@@ -120,6 +121,12 @@ const resolvedCurrentPlayerId = computed(
     props.players.find((player) => player.isCurrentPlayer)?.id ??
     null,
 )
+const animationRects = useGameAnimationRects({
+  playerHand,
+  playerSeats,
+  tableCardPiles: tableCardPilesRef,
+  currentPlayerId: resolvedCurrentPlayerId,
+})
 
 const guessOptions = [
   { rank: 2, name: '打掃阿姨' },
@@ -224,7 +231,7 @@ const dragPreviewStyle = computed(() => {
   const translateY = dragPoint.value.y - (originRect.value.top + originRect.value.height / 2)
 
   return {
-    ...rectToFixedStyle(originRect.value),
+    ...animationRects.rectToFixedStyle(originRect.value),
     transform: `translate3d(${translateX}px, ${translateY}px, 0) scale(${isOverPlayZone.value ? 1.06 : 1})`,
   }
 })
@@ -246,7 +253,7 @@ function handleRestartGame() {
 }
 
 function isSelfDraw(playerId) {
-  return !playerId || playerId === resolvedCurrentPlayerId.value
+  return !playerId || animationRects.isSelfPlayer(playerId)
 }
 
 function markOpponentDrawn(playerId) {
@@ -286,10 +293,10 @@ async function playDrawAnimation(card, playerId = null) {
 
   await nextTick()
 
-  const startRect = tableCardPilesRef.value?.getDeckRect()
+  const startRect = animationRects.getDrawRect('source')
   const targetRect = shouldDrawSelf
-    ? playerHand.value?.getDrawTargetRect()
-    : playerSeats.value?.getHandTargetRect(activeDrawPlayerId)
+    ? animationRects.getDrawRect('target')
+    : animationRects.getDrawRect('target', activeDrawPlayerId)
 
   if (!startRect || !targetRect) {
     playerHand.value?.finishDraw();
@@ -334,11 +341,11 @@ async function playDrawAnimation(card, playerId = null) {
 }
 
 function refreshDiscardRect() {
-  discardRect.value = tableCardPilesRef.value?.getDiscardRect?.() ?? null
+  discardRect.value = animationRects.getPlayRect('discard')
 }
 
 function refreshPlayZoneRect() {
-  playZoneRect.value = tableCardPilesRef.value?.getPlayZoneRect?.() ?? null
+  playZoneRect.value = animationRects.getPlayRect('zone')
 }
 
 function pointInsideRect(point, rect) {
@@ -352,16 +359,6 @@ function pointInsideRect(point, rect) {
     point.y >= rect.top &&
     point.y <= rect.top + rect.height
   )
-}
-
-function rectToFixedStyle(rect) {
-  return {
-    display: 'block',
-    left: `${rect.left}px`,
-    top: `${rect.top}px`,
-    width: `${rect.width}px`,
-    height: `${rect.height}px`,
-  }
 }
 
 function clearPointerListeners() {
@@ -448,12 +445,7 @@ function getDragReleaseRect() {
     return null
   }
 
-  return {
-    left: dragPoint.value.x - originRect.value.width / 2,
-    top: dragPoint.value.y - originRect.value.height / 2,
-    width: originRect.value.width,
-    height: originRect.value.height,
-  }
+  return animationRects.createPointCenteredRect(dragPoint.value, originRect.value)
 }
 
 async function playActiveCard() {
@@ -529,7 +521,9 @@ function handleCardPointerDown(card, event) {
   }
 
   const cardElement = event.currentTarget
-  if (!cardElement?.getBoundingClientRect) {
+  const cardRect = animationRects.getCardElementRect(cardElement)
+
+  if (!cardRect) {
     return
   }
 
@@ -538,7 +532,7 @@ function handleCardPointerDown(card, event) {
 
   activeCard.value = card
   draggingCardId.value = card.id
-  originRect.value = cardElement.getBoundingClientRect()
+  originRect.value = cardRect
   dragPoint.value = {
     x: event.clientX,
     y: event.clientY,

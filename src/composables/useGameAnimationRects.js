@@ -37,6 +37,10 @@ function getTranslation(originRect, targetRect) {
   }
 }
 
+function getElementRect(element) {
+  return element?.getBoundingClientRect?.() ?? null
+}
+
 function getViewportCenterTranslation(originRect) {
   const originCenter = getRectCenter(originRect)
 
@@ -49,6 +53,17 @@ function getViewportCenterTranslation(originRect) {
   return {
     x: viewportCenter.x - originCenter.x,
     y: viewportCenter.y - originCenter.y,
+  }
+}
+
+function getRectCenteredOffset(originRect, targetRect) {
+  if (!originRect || !targetRect) {
+    return null
+  }
+
+  return {
+    x: originRect.left + (originRect.width - targetRect.width) / 2,
+    y: originRect.top + (originRect.height - targetRect.height) / 2,
   }
 }
 
@@ -69,6 +84,36 @@ function createFixedCardRect(originRect, cardHeight) {
   }
 }
 
+function createPointCenteredRect(point, sizeRect) {
+  if (!point || !sizeRect) {
+    return null
+  }
+
+  return {
+    left: point.x - sizeRect.width / 2,
+    top: point.y - sizeRect.height / 2,
+    width: sizeRect.width,
+    height: sizeRect.height,
+  }
+}
+
+function createEffectCardRect(originRect) {
+  return createFixedCardRect(originRect, getEffectCardHeight())
+}
+
+function createFlyingCardRect(originRect) {
+  if (!originRect) {
+    return null
+  }
+
+  const height = Math.min(
+    Math.max(originRect.height * 2.4, 220),
+    Math.min(window.innerHeight * 0.62, 420),
+  )
+
+  return createFixedCardRect(originRect, height)
+}
+
 function rectToFixedStyle(rect) {
   if (!rect) {
     return { display: 'none' }
@@ -83,12 +128,52 @@ function rectToFixedStyle(rect) {
   }
 }
 
+function deckPoseToFixedStyle(deckPose) {
+  const rect = deckPose?.rect
+
+  if (!rect) {
+    return { display: 'none' }
+  }
+
+  const width = deckPose.width || rect.width
+  const height = deckPose.height || rect.height
+
+  return {
+    display: 'block',
+    left: `${rect.left + rect.width / 2 - width / 2}px`,
+    top: `${rect.bottom - height}px`,
+    width: `${width}px`,
+    height: `${height}px`,
+    transform: `perspective(${deckPose.transformPerspective || 900}px) rotateX(${deckPose.rotationX || 0}deg) rotateY(${deckPose.rotationY || 0}deg) rotateZ(${deckPose.rotationZ || 0}deg)`,
+    transformOrigin: '50% 100%',
+  }
+}
+
 function getScaleForHeight(targetRect, cardHeight) {
   if (!targetRect || !Number.isFinite(cardHeight) || cardHeight <= 0) {
     return null
   }
 
   return targetRect.height / cardHeight
+}
+
+function getCardFlightGeometry(originRect, targetRect) {
+  const offset = getRectCenteredOffset(originRect, targetRect)
+
+  if (!offset || !originRect || !targetRect) {
+    return null
+  }
+
+  return {
+    startX: offset.x,
+    startY: offset.y,
+    startScale: Math.min(
+      originRect.width / targetRect.width,
+      originRect.height / targetRect.height,
+    ),
+    endX: targetRect.left,
+    endY: targetRect.top,
+  }
 }
 
 export function useGameAnimationRects({
@@ -108,45 +193,103 @@ export function useGameAnimationRects({
       return null
     }
 
-    if (playerId === getCurrentPlayerId()) {
+    if (String(playerId) === String(getCurrentPlayerId())) {
       return playerHand?.value?.getHandRect?.() ?? null
     }
 
     return playerSeats?.value?.getHandTargetRect?.(playerId) ?? null
   }
 
+  function getDrawRect(kind, playerId = null) {
+    if (kind === 'source') {
+      return tableCardPiles?.value?.getDeckRect?.() ?? null
+    }
+
+    if (kind !== 'target') {
+      return null
+    }
+
+    if (!playerId || isSelfPlayer(playerId)) {
+      return playerHand?.value?.getDrawTargetRect?.() ?? null
+    }
+
+    return playerSeats?.value?.getHandTargetRect?.(playerId) ?? null
+  }
+
+  function getPlayRect(kind) {
+    if (kind === 'discard') {
+      return tableCardPiles?.value?.getDiscardRect?.() ?? null
+    }
+
+    if (kind === 'zone') {
+      return tableCardPiles?.value?.getPlayZoneRect?.() ?? null
+    }
+
+    return null
+  }
+
   function getDeckRect() {
-    return tableCardPiles?.value?.getDeckRect?.() ?? null
+    return getDrawRect('source')
   }
 
   function getDiscardRect() {
-    return tableCardPiles?.value?.getDiscardRect?.() ?? null
+    return getPlayRect('discard')
+  }
+
+  function getPlayZoneRect() {
+    return getPlayRect('zone')
+  }
+
+  function getDrawTargetRect(playerId) {
+    return getDrawRect('target', playerId)
+  }
+
+  function getCardElementRect(element) {
+    return getElementRect(element)
   }
 
   function isSelfPlayer(playerId) {
-    return Boolean(playerId) && playerId === getCurrentPlayerId()
+    return Boolean(playerId) && String(playerId) === String(getCurrentPlayerId())
   }
 
   return {
+    getCardElementRect,
+    getDrawRect,
+    getPlayRect,
+    getDrawTargetRect,
     getPlayerHandRect,
     getDeckRect,
     getDiscardRect,
+    getPlayZoneRect,
     getViewportCenter,
     getEffectCardHeight,
     getRectCenter,
     getTranslation,
     getViewportCenterTranslation,
+    getRectCenteredOffset,
     createFixedCardRect,
+    createEffectCardRect,
+    createFlyingCardRect,
+    createPointCenteredRect,
     rectToFixedStyle,
+    deckPoseToFixedStyle,
     getScaleForHeight,
+    getCardFlightGeometry,
     isSelfPlayer,
   }
 }
 
 export {
+  createEffectCardRect,
   createFixedCardRect,
+  createFlyingCardRect,
+  createPointCenteredRect,
+  deckPoseToFixedStyle,
   getEffectCardHeight,
+  getElementRect,
+  getCardFlightGeometry,
   getRectCenter,
+  getRectCenteredOffset,
   getScaleForHeight,
   getTranslation,
   getViewportCenter,

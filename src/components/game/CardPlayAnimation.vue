@@ -1,10 +1,16 @@
 <script setup>
 import { nextTick, onUnmounted, ref } from 'vue'
 import { gsap } from 'gsap'
-import cardBackUrl from '@/assets/images/card-bg-back.webp'
+import {
+  createFlyingCardRect,
+  getRectCenter,
+  getTranslation,
+  getViewportCenterTranslation,
+  rectToFixedStyle,
+} from '@/composables/useGameAnimationRects'
+import EffectCardLayer from './EffectCardLayer.vue'
 
-const flyingCardRef = ref(null)
-const flipperRef = ref(null)
+const flyingCardLayer = ref(null)
 const veilRef = ref(null)
 const ringRef = ref(null)
 const slashRef = ref(null)
@@ -14,31 +20,12 @@ const flyingStyle = ref({ display: 'none' })
 const shockwaveStyle = ref({ display: 'none' })
 let timeline = null
 
-function createFlyingRect(originRect) {
-  const height = Math.min(
-    Math.max(originRect.height * 2.4, 220),
-    Math.min(window.innerHeight * 0.62, 420),
-  )
-  const width = height * 0.75
-  const centerX = originRect.left + originRect.width / 2
-  const centerY = originRect.top + originRect.height / 2
-
-  return {
-    left: centerX - width / 2,
-    top: centerY - height / 2,
-    width,
-    height,
-  }
+function getFlyingCardElement() {
+  return flyingCardLayer.value?.getCardElement?.() ?? null
 }
 
-function rectToFixedStyle(rect) {
-  return {
-    display: 'block',
-    left: `${rect.left}px`,
-    top: `${rect.top}px`,
-    width: `${rect.width}px`,
-    height: `${rect.height}px`,
-  }
+function getFlipperElement() {
+  return flyingCardLayer.value?.getFlipperElement?.() ?? null
 }
 
 function getSourceRotation(position) {
@@ -62,8 +49,8 @@ function stop() {
   timeline?.kill()
   timeline = null
   gsap.killTweensOf([
-    flyingCardRef.value,
-    flipperRef.value,
+    getFlyingCardElement(),
+    getFlipperElement(),
     veilRef.value,
     ringRef.value,
     slashRef.value,
@@ -87,34 +74,38 @@ async function play({
   timeline?.kill()
   activeCard.value = card
 
-  const flyingRect = createFlyingRect(originRect)
-  const originScale = originRect.height / flyingRect.height
-  flyingStyle.value = rectToFixedStyle(flyingRect)
-  shockwaveStyle.value = {
-    display: 'block',
-    left: `${targetRect.left + targetRect.width / 2}px`,
-    top: `${targetRect.top + targetRect.height / 2}px`,
-  }
+  const flyingRect = createFlyingCardRect(originRect)
+  const targetCenter = getRectCenter(targetRect)
+  const centerTranslation = getViewportCenterTranslation(flyingRect)
+  const landTranslation = getTranslation(flyingRect, targetRect)
 
-  await nextTick()
-
-  if (!flyingCardRef.value || !flipperRef.value || !veilRef.value || !ringRef.value || !slashRef.value || !shockwaveRef.value) {
+  if (!flyingRect || !targetCenter || !centerTranslation || !landTranslation) {
     resetLayer()
     return false
   }
 
-  const flyingCenter = {
-    x: flyingRect.left + flyingRect.width / 2,
-    y: flyingRect.top + flyingRect.height / 2,
+  const originScale = originRect.height / flyingRect.height
+  flyingStyle.value = rectToFixedStyle(flyingRect)
+  shockwaveStyle.value = {
+    display: 'block',
+    left: `${targetCenter.x}px`,
+    top: `${targetCenter.y}px`,
   }
-  const targetCenter = {
-    x: targetRect.left + targetRect.width / 2,
-    y: targetRect.top + targetRect.height / 2,
+
+  await nextTick()
+
+  const flyingCardElement = getFlyingCardElement()
+  const flipperElement = getFlipperElement()
+
+  if (!flyingCardElement || !flipperElement || !veilRef.value || !ringRef.value || !slashRef.value || !shockwaveRef.value) {
+    resetLayer()
+    return false
   }
-  const centerX = window.innerWidth / 2 - flyingCenter.x
-  const centerY = window.innerHeight / 2 - flyingCenter.y
-  const landX = targetCenter.x - flyingCenter.x
-  const landY = targetCenter.y - flyingCenter.y
+
+  const centerX = centerTranslation.x
+  const centerY = centerTranslation.y
+  const landX = landTranslation.x
+  const landY = landTranslation.y
   const showcaseScale = Math.min(1.9, Math.max(1.16, window.innerHeight * 0.48 / flyingRect.height))
   const landScale = targetRect.height / flyingRect.height
   const travelDirection = Math.sign(landX - centerX || landY - centerY || 1)
@@ -122,7 +113,7 @@ async function play({
   gsap.set([veilRef.value, ringRef.value, slashRef.value, shockwaveRef.value], {
     opacity: 0,
   })
-  gsap.set(flyingCardRef.value, {
+  gsap.set(flyingCardElement, {
     x: 0,
     y: 0,
     z: 0,
@@ -134,7 +125,7 @@ async function play({
     opacity: 1,
     filter: 'brightness(1)',
   })
-  gsap.set(flipperRef.value, {
+  gsap.set(flipperElement, {
     rotationY: faceUp ? 0 : 180,
     transformPerspective: 1200,
     transformStyle: 'preserve-3d',
@@ -176,7 +167,7 @@ async function play({
     timeline
       .to(veilRef.value, { opacity: 1, duration: 0.14, ease: 'power1.out' })
       .to(slashRef.value, { opacity: 0.88, scaleX: 1, duration: 0.16 }, '<')
-      .to(flyingCardRef.value, {
+      .to(flyingCardElement, {
         x: centerX,
         y: centerY,
         scale: showcaseScale,
@@ -192,18 +183,18 @@ async function play({
         duration: 0.22,
         ease: 'back.out(1.9)',
       }, '-=0.18')
-      .to(flipperRef.value, {
+      .to(flipperElement, {
         rotationY: 0,
         duration: faceUp ? 0.01 : 0.34,
         ease: 'power2.inOut',
       }, '-=0.05')
-      .to(flyingCardRef.value, {
+      .to(flyingCardElement, {
         scale: showcaseScale * 1.06,
         filter: 'brightness(1.12)',
         duration: 0.14,
         ease: 'power1.out',
       })
-      .to(flyingCardRef.value, {
+      .to(flyingCardElement, {
         scale: showcaseScale,
         filter: 'brightness(1)',
         duration: 0.18,
@@ -223,7 +214,7 @@ async function play({
         duration: 0.2,
         ease: 'power2.in',
       }, '<')
-      .to(flyingCardRef.value, {
+      .to(flyingCardElement, {
         x: landX,
         y: landY,
         scale: landScale,
@@ -244,7 +235,7 @@ async function play({
         duration: 0.24,
         ease: 'power2.out',
       })
-      .to(flyingCardRef.value, {
+      .to(flyingCardElement, {
         opacity: 0,
         duration: 0.04,
         ease: 'none',
@@ -278,24 +269,19 @@ defineExpose({
       :style="shockwaveStyle"
     ></div>
 
-    <div
+    <EffectCardLayer
       v-if="activeCard"
-      ref="flyingCardRef"
+      ref="flyingCardLayer"
       class="card-play-animation__flying-card"
+      :card="activeCard"
       :style="flyingStyle"
+      use-image-front
       aria-hidden="true"
     >
-      <div class="card-play-animation__card-glow" :style="{ '--accent': activeCard.color }"></div>
-      <div ref="flipperRef" class="card-play-animation__flipper">
-        <div class="card-play-animation__face card-play-animation__face--front">
-          <img :src="activeCard.backgroundUrl" alt="" draggable="false" />
-          <img :src="activeCard.frameUrl" alt="" draggable="false" />
-        </div>
-        <div class="card-play-animation__face card-play-animation__face--back">
-          <img :src="cardBackUrl" alt="" draggable="false" />
-        </div>
-      </div>
-    </div>
+      <template #overlay>
+        <div class="card-play-animation__card-glow" :style="{ '--accent': activeCard.color }"></div>
+      </template>
+    </EffectCardLayer>
   </Teleport>
 </template>
 
@@ -365,12 +351,11 @@ defineExpose({
 }
 
 .card-play-animation__flying-card {
-  position: fixed;
   z-index: 57;
-  perspective: 1200px;
-  transform-origin: 50% 50%;
   image-rendering: auto;
-  will-change: transform, opacity, filter;
+  --effect-card-face-filter:
+    drop-shadow(0 0 16px rgba(250, 204, 21, 0.34))
+    drop-shadow(0 24px 32px rgba(0, 0, 0, 0.5));
 }
 
 .card-play-animation__card-glow {
@@ -384,34 +369,4 @@ defineExpose({
   opacity: 0.78;
 }
 
-.card-play-animation__flipper {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transform-style: preserve-3d;
-}
-
-.card-play-animation__face {
-  position: absolute;
-  inset: 0;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  filter:
-    drop-shadow(0 0 16px rgba(250, 204, 21, 0.34))
-    drop-shadow(0 24px 32px rgba(0, 0, 0, 0.5));
-}
-
-.card-play-animation__face img {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  user-select: none;
-}
-
-.card-play-animation__face--back {
-  transform: rotateY(180deg);
-}
 </style>

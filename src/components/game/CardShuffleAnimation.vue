@@ -2,27 +2,12 @@
 import { nextTick, onUnmounted, ref } from 'vue'
 import { gsap } from 'gsap'
 import cardBackUrl from '@/assets/images/card-bg-back.webp'
+import { deckPoseToFixedStyle } from '@/composables/useGameAnimationRects'
 
 const shuffleCardElements = ref([])
 const shuffleDeckStyle = ref({ display: 'none' })
 const visibleCardCount = ref(0)
 let timeline = null
-
-function deckPoseToFixedStyle(deckPose) {
-  const rect = deckPose.rect
-  const width = deckPose.width || rect.width
-  const height = deckPose.height || rect.height
-
-  return {
-    display: 'block',
-    left: `${rect.left + rect.width / 2 - width / 2}px`,
-    top: `${rect.bottom - height}px`,
-    width: `${width}px`,
-    height: `${height}px`,
-    transform: `perspective(${deckPose.transformPerspective || 900}px) rotateX(${deckPose.rotationX || 0}deg) rotateY(${deckPose.rotationY || 0}deg) rotateZ(${deckPose.rotationZ || 0}deg)`,
-    transformOrigin: '50% 100%',
-  }
-}
 
 function setShuffleCardElement(index, element) {
   if (element) {
