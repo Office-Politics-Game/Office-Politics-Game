@@ -15,6 +15,7 @@ import InviteFriendModal from "@/components/gameRoom/InviteFriendModal.vue";
 import CardDealDemoView from "@/views/CardDealDemoView.vue";
 import AnimationDemoView from "@/views/AnimationDemoView.vue";
 import CardPlayTestView from "@/views/CardPlayTestView.vue";
+import NotFoundView from "@/views/NotFoundView.vue";
 
 const routes = [
   {
@@ -104,6 +105,11 @@ const routes = [
     path: "/cardplay_test",
     name: "cardplay_test",
     component: CardPlayTestView,
+  },
+  {
+    path: "/:pathMatch(.*)*",
+    name: "NotFound",
+    component: NotFoundView,
   },
 ];
 
