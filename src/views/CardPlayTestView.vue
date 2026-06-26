@@ -15,6 +15,7 @@ import ManagerAnimation from '@/components/game/ManagerAnimation.vue'
 import PMAnimation from '@/components/game/PMAnimation.vue'
 import PlayerSeats from '@/components/game/PlayerSeats.vue'
 import TableCardPiles from '@/components/game/TableCardPiles.vue'
+import { createMockGameState } from '@/mocks/mockGameState.js'
 
 const SELF_PLAYER_ID = 'player-bottom'
 const INITIAL_DECK_COUNT = 28
