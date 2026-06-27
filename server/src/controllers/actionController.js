@@ -9,7 +9,13 @@ import { discardCard } from "../services/discardService.js"
 import { finishTurn } from "../services/roundFlowService.js"
 import { getPublicState } from "../services/gameStateService.js"
 import { drawCard } from "../services/drawService.js"
-import { checkTurn, checkPlayer, checkCard, checkTarget, checkProtected, checkAdvisorRule } from "../services/ruleCheckService.js"
+import {
+    checkTurn,
+    checkPlayer,
+    checkCard,
+    checkTarget,
+    checkAdvisorRule,
+} from "../services/ruleCheckService.js"
 
 async function handlePlayCard(req, res){
     try {
@@ -30,7 +36,7 @@ async function handlePlayCard(req, res){
         }
 
         if (!cardId) {
-            return res.status(400).json({ message: "缺少卡牌資料" })
+            return res.status(400).json({ message: "缺少卡牌ID" })
         }
 
         const sessionResult = await pool.query(
@@ -42,36 +48,31 @@ async function handlePlayCard(req, res){
             LIMIT 1`,
             [roomCode]
         )
+
         if (sessionResult.rows.length === 0) {
             return res.status(404).json({ message: "找不到遊戲狀態" })
         }
 
         const gameSession = sessionResult.rows[0]
         const state = gameSession.state_json
+        const numericPlayerId = Number(playerId)
+        const numericTargetPlayerId = targetPlayerId
+            ? Number(targetPlayerId)
+            : undefined
 
         if (state.phase !== "playing") {
-            return res.status(400).json({ message: "目前不是可行動階段" })
+            return res.status(400).json({ message: "遊戲目前不是進行中" })
         }
 
-        checkPlayer(state, playerId)
-        checkTurn(state, playerId)
+        const player = checkPlayer(state, numericPlayerId)
+        checkTurn(state, numericPlayerId)
+        const card = checkCard(state, numericPlayerId, cardId)
+        checkAdvisorRule(state, numericPlayerId, card.id)
+        checkTarget(state, numericPlayerId, card.id, numericTargetPlayerId)
 
-        const card = checkCard(state, playerId, cardId)
-
-        checkAdvisorRule(state, playerId, cardId)
-
-        const targetPlayer = checkTarget(
-            state,
-            playerId,
-            cardId,
-            targetPlayerId
-        )
-
-        if (targetPlayer) {
-            checkProtected(state, targetPlayerId)
+        if (card.name === "Intern" && !checkGuess(guessedCardName)) {
+            return res.status(400).json({ message: "猜測卡牌不合法" })
         }
-
-        const player = checkPlayer(state, playerId)
 
         const discardedCard = discardCard(
             player,
@@ -94,8 +95,8 @@ async function handlePlayCard(req, res){
         const effectResult = runCardEffect({
             state,
             card: discardedCard,
-            playerId: Number(playerId),
-            targetPlayerId: targetPlayerId ? Number(targetPlayerId) : undefined,
+            playerId: numericPlayerId,
+            targetPlayerId: numericTargetPlayerId,
             guessedCardName,
         })
         const animationResult = buildCardEffectAnimationResult(
@@ -103,7 +104,7 @@ async function handlePlayCard(req, res){
             effectResult,
         )
 
-        finishTurn(state, Number(playerId))
+        finishTurn(state, numericPlayerId)
 
         await pool.query(
             `UPDATE game_sessions
@@ -117,7 +118,7 @@ async function handlePlayCard(req, res){
 
         const actionLog = await addLog(
             gameSession.room_id,
-            Number(playerId),
+            numericPlayerId,
             "play_card",
             JSON.stringify({
                 cardId,
@@ -130,7 +131,7 @@ async function handlePlayCard(req, res){
             })
         )
 
-        const publicState = getPublicState(state, Number(playerId))
+        const publicState = getPublicState(state, numericPlayerId)
 
         return res.status(200).json({
             message: "卡牌效果已執行",
@@ -142,9 +143,9 @@ async function handlePlayCard(req, res){
         })
     } catch (error) {
         return res.status(error.statusCode || 500).json({
-        message: error.statusCode ? error.message : "出牌失敗",
-        error: error.message,
-    })
+            message: error.statusCode ? error.message : "出牌失敗",
+            error: error.message,
+        })
   }
 }
 
@@ -168,14 +169,14 @@ async function handleDrawCard(req, res) {
     )
 
     if (sessionResult.rows.length === 0) {
-        return res.status(404).json({ message: "找不到遊戲場次" })
+        return res.status(404).json({ message: "找不到遊戲狀態" })
     }
 
     const gameSession = sessionResult.rows[0]
     const state = gameSession.state_json
 
     if (state.phase !== "playing") {
-        return res.status(400).json({ message: "目前不是可行動階段" })
+        return res.status(400).json({ message: "遊戲目前不是進行中" })
     }
 
     const drawResult = drawCard({
