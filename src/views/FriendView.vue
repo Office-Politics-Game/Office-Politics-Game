@@ -1,16 +1,17 @@
 <template>
   <div
     class="flex h-screen w-screen items-center justify-center overflow-hidden bg-cover bg-center p-4"
-    :style="{ backgroundImage: `url(${BG_Personal})` }"
+    :style="{ backgroundImage: `url(${BG_FriendView})` }"
   >
     <section
-      class="flex h-[76vh] w-[76vw] max-w-[980px] overflow-hidden rounded-xl bg-white/95 shadow-2xl backdrop-blur"
+      class="flex h-[76vh] w-[76vw] max-w-[980px] overflow-hidden bg-white/95 shadow-2xl backdrop-blur"
     >
       <!-- 左側好友列表 -->
       <aside class="flex w-[38%] min-w-[280px] flex-col border-r border-gray-200">
         <!-- tabs -->
         <div class="flex h-14 items-center border-b border-gray-200 px-5">
           <button
+            type="button"
             class="tab"
             :class="{ active: activeTab === 'friends' }"
             @click="activeTab = 'friends'"
@@ -19,6 +20,7 @@
           </button>
 
           <button
+            type="button"
             class="tab"
             :class="{ active: activeTab === 'add' }"
             @click="activeTab = 'add'"
@@ -34,7 +36,7 @@
               v-model="keyword"
               type="text"
               placeholder="搜尋好友暱稱"
-              class="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none transition focus:border-slate-400 focus:bg-white"
+              class="w-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none transition focus:border-slate-400 focus:bg-white"
             />
           </div>
 
@@ -61,7 +63,10 @@
                   離線好友 ({{ offlineFriends.length }})
                 </h3>
 
-                <button class="text-xs text-gray-400 hover:text-gray-600">
+                <button
+                  type="button"
+                  class="text-xs text-gray-400 hover:text-gray-600"
+                >
                   ˅
                 </button>
               </div>
@@ -92,11 +97,12 @@
               v-model="addFriendKeyword"
               type="text"
               placeholder="輸入玩家 ID / 暱稱"
-              class="mb-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:bg-white"
+              class="mb-3 border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:bg-white"
             />
 
             <button
-              class="rounded-md bg-slate-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-700"
+              type="button"
+              class="bg-slate-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-700"
               @click="handleAddFriend"
             >
               送出邀請
@@ -112,7 +118,8 @@
           <div class="flex items-center gap-3">
             <img
               src="@/assets/images/player-1.png"
-              class="h-9 w-9 rounded-full object-cover"
+              alt=""
+              class="h-9 w-9 object-cover"
             />
 
             <div>
@@ -133,15 +140,13 @@
           </div>
 
           <div class="flex items-center gap-4 text-gray-500">
-            <button class="hover:text-gray-800">
-              ...
-            </button>
-
             <button
-              class="text-xl hover:text-gray-800"
+              type="button"
+              class="hover:text-gray-800"
+              aria-label="關閉好友頁"
               @click="$router.push('/lobby')"
             >
-              ×
+              <X class="h-5 w-5" />
             </button>
           </div>
         </header>
@@ -156,7 +161,7 @@
               :class="message.from === 'me' ? 'justify-end' : 'justify-start'"
             >
               <div
-                class="max-w-[68%] rounded-lg px-4 py-2 text-sm leading-relaxed shadow-sm"
+                class="max-w-[68%] px-4 py-2 text-sm leading-relaxed shadow-sm"
                 :class="
                   message.from === 'me'
                     ? 'bg-sky-100 text-gray-700'
@@ -185,24 +190,18 @@
           <input
             v-model="messageText"
             type="text"
-            placeholder="輸入訊息..."
-            class="flex-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:bg-white"
+            placeholder="輸入訊息"
+            class="flex-1 border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:bg-white"
             @keydown.enter="sendMessage"
           />
 
-          <button class="text-gray-400 hover:text-gray-600">
-            ☺
-          </button>
-
-          <button class="text-gray-400 hover:text-gray-600">
-            📎
-          </button>
-
           <button
-            class="rounded-md bg-slate-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-700"
+            type="button"
+            class="bg-slate-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-700"
+            aria-label="送出訊息"
             @click="sendMessage"
           >
-            ▶
+            <Send class="h-4 w-4" />
           </button>
         </footer>
       </main>
@@ -212,7 +211,8 @@
 
 <script setup>
 import { computed, ref } from "vue";
-import BG_Personal from "@/assets/images/bg-personal.webp";
+import { Send, X } from "lucide-vue-next";
+import BG_FriendView from "@/assets/images/bg-friend-view.webp";
 import FriendItem from "@/components/friend/FriendItem.vue";
 
 const activeTab = ref("friends");

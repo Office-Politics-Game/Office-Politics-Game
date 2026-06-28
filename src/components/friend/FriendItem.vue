@@ -1,13 +1,15 @@
 <template>
   <button
-    class="mb-1 flex w-full items-center justify-between rounded-lg px-2 py-2 text-left transition"
+    type="button"
+    class="mb-1 flex w-full items-center justify-between px-2 py-2 text-left transition"
     :class="active ? 'bg-gray-100' : 'hover:bg-gray-50'"
     @click="emit('select')"
   >
     <div class="flex min-w-0 items-center gap-2">
       <img
         src="@/assets/images/player-1.png"
-        class="h-9 w-9 shrink-0 rounded-full object-cover"
+        alt=""
+        class="h-9 w-9 shrink-0 object-cover"
       />
 
       <div class="min-w-0">
@@ -21,14 +23,7 @@
       </div>
     </div>
 
-    <div class="flex shrink-0 items-center gap-3">
-      <button
-        class="text-xs text-gray-400 hover:text-gray-700"
-        @click.stop="emit('message')"
-      >
-        💬
-      </button>
-
+    <div class="flex shrink-0 items-center">
       <span
         class="h-2 w-2 rounded-full"
         :class="friend.online ? 'bg-green-500' : 'bg-gray-400'"
@@ -49,5 +44,5 @@ defineProps({
   },
 });
 
-const emit = defineEmits(["select", "message"]);
+const emit = defineEmits(["select"]);
 </script>
