@@ -1,173 +1,137 @@
-<script setup>
-import { computed, ref } from 'vue'
-import FriendItem from './FriendItem.vue'
-import FriendRequestItem from './FriendRequestItem.vue'
+<template>
+  <Transition name="friend-panel">
+    <div v-if="open" class="fixed inset-0 z-50">
+      <button
+        type="button"
+        class="absolute inset-0 bg-slate-950/35"
+        aria-label="關閉好友面板"
+        @click="emit('close')"
+      ></button>
 
-const props = defineProps({
+      <aside
+        class="absolute right-0 top-0 flex h-full w-full max-w-[420px] flex-col border-l border-gray-200 bg-white/95 shadow-2xl backdrop-blur"
+      >
+        <header class="border-b border-gray-200 px-5 py-4">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 class="text-xl font-bold text-gray-900">好友</h2>
+              <p class="mt-1 text-sm text-gray-500">
+                {{ friendStore.friends.length }} 位好友，{{ activeFriendCount }} 位可互動
+              </p>
+            </div>
+
+            <button
+              type="button"
+              class="border border-gray-300 px-3 py-1 text-sm font-bold text-gray-600 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200"
+              @click="emit('close')"
+            >
+              關閉
+            </button>
+          </div>
+
+          <nav class="mt-4 grid grid-cols-3 border border-gray-200 bg-gray-50 text-sm">
+            <button
+              type="button"
+              class="panel-tab"
+              :class="{ active: activeTab === 'friends' }"
+              @click="activeTab = 'friends'"
+            >
+              好友
+            </button>
+
+            <button
+              type="button"
+              class="panel-tab"
+              :class="{ active: activeTab === 'requests' }"
+              @click="activeTab = 'requests'"
+            >
+              邀請 {{ friendStore.pendingRequestCount }}
+            </button>
+
+            <button
+              type="button"
+              class="panel-tab"
+              :class="{ active: activeTab === 'add' }"
+              @click="activeTab = 'add'"
+            >
+              加入
+            </button>
+          </nav>
+        </header>
+
+        <section class="min-h-0 flex-1 overflow-hidden">
+          <FriendList
+            v-if="activeTab === 'friends'"
+            :friends="friendStore.friends"
+            :selected-friend-id="friendStore.selectedFriendId"
+            @select="friendStore.selectFriend"
+          />
+
+          <div v-else-if="activeTab === 'requests'" class="h-full overflow-y-auto p-5">
+            <FriendRequestList
+              :requests="friendStore.requests"
+              @accept="friendStore.acceptRequest"
+              @reject="friendStore.rejectRequest"
+            />
+          </div>
+
+          <div v-else class="h-full overflow-y-auto p-5">
+            <AddFriendForm
+              :sent-invites="friendStore.sentInvites"
+              :notice="friendStore.noticeMessage"
+              @add-friend="friendStore.sendFriendRequest"
+            />
+          </div>
+        </section>
+      </aside>
+    </div>
+  </Transition>
+</template>
+
+<script setup>
+import { computed, ref } from "vue";
+import AddFriendForm from "@/components/friend/AddFriendForm.vue";
+import FriendList from "@/components/friend/FriendList.vue";
+import FriendRequestList from "@/components/friend/FriendRequestList.vue";
+import { useFriendStore } from "@/stores/friendStore.js";
+
+defineProps({
   open: {
     type: Boolean,
     default: false,
   },
-  friends: {
-    type: Array,
-    default: () => [],
-  },
-  requests: {
-    type: Array,
-    default: () => [],
-  },
-})
+});
 
-const emit = defineEmits([
-  'close',
-  'add-friend',
-  'invite-friend',
-  'accept-request',
-  'reject-request',
-  'remove-friend',
-])
+const emit = defineEmits(["close"]);
+const friendStore = useFriendStore();
+const activeTab = ref("friends");
 
-const activeTab = ref('friends')
-const keyword = ref('')
-
-const filteredFriends = computed(() => {
-  if (!keyword.value.trim()) return props.friends
-
-  return props.friends.filter((friend) =>
-    friend.nickname?.toLowerCase().includes(keyword.value.toLowerCase())
-  )
-})
-
-function submitAddFriend() {
-  const value = keyword.value.trim()
-  if (!value) return
-
-  emit('add-friend', value)
-  keyword.value = ''
-}
+const activeFriendCount = computed(() => {
+  return friendStore.friends.filter((friend) => friend.online).length;
+});
 </script>
 
-<template>
-  <Transition name="friend-panel">
-    <aside
-      v-if="open"
-      class="fixed right-0 top-0 z-50 h-full w-full border-l border-sky-200/70 bg-white/90 p-5 shadow-2xl backdrop-blur-md sm:w-[360px]"
-    >
-      <header class="mb-5 flex items-center justify-between">
-        <div>
-          <h2 class="text-xl font-bold text-slate-800">好友</h2>
-          <p class="text-sm text-slate-500">
-            {{ friends.filter((friend) => friend.status === 'online').length }}
-            位好友在線
-          </p>
-        </div>
-
-        <button
-          class="rounded-full px-3 py-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
-          @click="emit('close')"
-        >
-          ✕
-        </button>
-      </header>
-
-      <form class="mb-4 flex gap-2" @submit.prevent="submitAddFriend">
-        <input
-          v-model="keyword"
-          type="text"
-          placeholder="搜尋暱稱 / 輸入玩家 ID"
-          class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-        />
-
-        <button
-          type="submit"
-          class="rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-600"
-        >
-          加入
-        </button>
-      </form>
-
-      <nav class="mb-4 grid grid-cols-3 rounded-xl bg-slate-100 p-1 text-sm">
-        <button
-          class="rounded-lg py-2 transition"
-          :class="activeTab === 'friends' ? 'bg-white font-semibold text-sky-600 shadow-sm' : 'text-slate-500'"
-          @click="activeTab = 'friends'"
-        >
-          好友
-        </button>
-
-        <button
-          class="rounded-lg py-2 transition"
-          :class="activeTab === 'requests' ? 'bg-white font-semibold text-sky-600 shadow-sm' : 'text-slate-500'"
-          @click="activeTab = 'requests'"
-        >
-          邀請
-        </button>
-
-        <button
-          class="rounded-lg py-2 transition"
-          :class="activeTab === 'search' ? 'bg-white font-semibold text-sky-600 shadow-sm' : 'text-slate-500'"
-          @click="activeTab = 'search'"
-        >
-          搜尋
-        </button>
-      </nav>
-
-      <section class="space-y-3 overflow-y-auto pr-1">
-        <template v-if="activeTab === 'friends'">
-          <FriendItem
-            v-for="friend in filteredFriends"
-            :key="friend.id"
-            :friend="friend"
-            @invite="emit('invite-friend', friend.id)"
-            @remove="emit('remove-friend', friend.id)"
-          />
-
-          <div
-            v-if="filteredFriends.length === 0"
-            class="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500"
-          >
-            目前沒有找到好友
-          </div>
-        </template>
-
-        <template v-if="activeTab === 'requests'">
-          <FriendRequestItem
-            v-for="request in requests"
-            :key="request.id"
-            :request="request"
-            @accept="emit('accept-request', request.id)"
-            @reject="emit('reject-request', request.id)"
-          />
-
-          <div
-            v-if="requests.length === 0"
-            class="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500"
-          >
-            目前沒有好友邀請
-          </div>
-        </template>
-
-        <template v-if="activeTab === 'search'">
-          <div class="rounded-2xl bg-sky-50 p-4 text-sm text-slate-600">
-            輸入玩家 ID 或暱稱後，可以送出好友邀請。
-          </div>
-        </template>
-      </section>
-    </aside>
-  </Transition>
-</template>
-
 <style scoped>
+@reference "tailwindcss";
+
+.panel-tab {
+  @apply border-r border-gray-200 px-3 py-2 font-bold text-gray-500 transition last:border-r-0 hover:bg-white hover:text-gray-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200;
+}
+
+.panel-tab.active {
+  @apply bg-slate-800 text-white hover:bg-slate-800 hover:text-white;
+}
+
 .friend-panel-enter-active,
 .friend-panel-leave-active {
   transition:
-    transform 0.22s ease,
-    opacity 0.22s ease;
+    opacity 0.18s ease,
+    transform 0.18s ease;
 }
 
 .friend-panel-enter-from,
 .friend-panel-leave-to {
-  transform: translateX(100%);
   opacity: 0;
+  transform: translateX(24px);
 }
 </style>

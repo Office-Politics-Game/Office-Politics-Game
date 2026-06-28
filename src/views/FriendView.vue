@@ -1,15 +1,13 @@
 <template>
   <div
-    class="flex h-screen w-screen items-center justify-center overflow-hidden bg-cover bg-center p-4"
+    class="flex min-h-screen w-screen items-center justify-center overflow-hidden bg-cover bg-center p-3 md:p-4"
     :style="{ backgroundImage: `url(${BG_FriendView})` }"
   >
     <section
-      class="flex h-[76vh] w-[76vw] max-w-[980px] overflow-hidden bg-white/95 shadow-2xl backdrop-blur"
+      class="friend-page-panel flex h-[92vh] w-[94vw] max-w-[1100px] flex-col overflow-hidden bg-white/95 shadow-2xl backdrop-blur md:h-[82vh] md:flex-row"
     >
-      <!-- 左側好友列表 -->
-      <aside class="flex w-[38%] min-w-[280px] flex-col border-r border-gray-200">
-        <!-- tabs -->
-        <div class="flex h-14 items-center border-b border-gray-200 px-5">
+      <aside class="flex min-h-0 w-full flex-col border-b border-gray-200 md:w-[38%] md:border-b-0 md:border-r">
+        <div class="flex h-14 shrink-0 items-center border-b border-gray-200 px-5">
           <button
             type="button"
             class="tab"
@@ -22,6 +20,15 @@
           <button
             type="button"
             class="tab"
+            :class="{ active: activeTab === 'requests' }"
+            @click="activeTab = 'requests'"
+          >
+            好友邀請 {{ friendStore.pendingRequestCount }}
+          </button>
+
+          <button
+            type="button"
+            class="tab"
             :class="{ active: activeTab === 'add' }"
             @click="activeTab = 'add'"
           >
@@ -29,139 +36,77 @@
           </button>
         </div>
 
-        <!-- 好友列表 -->
-        <template v-if="activeTab === 'friends'">
-          <div class="border-b border-gray-100 p-4">
-            <input
-              v-model="keyword"
-              type="text"
-              placeholder="搜尋好友暱稱"
-              class="w-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none transition focus:border-slate-400 focus:bg-white"
-            />
-          </div>
+        <FriendList
+          v-if="activeTab === 'friends'"
+          :friends="friendStore.friends"
+          :selected-friend-id="friendStore.selectedFriendId"
+          @select="friendStore.selectFriend"
+        />
 
-          <div class="flex-1 overflow-y-auto px-4 py-3">
-            <section>
-              <div class="mb-2 flex items-center justify-between">
-                <h3 class="text-sm font-bold text-gray-700">
-                  線上好友 ({{ onlineFriends.length }})
-                </h3>
-              </div>
+        <div v-else-if="activeTab === 'requests'" class="min-h-0 flex-1 overflow-y-auto p-5">
+          <FriendRequestList
+            :requests="friendStore.requests"
+            @accept="friendStore.acceptRequest"
+            @reject="friendStore.rejectRequest"
+          />
+        </div>
 
-              <FriendItem
-                v-for="friend in onlineFriends"
-                :key="friend.id"
-                :friend="friend"
-                :active="selectedFriendId === friend.id"
-                @select="selectedFriendId = friend.id"
-              />
-            </section>
-
-            <section class="mt-5">
-              <div class="mb-2 flex items-center justify-between">
-                <h3 class="text-sm font-bold text-gray-700">
-                  離線好友 ({{ offlineFriends.length }})
-                </h3>
-
-                <button
-                  type="button"
-                  class="text-xs text-gray-400 hover:text-gray-600"
-                >
-                  ˅
-                </button>
-              </div>
-
-              <FriendItem
-                v-for="friend in offlineFriends"
-                :key="friend.id"
-                :friend="friend"
-                :active="selectedFriendId === friend.id"
-                @select="selectedFriendId = friend.id"
-              />
-            </section>
-          </div>
-        </template>
-
-        <!-- 加入好友 -->
-        <template v-else>
-          <div class="flex flex-1 flex-col justify-center px-8">
-            <h3 class="mb-2 text-lg font-bold text-gray-800">
-              加入好友
-            </h3>
-
-            <p class="mb-4 text-sm text-gray-500">
-              輸入玩家暱稱或玩家 ID，送出好友邀請。
-            </p>
-
-            <input
-              v-model="addFriendKeyword"
-              type="text"
-              placeholder="輸入玩家 ID / 暱稱"
-              class="mb-3 border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:bg-white"
-            />
-
-            <button
-              type="button"
-              class="bg-slate-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-700"
-              @click="handleAddFriend"
-            >
-              送出邀請
-            </button>
-          </div>
-        </template>
+        <div v-else class="min-h-0 flex-1 overflow-y-auto p-5">
+          <AddFriendForm
+            :sent-invites="friendStore.sentInvites"
+            :notice="friendStore.noticeMessage"
+            @add-friend="friendStore.sendFriendRequest"
+          />
+        </div>
       </aside>
 
-      <!-- 右側聊天區 -->
-      <main class="flex min-w-0 flex-1 flex-col">
-        <!-- header -->
-        <header class="flex h-14 items-center justify-between border-b border-gray-200 px-5">
-          <div class="flex items-center gap-3">
+      <main class="flex min-h-0 flex-1 flex-col">
+        <header class="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 px-5">
+          <div class="flex min-w-0 items-center gap-3">
             <img
               src="@/assets/images/player-1.png"
               alt=""
-              class="h-9 w-9 object-cover"
+              class="h-9 w-9 shrink-0 object-cover"
             />
 
-            <div>
+            <div class="min-w-0">
               <div class="flex items-center gap-2 text-sm font-bold text-gray-800">
-                {{ selectedFriend?.name || "尚未選擇好友" }}
+                <span class="truncate">
+                  {{ friendStore.selectedFriend?.name || "尚未選擇好友" }}
+                </span>
 
                 <span
-                  v-if="selectedFriend"
-                  class="h-2 w-2 rounded-full"
-                  :class="selectedFriend.online ? 'bg-green-500' : 'bg-gray-400'"
+                  v-if="friendStore.selectedFriend"
+                  class="h-2 w-2 shrink-0"
+                  :class="getStatusColorClass(friendStore.selectedFriend)"
                 ></span>
               </div>
 
-              <div class="text-xs text-gray-500">
-                {{ selectedFriend?.status || "請從左側選擇好友" }}
+              <div class="truncate text-xs text-gray-500">
+                {{ selectedFriendStatus }}
               </div>
             </div>
           </div>
 
-          <div class="flex items-center gap-4 text-gray-500">
-            <button
-              type="button"
-              class="hover:text-gray-800"
-              aria-label="關閉好友頁"
-              @click="$router.push('/lobby')"
-            >
-              <X class="h-5 w-5" />
-            </button>
-          </div>
+          <button
+            type="button"
+            class="border border-gray-300 px-3 py-1 text-sm font-bold text-gray-600 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200"
+            @click="$router.push('/lobby')"
+          >
+            返回大廳
+          </button>
         </header>
 
-        <!-- messages -->
-        <section class="flex-1 overflow-y-auto bg-gray-50/70 px-6 py-5">
-          <template v-if="selectedFriend">
+        <section class="min-h-0 flex-1 overflow-y-auto bg-gray-50/70 px-6 py-5">
+          <template v-if="friendStore.selectedFriend">
             <div
-              v-for="message in currentMessages"
+              v-for="message in friendStore.selectedFriendMessages"
               :key="message.id"
               class="mb-4 flex"
               :class="message.from === 'me' ? 'justify-end' : 'justify-start'"
             >
               <div
-                class="max-w-[68%] px-4 py-2 text-sm leading-relaxed shadow-sm"
+                class="max-w-[72%] px-4 py-2 text-sm leading-relaxed shadow-sm"
                 :class="
                   message.from === 'me'
                     ? 'bg-sky-100 text-gray-700'
@@ -175,6 +120,13 @@
                 {{ message.text }}
               </div>
             </div>
+
+            <div
+              v-if="friendStore.selectedFriendMessages.length === 0"
+              class="flex h-full items-center justify-center text-sm text-gray-400"
+            >
+              還沒有訊息，送出第一句招呼吧
+            </div>
           </template>
 
           <div
@@ -185,23 +137,22 @@
           </div>
         </section>
 
-        <!-- input -->
-        <footer class="flex h-16 items-center gap-3 border-t border-gray-200 px-5">
+        <footer class="flex h-16 shrink-0 items-center gap-3 border-t border-gray-200 px-5">
           <input
             v-model="messageText"
             type="text"
             placeholder="輸入訊息"
-            class="flex-1 border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:bg-white"
+            class="min-w-0 flex-1 border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:bg-white"
             @keydown.enter="sendMessage"
           />
 
           <button
             type="button"
-            class="bg-slate-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-700"
-            aria-label="送出訊息"
+            class="bg-slate-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200 disabled:cursor-not-allowed disabled:bg-gray-400"
+            :disabled="!messageText.trim() || !friendStore.selectedFriend"
             @click="sendMessage"
           >
-            <Send class="h-4 w-4" />
+            送出
           </button>
         </footer>
       </main>
@@ -211,153 +162,46 @@
 
 <script setup>
 import { computed, ref } from "vue";
-import { Send, X } from "lucide-vue-next";
+import AddFriendForm from "@/components/friend/AddFriendForm.vue";
+import FriendList from "@/components/friend/FriendList.vue";
+import FriendRequestList from "@/components/friend/FriendRequestList.vue";
 import BG_FriendView from "@/assets/images/bg-friend-view.webp";
-import FriendItem from "@/components/friend/FriendItem.vue";
+import { useFriendStore } from "@/stores/friendStore.js";
 
+const friendStore = useFriendStore();
 const activeTab = ref("friends");
-const keyword = ref("");
-const addFriendKeyword = ref("");
 const messageText = ref("");
 
-const selectedFriendId = ref(1);
+const selectedFriendStatus = computed(() => {
+  const friend = friendStore.selectedFriend;
 
-const friends = ref([
-  {
-    id: 1,
-    name: "策略大雄",
-    status: "在線上｜牌局中 2/5",
-    online: true,
-  },
-  {
-    id: 2,
-    name: "數據艾米",
-    status: "在線上",
-    online: true,
-  },
-  {
-    id: 3,
-    name: "設計花花",
-    status: "在線上",
-    online: true,
-  },
-  {
-    id: 4,
-    name: "行銷阿哲",
-    status: "在線上｜對戰中",
-    online: true,
-  },
-  {
-    id: 5,
-    name: "夜貓子 Leo",
-    status: "在線上",
-    online: true,
-  },
-  {
-    id: 6,
-    name: "邏輯怪 Max",
-    status: "在線上",
-    online: true,
-  },
-  {
-    id: 7,
-    name: "工程阿凱",
-    status: "離線 2 小時",
-    online: false,
-  },
-  {
-    id: 8,
-    name: "產品小李",
-    status: "離線 1 天",
-    online: false,
-  },
-]);
-
-const messages = ref([
-  {
-    id: 1,
-    friendId: 1,
-    from: "me",
-    time: "14:32",
-    text: "策略大雄，剛剛那場打得不錯耶！",
-  },
-  {
-    id: 2,
-    friendId: 1,
-    from: "friend",
-    time: "14:33",
-    text: "謝謝！那波真的有點驚險，如果沒猜到我可能就輸掉了。",
-  },
-  {
-    id: 3,
-    friendId: 1,
-    from: "friend",
-    time: "14:35",
-    text: "可以啊～我這邊還有五分鐘就可以。",
-  },
-  {
-    id: 4,
-    friendId: 1,
-    from: "me",
-    time: "14:36",
-    text: "好啊，我先去上個廁所。",
-  },
-]);
-
-const filteredFriends = computed(() => {
-  const value = keyword.value.trim().toLowerCase();
-
-  if (!value) {
-    return friends.value;
+  if (!friend) {
+    return "請從左側選擇好友";
   }
 
-  return friends.value.filter((friend) =>
-    friend.name.toLowerCase().includes(value)
-  );
-});
-
-const onlineFriends = computed(() => {
-  return filteredFriends.value.filter((friend) => friend.online);
-});
-
-const offlineFriends = computed(() => {
-  return filteredFriends.value.filter((friend) => !friend.online);
-});
-
-const selectedFriend = computed(() => {
-  return friends.value.find((friend) => friend.id === selectedFriendId.value);
-});
-
-const currentMessages = computed(() => {
-  return messages.value.filter(
-    (message) => message.friendId === selectedFriendId.value
-  );
-});
-
-function handleAddFriend() {
-  if (!addFriendKeyword.value.trim()) {
-    return;
+  if (friend.statusType === "playing") {
+    return `遊戲中｜${friend.status}`;
   }
 
-  console.log("送出好友邀請：", addFriendKeyword.value);
-  addFriendKeyword.value = "";
+  return friend.status;
+});
+
+function getStatusColorClass(friend) {
+  if (friend.statusType === "playing") {
+    return "bg-blue-500";
+  }
+
+  return friend.online ? "bg-green-500" : "bg-gray-400";
 }
 
 function sendMessage() {
   const text = messageText.value.trim();
 
-  if (!text || !selectedFriend.value) {
+  if (!text) {
     return;
   }
 
-  messages.value.push({
-    id: Date.now(),
-    friendId: selectedFriend.value.id,
-    from: "me",
-    time: "現在",
-    text,
-  });
-
+  friendStore.sendMessage(text);
   messageText.value = "";
 }
 </script>
@@ -366,10 +210,33 @@ function sendMessage() {
 @reference "tailwindcss";
 
 .tab {
-  @apply mr-6 h-full border-b-2 border-transparent text-sm font-bold text-gray-400 transition hover:text-gray-700;
+  @apply mr-5 h-full shrink-0 border-b-2 border-transparent text-sm font-bold text-gray-400 transition hover:text-gray-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200;
 }
 
-.active {
+.tab.active {
   @apply border-gray-800 text-gray-900;
+}
+
+.friend-page-panel {
+  animation: friendPageEnter 360ms ease both;
+  will-change: transform, opacity;
+}
+
+@keyframes friendPageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .friend-page-panel {
+    animation: none;
+  }
 }
 </style>
