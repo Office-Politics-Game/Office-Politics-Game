@@ -28,6 +28,7 @@ export const useAuthStore = defineStore("auth", {
         this.currentPlayer = data.player || null;
         this.token = data.token || "";
         this.isLoggedIn = Boolean(this.token);
+
         return data;
       } catch (error) {
         this.errorMessage = getErrorMessage(error, "註冊失敗");

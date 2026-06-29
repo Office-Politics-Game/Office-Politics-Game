@@ -105,6 +105,11 @@ const routes = [
     name: "cardplay_test",
     component: CardPlayTestView,
   },
+  {
+    path: "/register",
+    name: "Register",
+    component: LoginPage,
+  }
 ];
 
 const router = createRouter({
