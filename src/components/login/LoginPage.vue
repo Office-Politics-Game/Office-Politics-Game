@@ -16,11 +16,18 @@
     </div>
 
     <div class="overlay fixed inset-0 z-20 flex items-center justify-center p-5">
-      <LoginContent />
+      <RegisterPage v-if="isRegisterPage" />
+      <LoginContent v-else />
     </div>
   </div>
 </template>
 
 <script setup>
-import LoginContent from './LoginContent.vue'
+import { computed } from "vue"
+import { useRoute } from "vue-router"
+import LoginContent from "@/components/login/LoginContent.vue"
+import RegisterPage from "@/components/register/RegisterPage.vue"
+
+const route = useRoute()
+const isRegisterPage = computed(() => route.path === "/register")
 </script>

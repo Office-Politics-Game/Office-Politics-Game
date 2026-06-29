@@ -19,7 +19,7 @@ async function handlePlayCard(req, res){
         }
 
         if (!cardId) {
-            return res.status(400).json({ message: "缺少卡牌資料" })
+            return res.status(400).json({ message: "缺少卡牌ID" })
         }
 
         const result = await playCardAction({
@@ -39,37 +39,37 @@ async function handlePlayCard(req, res){
         })
     } catch (error) {
         return res.status(error.statusCode || 500).json({
-        message: error.statusCode ? error.message : "出牌失敗",
-        error: error.message,
-    })
-  }
+            message: error.statusCode ? error.message : "出牌失敗",
+            error: error.message,
+        })
+    }
 }
 
 async function handleDrawCard(req, res) {
-  try {
-    const { roomCode } = req.params
-    const { playerId } = req.body
+    try {
+        const { roomCode } = req.params
+        const { playerId } = req.body
 
-    if (!playerId) {
-      return res.status(400).json({ message: "缺少玩家ID" })
+        if (!playerId) {
+            return res.status(400).json({ message: "缺少玩家ID" })
+        }
+
+        const result = await drawCardAction({
+            roomCode,
+            playerId: Number(playerId),
+        })
+
+        return res.status(200).json({
+            message: "抽牌成功",
+            drawnCard: result.drawnCard,
+            state: result.publicState,
+        })
+    }catch (error){
+        return res.status(error.statusCode || 500).json({
+            message: error.statusCode ? error.message : "抽牌失敗",
+            error: error.message,
+        })
     }
-
-    const result = await drawCardAction({
-        roomCode,
-        playerId: Number(playerId),
-    })
-
-    return res.status(200).json({
-        message: "抽牌成功",
-        drawnCard: result.drawnCard,
-        state: result.publicState,
-    })
-  }catch (error){
-    return res.status(error.statusCode || 500).json({
-      message: error.statusCode ? error.message : "抽牌失敗",
-      error: error.message,
-    })
-  }
 }
 
 export { handlePlayCard, handleDrawCard }

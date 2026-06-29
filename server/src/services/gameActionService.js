@@ -1,7 +1,7 @@
 import pool from "../db/index.js"
 import { drawCard } from "./drawService.js"
 import { getPublicState } from "./gameStateService.js"
-import { runCardEffect } from "./cardEffectService.js"
+import { runCardEffect, checkGuess } from "./cardEffectService.js"
 import { addLog } from "./actionLogService.js"
 import { discardCard } from "./discardService.js"
 import { finishTurn } from "./roundFlowService.js"
@@ -10,7 +10,6 @@ import {
     checkPlayer,
     checkCard,
     checkTarget,
-    checkProtected,
     checkAdvisorRule,
 } from "./ruleCheckService.js"
 
@@ -98,25 +97,30 @@ async function playCardAction({
         throw createServiceError("目前不是遊戲進行中")
     }
 
-    checkPlayer(state, playerId)
-    checkTurn(state, playerId)
+    const numericPlayerId = Number(playerId)
+    const numericTargetPlayerId = targetPlayerId
+        ? Number(targetPlayerId)
+        : undefined
 
-    const card = checkCard(state, playerId, cardId)
+    checkPlayer(state, numericPlayerId)
+    checkTurn(state, numericPlayerId)
 
-    checkAdvisorRule(state, playerId, cardId)
+    const card = checkCard(state, numericPlayerId, cardId)
 
-    const targetPlayer = checkTarget(
+    checkAdvisorRule(state, numericPlayerId, card.id)
+
+    checkTarget(
         state,
-        playerId,
-        cardId,
-        targetPlayerId
+        numericPlayerId,
+        card.id,
+        numericTargetPlayerId
     )
 
-    if (targetPlayer) {
-        checkProtected(state, targetPlayerId)
+    if (card.name === "Intern" && !checkGuess(guessedCardName)) {
+        throw createServiceError("猜測卡牌不合法")
     }
 
-    const player = checkPlayer(state, playerId)
+    const player = checkPlayer(state, numericPlayerId)
     const discardedCard = discardCard(
         player,
         card.id,
@@ -130,12 +134,12 @@ async function playCardAction({
     const effectResult = runCardEffect({
         state,
         card: discardedCard,
-        playerId: Number(playerId),
-        targetPlayerId: targetPlayerId ? Number(targetPlayerId) : undefined,
+        playerId: numericPlayerId,
+        targetPlayerId: numericTargetPlayerId,
         guessedCardName,
     })
 
-    finishTurn(state, Number(playerId))
+    finishTurn(state, numericPlayerId)
 
     await pool.query(
         `UPDATE game_sessions
@@ -148,7 +152,7 @@ async function playCardAction({
     )
     const actionLog = await addLog(
         gameSession.room_id,
-        Number(playerId),
+        numericPlayerId,
         "play_card",
         JSON.stringify({
             cardId,
@@ -160,7 +164,7 @@ async function playCardAction({
         })
     )
 
-    const publicState = getPublicState(state, Number(playerId))
+    const publicState = getPublicState(state, numericPlayerId)
 
     return {
         gameSession,

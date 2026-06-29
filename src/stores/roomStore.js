@@ -26,7 +26,8 @@ export const useRoomStore = defineStore("room", {
     readyPlayerCount: (state) =>
       state.players.filter((player) => player.isReady).length,
     isRoomReadyToStart: (state) =>
-      state.players.length === 4 && state.players.every((player) => player.isReady),
+      state.players.length === 4 &&
+      state.players.every((player) => player.isReady),
   },
 
   actions: {
@@ -64,7 +65,7 @@ export const useRoomStore = defineStore("room", {
         this.applyRoomState(roomState);
         return roomState;
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "匹配房間失敗");
+        this.errorMessage = getErrorMessage(error, "取得房間狀態失敗。");
         throw error;
       }
     },
@@ -76,10 +77,7 @@ export const useRoomStore = defineStore("room", {
       try {
         const response = await createRoomRequest(payload);
         this.room = response?.room ?? null;
-        this.roomCode =
-          response?.room?.roomCode ||
-          response?.room?.room_code ||
-          "";
+        this.roomCode = response?.room?.roomCode || response?.room?.room_code || "";
         this.gameState = null;
 
         if (this.roomCode) {
@@ -88,7 +86,7 @@ export const useRoomStore = defineStore("room", {
 
         return response;
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "Failed to create room.");
+        this.errorMessage = getErrorMessage(error, "建立房間失敗。");
         throw error;
       } finally {
         this.isLoading = false;
@@ -106,7 +104,7 @@ export const useRoomStore = defineStore("room", {
         await this.fetchRoomState(roomCode);
         return response;
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "Failed to join room.");
+        this.errorMessage = getErrorMessage(error, "加入房間失敗。");
         throw error;
       } finally {
         this.isLoading = false;
@@ -123,10 +121,7 @@ export const useRoomStore = defineStore("room", {
         await this.fetchRoomState(roomCode);
         return response;
       } catch (error) {
-        this.errorMessage = getErrorMessage(
-          error,
-          "Failed to update room state.",
-        );
+        this.errorMessage = getErrorMessage(error, "更新房間狀態失敗。");
         throw error;
       } finally {
         this.isLoading = false;
@@ -147,7 +142,7 @@ export const useRoomStore = defineStore("room", {
         );
         return response;
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "Failed to start room.");
+        this.errorMessage = getErrorMessage(error, "開始遊戲失敗。");
         throw error;
       } finally {
         this.isLoading = false;

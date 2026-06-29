@@ -1,37 +1,17 @@
-const AUTH_API_PATH = "/api/auth";
+import { apiClient } from "./apiClient.js";
 
-async function requestAuthApi(path, options){
-    const response = await fetch(path, options);
-    const data = await response.json();
-    if(!response.ok){
-        throw new Error(data.message || data.error || "驗證失敗");
-    }
-    return data;
+const AUTH_API_PATH = "/auth";
+
+function register(payload) {
+  return apiClient.post(`${AUTH_API_PATH}/register`, payload);
 }
 
-function register(payload){
-    return requestAuthApi(`${AUTH_API_PATH}/register`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-    });
-}
-
-function login(payload){
-    return requestAuthApi(`${AUTH_API_PATH}/login`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-    });
+function login(payload) {
+  return apiClient.post(`${AUTH_API_PATH}/login`, payload);
 }
 
 function verifyToken(token) {
-  return requestAuthApi(`${AUTH_API_PATH}/verify`, {
-    method: "GET",
+  return apiClient.get(`${AUTH_API_PATH}/verify`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },

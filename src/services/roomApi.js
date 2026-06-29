@@ -1,5 +1,7 @@
-const ROOM_API_PATH = "/api/rooms";
-const GAME_STATE_API_PATH = "/api/game-states";
+import { apiClient } from "./apiClient.js";
+
+const ROOM_API_PATH = "/rooms";
+const GAME_STATE_API_PATH = "/game-states";
 
 function getTrimmedRoomCode(roomCode) {
   return typeof roomCode === "string" ? roomCode.trim() : "";
@@ -9,101 +11,36 @@ function buildRoomPath(roomCode, action) {
   const normalizedRoomCode = getTrimmedRoomCode(roomCode);
 
   if (!normalizedRoomCode) {
-    throw new Error("roomCode 為必填");
+    throw new Error("缺少房間代碼。");
   }
 
   return `${ROOM_API_PATH}/${encodeURIComponent(normalizedRoomCode)}/${action}`;
 }
 
-async function requestRoomApi(path, options) {
-  let response;
-
-  try {
-    response = await fetch(path, options);
-  } catch (error) {
-    throw new Error(error instanceof Error ? error.message : "無法連線到伺服器");
-  }
-
-  let data = null;
-  const contentType = response.headers.get("content-type") || "";
-  const isJsonResponse = contentType.includes("application/json");
-
-  if (response.status !== 204 && isJsonResponse) {
-    try {
-      data = await response.json();
-    } catch {
-      const error = new Error("伺服器回傳格式錯誤");
-      error.status = response.status;
-      throw error;
-    }
-  }
-
-  if (!response.ok) {
-    const error = new Error(
-      data?.message || data?.error || `API請求失敗 (${response.status})`,
-    );
-
-    error.status = response.status;
-    error.data = data;
-    throw error;
-  }
-
-  return data;
-}
-
-function createRequestOptions(method, payload) {
-  const options = { method };
-
-  if (payload !== undefined) {
-    options.headers = { "Content-Type": "application/json" };
-    options.body = JSON.stringify(payload);
-  }
-
-  return options;
-}
-
 function createRoom(payload) {
-  return requestRoomApi(
-    ROOM_API_PATH,
-    createRequestOptions("POST", payload),
-  );
+  return apiClient.post(ROOM_API_PATH, payload);
 }
 
 function joinRoom(roomCode, payload) {
-  return requestRoomApi(
-    buildRoomPath(roomCode, "join"),
-    createRequestOptions("POST", payload),
-  );
+  return apiClient.post(buildRoomPath(roomCode, "join"), payload);
 }
 
 function getRoomState(roomCode) {
-  return requestRoomApi(
-    `${ROOM_API_PATH}/${encodeURIComponent(roomCode)}/state`,
-    createRequestOptions("GET"),
-  );
+  return apiClient.get(`${ROOM_API_PATH}/${encodeURIComponent(roomCode)}/state`);
 }
 
 function updateRoomState(roomCode, payload) {
-  return requestRoomApi(
-    buildRoomPath(roomCode, "state"),
-    createRequestOptions("PATCH", payload),
-  );
+  return apiClient.patch(buildRoomPath(roomCode, "state"), payload);
 }
 
 function startRoom(roomCode, payload) {
-  return requestRoomApi(
-    buildRoomPath(roomCode, "start"),
-    createRequestOptions("POST", payload),
-  );
+  return apiClient.post(buildRoomPath(roomCode, "start"), payload);
 }
 
 function getRoomGameState(roomCode, playerId) {
-  const query = new URLSearchParams({ playerId: String(playerId) });
-
-  return requestRoomApi(
-    `${GAME_STATE_API_PATH}/room/${encodeURIComponent(roomCode)}?${query.toString()}`,
-    createRequestOptions("GET"),
-  );
+  return apiClient.get(`${GAME_STATE_API_PATH}/room/${encodeURIComponent(roomCode)}`, {
+    params: { playerId },
+  });
 }
 
 export {
