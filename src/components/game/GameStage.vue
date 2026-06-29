@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 import gameTableBackgroundUrl from '@/assets/images/bg-game-table.webp'
 import gameLogoUrl from '@/assets/images/logo-en-white.png'
 import { useAudioSettings } from '@/composables/UseAudioSettings'
@@ -37,11 +37,6 @@ const props = defineProps({
   deckCount: {
     type: [Number, String],
     required: true,
-  },
-  discardCard: {
-    type: Object,
-    default: null,
-    validator: (card) => card === null || typeof card === 'object',
   },
   discardCards: {
     type: Array,
@@ -93,7 +88,6 @@ const emit = defineEmits([
   'return-lobby',
   'restart-game',
   'draw-request',
-  'opponent-draw-complete',
   'play-card',
 ])
 const isSettingsOpen = ref(false)
@@ -105,9 +99,6 @@ const playerHand = ref(null)
 const cardDrawAnimation = ref(null)
 const cardPlayAnimation = ref(null)
 const activeEffectResult = ref(null)
-const opponentDrawnPlayerIds = ref([])
-const handCards = ref([])
-const discardCards = ref([])
 const activeCard = ref(null)
 const originRect = ref(null)
 const dragPoint = ref(null)
@@ -187,22 +178,26 @@ const selectableTargetPlayerIds = computed(() => {
     })
     .map((player) => player.id)
 })
-const resolvedPlayerHandCardCounts = computed(() =>
-  Object.fromEntries(
-    props.players.map((player) => {
-      if (Number.isInteger(props.playerHandCardCounts[player.id])) {
-        return [player.id, props.playerHandCardCounts[player.id]]
-      }
+const resolvedPlayerHandCardCounts = computed(() => props.playerHandCardCounts)
+const visibleHandCards = computed(() => {
+  const pendingCardId = pendingPlay.value?.card?.id
 
-      if (player.isCurrentPlayer) {
-        return [player.id, handCards.value.length]
-      }
+  return pendingCardId
+    ? props.handCards.filter((card) => card.id !== pendingCardId)
+    : props.handCards
+})
+const visibleDiscardCards = computed(() => {
+  const pendingCard = pendingPlay.value?.card
 
-      const drawnCount = opponentDrawnPlayerIds.value.includes(player.id) ? 1 : 0
-      return [player.id, 1 + drawnCount]
-    }),
-  ),
-)
+  if (
+    !pendingCard ||
+    props.discardCards.some((card) => card.id === pendingCard.id)
+  ) {
+    return props.discardCards
+  }
+
+  return [...props.discardCards, pendingCard]
+})
 const selectedTargetPlayer = computed(() =>
   props.players.find((player) => player.id === selectedTargetPlayerId.value) ?? null,
 )
@@ -246,35 +241,8 @@ const dragPreviewStyle = computed(() => {
   }
 })
 
-function openSettings() {
-  isSettingsOpen.value = true;
-}
-
-function closeSettings() {
-  isSettingsOpen.value = false;
-}
-
-function handleReturnLobby() {
-  emit("return-lobby");
-}
-
-function handleRestartGame() {
-  emit("restart-game");
-}
-
 function isSelfDraw(playerId) {
   return !playerId || animationRects.isSelfPlayer(playerId)
-}
-
-function markOpponentDrawn(playerId) {
-  if (opponentDrawnPlayerIds.value.includes(playerId)) {
-    return
-  }
-
-  opponentDrawnPlayerIds.value = [
-    ...opponentDrawnPlayerIds.value,
-    playerId,
-  ]
 }
 
 function requestDraw() {
@@ -316,29 +284,15 @@ async function playDrawAnimation(card, playerId = null) {
   }
 
   try {
-    const onLanded = () => {
-      if (shouldDrawSelf) {
-        return
-      }
-
-      markOpponentDrawn(activeDrawPlayerId)
-      emit('opponent-draw-complete', {
-        playerId: activeDrawPlayerId,
-        card: activeDrawCard.value,
-      })
-    }
-
     if (shouldDrawSelf) {
       await cardDrawAnimation.value?.selfDraw({
         startRect,
         targetRect,
-        onLanded,
       })
     } else {
       await cardDrawAnimation.value?.othersDraw({
         startRect,
         targetRect,
-        onLanded,
       })
     }
     await nextTick()
@@ -478,9 +432,6 @@ function confirmPendingPlay() {
 
   const playedCard = pendingPlay.value.card
 
-  discardCards.value = [...discardCards.value, playedCard]
-  handCards.value = handCards.value.filter((card) => card.id !== playedCard.id)
-
   emit('play-card', {
     card: playedCard,
     cardId: playedCard.id,
@@ -616,40 +567,6 @@ function handleCardPointerDown(card, event) {
   }
 }
 
-watch(
-  () => props.handCards,
-  (cards) => {
-    if (!activeCard.value && !pendingPlay.value) {
-      handCards.value = [...cards]
-    }
-  },
-  { immediate: true, deep: true },
-)
-
-watch(
-  () => props.discardCard,
-  (card) => {
-    if (!activeCard.value && !pendingPlay.value && props.discardCards.length === 0) {
-      discardCards.value = card ? [card] : []
-    }
-  },
-  { immediate: true, deep: true },
-)
-
-watch(
-  () => props.discardCards,
-  (cards) => {
-    if (!activeCard.value && !pendingPlay.value) {
-      discardCards.value = cards.length > 0
-        ? [...cards]
-        : props.discardCard
-          ? [props.discardCard]
-          : []
-    }
-  },
-  { immediate: true, deep: true },
-)
-
 onBeforeUnmount(() => {
   clearPointerListeners()
   cardPlayAnimation.value?.stop?.()
@@ -704,7 +621,7 @@ defineExpose({
           class="block h-auto w-24 select-none object-contain drop-shadow-[0_3px_10px_rgba(0,19,50,0.48)] lg:w-40"
           draggable="false"
         />
-        <GameSettingsIcon @open="openSettings" />
+        <GameSettingsIcon @open="isSettingsOpen = true" />
       </div>
 
       <div
@@ -713,7 +630,7 @@ defineExpose({
         <TableCardPiles
           ref="tableCardPilesRef"
           :deck-count="deckCount"
-          :discard-cards="discardCards"
+          :discard-cards="visibleDiscardCards"
           :is-draw-disabled="isPlayInteractionLocked || !canDraw"
           :is-drop-target-active="isOverPlayZone && hasActivePlay"
           @draw="requestDraw"
@@ -723,7 +640,7 @@ defineExpose({
       <div class="absolute bottom-[-34px] left-1/2 z-20 -translate-x-1/2">
         <PlayerHand
           ref="playerHand"
-          :cards="handCards"
+          :cards="visibleHandCards"
           :dragging-card-id="draggingCardId"
           @card-pointerdown="handleCardPointerDown"
         />
@@ -843,13 +760,13 @@ defineExpose({
       :music-volume="musicVolume"
       :sound-enabled="soundEnabled"
       :sound-volume="soundVolume"
-      @close="closeSettings"
+      @close="isSettingsOpen = false"
       @update:music-enabled="setMusicEnabled"
       @update:music-volume="setMusicVolume"
       @update:sound-enabled="setSoundEnabled"
       @update:sound-volume="setSoundVolume"
-      @return-lobby="handleReturnLobby"
-      @restart-game="handleRestartGame"
+      @return-lobby="emit('return-lobby')"
+      @restart-game="emit('restart-game')"
     />
 
     <RotateDeviceNotice />

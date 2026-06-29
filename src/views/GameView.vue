@@ -121,9 +121,7 @@ const discardCards = computed(() => {
     : []
 })
 
-const discardCard = computed(() => discardCards.value.at(-1) ?? null)
 const deckCount = computed(() => gameState.value?.deckCount ?? 0)
-const drawPlayerId = computed(() => resolvedCurrentPlayerId.value || null)
 const canCurrentPlayerAct = computed(() => {
   if (!currentTurnPlayerId.value || !resolvedCurrentPlayerId.value) {
     return true
@@ -154,35 +152,6 @@ const playerHandCardCounts = computed(() =>
     }),
   ),
 )
-
-function getStoreDebugSnapshot(label, extra = {}) {
-  return {
-    label,
-    routeQuery: { ...route.query },
-    roomCode: normalizedRoomCode.value,
-    requestedPlayerId: requestedPlayerId.value,
-    currentPlayerId: currentPlayerId.value,
-    resolvedCurrentPlayerId: resolvedCurrentPlayerId.value,
-    currentTurnPlayerId: currentTurnPlayerId.value,
-    isLoading: isLoading.value,
-    isDrawing: isDrawing.value,
-    rawGameState: gameState.value,
-    rawCurrentPlayer: currentPlayer.value,
-    publicPlayers: publicPlayers.value,
-    publicPlayersWithMetadata: publicPlayersWithMetadata.value,
-    derivedPlayers: players.value,
-    handCards: handCards.value,
-    discardCards: discardCards.value,
-    deckCount: deckCount.value,
-    canDraw: canDraw.value,
-    playerHandCardCounts: playerHandCardCounts.value,
-    ...extra,
-  }
-}
-
-function logStoreState(label, extra = {}) {
-  console.log('[game:view]', getStoreDebugSnapshot(label, extra))
-}
 
 function normalizeQueryValue(value) {
   return Array.isArray(value) ? value[0] : value
@@ -358,22 +327,17 @@ function normalizeEffectAnimationResult(result) {
 
 async function refreshRoomState({ onProgress } = {}) {
   if (!normalizedRoomCode.value || !requestedPlayerId.value) {
-    logStoreState('missing-query')
     throw new Error('Missing roomCode or playerId')
   }
-
-  logStoreState('refresh:start')
 
   const roomStateResponse = await gameStateStore.fetchRoomState(normalizedRoomCode.value, {
     playerId: requestedPlayerId.value,
   })
   onProgress?.(40)
   rememberRoomPlayerMetadata(roomStateResponse?.players ?? [])
-  logStoreState('room-state:fetched', { roomStateResponse })
 
   const data = await getRoomGameState(normalizedRoomCode.value, requestedPlayerId.value)
   onProgress?.(80)
-  logStoreState('game-state:fetched', { gameStateResponse: data })
 
   const nextGameState = data.state ?? data.gameState ?? null
   const nextPlayers = Array.isArray(nextGameState?.players) ? nextGameState.players : []
@@ -396,8 +360,6 @@ async function refreshRoomState({ onProgress } = {}) {
       null,
   })
   onProgress?.(100)
-
-  logStoreState('store:patched')
 }
 
 async function loadInitialRoomState() {
@@ -420,7 +382,6 @@ async function loadInitialRoomState() {
     initialLoadError.value =
       error instanceof Error ? error.message : 'Failed to load game state'
     console.warn('[game] fetch initial room state failed', error)
-    logStoreState('refresh:error', { error })
   }
 }
 
@@ -447,7 +408,6 @@ async function handleDrawRequest() {
     }
 
     const drawnCard = normalizeCard(rawDrawnCard)
-    logStoreState('draw-card:completed', { drawnCard })
 
     await nextTick()
 
@@ -490,15 +450,9 @@ async function handlePlayCard(payload) {
     guessedCardName: getGuessedCardName(payload.guessedRank),
   }
 
-  console.log('[game:view] play-card:request', {
-    roomCode: normalizedRoomCode.value,
-    playPayload,
-  })
-
   try {
     const data = await playGameCard(normalizedRoomCode.value, playPayload)
     const animationResult = normalizeEffectAnimationResult(data?.animationResult)
-    logStoreState('play-card:completed', { playPayload, animationResult })
 
     if (animationResult && gameStage.value?.playEffectAnimation) {
       try {
@@ -523,16 +477,7 @@ async function handlePlayCard(payload) {
   }
 }
 
-function handleReturnLobby() {
-  // Reserved for the future multiplayer-aware lobby transition.
-}
-
-function handleRestartGame() {
-  // Reserved for the future multiplayer-aware restart flow.
-}
-
 onMounted(() => {
-  logStoreState('mounted')
   loadInitialRoomState()
 })
 
@@ -543,10 +488,6 @@ watch(
       return
     }
 
-    logStoreState('route-query:changed', {
-      previousRoomCode,
-      previousPlayerId,
-    })
     loadInitialRoomState()
   },
 )
@@ -567,19 +508,16 @@ watch(
     :current-phase="turnStatus.currentPhase"
     :current-step="turnStatus.currentStep"
     :deck-count="deckCount"
-    :discard-card="discardCard"
     :discard-cards="discardCards"
     :players="players"
     :player-hand-card-counts="playerHandCardCounts"
     :hand-cards="handCards"
     :can-draw="canDraw"
-    :draw-player-id="drawPlayerId"
+    :draw-player-id="resolvedCurrentPlayerId || null"
     :current-player-id="resolvedCurrentPlayerId"
     :current-turn-player-id="currentTurnPlayerId"
     :is-loading="isLoading || isDrawing"
     @draw-request="handleDrawRequest"
     @play-card="handlePlayCard"
-    @return-lobby="handleReturnLobby"
-    @restart-game="handleRestartGame"
   />
 </template>
