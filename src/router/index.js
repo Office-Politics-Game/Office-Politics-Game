@@ -111,6 +111,11 @@ const routes = [
     name: "NotFound",
     component: NotFoundView,
   },
+  {
+    path: "/register",
+    name: "Register",
+    component: LoginPage,
+  }
 ];
 
 const router = createRouter({
