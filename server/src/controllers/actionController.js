@@ -4,8 +4,8 @@ import { addLog } from "../services/actionLogService.js"
 import { discardCard } from "../services/discardService.js"
 import { finishTurn } from "../services/roundFlowService.js"
 import { getPublicState } from "../services/gameStateService.js"
-import { drawCard } from "../services/drawService.js"
 import { checkTurn, checkPlayer, checkCard, checkTarget, checkProtected, checkAdvisorRule } from "../services/ruleCheckService.js"
+import { drawCardAction } from "../services/gameActionService.js"
 
 async function handlePlayCard(req, res){
     try {
@@ -139,51 +139,15 @@ async function handleDrawCard(req, res) {
       return res.status(400).json({ message: "缺少玩家ID" })
     }
 
-    const sessionResult = await pool.query(
-        `SELECT gs.*
-        FROM game_sessions gs
-        JOIN game_rooms gr ON gr.id = gs.room_id
-        WHERE gr.room_code = $1
-        ORDER BY gs.created_at DESC
-        LIMIT 1`,
-        [roomCode]
-    )
-
-    if (sessionResult.rows.length === 0) {
-        return res.status(404).json({ message: "找不到遊戲場次" })
-    }
-
-    const gameSession = sessionResult.rows[0]
-    const state = gameSession.state_json
-
-    if (state.phase !== "playing") {
-        return res.status(400).json({ message: "目前不是可行動階段" })
-    }
-
-    const drawResult = drawCard({
-        state,
+    const result = await drawCardAction({
+        roomCode,
         playerId: Number(playerId),
     })
 
-    if (!drawResult.success) {
-        return res.status(400).json({ message: drawResult.message })
-    }
-
-    await pool.query(
-        `UPDATE game_sessions
-        SET state_json = $1,
-            status = $2,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = $3`,
-        [state, state.phase, gameSession.id]
-    )
-
-    const publicState = getPublicState(state, Number(playerId))
-
     return res.status(200).json({
         message: "抽牌成功",
-        drawnCard: drawResult.card,
-        state: publicState,
+        drawnCard: result.drawnCard,
+        state: result.publicState,
     })
   }catch (error){
     return res.status(error.statusCode || 500).json({
