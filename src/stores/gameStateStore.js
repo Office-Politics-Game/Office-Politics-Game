@@ -4,6 +4,10 @@ import {
   getRoomState,
 } from "../services/gameStateApi";
 
+function getErrorMessage(error, fallbackMessage) {
+  return error?.data?.message || error?.message || fallbackMessage;
+}
+
 export const useGameStateStore = defineStore("gameState", {
   state: () => ({
     room: null,
@@ -30,8 +34,7 @@ export const useGameStateStore = defineStore("gameState", {
 
         return data;
       } catch (error) {
-        this.errorMessage =
-          error instanceof Error ? error.message : "建立訪客玩家失敗";
+        this.errorMessage = getErrorMessage(error, "建立訪客資料失敗。");
         throw error;
       } finally {
         this.isLoading = false;
@@ -57,8 +60,7 @@ export const useGameStateStore = defineStore("gameState", {
 
         return data;
       } catch (error) {
-        this.errorMessage =
-          error instanceof Error ? error.message : "取得房間遊戲狀態失敗";
+        this.errorMessage = getErrorMessage(error, "取得房間狀態失敗。");
         throw error;
       } finally {
         this.isLoading = false;

@@ -1,5 +1,5 @@
 import pool from "../db/index.js"
-import { runCardEffect } from "../services/cardEffectService.js"
+import { runCardEffect, checkGuess } from "../services/cardEffectService.js"
 import {
     buildCardEffectAnimationResult,
     createCardEffectAnimationContext,
@@ -87,8 +87,8 @@ async function handlePlayCard(req, res){
         const effectAnimationContext = createCardEffectAnimationContext({
             state,
             card: discardedCard,
-            playerId: Number(playerId),
-            targetPlayerId: targetPlayerId ? Number(targetPlayerId) : undefined,
+            playerId: numericPlayerId,
+            targetPlayerId: numericTargetPlayerId,
             guessedCardName,
         })
 
