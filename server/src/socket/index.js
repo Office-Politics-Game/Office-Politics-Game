@@ -1,4 +1,6 @@
 import { Server } from "socket.io"
+import { registerRoomHandlers } from "./roomHandlers.js"
+import { registerGameHandlers } from "./gameHandlers.js"
 
 function initializeSocket(httpServer) {
   const io = new Server(httpServer, {
@@ -9,6 +11,9 @@ function initializeSocket(httpServer) {
 
   io.on("connection", (socket) => {
     console.log("socket connected", socket.id)
+
+    registerRoomHandlers(io, socket)
+    registerGameHandlers(io, socket)
 
     socket.on("socket:ping", (payload, callback) => {
         if (typeof callback === "function") {
