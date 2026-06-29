@@ -1,11 +1,4 @@
-import pool from "../db/index.js"
-import { runCardEffect } from "../services/cardEffectService.js"
-import { addLog } from "../services/actionLogService.js"
-import { discardCard } from "../services/discardService.js"
-import { finishTurn } from "../services/roundFlowService.js"
-import { getPublicState } from "../services/gameStateService.js"
-import { checkTurn, checkPlayer, checkCard, checkTarget, checkProtected, checkAdvisorRule } from "../services/ruleCheckService.js"
-import { drawCardAction } from "../services/gameActionService.js"
+import { drawCardAction, playCardAction } from "../services/gameActionService.js"
 
 async function handlePlayCard(req, res){
     try {
@@ -29,98 +22,20 @@ async function handlePlayCard(req, res){
             return res.status(400).json({ message: "缺少卡牌資料" })
         }
 
-        const sessionResult = await pool.query(
-            `SELECT gs.*
-            FROM game_sessions gs
-            JOIN game_rooms gr ON gr.id = gs.room_id
-            WHERE gr.room_code = $1
-            ORDER BY gs.created_at DESC
-            LIMIT 1`,
-            [roomCode]
-        )
-        if (sessionResult.rows.length === 0) {
-            return res.status(404).json({ message: "找不到遊戲狀態" })
-        }
-
-        const gameSession = sessionResult.rows[0]
-        const state = gameSession.state_json
-
-        if (state.phase !== "playing") {
-            return res.status(400).json({ message: "目前不是可行動階段" })
-        }
-
-        checkPlayer(state, playerId)
-        checkTurn(state, playerId)
-
-        const card = checkCard(state, playerId, cardId)
-
-        checkAdvisorRule(state, playerId, cardId)
-
-        const targetPlayer = checkTarget(
-            state,
-            playerId,
-            cardId,
-            targetPlayerId
-        )
-
-        if (targetPlayer) {
-            checkProtected(state, targetPlayerId)
-        }
-
-        const player = checkPlayer(state, playerId)
-
-        const discardedCard = discardCard(
-            player,
-            card.id,
-            state.discardPile
-        )
-
-        if (!discardedCard) {
-            return res.status(400).json({ message: "玩家沒有此手牌" })
-        }
-
-        const effectResult = runCardEffect({
-            state,
-            card: discardedCard,
+        const result = await playCardAction({
+            roomCode,
             playerId: Number(playerId),
-            targetPlayerId: targetPlayerId ? Number(targetPlayerId) : undefined,
+            cardId,
+            targetPlayerId,
             guessedCardName,
         })
 
-        finishTurn(state, Number(playerId))
-
-        await pool.query(
-            `UPDATE game_sessions
-            SET state_json = $1,
-                status = $2,
-                current_turn_player_id = $3,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = $4`,
-            [state, state.phase, state.currentTurnPlayerId, gameSession.id]
-        )
-
-        const actionLog = await addLog(
-            gameSession.room_id,
-            Number(playerId),
-            "play_card",
-            JSON.stringify({
-                cardId,
-                targetPlayerId,
-                guessedCardName,
-                result: effectResult,
-                discardedCard,
-                nextTurnPlayerId: state.currentTurnPlayerId,
-            })
-        )
-
-        const publicState = getPublicState(state, Number(playerId))
-
         return res.status(200).json({
             message: "卡牌效果已執行",
-            result: effectResult,
-            discardedCard,
-            actionLog,
-            state: publicState,
+            result: result.result,
+            discardedCard: result.discardedCard,
+            actionLog: result.actionLog,
+            state: result.publicState,
         })
     } catch (error) {
         return res.status(error.statusCode || 500).json({
