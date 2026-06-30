@@ -17,6 +17,7 @@ import ManagerAnimation from './ManagerAnimation.vue'
 import PMAnimation from './PMAnimation.vue'
 import PlayerHand from './PlayerHand.vue'
 import PlayerSeats from './PlayerSeats.vue'
+import ProtectionAura from './ProtectionAura.vue'
 import RotateDeviceNotice from './RotateDeviceNotice.vue'
 import TableCardPiles from './TableCardPiles.vue'
 import TurnStatus from './TurnStatus.vue'
@@ -203,6 +204,9 @@ const selectedTargetPlayer = computed(() =>
 )
 const selectedGuessOption = computed(() =>
   guessOptions.find((option) => option.rank === selectedGuessRank.value) ?? null,
+)
+const protectedPlayers = computed(() =>
+  props.players.filter((player) => player.isProtected),
 )
 const canConfirmPendingPlay = computed(() => {
   if (!pendingPlay.value) {
@@ -645,6 +649,15 @@ defineExpose({
           @card-pointerdown="handleCardPointerDown"
         />
       </div>
+
+      <TransitionGroup name="protection-aura-fade">
+        <ProtectionAura
+          v-for="player in protectedPlayers"
+          :key="`protection-aura-${player.id}`"
+          screen-anchored
+          :position="player.position"
+        />
+      </TransitionGroup>
 
       <section
         v-if="pendingPlay"

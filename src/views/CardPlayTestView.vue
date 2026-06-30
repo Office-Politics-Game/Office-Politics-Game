@@ -15,6 +15,7 @@ import InternAnimation from '@/components/game/InternAnimation.vue'
 import ManagerAnimation from '@/components/game/ManagerAnimation.vue'
 import PMAnimation from '@/components/game/PMAnimation.vue'
 import PlayerSeats from '@/components/game/PlayerSeats.vue'
+import ProtectionAura from '@/components/game/ProtectionAura.vue'
 import TableCardPiles from '@/components/game/TableCardPiles.vue'
 import { createMockGameState } from '@/mocks/mockGameState.js'
 
@@ -81,6 +82,8 @@ const opponentCardRefs = ref({})
 
 const deckCount = ref(INITIAL_DECK_COUNT)
 const isBusy = ref(false)
+const isSelfProtected = ref(true)
+const protectionSuccessKey = ref(0)
 const activeDrawCard = ref(null)
 const cleanerResult = ref(null)
 const internResult = ref(null)
@@ -122,6 +125,11 @@ const opponentCards = [
 ]
 
 const controls = computed(() => [
+  {
+    label: isSelfProtected.value ? 'Protect On' : 'Protect Off',
+    action: toggleSelfProtection,
+  },
+  { label: 'Defense Success', action: playProtectionSuccess },
   { label: 'HR Swap', action: playSwapAnimation },
   { label: '發牌', action: playDealAnimation },
   { label: '洗牌', action: playShuffleAnimation },
@@ -206,6 +214,15 @@ function setBusyState(label) {
 
 function releaseBusyState() {
   isBusy.value = false
+}
+
+function toggleSelfProtection() {
+  isSelfProtected.value = !isSelfProtected.value
+}
+
+function playProtectionSuccess() {
+  isSelfProtected.value = true
+  protectionSuccessKey.value += 1
 }
 
 function uniqueId(prefix) {
@@ -537,7 +554,18 @@ onUnmounted(() => {
       />
     </section>
 
-    <section class="animation-test__hand" aria-label="自己的手牌">
+    <section
+      class="animation-test__hand"
+      :class="{ 'animation-test__hand--protected': isSelfProtected }"
+      aria-label="自己的手牌"
+    >
+      <Transition name="protection-aura-fade">
+        <ProtectionAura
+          v-if="isSelfProtected"
+          :success-key="protectionSuccessKey"
+        />
+      </Transition>
+
       <button
         v-for="(card, index) in handCards"
         :key="card.id"
@@ -806,6 +834,7 @@ onUnmounted(() => {
 
 .animation-test__hand-card {
   position: relative;
+  z-index: 1;
   width: clamp(76px, 8vw, 126px);
   aspect-ratio: 3 / 4;
   margin-left: clamp(-26px, -2.3vw, -12px);
