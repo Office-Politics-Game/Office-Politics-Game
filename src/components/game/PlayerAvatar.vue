@@ -23,6 +23,10 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  isTurnPlayer: {
+    type: Boolean,
+    default: false,
+  },
   isMirrored: {
     type: Boolean,
     default: false,
@@ -35,13 +39,14 @@ defineProps({
     class="player-avatar flex items-center gap-1.5 text-white lg:gap-3"
     :class="{
       'player-avatar--current': isCurrentPlayer,
+      'player-avatar--turn': isTurnPlayer,
       'flex-row-reverse': isMirrored,
     }"
     :aria-label="`${name}，已取得 ${roundWins}／3 枚年終支票`"
   >
     <div class="player-avatar__portrait relative z-20">
       <div
-        class="player-avatar__frame relative z-10 size-13 overflow-hidden rounded-full border-1 border-white bg-[rgba(0,19,50,0.62)] shadow-[0_7px_20px_rgba(0,19,50,0.36)] lg:size-20 lg:border-3"
+        class="player-avatar__frame relative z-10 size-13 overflow-hidden rounded-full border-1 border-white bg-[rgba(0,19,50,0.62)] shadow-[0_7px_20px_rgba(0,19,50,0.36)] lg:size-21 lg:border-3"
       >
         <img
           :src="avatarUrl"
@@ -55,8 +60,8 @@ defineProps({
       <span
         class="player-avatar__level absolute -right-1 -bottom-1 z-20 grid size-6 place-items-center rounded-full bg-white text-sm font-black italic leading-none text-[var(--brand-active)] shadow-[0_5px_14px_rgba(0,19,50,0.32)] lg:-right-2 lg:-bottom-2 lg:size-10 lg:text-lg"
         :class="{
-          'border-[var(--brand-hover)] text-[var(--brand-hover)] shadow-[0_0_18px_rgba(0,70,244,0.52)]  border-2 border-[var(--brand-active)] lg:border-4':
-            isCurrentPlayer,
+          'border-[var(--brand-hover)] text-[var(--brand-hover)] shadow-[0_0_18px_rgba(0,70,244,0.52)] border-2 border-[var(--brand-active)] lg:border-4':
+            isTurnPlayer,
         }"
         aria-hidden="true"
       >
@@ -69,7 +74,7 @@ defineProps({
       :class="{
         'player-avatar__info--mirrored': isMirrored,
         'text-left translate-x-10': isMirrored,
-        'border-l-[var(--brand-hover)]': isCurrentPlayer && !isMirrored,
+        'border-l-[var(--brand-hover)]': isTurnPlayer && !isMirrored,
       }"
     >
       <p
@@ -135,7 +140,7 @@ defineProps({
   transform: rotate(-15deg) scale(1.15);
 }
 
-.player-avatar--current .player-avatar__frame {
+.player-avatar--turn .player-avatar__frame {
   animation: current-player-glow 1s ease-in-out infinite;
   border-color: var(--brand-hover);
   box-shadow:

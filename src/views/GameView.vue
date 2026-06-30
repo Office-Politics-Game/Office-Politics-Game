@@ -1,169 +1,523 @@
 <script setup>
-import { computed, reactive } from 'vue'
-import advisorBackgroundUrl from '@/assets/images/card-bg-advisor.webp'
-import advisorHandBackgroundUrl from '@/assets/images/card-bg-advisor.webp'
-import advisorFrameUrl from '@/assets/images/card-frame-advisor.webp'
-import ceoBackgroundUrl from '@/assets/images/card-bg-ceo.webp'
-import ceoFrameUrl from '@/assets/images/card-frame-ceo.webp'
-import cleanerBackgroundUrl from '@/assets/images/card-bg-cleaner.webp'
-import cleanerFrameUrl from '@/assets/images/card-frame-cleaner.webp'
-import internBackgroundUrl from '@/assets/images/card-bg-intern.webp'
-import internFrameUrl from '@/assets/images/card-frame-intern.webp'
-import pmBackgroundUrl from '@/assets/images/card-bg-pm.webp'
-import pmFrameUrl from '@/assets/images/card-frame-pm.webp'
-import playerOneUrl from '@/assets/images/player-1.png'
-import playerTwoUrl from '@/assets/images/player-2.png'
-import playerThreeUrl from '@/assets/images/player-3.png'
-import playerFourUrl from '@/assets/images/player-4.png'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { storeToRefs } from 'pinia'
+import LoadingScreen from '@/components/common/LoadingScreen.vue'
 import GameStage from '@/components/game/GameStage.vue'
 import {
-  createMockGameState,
-  drawMockCard,
-  playMockCard,
-} from '@/mocks/mockGameState.js'
+  cardAssetKeyByRank,
+  cardAssetsByKey,
+} from '@/constants/cardAssets'
+import {
+  drawCard as drawGameCard,
+  getRoomGameState,
+  playCard as playGameCard,
+} from '@/services/gameActionApi'
+import { useGameStateStore } from '@/stores/gameStateStore'
+import { normalizeCard } from '@/utils/cardUtils'
+import { resolveAvatarUrl } from '@/utils/playerUtils'
 
-const turnStatus = {
-  roundNumber: 2,
-  currentPhase: '輪到你',
-  currentStep: '抽牌',
-}
+const route = useRoute()
+const gameStateStore = useGameStateStore()
+const {
+  gameState,
+  currentPlayer,
+  currentPlayerId,
+  currentTurnPlayerId,
+  isLoading,
+} = storeToRefs(gameStateStore)
 
-const cardPiles = {
-  discardCard: {
-    name: '資深顧問',
-    backgroundUrl: advisorBackgroundUrl,
-    frameUrl: advisorFrameUrl,
-  },
-}
+const seatPositions = ['top', 'left', 'right', 'bottom']
+const LOADING_PROGRESS_TRANSITION_MS = 240
+const roomPlayerMetadata = ref({})
+const hasLoadedInitialState = ref(false)
+const initialLoadError = ref('')
+const loadingProgress = ref(0)
+const gameStage = ref(null)
+const isDrawing = ref(false)
+let effectAnimationSequence = 0
 
-const cardAssets = {
-  intern: {
-    backgroundUrl: internBackgroundUrl,
-    frameUrl: internFrameUrl,
-  },
-  cleaner: {
-    backgroundUrl: cleanerBackgroundUrl,
-    frameUrl: cleanerFrameUrl,
-  },
-  pm: {
-    backgroundUrl: pmBackgroundUrl,
-    frameUrl: pmFrameUrl,
-  },
-  ceo: {
-    backgroundUrl: ceoBackgroundUrl,
-    frameUrl: ceoFrameUrl,
-  },
-  advisor: {
-    backgroundUrl: advisorHandBackgroundUrl,
-    frameUrl: advisorFrameUrl,
-  },
-}
+const turnStatus = computed(() => ({
+  roundNumber: gameState.value?.roundNumber ?? gameState.value?.round ?? 1,
+  currentPhase: selfPlayer.value?.username ?? selfPlayer.value?.name ?? '無資料',
+  currentStep: canCurrentPlayerAct.value ? '輪到你' : '等待對手出牌',
+}))
 
-const gameState = reactive(createMockGameState())
-const currentPlayerId = computed(() => gameState.currentPlayer.id)
-const drawPlayerId = computed(() => currentPlayerId.value)
-const deckCount = computed(() => gameState.deck.length)
-const handCards = computed(() =>
-  gameState.currentPlayer.hand.map(resolveCardAssets),
+const normalizedRoomCode = computed(() => normalizeQueryValue(route.query.roomCode))
+const requestedPlayerId = computed(() => normalizeQueryValue(route.query.playerId))
+const resolvedCurrentPlayerId = computed(() =>
+  String(requestedPlayerId.value ?? currentPlayerId.value ?? ''),
 )
-const discardCard = computed(() => {
-  const latestDiscardCard = gameState.discardPile.at(-1)
 
-  return latestDiscardCard
-    ? resolveCardAssets(latestDiscardCard)
-    : cardPiles.discardCard
+const publicPlayers = computed(() => {
+  const players = gameState.value?.players
+
+  return Array.isArray(players) ? players : []
 })
-const drawCard = computed(() => {
-  if (gameState.currentPlayer.hand.length >= 2) {
-    return null
+
+const publicPlayersWithMetadata = computed(() =>
+  publicPlayers.value.map((player) => ({
+    ...roomPlayerMetadata.value[String(getPlayerId(player))],
+    ...player,
+  })),
+)
+
+const selfPlayer = computed(() => {
+  const selfId = resolvedCurrentPlayerId.value
+
+  return (
+    publicPlayersWithMetadata.value.find((player) => String(getPlayerId(player)) === selfId) ??
+    currentPlayer.value ??
+    null
+  )
+})
+
+const players = computed(() => {
+  const sortedPlayers = [...publicPlayersWithMetadata.value].sort(
+    (a, b) => Number(a.seatOrder ?? 0) - Number(b.seatOrder ?? 0),
+  )
+
+  const selfIndex = sortedPlayers.findIndex(
+    (player) => String(getPlayerId(player)) === resolvedCurrentPlayerId.value,
+  )
+  const viewerRelativePlayers = selfIndex >= 0
+    ? [
+        sortedPlayers[(selfIndex + 2) % sortedPlayers.length],
+        sortedPlayers[(selfIndex + 3) % sortedPlayers.length],
+        sortedPlayers[(selfIndex + 1) % sortedPlayers.length],
+        sortedPlayers[selfIndex],
+      ].filter(Boolean)
+    : sortedPlayers
+
+  return viewerRelativePlayers.slice(0, 4).map((player, index) => {
+    const playerId = String(getPlayerId(player) ?? `player-${index + 1}`)
+
+    return {
+      id: playerId,
+      name: player.username ?? player.name ?? `Player ${index + 1}`,
+      avatarUrl: resolveAvatarUrl(player.avatarUrl ?? player.avatarId, index),
+      roundWins: normalizeRoundWins(player.roundWins ?? player.score ?? 0),
+      level: player.level ?? 1,
+      position: seatPositions[index] ?? 'bottom',
+      isCurrentPlayer: playerId === resolvedCurrentPlayerId.value,
+      isTurnPlayer: playerId === String(currentTurnPlayerId.value ?? ''),
+      isProtected: Boolean(player.isProtected),
+      isEliminated: Boolean(player.isEliminated),
+    }
+  })
+})
+
+const handCards = computed(() => {
+  const hand = selfPlayer.value?.hand
+
+  return Array.isArray(hand) ? hand.map((card, index) => normalizeCard(card, index)) : []
+})
+
+const discardCards = computed(() => {
+  const discardPile = gameState.value?.discardPile
+
+  return Array.isArray(discardPile)
+    ? discardPile.map((card, index) => normalizeCard(card, index))
+    : []
+})
+
+const deckCount = computed(() => gameState.value?.deckCount ?? 0)
+const canCurrentPlayerAct = computed(() => {
+  if (!currentTurnPlayerId.value || !resolvedCurrentPlayerId.value) {
+    return true
   }
 
-  const nextCard = gameState.deck.at(-1)
-  return nextCard ? resolveCardAssets(nextCard) : null
+  return String(currentTurnPlayerId.value) === resolvedCurrentPlayerId.value
 })
 
-function resolveCardAssets(card) {
-  const background = cardAssets[card.backgroundUrlKey]
-  const frame = cardAssets[card.frameUrlKey]
+const canDraw = computed(() =>
+  canCurrentPlayerAct.value &&
+  handCards.value.length < 2 &&
+  deckCount.value > 0 &&
+  !isDrawing.value,
+)
+
+const playerHandCardCounts = computed(() =>
+  Object.fromEntries(
+    players.value.map((player) => {
+      const publicPlayer = publicPlayers.value.find(
+        (candidate) => String(getPlayerId(candidate)) === player.id,
+      )
+
+      if (player.isCurrentPlayer) {
+        return [player.id, handCards.value.length]
+      }
+
+      return [player.id, getPublicHandCount(publicPlayer)]
+    }),
+  ),
+)
+
+function normalizeQueryValue(value) {
+  return Array.isArray(value) ? value[0] : value
+}
+
+function getPlayerId(player) {
+  return player?.playerId ?? player?.id ?? null
+}
+
+function normalizeRoundWins(value) {
+  const numberValue = Number(value)
+
+  return Number.isInteger(numberValue) ? Math.min(Math.max(numberValue, 0), 3) : 0
+}
+
+function getPublicHandCount(player) {
+  const count = Number(
+    player?.handCount ??
+    player?.cardCount ??
+    player?.handCardCount ??
+    0,
+  )
+
+  return Number.isInteger(count) ? Math.max(count, 0) : 0
+}
+
+function rememberRoomPlayerMetadata(players = []) {
+  roomPlayerMetadata.value = Object.fromEntries(
+    players.map((player) => [
+      String(getPlayerId(player)),
+      {
+        playerId: getPlayerId(player),
+        username: player.username,
+        name: player.name,
+        avatarId: player.avatarId ?? player.avatar_id,
+        avatarUrl: player.avatarUrl,
+      },
+    ]),
+  )
+}
+
+function getGuessedCardName(rank) {
+  const assetKey = cardAssetKeyByRank[rank]
+
+  return assetKey ? cardAssetsByKey[assetKey]?.name : undefined
+}
+
+function restoreApiCard(card) {
+  const numericId = Number(card.id)
 
   return {
     ...card,
-    backgroundUrl: background.backgroundUrl,
-    frameUrl: frame.frameUrl,
+    id: Number.isInteger(numericId) ? numericId : card.id,
   }
 }
 
-const players = [
-  {
-    id: 'player-top',
-    name: '摸魚大師',
-    avatarUrl: playerTwoUrl,
-    roundWins: 3,
-    level: 12,
-    position: 'top',
-    isCurrentPlayer: false,
-  },
-  {
-    id: 'player-left',
-    name: '小菜雞',
-    avatarUrl: playerThreeUrl,
-    roundWins: 0,
-    level: 12,
-    position: 'left',
-    isCurrentPlayer: false,
-  },
-  {
-    id: 'player-right',
-    name: '豬隊666',
-    avatarUrl: playerFourUrl,
-    roundWins: 1,
-    level: 12,
-    position: 'right',
-    isCurrentPlayer: false,
-  },
-  {
-    id: 'player-bottom',
-    name: '薪水小偷',
-    avatarUrl: playerOneUrl,
-    roundWins: 2,
-    level: 12,
-    position: 'bottom',
-    isCurrentPlayer: true,
-  },
-]
+function normalizeAnimationPlayerId(playerId) {
+  if (playerId === null || playerId === undefined) {
+    return null
+  }
 
-function handleReturnLobby() {
-  // Reserved for the future multiplayer-aware lobby transition.
+  return String(playerId)
 }
 
-function handleRestartGame() {
-  // Reserved for the future multiplayer-aware restart flow.
+function normalizeEffectAnimationResult(result) {
+  if (!result?.type) {
+    return null
+  }
+
+  const id = result.id ?? `effect-${Date.now()}-${++effectAnimationSequence}`
+
+  switch (result.type) {
+    case 'cleaner': {
+      const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
+      const targetCard = result.targetCard ? normalizeCard(result.targetCard) : null
+
+      return targetPlayerId && targetCard
+        ? {
+            ...result,
+            id,
+            targetPlayerId,
+            viewerPlayerId:
+              normalizeAnimationPlayerId(result.viewerPlayerId) ??
+              resolvedCurrentPlayerId.value,
+            targetCard,
+            revealCard: result.revealCard !== false,
+          }
+        : null
+    }
+
+    case 'intern': {
+      const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
+      const targetCard = result.targetCard ? normalizeCard(result.targetCard) : null
+
+      return (
+        targetPlayerId &&
+        targetCard &&
+        ['correct', 'incorrect'].includes(result.outcome)
+      )
+        ? {
+            ...result,
+            id,
+            targetPlayerId,
+            targetCard,
+          }
+        : null
+    }
+
+    case 'manager': {
+      const sourcePlayerId = normalizeAnimationPlayerId(result.sourcePlayerId)
+      const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
+      const sourceCard = result.sourceCard ? normalizeCard(result.sourceCard) : null
+      const targetCard = result.targetCard ? normalizeCard(result.targetCard) : null
+
+      return (
+        sourcePlayerId &&
+        targetPlayerId &&
+        sourceCard &&
+        targetCard &&
+        ['win', 'lose', 'draw'].includes(result.outcome)
+      )
+        ? {
+            ...result,
+            id,
+            sourcePlayerId,
+            targetPlayerId,
+            sourceCard,
+            targetCard,
+            revealCards: result.revealCards !== false,
+          }
+        : null
+    }
+
+    case 'pm': {
+      const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
+      const discardedCard = result.discardedCard
+        ? normalizeCard(result.discardedCard)
+        : null
+
+      return targetPlayerId && discardedCard
+        ? {
+            ...result,
+            id,
+            targetPlayerId,
+            discardedCard,
+            newCard: result.newCard ? normalizeCard(result.newCard) : null,
+          }
+        : null
+    }
+
+    case 'swap': {
+      const sourcePlayerId = normalizeAnimationPlayerId(result.sourcePlayerId)
+      const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
+      const sourceCard = result.sourceCard ? normalizeCard(result.sourceCard) : null
+      const targetCard = result.targetCard ? normalizeCard(result.targetCard) : null
+
+      return sourcePlayerId && targetPlayerId && sourceCard && targetCard
+        ? {
+            ...result,
+            id,
+            sourcePlayerId,
+            targetPlayerId,
+            sourceCard,
+            targetCard,
+          }
+        : null
+    }
+
+    default:
+      return null
+  }
 }
 
-function handleDrawComplete(card) {
-  drawMockCard(gameState, card.id)
+async function refreshRoomState({ onProgress } = {}) {
+  if (!normalizedRoomCode.value || !requestedPlayerId.value) {
+    throw new Error('Missing roomCode or playerId')
+  }
+
+  const roomStateResponse = await gameStateStore.fetchRoomState(normalizedRoomCode.value, {
+    playerId: requestedPlayerId.value,
+  })
+  onProgress?.(40)
+  rememberRoomPlayerMetadata(roomStateResponse?.players ?? [])
+
+  const data = await getRoomGameState(normalizedRoomCode.value, requestedPlayerId.value)
+  onProgress?.(80)
+
+  const nextGameState = data.state ?? data.gameState ?? null
+  const nextPlayers = Array.isArray(nextGameState?.players) ? nextGameState.players : []
+
+  if (nextPlayers.length !== 4) {
+    throw new Error('Game state must contain exactly four players')
+  }
+
+  const nextCurrentPlayer = nextPlayers.find(
+    (player) => String(getPlayerId(player)) === String(requestedPlayerId.value),
+  ) ?? null
+
+  gameStateStore.$patch({
+    gameState: nextGameState,
+    currentPlayer: nextCurrentPlayer,
+    currentPlayerId: requestedPlayerId.value,
+    currentTurnPlayerId:
+      nextGameState?.currentTurnPlayerId ??
+      data.currentTurnPlayerId ??
+      null,
+  })
+  onProgress?.(100)
 }
 
-function handlePlayCard(payload) {
-  playMockCard(gameState, payload)
+async function loadInitialRoomState() {
+  hasLoadedInitialState.value = false
+  initialLoadError.value = ''
+  loadingProgress.value = 0
+
+  try {
+    await refreshRoomState({
+      onProgress: (progress) => {
+        loadingProgress.value = progress
+      },
+    })
+    await nextTick()
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, LOADING_PROGRESS_TRANSITION_MS)
+    })
+    hasLoadedInitialState.value = true
+  } catch (error) {
+    initialLoadError.value =
+      error instanceof Error ? error.message : 'Failed to load game state'
+    console.warn('[game] fetch initial room state failed', error)
+  }
 }
+
+async function handleDrawRequest() {
+  if (
+    isDrawing.value ||
+    !canDraw.value ||
+    !normalizedRoomCode.value ||
+    !resolvedCurrentPlayerId.value
+  ) {
+    return
+  }
+
+  isDrawing.value = true
+
+  try {
+    const data = await drawGameCard(normalizedRoomCode.value, {
+      playerId: resolvedCurrentPlayerId.value,
+    })
+    const rawDrawnCard = data?.drawnCard ?? data?.card ?? null
+
+    if (!rawDrawnCard) {
+      throw new Error('Draw card response did not include a card')
+    }
+
+    const drawnCard = normalizeCard(rawDrawnCard)
+
+    await nextTick()
+
+    if (!gameStage.value?.playDrawAnimation) {
+      throw new Error('Game stage draw animation is unavailable')
+    }
+
+    await gameStage.value.playDrawAnimation(
+      drawnCard,
+      resolvedCurrentPlayerId.value,
+    )
+    await refreshRoomState()
+  } catch (error) {
+    console.warn('[game:view] draw-card:failed', {
+      roomCode: normalizedRoomCode.value,
+      playerId: resolvedCurrentPlayerId.value,
+      error,
+      errorData: error?.data,
+    })
+
+    try {
+      await refreshRoomState()
+    } catch (refreshError) {
+      console.warn('[game:view] draw-card:refresh-failed', refreshError)
+    }
+  } finally {
+    isDrawing.value = false
+  }
+}
+
+async function handlePlayCard(payload) {
+  if (!normalizedRoomCode.value || !resolvedCurrentPlayerId.value || !payload?.card) {
+    return
+  }
+
+  const playPayload = {
+    playerId: resolvedCurrentPlayerId.value,
+    cardId: restoreApiCard(payload.card).id,
+    targetPlayerId: payload.targetPlayerId,
+    guessedCardName: getGuessedCardName(payload.guessedRank),
+  }
+
+  try {
+    const data = await playGameCard(normalizedRoomCode.value, playPayload)
+    const animationResult = normalizeEffectAnimationResult(data?.animationResult)
+
+    if (animationResult && gameStage.value?.playEffectAnimation) {
+      try {
+        await gameStage.value.playEffectAnimation(animationResult)
+      } catch (animationError) {
+        console.warn('[game:view] play-card:animation-failed', {
+          animationResult,
+          error: animationError,
+        })
+      }
+    }
+
+    await refreshRoomState()
+  } catch (error) {
+    console.warn('[game:view] play-card:failed', {
+      roomCode: normalizedRoomCode.value,
+      playPayload,
+      error,
+      errorData: error?.data,
+    })
+    await refreshRoomState()
+  }
+}
+
+onMounted(() => {
+  loadInitialRoomState()
+})
+
+watch(
+  () => [normalizedRoomCode.value, requestedPlayerId.value],
+  ([roomCode, playerId], [previousRoomCode, previousPlayerId]) => {
+    if (roomCode === previousRoomCode && playerId === previousPlayerId) {
+      return
+    }
+
+    loadInitialRoomState()
+  },
+)
 </script>
 
 <template>
+  <LoadingScreen
+    v-if="!hasLoadedInitialState"
+    :error-message="initialLoadError"
+    :progress="loadingProgress"
+    @retry="loadInitialRoomState"
+  />
+
   <GameStage
+    v-else
+    ref="gameStage"
     :round-number="turnStatus.roundNumber"
     :current-phase="turnStatus.currentPhase"
     :current-step="turnStatus.currentStep"
     :deck-count="deckCount"
-    :discard-card="discardCard"
+    :discard-cards="discardCards"
     :players="players"
+    :player-hand-card-counts="playerHandCardCounts"
     :hand-cards="handCards"
-    :draw-card="drawCard"
-    :draw-player-id="drawPlayerId"
-    :current-player-id="currentPlayerId"
-    @draw-complete="handleDrawComplete"
+    :can-draw="canDraw"
+    :draw-player-id="resolvedCurrentPlayerId || null"
+    :current-player-id="resolvedCurrentPlayerId"
+    :current-turn-player-id="currentTurnPlayerId"
+    :is-loading="isLoading || isDrawing"
+    @draw-request="handleDrawRequest"
     @play-card="handlePlayCard"
-    @return-lobby="handleReturnLobby"
-    @restart-game="handleRestartGame"
   />
 </template>

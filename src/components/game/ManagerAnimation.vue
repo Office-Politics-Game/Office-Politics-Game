@@ -1,7 +1,15 @@
 <script setup>
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { gsap } from 'gsap'
-import cardBackUrl from '@/assets/images/card-bg-back.webp'
+import { useCardEffectAnimation } from '@/composables/useCardEffectAnimation'
+import {
+  getCardMotionTiming,
+  getDiscardVars,
+  getEmphasisVars,
+  getFlipVars,
+  getMoveVars,
+  getReturnToOriginVars,
+} from '@/composables/useCardMotionPresets'
 import {
   createFixedCardRect,
   getEffectCardHeight,
@@ -11,7 +19,7 @@ import {
   getViewportCenter,
   rectToFixedStyle,
 } from '@/composables/useGameAnimationRects'
-import GameCard from './GameCard.vue'
+import EffectCardLayer from './EffectCardLayer.vue'
 
 const props = defineProps({
   result: { type: Object, default: null },
@@ -21,30 +29,67 @@ const props = defineProps({
 const emit = defineEmits(['complete'])
 
 const veilRef = ref(null)
-const sourceRef = ref(null)
-const sourceFlipperRef = ref(null)
-const targetRef = ref(null)
-const targetFlipperRef = ref(null)
+const sourceLayerRef = ref(null)
+const targetLayerRef = ref(null)
 const loserGlowRef = ref(null)
-const activeResult = ref(null)
 const sourceStyle = ref({ display: 'none' })
 const targetStyle = ref({ display: 'none' })
-let timeline = null
-let activeId = null
 
-function stop() {
-  timeline?.kill()
-  timeline = null
-  gsap.killTweensOf([veilRef.value, sourceRef.value, sourceFlipperRef.value, targetRef.value, targetFlipperRef.value, loserGlowRef.value].filter(Boolean))
+function getSourceElement() {
+  return sourceLayerRef.value?.getCardElement?.() ?? null
 }
 
-function finish(result) {
-  stop()
-  activeResult.value = null
-  activeId = null
-  sourceStyle.value = { display: 'none' }
-  targetStyle.value = { display: 'none' }
-  emit('complete', result)
+function getSourceFlipperElement() {
+  return sourceLayerRef.value?.getFlipperElement?.() ?? null
+}
+
+function getTargetElement() {
+  return targetLayerRef.value?.getCardElement?.() ?? null
+}
+
+function getTargetFlipperElement() {
+  return targetLayerRef.value?.getFlipperElement?.() ?? null
+}
+
+function getKillTargets() {
+  return [
+    veilRef.value,
+    getSourceElement(),
+    getSourceFlipperElement(),
+    getTargetElement(),
+    getTargetFlipperElement(),
+    loserGlowRef.value,
+  ]
+}
+
+const {
+  activeResult,
+  activeId,
+  timeline,
+  begin,
+  setTimeline,
+  isStale,
+  stop: stopAnimation,
+  finish,
+  isReducedMotion,
+} = useCardEffectAnimation({
+  emitComplete: (result) => emit('complete', result),
+  reset: () => {
+    sourceStyle.value = { display: 'none' }
+    targetStyle.value = { display: 'none' }
+  },
+})
+
+function stop() {
+  stopAnimation(getKillTargets)
+}
+
+function finishAnimation(result) {
+  finish(result, getKillTargets)
+}
+
+function beginAnimation(result) {
+  begin(result, getKillTargets)
 }
 
 async function play(result) {
@@ -52,13 +97,11 @@ async function play(result) {
   const targetRect = props.getPlayerHandRect?.(result.targetPlayerId)
   const discardRect = props.getDiscardRect?.()
   if (!sourceRect || !targetRect || !discardRect || !result.sourceCard || !result.targetCard) {
-    finish(result)
+    finishAnimation(result)
     return
   }
 
-  stop()
-  activeResult.value = result
-  activeId = result.id
+  beginAnimation(result)
   const height = getEffectCardHeight()
   const width = height * 0.75
   const sourceCenter = getRectCenter(sourceRect)
@@ -71,76 +114,84 @@ async function play(result) {
   const targetWins = result.outcome === 'lose'
   const draw = !sourceWins && !targetWins
   const revealAtCenter = result.revealCards !== false
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  const travel = reduced ? 0.12 : 0.48
-  const flip = reduced ? 0.12 : 0.34
+  const reduced = isReducedMotion()
+  const timing = getCardMotionTiming(reduced)
 
   sourceStyle.value = rectToFixedStyle(createFixedCardRect(sourceRect, height))
   targetStyle.value = rectToFixedStyle(createFixedCardRect(targetRect, height))
   await nextTick()
-  if (activeId !== result.id || !sourceRef.value || !targetRef.value || !sourceFlipperRef.value || !targetFlipperRef.value || !loserGlowRef.value || !veilRef.value) return
+  const sourceElement = getSourceElement()
+  const targetElement = getTargetElement()
+  const sourceFlipperElement = getSourceFlipperElement()
+  const targetFlipperElement = getTargetFlipperElement()
+  if (isStale(result) || !sourceElement || !targetElement || !sourceFlipperElement || !targetFlipperElement || !loserGlowRef.value || !veilRef.value) {
+    finishAnimation(result)
+    return
+  }
 
-  gsap.set(sourceRef.value, { x: 0, y: 0, scale: sourceStartScale, transformPerspective: 1200 })
-  gsap.set(targetRef.value, { x: 0, y: 0, scale: targetStartScale, transformPerspective: 1200 })
-  gsap.set([sourceFlipperRef.value, targetFlipperRef.value], { rotationY: 180, transformPerspective: 1200, transformStyle: 'preserve-3d' })
+  gsap.set(sourceElement, { x: 0, y: 0, scale: sourceStartScale, transformPerspective: 1200 })
+  gsap.set(targetElement, { x: 0, y: 0, scale: targetStartScale, transformPerspective: 1200 })
+  gsap.set([sourceFlipperElement, targetFlipperElement], { rotationY: 180, transformPerspective: 1200, transformStyle: 'preserve-3d' })
   gsap.set(loserGlowRef.value, { opacity: 0, scale: 0.7, x: sourceWins ? gap : -gap })
 
-  const winner = sourceWins ? sourceRef.value : targetRef.value
-  const loser = sourceWins ? targetRef.value : sourceRef.value
+  const winner = sourceWins ? sourceElement : targetElement
+  const loser = sourceWins ? targetElement : sourceElement
   const loserFlipper = sourceWins
-    ? targetFlipperRef.value
-    : sourceFlipperRef.value
+    ? targetFlipperElement
+    : sourceFlipperElement
   const winnerScale = sourceWins ? sourceStartScale : targetStartScale
   const loserRect = sourceWins ? targetRect : sourceRect
   const discardTranslation = getTranslation(loserRect, discardRect)
 
-  timeline = gsap.timeline({ onComplete: () => finish(result) })
-  timeline
-    .to(sourceRef.value, { x: viewportCenter.x - gap - sourceCenter.x, y: viewportCenter.y - sourceCenter.y, scale: 1, duration: travel, ease: reduced ? 'none' : 'expo.out' })
-    .to(targetRef.value, { x: viewportCenter.x + gap - targetCenter.x, y: viewportCenter.y - targetCenter.y, scale: 1, duration: travel, ease: reduced ? 'none' : 'expo.out' }, '<')
+  setTimeline(gsap.timeline({ onComplete: () => finishAnimation(result) }))
+  timeline.value
+    .to(sourceElement, getMoveVars({
+      x: viewportCenter.x - gap - sourceCenter.x,
+      y: viewportCenter.y - sourceCenter.y,
+    }, { scale: 1, duration: timing.compareTravel, reduced }))
+    .to(targetElement, getMoveVars({
+      x: viewportCenter.x + gap - targetCenter.x,
+      y: viewportCenter.y - targetCenter.y,
+    }, { scale: 1, duration: timing.compareTravel, reduced }), '<')
   if (revealAtCenter) {
-    timeline.to(
-      [sourceFlipperRef.value, targetFlipperRef.value],
-      { rotationY: 0, duration: flip, ease: 'power2.inOut' },
+    timeline.value.to(
+      [sourceFlipperElement, targetFlipperElement],
+      getFlipVars(0, timing.flip),
     )
   }
 
-  timeline
+  timeline.value
     .to({}, { duration: 0.5 })
 
   if (draw) {
-    timeline
+    timeline.value
       .to({}, { duration: 1 })
-      .to(sourceRef.value, { x: 0, y: 0, scale: sourceStartScale, duration: travel, ease: reduced ? 'none' : 'power3.in' })
-      .to(targetRef.value, { x: 0, y: 0, scale: targetStartScale, duration: travel, ease: reduced ? 'none' : 'power3.in' }, '<')
+      .to(sourceElement, getReturnToOriginVars(sourceStartScale, { duration: timing.compareTravel, reduced }))
+      .to(targetElement, getReturnToOriginVars(targetStartScale, { duration: timing.compareTravel, reduced }), '<')
   } else {
-    timeline
-      .to(winner, { scale: 1.18, duration: reduced ? 0.08 : 0.22, ease: 'back.out(1.7)' })
-      .to(loser, { scale: 0.76, duration: reduced ? 0.08 : 0.22 }, '<')
+    timeline.value
+      .to(winner, getEmphasisVars(1.18, { duration: timing.emphasis, reduced }))
+      .to(loser, getEmphasisVars(0.76, { duration: timing.emphasis, reduced, ease: null }), '<')
       .set(loserGlowRef.value, { opacity: 1, scale: 1 }, '<')
 
     if (!revealAtCenter) {
-      timeline.to(
+      timeline.value.to(
         loserFlipper,
-        {
-          rotationY: 0,
-          duration: flip,
-          ease: 'power2.inOut',
-        },
+        getFlipVars(0, timing.flip),
         '<',
       )
     }
 
-    timeline
+    timeline.value
       .to({}, { duration: 0.9 })
       .set(loserGlowRef.value, { opacity: 0 })
-      .to(winner, { x: 0, y: 0, scale: winnerScale, duration: travel, ease: reduced ? 'none' : 'power3.in' }, '<')
-      .to(loser, { x: discardTranslation.x, y: discardTranslation.y, scale: getScaleForHeight(discardRect, height), rotation: 2, rotationX: 58, duration: travel, ease: reduced ? 'none' : 'power3.in' }, '<')
+      .to(winner, getReturnToOriginVars(winnerScale, { duration: timing.compareTravel, reduced }), '<')
+      .to(loser, getDiscardVars(discardTranslation, discardRect, height, { duration: timing.compareTravel, reduced }), '<')
   }
 }
 
 watch(() => props.result?.id, (id) => {
-  if (id && id !== activeId) play(props.result)
+  if (id && id !== activeId.value) play(props.result)
 }, { immediate: true })
 onBeforeUnmount(stop)
 </script>
@@ -150,18 +201,18 @@ onBeforeUnmount(stop)
     <div v-if="activeResult" class="manager-animation" aria-hidden="true">
       <div ref="veilRef" class="manager-animation__veil"></div>
       <div ref="loserGlowRef" class="manager-animation__loser-glow"></div>
-      <div ref="sourceRef" class="manager-animation__card" :style="sourceStyle">
-        <div ref="sourceFlipperRef" class="manager-animation__flipper">
-          <div class="manager-animation__face"><GameCard :name="activeResult.sourceCard.name" :background-url="activeResult.sourceCard.backgroundUrl" :frame-url="activeResult.sourceCard.frameUrl" /></div>
-          <div class="manager-animation__face manager-animation__face--back"><img :src="cardBackUrl" alt="" draggable="false" /></div>
-        </div>
-      </div>
-      <div ref="targetRef" class="manager-animation__card" :style="targetStyle">
-        <div ref="targetFlipperRef" class="manager-animation__flipper">
-          <div class="manager-animation__face"><GameCard :name="activeResult.targetCard.name" :background-url="activeResult.targetCard.backgroundUrl" :frame-url="activeResult.targetCard.frameUrl" /></div>
-          <div class="manager-animation__face manager-animation__face--back"><img :src="cardBackUrl" alt="" draggable="false" /></div>
-        </div>
-      </div>
+      <EffectCardLayer
+        ref="sourceLayerRef"
+        class="manager-animation__card"
+        :card="activeResult.sourceCard"
+        :style="sourceStyle"
+      />
+      <EffectCardLayer
+        ref="targetLayerRef"
+        class="manager-animation__card"
+        :card="activeResult.targetCard"
+        :style="targetStyle"
+      />
     </div>
   </Teleport>
 </template>
@@ -169,10 +220,6 @@ onBeforeUnmount(stop)
 <style scoped>
 .manager-animation { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
 .manager-animation__veil { position: fixed; inset: 0; background: radial-gradient(circle at 50% 50%,rgba(15,23,42,.08),rgba(0,0,0,.72) 68%),linear-gradient(115deg,rgba(2,6,23,.76),rgba(15,23,42,.42)); }
-.manager-animation__card { position: fixed; z-index: 2; perspective: 1200px; transform-origin: 50% 50%; will-change: transform; }
-.manager-animation__flipper { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
-.manager-animation__face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; filter: drop-shadow(0 20px 28px rgba(0,0,0,.48)); }
-.manager-animation__face--back { transform: rotateY(180deg); }
-.manager-animation__face--back img { width: 100%; height: 100%; object-fit: contain; }
+.manager-animation__card { z-index: 2; --effect-card-face-filter: drop-shadow(0 20px 28px rgba(0,0,0,.48)); }
 .manager-animation__loser-glow { position: fixed; top: 50%; left: 50%; z-index: 1; width: min(32vmin,280px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle,rgba(251,113,133,.76),rgba(225,29,72,.26) 42%,transparent 72%); filter: blur(18px); mix-blend-mode: screen; transform: translate(-50%,-50%); }
 </style>

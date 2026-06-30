@@ -1,6 +1,6 @@
 import { drawCardAction, playCardAction } from "../services/gameActionService.js"
 
-async function handlePlayCard(req, res){
+async function handlePlayCard(req, res) {
     try {
         const {
             roomCode,
@@ -33,6 +33,7 @@ async function handlePlayCard(req, res){
         return res.status(200).json({
             message: "卡牌效果已執行",
             result: result.result,
+            animationResult: result.animationResult,
             discardedCard: result.discardedCard,
             actionLog: result.actionLog,
             state: result.publicState,
@@ -64,7 +65,7 @@ async function handleDrawCard(req, res) {
             drawnCard: result.drawnCard,
             state: result.publicState,
         })
-    }catch (error){
+    } catch (error) {
         return res.status(error.statusCode || 500).json({
             message: error.statusCode ? error.message : "抽牌失敗",
             error: error.message,

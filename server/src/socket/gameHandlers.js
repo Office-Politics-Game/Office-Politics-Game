@@ -142,6 +142,7 @@ function registerGameHandlers(io, socket) {
                     ok: true,
                     data: {
                         result: result.result,
+                        animationResult: result.animationResult,
                         discardedCard: result.discardedCard,
                         actionLog: result.actionLog,
                         state: gameState,

@@ -2,6 +2,7 @@
 import { nextTick, onUnmounted, ref } from 'vue'
 import { gsap } from 'gsap'
 import cardBackUrl from '@/assets/images/card-bg-back.webp'
+import { getCardFlightGeometry } from '@/composables/useGameAnimationRects'
 
 const DEAL_STAGGER = 0.25
 const DEAL_DURATION = 0.55
@@ -43,25 +44,6 @@ function cancel() {
     const resolve = resolvePlay
     resolvePlay = null
     resolve()
-  }
-}
-
-function getCardGeometry(startRect, targetRect) {
-  const startX =
-    startRect.left + (startRect.width - targetRect.width) / 2
-  const startY =
-    startRect.top + (startRect.height - targetRect.height) / 2
-  const startScale = Math.min(
-    startRect.width / targetRect.width,
-    startRect.height / targetRect.height,
-  )
-
-  return {
-    startX,
-    startY,
-    startScale,
-    endX: targetRect.left,
-    endY: targetRect.top,
   }
 }
 
@@ -132,7 +114,11 @@ function playFullMotion({
 
     deals.forEach((deal, index) => {
       const element = dealElements.get(deal.playerId)
-      const geometry = getCardGeometry(startRect, deal.targetRect)
+      const geometry = getCardFlightGeometry(startRect, deal.targetRect)
+      if (!geometry) {
+        return
+      }
+
       const startAt = index * DEAL_STAGGER
       const arcY =
         Math.min(geometry.startY, geometry.endY) -

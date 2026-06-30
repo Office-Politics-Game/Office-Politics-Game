@@ -12,9 +12,9 @@ test('game stage imports and renders the table card piles', async () => {
   assert.match(source, /ref="tableCardPilesRef"/)
   assert.match(source, /:deck-count="deckCount"/)
   assert.match(source, /:discard-cards="discardCards"/)
-  assert.match(source, /:is-draw-disabled="isPlayInteractionLocked \|\| !drawCard"/)
+  assert.match(source, /:is-draw-disabled="isPlayInteractionLocked \|\| !canDraw"/)
   assert.match(source, /:is-drop-target-active="isOverPlayZone && hasActivePlay"/)
-  assert.match(source, /@draw="playDrawAnimation"/)
+  assert.match(source, /@draw="requestDraw"/)
 })
 
 test('table card piles use scoped GSAP pointer tilt with lifecycle cleanup', async () => {

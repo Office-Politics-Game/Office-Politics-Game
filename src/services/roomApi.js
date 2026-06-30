@@ -38,9 +38,12 @@ function startRoom(roomCode, payload) {
 }
 
 function getRoomGameState(roomCode, playerId) {
-  return apiClient.get(`${GAME_STATE_API_PATH}/room/${encodeURIComponent(roomCode)}`, {
-    params: { playerId },
-  });
+  return apiClient.get(
+    `${GAME_STATE_API_PATH}/room/${encodeURIComponent(roomCode)}`,
+    {
+      params: { playerId },
+    },
+  );
 }
 
 export {

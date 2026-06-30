@@ -61,7 +61,7 @@ test('legacy play defaults to the self draw reveal behavior', async () => {
   assert.match(source, /playReducedMotion\(drawOptions\) : playFullMotion\(drawOptions\)/)
 })
 
-test('game stage coordinates deck origin, hand target, data commit, and replay locking', async () => {
+test('game stage requests a draw and animates the real card supplied by its parent', async () => {
   const source = await readSource('src/components/game/GameStage.vue')
 
   assert.match(source, /import CardDrawAnimation from '\.\/CardDrawAnimation\.vue'/)
@@ -70,20 +70,59 @@ test('game stage coordinates deck origin, hand target, data commit, and replay l
   assert.match(source, /currentPlayerId:/)
   assert.match(source, /const playerSeats = ref\(null\)/)
   assert.match(source, /const resolvedCurrentPlayerId = computed\(/)
-  assert.match(source, /async function playDrawAnimation\(\)/)
-  assert.match(source, /getDeckRect\(\)/)
+  assert.match(source, /canDraw:/)
+  assert.match(source, /function requestDraw\(\)/)
+  assert.match(source, /emit\('draw-request'\)/)
+  assert.match(source, /async function playDrawAnimation\(card, playerId = null\)/)
+  assert.match(source, /getDrawRect\('source'\)/)
   assert.match(source, /prepareDrawTarget\(\)/)
-  assert.match(source, /getDrawTargetRect\(\)/)
-  assert.match(source, /getHandTargetRect\(activeDrawPlayerId\)/)
+  assert.match(source, /animationRects\.getDrawRect\('target'\)/)
+  assert.match(source, /animationRects\.getDrawRect\('target', activeDrawPlayerId\)/)
   assert.match(source, /selfDraw\(\{/)
   assert.match(source, /othersDraw\(\{/)
-  assert.match(source, /emit\('draw-complete', activeDrawCard\.value\)/)
+  assert.match(source, /activeDrawCard\.value = \{ \.\.\.card \}/)
+  assert.doesNotMatch(source, /props\.drawCard/)
+  assert.doesNotMatch(source, /emit\('draw-complete'/)
   assert.match(source, /emit\('opponent-draw-complete', \{[\s\S]*playerId: activeDrawPlayerId[\s\S]*card: activeDrawCard\.value/)
   assert.match(source, /finishDraw\(\)/)
-  assert.match(source, /:is-draw-disabled="isPlayInteractionLocked \|\| !drawCard"/)
-  assert.match(source, /@draw="playDrawAnimation"/)
+  assert.match(source, /:is-draw-disabled="isPlayInteractionLocked \|\| !canDraw"/)
+  assert.match(source, /@draw="requestDraw"/)
   assert.match(source, /<PlayerSeats[\s\S]*ref="playerSeats"/)
   assert.match(source, /<CardDrawAnimation[\s\S]*:card="activeDrawCard"/)
+})
+
+test('game view draws from the API before playing the reveal animation', async () => {
+  const source = await readSource('src/views/GameView.vue')
+  const handlerSource = source.slice(
+    source.indexOf('async function handleDrawRequest'),
+    source.indexOf('async function handlePlayCard'),
+  )
+
+  assert.match(source, /const gameStage = ref\(null\)/)
+  assert.match(source, /const isDrawing = ref\(false\)/)
+  assert.match(source, /const canDraw = computed\(/)
+  assert.match(handlerSource, /if \([\s\S]*isDrawing\.value[\s\S]*!canDraw\.value/)
+  assert.match(handlerSource, /isDrawing\.value = true/)
+  assert.match(handlerSource, /await drawGameCard\(/)
+  assert.match(handlerSource, /data\?\.drawnCard \?\? data\?\.card/)
+  assert.match(handlerSource, /normalizeCard\(rawDrawnCard\)/)
+  assert.match(handlerSource, /await gameStage\.value\.playDrawAnimation\(/)
+  assert.match(handlerSource, /await refreshRoomState\(\)/)
+  assert.match(handlerSource, /catch \(error\)[\s\S]*await refreshRoomState\(\)/)
+  assert.match(handlerSource, /finally \{[\s\S]*isDrawing\.value = false/)
+  assert.ok(
+    handlerSource.indexOf('await drawGameCard(') <
+      handlerSource.indexOf('await gameStage.value.playDrawAnimation('),
+  )
+  assert.ok(
+    handlerSource.indexOf('await gameStage.value.playDrawAnimation(') <
+      handlerSource.indexOf('await refreshRoomState()'),
+  )
+  assert.doesNotMatch(source, /id:\s*'draw-preview'/)
+  assert.doesNotMatch(source, /backgroundUrlKey:\s*'intern'/)
+  assert.match(source, /ref="gameStage"/)
+  assert.match(source, /:can-draw="canDraw"/)
+  assert.match(source, /@draw-request="handleDrawRequest"/)
 })
 
 test('table card piles expose the current deck rectangle', async () => {

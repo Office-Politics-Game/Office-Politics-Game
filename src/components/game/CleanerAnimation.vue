@@ -1,7 +1,14 @@
 <script setup>
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { gsap } from 'gsap'
-import cardBackUrl from '@/assets/images/card-bg-back.webp'
+import { useCardEffectAnimation } from '@/composables/useCardEffectAnimation'
+import {
+  getCardMotionTiming,
+  getFlipVars,
+  getMoveToCenterVars,
+  getMoveVars,
+  getReturnToOriginVars,
+} from '@/composables/useCardMotionPresets'
 import {
   createFixedCardRect,
   getEffectCardHeight,
@@ -10,7 +17,7 @@ import {
   getViewportCenterTranslation,
   rectToFixedStyle,
 } from '@/composables/useGameAnimationRects'
-import GameCard from './GameCard.vue'
+import EffectCardLayer from './EffectCardLayer.vue'
 
 const props = defineProps({
   result: { type: Object, default: null },
@@ -20,25 +27,44 @@ const props = defineProps({
 const emit = defineEmits(['complete'])
 
 const veilRef = ref(null)
-const cardRef = ref(null)
-const flipperRef = ref(null)
-const activeResult = ref(null)
+const cardLayerRef = ref(null)
 const cardStyle = ref({ display: 'none' })
-let timeline = null
-let activeId = null
 
-function stop() {
-  timeline?.kill()
-  timeline = null
-  gsap.killTweensOf([veilRef.value, cardRef.value, flipperRef.value].filter(Boolean))
+function getCardElement() {
+  return cardLayerRef.value?.getCardElement?.() ?? null
 }
 
-function finish(result) {
-  stop()
-  activeResult.value = null
-  activeId = null
-  cardStyle.value = { display: 'none' }
-  emit('complete', result)
+function getFlipperElement() {
+  return cardLayerRef.value?.getFlipperElement?.() ?? null
+}
+
+function getKillTargets() {
+  return [veilRef.value, getCardElement(), getFlipperElement()]
+}
+
+const {
+  activeResult,
+  activeId,
+  timeline,
+  begin,
+  setTimeline,
+  isStale,
+  stop: stopAnimation,
+  finish,
+  isReducedMotion,
+} = useCardEffectAnimation({
+  emitComplete: (result) => emit('complete', result),
+  reset: () => {
+    cardStyle.value = { display: 'none' }
+  },
+})
+
+function stop() {
+  stopAnimation(getKillTargets)
+}
+
+function finishAnimation(result) {
+  finish(result, getKillTargets)
 }
 
 async function play(result) {
@@ -55,108 +81,91 @@ async function play(result) {
     !result.targetCard ||
     (hiddenFromViewer && !viewerRect)
   ) {
-    finish(result)
+    finishAnimation(result)
     return
   }
 
-  stop()
-  activeResult.value = result
-  activeId = result.id
+  begin(result, getKillTargets)
   const height = getEffectCardHeight()
   const fixedRect = createFixedCardRect(originRect, height)
   const viewerTranslation = getTranslation(originRect, viewerRect)
   const centerTranslation = getViewportCenterTranslation(originRect)
   const startScale = getScaleForHeight(originRect, height)
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  const travelDuration = reduceMotion ? 0.12 : 0.46
-  const flipDuration = reduceMotion ? 0.12 : 0.34
+  const reduceMotion = isReducedMotion()
+  const timing = getCardMotionTiming(reduceMotion)
 
   cardStyle.value = rectToFixedStyle(fixedRect)
   await nextTick()
+  const cardElement = getCardElement()
+  const flipperElement = getFlipperElement()
   if (
-    activeId !== result.id ||
-    !cardRef.value ||
-    !flipperRef.value ||
+    isStale(result) ||
+    !cardElement ||
+    !flipperElement ||
     (!hiddenFromViewer && !veilRef.value)
-  ) return
+  ) {
+    finishAnimation(result)
+    return
+  }
 
-  gsap.set(cardRef.value, {
+  gsap.set(cardElement, {
     x: 0,
     y: 0,
     scale: startScale,
     transformPerspective: 1200,
   })
-  gsap.set(flipperRef.value, {
+  gsap.set(flipperElement, {
     rotationY: startsFaceUp ? 0 : 180,
     transformPerspective: 1200,
     transformStyle: 'preserve-3d',
   })
-  timeline = gsap.timeline({ onComplete: () => finish(result) })
+  setTimeline(gsap.timeline({ onComplete: () => finishAnimation(result) }))
 
-  timeline
-    .to(cardRef.value, {
-      x: hiddenFromViewer
-        ? viewerTranslation.x
-        : centerTranslation.x,
-      y: hiddenFromViewer
-        ? viewerTranslation.y
-        : centerTranslation.y,
-      scale: hiddenFromViewer
-        ? getScaleForHeight(viewerRect, height) * 2
-        : Math.min(1.2, Math.max(1, window.innerHeight * 0.52 / height)),
-      duration: travelDuration,
-      ease: reduceMotion ? 'none' : 'expo.out',
-    })
+  timeline.value
+    .to(
+      cardElement,
+      hiddenFromViewer
+        ? getMoveVars(viewerTranslation, {
+          scale: getScaleForHeight(viewerRect, height) * 2,
+          duration: timing.travel,
+          reduced: reduceMotion,
+        })
+        : getMoveToCenterVars(centerTranslation, height, {
+          duration: timing.travel,
+          reduced: reduceMotion,
+        }),
+    )
 
   if (startsFaceUp) {
-    timeline.to(
-      flipperRef.value,
-      {
-        rotationY: 180,
-        duration: flipDuration,
-        ease: 'power2.inOut',
-      },
+    timeline.value.to(
+      flipperElement,
+      getFlipVars(180, timing.flip),
       '<',
     )
   }
 
   if (!hiddenFromViewer) {
-    timeline.to(flipperRef.value, {
-      rotationY: 0,
-      duration: flipDuration,
-      ease: 'power2.inOut',
-    })
+    timeline.value.to(flipperElement, getFlipVars(0, timing.flip))
   }
 
-  timeline.to({}, { duration: 2 })
+  timeline.value.to({}, { duration: 2 })
 
   if (!hiddenFromViewer) {
-    timeline.to(flipperRef.value, {
-      rotationY: 180,
-      duration: flipDuration,
-      ease: 'power2.inOut',
-    })
+    timeline.value.to(flipperElement, getFlipVars(180, timing.flip))
   }
 
-  timeline.to(
-    cardRef.value,
-    {
-      x: 0,
-      y: 0,
-      scale: startScale,
-      duration: travelDuration,
-      ease: reduceMotion ? 'none' : 'power3.in',
-    },
+  timeline.value.to(
+    cardElement,
+    getReturnToOriginVars(startScale, {
+      duration: timing.travel,
+      reduced: reduceMotion,
+    }),
   )
 
   if (startsFaceUp) {
-    timeline.to(
-      flipperRef.value,
-      {
-        rotationY: 0,
-        duration: flipDuration,
-        ease: 'power2.inOut',
-      },
+    timeline.value.to(
+      flipperElement,
+      getFlipVars(0, timing.flip),
       '<',
     )
   }
@@ -164,7 +173,7 @@ async function play(result) {
 }
 
 watch(() => props.result?.id, (id) => {
-  if (id && id !== activeId) play(props.result)
+  if (id && id !== activeId.value) play(props.result)
 }, { immediate: true })
 
 onBeforeUnmount(stop)
@@ -178,20 +187,12 @@ onBeforeUnmount(stop)
         ref="veilRef"
         class="cleaner-animation__veil"
       ></div>
-      <div ref="cardRef" class="cleaner-animation__card" :style="cardStyle">
-        <div ref="flipperRef" class="cleaner-animation__flipper">
-          <div class="cleaner-animation__face">
-            <GameCard
-              :name="activeResult.targetCard.name"
-              :background-url="activeResult.targetCard.backgroundUrl"
-              :frame-url="activeResult.targetCard.frameUrl"
-            />
-          </div>
-          <div class="cleaner-animation__face cleaner-animation__face--back">
-            <img :src="cardBackUrl" alt="" draggable="false" />
-          </div>
-        </div>
-      </div>
+      <EffectCardLayer
+        ref="cardLayerRef"
+        class="cleaner-animation__card"
+        :card="activeResult.targetCard"
+        :style="cardStyle"
+      />
     </div>
   </Teleport>
 </template>
@@ -199,9 +200,5 @@ onBeforeUnmount(stop)
 <style scoped>
 .cleaner-animation { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
 .cleaner-animation__veil { position: fixed; inset: 0; background: radial-gradient(circle at 50% 50%, rgba(15,23,42,.08), rgba(0,0,0,.72) 68%), linear-gradient(115deg, rgba(2,6,23,.76), rgba(15,23,42,.42)); }
-.cleaner-animation__card { position: fixed; z-index: 1; perspective: 1200px; transform-origin: 50% 50%; will-change: transform; }
-.cleaner-animation__flipper { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; will-change: transform; }
-.cleaner-animation__face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; filter: drop-shadow(0 20px 28px rgba(0,0,0,.48)); }
-.cleaner-animation__face--back { transform: rotateY(180deg); }
-.cleaner-animation__face--back img { display: block; width: 100%; height: 100%; object-fit: contain; user-select: none; }
+.cleaner-animation__card { z-index: 1; --effect-card-face-filter: drop-shadow(0 20px 28px rgba(0,0,0,.48)); }
 </style>

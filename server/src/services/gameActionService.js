@@ -2,6 +2,10 @@ import pool from "../db/index.js"
 import { drawCard } from "./drawService.js"
 import { getPublicState } from "./gameStateService.js"
 import { runCardEffect, checkGuess } from "./cardEffectService.js"
+import {
+    buildCardEffectAnimationResult,
+    createCardEffectAnimationContext,
+} from "./cardEffectAnimationService.js"
 import { addLog } from "./actionLogService.js"
 import { discardCard } from "./discardService.js"
 import { finishTurn } from "./roundFlowService.js"
@@ -131,6 +135,14 @@ async function playCardAction({
         throw createServiceError("玩家沒有此手牌")
     }
 
+    const effectAnimationContext = createCardEffectAnimationContext({
+        state,
+        card: discardedCard,
+        playerId: numericPlayerId,
+        targetPlayerId: numericTargetPlayerId,
+        guessedCardName,
+    })
+
     const effectResult = runCardEffect({
         state,
         card: discardedCard,
@@ -138,6 +150,10 @@ async function playCardAction({
         targetPlayerId: numericTargetPlayerId,
         guessedCardName,
     })
+    const animationResult = buildCardEffectAnimationResult(
+        effectAnimationContext,
+        effectResult,
+    )
 
     finishTurn(state, numericPlayerId)
 
@@ -159,6 +175,7 @@ async function playCardAction({
             targetPlayerId,
             guessedCardName,
             result: effectResult,
+            animationResult,
             discardedCard,
             nextTurnPlayerId: state.currentTurnPlayerId,
         })
@@ -169,6 +186,7 @@ async function playCardAction({
     return {
         gameSession,
         result: effectResult,
+        animationResult,
         discardedCard,
         actionLog,
         state,
