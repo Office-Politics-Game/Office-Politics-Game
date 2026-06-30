@@ -1,8 +1,8 @@
 <script setup>
 import { onUnmounted, ref } from 'vue'
 import { gsap } from 'gsap'
-import cardBackUrl from '@/assets/images/card-bg-back.webp'
-import GameCard from './GameCard.vue'
+import { getRectCenteredOffset } from '@/composables/useGameAnimationRects'
+import EffectCardLayer from './EffectCardLayer.vue'
 
 defineProps({
   card: {
@@ -11,10 +11,17 @@ defineProps({
   },
 })
 
-const drawCardElement = ref(null)
-const cardFlipper = ref(null)
+const drawCardLayer = ref(null)
 const revealFront = ref(true)
 let timeline
+
+function getCardElement() {
+  return drawCardLayer.value?.getCardElement?.() ?? null
+}
+
+function getFlipperElement() {
+  return drawCardLayer.value?.getFlipperElement?.() ?? null
+}
 
 function waitForTimeline(buildTimeline) {
   return new Promise((resolve) => {
@@ -25,11 +32,13 @@ function waitForTimeline(buildTimeline) {
 
 function playReducedMotion({ targetRect, onLanded, revealFront }) {
   return waitForTimeline((resolve) => {
+    const cardElement = getCardElement()
+    const flipperElement = getFlipperElement()
     const nextTimeline = gsap.timeline({
       onComplete: resolve,
     })
 
-    gsap.set(drawCardElement.value, {
+    gsap.set(cardElement, {
       width: targetRect.width,
       height: targetRect.height,
       x: targetRect.left,
@@ -37,10 +46,10 @@ function playReducedMotion({ targetRect, onLanded, revealFront }) {
       scale: 0.96,
       autoAlpha: 0,
     })
-    gsap.set(cardFlipper.value, { rotationY: 0 })
+    gsap.set(flipperElement, { rotationY: 0 })
 
     nextTimeline
-      .to(drawCardElement.value, {
+      .to(cardElement, {
         autoAlpha: 1,
         scale: 1,
         duration: 0.18,
@@ -48,7 +57,7 @@ function playReducedMotion({ targetRect, onLanded, revealFront }) {
       })
 
     if (revealFront) {
-      nextTimeline.to(cardFlipper.value, {
+      nextTimeline.to(flipperElement, {
         rotationY: 180,
         duration: 0.18,
         ease: 'power1.inOut',
@@ -57,7 +66,7 @@ function playReducedMotion({ targetRect, onLanded, revealFront }) {
 
     nextTimeline
       .call(onLanded)
-      .to(drawCardElement.value, { autoAlpha: 0, duration: 0.12 }, '+=0.18')
+      .to(cardElement, { autoAlpha: 0, duration: 0.12 }, '+=0.18')
 
     return nextTimeline
   })
@@ -65,9 +74,17 @@ function playReducedMotion({ targetRect, onLanded, revealFront }) {
 
 function playFullMotion({ startRect, targetRect, onLanded, revealFront }) {
   return waitForTimeline((resolve) => {
+    const cardElement = getCardElement()
+    const flipperElement = getFlipperElement()
+    const startOffset = getRectCenteredOffset(startRect, targetRect)
+    if (!cardElement || !flipperElement || !startOffset) {
+      resolve()
+      return gsap.timeline()
+    }
+
     const startScale = startRect.width / targetRect.width
-    const startX = startRect.left + (startRect.width - targetRect.width) / 2
-    const startY = startRect.top + (startRect.height - targetRect.height) / 2
+    const startX = startOffset.x
+    const startY = startOffset.y
     const endX = targetRect.left
     const endY = targetRect.top
     const arcX = startX + (endX - startX) * 0.45
@@ -79,7 +96,7 @@ function playFullMotion({ startRect, targetRect, onLanded, revealFront }) {
       onComplete: resolve,
     })
 
-    gsap.set(drawCardElement.value, {
+    gsap.set(cardElement, {
       width: targetRect.width,
       height: targetRect.height,
       x: startX,
@@ -89,20 +106,20 @@ function playFullMotion({ startRect, targetRect, onLanded, revealFront }) {
       autoAlpha: 1,
       transformOrigin: '50% 50%',
     })
-    gsap.set(cardFlipper.value, {
+    gsap.set(flipperElement, {
       rotationY: 0,
       transformPerspective: 1000,
       transformOrigin: '50% 50%',
     })
 
     nextTimeline
-      .to(drawCardElement.value, {
+      .to(cardElement, {
         y: startY - 18,
         scale: startScale * 1.04,
         duration: 0.18,
         ease: 'power2.out',
       })
-      .to(drawCardElement.value, {
+      .to(cardElement, {
         x: arcX,
         y: arcY,
         scale: startScale + (1 - startScale) * 0.55,
@@ -110,7 +127,7 @@ function playFullMotion({ startRect, targetRect, onLanded, revealFront }) {
         duration: 0.3,
         ease: 'power2.inOut',
       })
-      .to(drawCardElement.value, {
+      .to(cardElement, {
         x: endX,
         y: endY,
         scale: 1,
@@ -120,7 +137,7 @@ function playFullMotion({ startRect, targetRect, onLanded, revealFront }) {
       })
 
     if (revealFront) {
-      nextTimeline.to(cardFlipper.value, {
+      nextTimeline.to(flipperElement, {
         rotationY: 180,
         duration: 0.42,
         ease: 'power2.inOut',
@@ -129,14 +146,14 @@ function playFullMotion({ startRect, targetRect, onLanded, revealFront }) {
 
     nextTimeline
       .call(onLanded)
-      .to(drawCardElement.value, { autoAlpha: 0, duration: 0.12 })
+      .to(cardElement, { autoAlpha: 0, duration: 0.12 })
 
     return nextTimeline
   })
 }
 
 function play(options) {
-  if (!drawCardElement.value || !cardFlipper.value) {
+  if (!getCardElement() || !getFlipperElement()) {
     return Promise.resolve()
   }
 
@@ -185,31 +202,14 @@ defineExpose({
 </script>
 
 <template>
-  <div
-    ref="drawCardElement"
+  <EffectCardLayer
+    ref="drawCardLayer"
     class="card-draw pointer-events-none fixed top-0 left-0 z-40 invisible"
+    :card="card"
+    :show-front="revealFront"
+    front-flipped
     aria-hidden="true"
-  >
-    <div ref="cardFlipper" class="card-draw__flipper relative size-full">
-      <img
-        :src="cardBackUrl"
-        alt=""
-        class="card-draw__face card-draw__face--back absolute inset-0 block size-full object-contain"
-        draggable="false"
-      />
-      <div
-        v-show="revealFront"
-        class="card-draw__face card-draw__face--front absolute inset-0 size-full"
-      >
-        <GameCard
-          v-if="card"
-          :name="card.name"
-          :background-url="card.backgroundUrl"
-          :frame-url="card.frameUrl"
-        />
-      </div>
-    </div>
-  </div>
+  />
 </template>
 
 <style scoped>
@@ -218,22 +218,8 @@ defineExpose({
   will-change: transform, opacity;
 }
 
-.card-draw__flipper {
-  transform-style: preserve-3d;
-  will-change: transform;
-}
-
-.card-draw__face {
-  backface-visibility: hidden;
-}
-
-.card-draw__face--front {
-  transform: rotateY(180deg);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .card-draw,
-  .card-draw__flipper {
+  .card-draw {
     will-change: auto;
   }
 }

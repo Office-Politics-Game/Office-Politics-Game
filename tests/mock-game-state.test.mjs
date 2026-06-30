@@ -3,14 +3,20 @@ import test from 'node:test'
 import {
   createMockGameState,
   drawMockCard,
-  playMockCard,
   drawMockOpponentCard,
+  playMockCard,
 } from '../src/mocks/mockGameState.js'
 
 test('mock game state starts with one player hand card and a drawable deck', () => {
   const state = createMockGameState()
 
   assert.equal(state.currentPlayer.hand.length, 1)
+  assert.equal(state.opponents.length, 3)
+  assert.deepEqual(
+    state.opponents.map((opponent) => opponent.id),
+    ['player-top', 'player-left', 'player-right'],
+  )
+  assert.equal(state.opponents.every((opponent) => opponent.hand.length === 1), true)
   assert.equal(state.currentPlayer.hand[0].id, 'intern-1')
   assert.equal(state.currentPlayer.hand[0].rank, 1)
   assert.equal(state.currentPlayer.hand[0].effectKey, 'guess')
@@ -18,12 +24,6 @@ test('mock game state starts with one player hand card and a drawable deck', () 
   assert.equal(state.currentPlayer.hand[0].requiresGuess, true)
   assert.equal(state.discardPile.length, 0)
   assert.equal(state.playedCards.length, 0)
-  assert.equal(state.opponents.length, 3)
-  assert.deepEqual(
-    state.opponents.map((opponent) => opponent.id),
-    ['player-top', 'player-left', 'player-right'],
-  )
-  assert.equal(state.opponents.every((opponent) => opponent.hand.length === 1), true)
   assert.equal(state.deck.length, 2)
   assert.equal(state.deck.at(-1).id, 'cleaner-1')
 })
@@ -64,31 +64,6 @@ test('drawing stops when the current player already has two cards', () => {
   assert.equal(state.currentPlayer.hand.length, 2)
 })
 
-test('playing a card removes it from hand and records target choices', () => {
-  const state = createMockGameState()
-  const playedCard = playMockCard(state, {
-    cardId: 'intern-1',
-    targetPlayerId: 'player-top',
-    guessedRank: 5,
-  })
-
-  assert.equal(playedCard.id, 'intern-1')
-  assert.equal(playedCard.targetPlayerId, 'player-top')
-  assert.equal(playedCard.guessedRank, 5)
-  assert.equal(state.currentPlayer.hand.length, 0)
-  assert.deepEqual(state.discardPile, [playedCard])
-  assert.deepEqual(state.playedCards, [playedCard])
-})
-
-test('playing rejects cards that are no longer in hand', () => {
-  const state = createMockGameState()
-
-  assert.equal(playMockCard(state, { cardId: 'missing-card' }), null)
-  assert.equal(state.currentPlayer.hand.length, 1)
-  assert.equal(state.discardPile.length, 0)
-  assert.equal(state.playedCards.length, 0)
-})
-
 test('opponent drawing moves the top deck card into the selected opponent hand', () => {
   const state = createMockGameState()
   const drawnCard = drawMockOpponentCard(state, 'player-left', 'cleaner-1')
@@ -116,4 +91,29 @@ test('opponent drawing rejects invalid targets, stale cards, full hands, and emp
   state.deck.length = 0
   assert.equal(drawMockOpponentCard(state, 'player-right'), null)
   assert.equal(state.opponents.find(({ id }) => id === 'player-right').hand.length, 1)
+})
+
+test('playing a card removes it from hand and records target choices', () => {
+  const state = createMockGameState()
+  const playedCard = playMockCard(state, {
+    cardId: 'intern-1',
+    targetPlayerId: 'player-top',
+    guessedRank: 5,
+  })
+
+  assert.equal(playedCard.id, 'intern-1')
+  assert.equal(playedCard.targetPlayerId, 'player-top')
+  assert.equal(playedCard.guessedRank, 5)
+  assert.equal(state.currentPlayer.hand.length, 0)
+  assert.deepEqual(state.discardPile, [playedCard])
+  assert.deepEqual(state.playedCards, [playedCard])
+})
+
+test('playing rejects cards that are no longer in hand', () => {
+  const state = createMockGameState()
+
+  assert.equal(playMockCard(state, { cardId: 'missing-card' }), null)
+  assert.equal(state.currentPlayer.hand.length, 1)
+  assert.equal(state.discardPile.length, 0)
+  assert.equal(state.playedCards.length, 0)
 })

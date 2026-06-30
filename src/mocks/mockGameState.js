@@ -91,6 +91,27 @@ export function drawMockCard(gameState, expectedCardId) {
   return drawnCard
 }
 
+export function drawMockOpponentCard(gameState, playerId, expectedCardId) {
+  const opponent = gameState.opponents.find(
+    (candidate) => candidate.id === playerId,
+  )
+  const nextCard = gameState.deck.at(-1)
+
+  if (
+    !opponent ||
+    opponent.hand.length >= 2 ||
+    !nextCard ||
+    (expectedCardId && nextCard.id !== expectedCardId)
+  ) {
+    return null
+  }
+
+  const drawnCard = gameState.deck.pop()
+  opponent.hand.push(drawnCard)
+
+  return drawnCard
+}
+
 export function playMockCard(gameState, playPayload) {
   const cardIndex = gameState.currentPlayer.hand.findIndex(
     (card) => card.id === playPayload.cardId,
@@ -111,25 +132,4 @@ export function playMockCard(gameState, playPayload) {
   gameState.playedCards.push(playedCard)
 
   return playedCard
-}
-
-export function drawMockOpponentCard(gameState, playerId, expectedCardId) {
-  const opponent = gameState.opponents.find(
-    (candidate) => candidate.id === playerId,
-  )
-  const nextCard = gameState.deck.at(-1)
-
-  if (
-    !opponent ||
-    opponent.hand.length >= 2 ||
-    !nextCard ||
-    (expectedCardId && nextCard.id !== expectedCardId)
-  ) {
-    return null
-  }
-
-  const drawnCard = gameState.deck.pop()
-  opponent.hand.push(drawnCard)
-
-  return drawnCard
 }

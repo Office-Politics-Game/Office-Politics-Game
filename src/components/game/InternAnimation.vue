@@ -1,7 +1,13 @@
 <script setup>
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { gsap } from 'gsap'
-import cardBackUrl from '@/assets/images/card-bg-back.webp'
+import { useCardEffectAnimation } from '@/composables/useCardEffectAnimation'
+import {
+  getCardMotionTiming,
+  getDiscardVars,
+  getFlipVars,
+  getMoveToCenterVars,
+} from '@/composables/useCardMotionPresets'
 import {
   createFixedCardRect,
   getEffectCardHeight,
@@ -10,7 +16,7 @@ import {
   getViewportCenterTranslation,
   rectToFixedStyle,
 } from '@/composables/useGameAnimationRects'
-import GameCard from './GameCard.vue'
+import EffectCardLayer from './EffectCardLayer.vue'
 
 const props = defineProps({
   result: { type: Object, default: null },
@@ -20,41 +26,67 @@ const props = defineProps({
 const emit = defineEmits(['complete'])
 
 const veilRef = ref(null)
-const cardRef = ref(null)
-const flipperRef = ref(null)
+const cardLayerRef = ref(null)
 const glowRef = ref(null)
 const textRef = ref(null)
-const activeResult = ref(null)
 const cardStyle = ref({ display: 'none' })
-let timeline = null
-let activeId = null
 
-function stop() {
-  timeline?.kill()
-  timeline = null
-  gsap.killTweensOf([veilRef.value, cardRef.value, flipperRef.value, glowRef.value, textRef.value].filter(Boolean))
+function getCardElement() {
+  return cardLayerRef.value?.getCardElement?.() ?? null
 }
 
-function finish(result) {
-  stop()
-  activeResult.value = null
-  activeId = null
-  cardStyle.value = { display: 'none' }
-  emit('complete', result)
+function getFlipperElement() {
+  return cardLayerRef.value?.getFlipperElement?.() ?? null
+}
+
+function getKillTargets() {
+  return [veilRef.value, getCardElement(), getFlipperElement(), glowRef.value, textRef.value]
+}
+
+const {
+  activeResult,
+  activeId,
+  timeline,
+  begin,
+  setTimeline,
+  isStale,
+  stop: stopAnimation,
+  finish,
+  isReducedMotion,
+} = useCardEffectAnimation({
+  emitComplete: (result) => emit('complete', result),
+  reset: () => {
+    cardStyle.value = { display: 'none' }
+  },
+})
+
+function stop() {
+  stopAnimation(getKillTargets)
+}
+
+function finishAnimation(result) {
+  finish(result, getKillTargets)
+}
+
+function beginAnimation(result) {
+  begin(result, getKillTargets)
 }
 
 async function playIncorrect(result) {
   await nextTick()
-  if (activeId !== result.id || !veilRef.value || !glowRef.value || !textRef.value) return
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  const flash = reduced ? 0.08 : 0.16
+  if (isStale(result) || !veilRef.value || !glowRef.value || !textRef.value) {
+    finishAnimation(result)
+    return
+  }
+  const reduced = isReducedMotion()
+  const timing = getCardMotionTiming(reduced)
   gsap.set(glowRef.value, { opacity: 0, scale: 0.72 })
   gsap.set(textRef.value, { opacity: 0, scale: 0.82 })
-  timeline = gsap.timeline({ onComplete: () => finish(result) })
-  timeline
-    .to(glowRef.value, { opacity: 1, scale: 1, duration: flash })
-    .to(glowRef.value, { opacity: 0.12, scale: 0.86, duration: flash })
-    .to(glowRef.value, { opacity: 1, scale: 1.06, duration: flash })
+  setTimeline(gsap.timeline({ onComplete: () => finishAnimation(result) }))
+  timeline.value
+    .to(glowRef.value, { opacity: 1, scale: 1, duration: timing.flash })
+    .to(glowRef.value, { opacity: 0.12, scale: 0.86, duration: timing.flash })
+    .to(glowRef.value, { opacity: 1, scale: 1.06, duration: timing.flash })
     .set(textRef.value, { opacity: 1, scale: 1 }, '<')
     .to({}, { duration: 0.85 })
     .set([glowRef.value, textRef.value], { opacity: 0 })
@@ -64,7 +96,7 @@ async function playCorrect(result) {
   const originRect = props.getPlayerHandRect?.(result.targetPlayerId)
   const discardRect = props.getDiscardRect?.()
   if (!originRect || !discardRect || !result.targetCard) {
-    finish(result)
+    finishAnimation(result)
     return
   }
   const height = getEffectCardHeight()
@@ -72,36 +104,38 @@ async function playCorrect(result) {
   const discardTranslation = getTranslation(originRect, discardRect)
   const centerTranslation = getViewportCenterTranslation(originRect)
   const startScale = getScaleForHeight(originRect, height)
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  const travel = reduced ? 0.12 : 0.46
-  const flip = reduced ? 0.12 : 0.34
+  const reduced = isReducedMotion()
+  const timing = getCardMotionTiming(reduced)
   cardStyle.value = rectToFixedStyle(fixedRect)
   await nextTick()
-  if (activeId !== result.id || !cardRef.value || !flipperRef.value || !veilRef.value || !glowRef.value || !textRef.value) return
+  const cardElement = getCardElement()
+  const flipperElement = getFlipperElement()
+  if (isStale(result) || !cardElement || !flipperElement || !veilRef.value || !glowRef.value || !textRef.value) {
+    finishAnimation(result)
+    return
+  }
 
-  gsap.set(cardRef.value, { x: 0, y: 0, scale: startScale, transformPerspective: 1200 })
-  gsap.set(flipperRef.value, { rotationY: 180, transformPerspective: 1200, transformStyle: 'preserve-3d' })
+  gsap.set(cardElement, { x: 0, y: 0, scale: startScale, transformPerspective: 1200 })
+  gsap.set(flipperElement, { rotationY: 180, transformPerspective: 1200, transformStyle: 'preserve-3d' })
   gsap.set([glowRef.value, textRef.value], { opacity: 0, scale: 0.72 })
-  timeline = gsap.timeline({ onComplete: () => finish(result) })
-  timeline
-    .to(cardRef.value, { x: centerTranslation.x, y: centerTranslation.y, scale: Math.min(1.2, Math.max(1, window.innerHeight * 0.52 / height)), duration: travel, ease: reduced ? 'none' : 'expo.out' })
-    .to(flipperRef.value, { rotationY: 0, duration: flip, ease: 'power2.inOut' })
+  setTimeline(gsap.timeline({ onComplete: () => finishAnimation(result) }))
+  timeline.value
+    .to(cardElement, getMoveToCenterVars(centerTranslation, height, { duration: timing.travel, reduced }))
+    .to(flipperElement, getFlipVars(0, timing.flip))
     .set([glowRef.value, textRef.value], { opacity: 1, scale: 1 }, '<+=0.04')
     .to({}, { duration: 1 })
     .set([glowRef.value, textRef.value], { opacity: 0 })
-    .to(cardRef.value, { x: discardTranslation.x, y: discardTranslation.y, scale: getScaleForHeight(discardRect, height), rotation: 2, rotationX: 58, duration: travel, ease: reduced ? 'none' : 'power3.in' }, '<+=0.02')
+    .to(cardElement, getDiscardVars(discardTranslation, discardRect, height, { duration: timing.travel, reduced }), '<+=0.02')
 }
 
 async function play(result) {
-  stop()
-  activeResult.value = result
-  activeId = result.id
+  beginAnimation(result)
   if (result.outcome === 'correct') await playCorrect(result)
   else await playIncorrect(result)
 }
 
 watch(() => props.result?.id, (id) => {
-  if (id && id !== activeId) play(props.result)
+  if (id && id !== activeId.value) play(props.result)
 }, { immediate: true })
 onBeforeUnmount(stop)
 </script>
@@ -112,14 +146,13 @@ onBeforeUnmount(stop)
       <div ref="veilRef" class="intern-animation__veil"></div>
       <div ref="glowRef" class="intern-animation__glow"></div>
       <div ref="textRef" class="intern-animation__text">{{ activeResult.outcome === 'correct' ? '猜對啦' : '猜錯啦' }}</div>
-      <div v-if="activeResult.outcome === 'correct'" ref="cardRef" class="intern-animation__card" :style="cardStyle">
-        <div ref="flipperRef" class="intern-animation__flipper">
-          <div class="intern-animation__face">
-            <GameCard :name="activeResult.targetCard.name" :background-url="activeResult.targetCard.backgroundUrl" :frame-url="activeResult.targetCard.frameUrl" />
-          </div>
-          <div class="intern-animation__face intern-animation__face--back"><img :src="cardBackUrl" alt="" draggable="false" /></div>
-        </div>
-      </div>
+      <EffectCardLayer
+        v-if="activeResult.outcome === 'correct'"
+        ref="cardLayerRef"
+        class="intern-animation__card"
+        :card="activeResult.targetCard"
+        :style="cardStyle"
+      />
     </div>
   </Teleport>
 </template>
@@ -132,9 +165,5 @@ onBeforeUnmount(stop)
 .intern-animation--incorrect .intern-animation__glow { background: radial-gradient(circle,rgba(251,113,133,.76),rgba(225,29,72,.26) 42%,transparent 72%); }
 .intern-animation__text { z-index: 3; margin-top: min(33vmin,250px); color: #86efac; font-size: clamp(34px,7vw,72px); font-weight: 1000; letter-spacing: .08em; text-shadow: 0 0 10px rgba(74,222,128,.9),0 0 28px rgba(34,197,94,.72); white-space: nowrap; }
 .intern-animation--incorrect .intern-animation__text { margin-top: 0; color: #fb7185; text-shadow: 0 0 10px rgba(251,113,133,.92),0 0 30px rgba(225,29,72,.76); }
-.intern-animation__card { position: fixed; z-index: 2; perspective: 1200px; transform-origin: 50% 50%; will-change: transform; }
-.intern-animation__flipper { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
-.intern-animation__face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; filter: drop-shadow(0 20px 28px rgba(0,0,0,.48)); }
-.intern-animation__face--back { transform: rotateY(180deg); }
-.intern-animation__face--back img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.intern-animation__card { z-index: 2; --effect-card-face-filter: drop-shadow(0 20px 28px rgba(0,0,0,.48)); }
 </style>
