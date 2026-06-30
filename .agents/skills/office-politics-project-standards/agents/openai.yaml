@@ -1,0 +1,8 @@
+interface:
+  display_name: "Office Politics 專案規範"
+  short_description: "統一套用團隊開發規範與 Square UI 視覺標準"
+  brand_color: "#86B3E0"
+  default_prompt: "使用 $office-politics-project-standards 檢查並依專案規範完成這項工作。"
+
+policy:
+  allow_implicit_invocation: true

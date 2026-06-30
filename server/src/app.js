@@ -5,6 +5,7 @@ import { router as roomRouter } from "./routes/roomRoutes.js";
 import { router as gameStateRouter } from "./routes/gameSessionRoutes.js";
 import { router as playerRouter } from "./routes/playerRoutes.js";
 import { router as actionRouter, roomActionRouter } from "./routes/actionRoutes.js";
+import { router as friendRouter } from "./routes/friendRoutes.js";
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ app.use("/api/rooms", roomActionRouter)
 app.use("/api/game-states", gameStateRouter)
 app.use("/api/players", playerRouter)
 app.use("/api/actions", actionRouter)
+app.use("/api/friends", friendRouter)
 
 app.get("/", (req, res) => {
     res.send("server is running")
