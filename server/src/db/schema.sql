@@ -93,46 +93,6 @@ CREATE TABLE player_equipped_items (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE friend_requests (
-  id SERIAL PRIMARY KEY,
-  sender_player_id INTEGER NOT NULL REFERENCES players(id),
-  receiver_player_id INTEGER NOT NULL REFERENCES players(id),
-  status VARCHAR(20) NOT NULL DEFAULT 'pending',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  responded_at TIMESTAMP,
-  CONSTRAINT friend_requests_no_self
-    CHECK (sender_player_id <> receiver_player_id),
-  CONSTRAINT friend_requests_status_check
-    CHECK (status IN ('pending', 'accepted', 'rejected'))
-);
-
-CREATE UNIQUE INDEX unique_pending_friend_request_pair
-ON friend_requests(
-  LEAST(sender_player_id, receiver_player_id),
-  GREATEST(sender_player_id, receiver_player_id)
-)
-WHERE status = 'pending';
-
-CREATE INDEX friend_requests_sender_player_id_idx
-ON friend_requests(sender_player_id);
-
-CREATE INDEX friend_requests_receiver_player_id_idx
-ON friend_requests(receiver_player_id);
-
-CREATE TABLE friends (
-  id SERIAL PRIMARY KEY,
-  player_id INTEGER NOT NULL REFERENCES players(id),
-  friend_player_id INTEGER NOT NULL REFERENCES players(id),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT friends_no_self
-    CHECK (player_id <> friend_player_id),
-  CONSTRAINT unique_friend_pair
-    UNIQUE (player_id, friend_player_id)
-);
-
-CREATE INDEX friends_friend_player_id_idx
-ON friends(friend_player_id);
-
 CREATE TABLE game_rooms (
   id SERIAL PRIMARY KEY,
   room_code VARCHAR(6) UNIQUE NOT NULL,
