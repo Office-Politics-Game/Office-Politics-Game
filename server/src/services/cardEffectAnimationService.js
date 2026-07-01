@@ -23,6 +23,7 @@ function createCardEffectAnimationContext({
     guessedCardName,
     sourceCard: sourcePlayer?.hand?.[0] ?? null,
     targetCard: targetPlayer?.hand?.[0] ?? null,
+    targetProtected: Boolean(targetPlayer?.isProtected),
   }
 }
 
@@ -38,6 +39,7 @@ function buildCardEffectAnimationResult(context, effectResult) {
     guessedCardName,
     sourceCard,
     targetCard,
+    targetProtected,
   } = context
 
   switch (cardName) {
@@ -53,6 +55,14 @@ function buildCardEffectAnimationResult(context, effectResult) {
         : null
 
     case 'Intern':
+      if (targetProtected) {
+        return {
+          type: 'protection',
+          targetPlayerId,
+          sourceType: 'intern',
+        }
+      }
+
       return targetCard
         ? {
             type: 'intern',

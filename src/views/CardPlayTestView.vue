@@ -10,6 +10,7 @@ import CardPlayAnimation from '@/components/game/CardPlayAnimation.vue'
 import CardShuffleAnimation from '@/components/game/CardShuffleAnimation.vue'
 import CardSwapAnimation from '@/components/game/CardSwapAnimation.vue'
 import CleanerAnimation from '@/components/game/CleanerAnimation.vue'
+import FlyInTextModal from '@/components/game/FlyInTextModal.vue'
 import GameCard from '@/components/game/GameCard.vue'
 import InternAnimation from '@/components/game/InternAnimation.vue'
 import ManagerAnimation from '@/components/game/ManagerAnimation.vue'
@@ -90,6 +91,9 @@ const internResult = ref(null)
 const managerResult = ref(null)
 const pmResult = ref(null)
 const swapResult = ref(null)
+const isFlyInTextOpen = ref(false)
+const isRoundWinnerNoticeOpen = ref(false)
+const demoRoundWinner = ref(null)
 const lastAction = ref('Ready')
 const effectResolvers = new Map()
 const discardCards = ref([
@@ -131,6 +135,8 @@ const controls = computed(() => [
   },
   { label: 'Defense Success', action: playProtectionSuccess },
   { label: 'HR Swap', action: playSwapAnimation },
+  { label: 'Fly-in Text', action: playFlyInTextModal },
+  { label: 'Round Winner', action: playRoundWinnerNotice },
   { label: '發牌', action: playDealAnimation },
   { label: '洗牌', action: playShuffleAnimation },
   { label: '自己抽牌', action: () => playDrawAnimation(SELF_PLAYER_ID) },
@@ -439,6 +445,23 @@ function playSwapAnimation() {
   return complete
 }
 
+function playFlyInTextModal() {
+  isFlyInTextOpen.value = false
+
+  return nextTick().then(() => {
+    isFlyInTextOpen.value = true
+  })
+}
+
+function playRoundWinnerNotice() {
+  isRoundWinnerNoticeOpen.value = false
+  demoRoundWinner.value = players[0]
+
+  return nextTick().then(() => {
+    isRoundWinnerNoticeOpen.value = true
+  })
+}
+
 function waitForEffectComplete(type, id) {
   return new Promise((resolve) => {
     const key = `${type}:${id}`
@@ -628,6 +651,21 @@ onUnmounted(() => {
       :result="swapResult"
       :get-player-hand-rect="getPlayerHandRect"
       @complete="(result) => clearEffectResult('swap', result)"
+    />
+
+    <FlyInTextModal
+      :is-open="isFlyInTextOpen"
+      text="Crisis Alert"
+      @close="isFlyInTextOpen = false"
+    />
+
+    <FlyInTextModal
+      :is-open="isRoundWinnerNoticeOpen"
+      text="回合勝利"
+      :player-name="demoRoundWinner?.name ?? ''"
+      :avatar-url="demoRoundWinner?.avatarUrl ?? ''"
+      :duration="2400"
+      @close="isRoundWinnerNoticeOpen = false"
     />
   </main>
 </template>

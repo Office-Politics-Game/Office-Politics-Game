@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import gameTableBackgroundUrl from '@/assets/images/bg-game-table.webp'
 import gameLogoUrl from '@/assets/images/logo-en-white.png'
 import { useAudioSettings } from '@/composables/UseAudioSettings'
@@ -9,6 +9,7 @@ import CardGuessSelector from './CardGuessSelector.vue'
 import CardPlayAnimation from './CardPlayAnimation.vue'
 import CardSwapAnimation from './CardSwapAnimation.vue'
 import CleanerAnimation from './CleanerAnimation.vue'
+import FlyInTextModal from './FlyInTextModal.vue'
 import GameCard from './GameCard.vue'
 import GameSettingsIcon from './GameSettingsIcon.vue'
 import GameSettingsModal from './GameSettingsModal.vue'
@@ -108,6 +109,9 @@ const discardRect = ref(null)
 const draggingCardId = ref(null)
 const isDragging = ref(false)
 const isOverPlayZone = ref(false)
+const isTurnNoticeOpen = ref(false)
+const isRoundWinnerNoticeOpen = ref(false)
+const roundWinnerNotice = ref(null)
 const pendingPlay = ref(null)
 const selectedTargetPlayerId = ref(null)
 const selectedGuessRank = ref(null)
@@ -158,6 +162,10 @@ const isCurrentPlayerTurn = computed(() => {
 
   return String(props.currentTurnPlayerId) === String(resolvedCurrentPlayerId.value)
 })
+const isExplicitCurrentPlayerTurn = computed(() =>
+  Boolean(props.currentTurnPlayerId && resolvedCurrentPlayerId.value) &&
+  String(props.currentTurnPlayerId) === String(resolvedCurrentPlayerId.value),
+)
 const pendingTargetMode = computed(() => pendingPlay.value?.card.targetMode ?? 'none')
 const pendingRequiresTarget = computed(() =>
   pendingTargetMode.value === 'opponent' ||
@@ -208,6 +216,15 @@ const selectedGuessOption = computed(() =>
 const protectedPlayers = computed(() =>
   props.players.filter((player) => player.isProtected),
 )
+const activeProtectionAnimationPlayer = computed(() => {
+  if (activeEffectResult.value?.type !== 'protection') {
+    return null
+  }
+
+  return props.players.find(
+    (player) => String(player.id) === String(activeEffectResult.value.targetPlayerId),
+  ) ?? null
+})
 const canConfirmPendingPlay = computed(() => {
   if (!pendingPlay.value) {
     return false
@@ -336,6 +353,44 @@ function stopEffectAnimation() {
   settleEffectAnimation(null, false)
 }
 
+function playTurnNotice() {
+  if (isRoundWinnerNoticeOpen.value) {
+    return
+  }
+
+  isTurnNoticeOpen.value = false
+
+  nextTick(() => {
+    isTurnNoticeOpen.value = true
+  })
+}
+
+function playRoundWinnerNotice(player) {
+  if (!player) {
+    return
+  }
+
+  isTurnNoticeOpen.value = false
+  isRoundWinnerNoticeOpen.value = false
+  roundWinnerNotice.value = {
+    name: player.name,
+    avatarUrl: player.avatarUrl,
+  }
+
+  nextTick(() => {
+    isRoundWinnerNoticeOpen.value = true
+  })
+}
+
+function getRoundWinSnapshot(players) {
+  return Object.fromEntries(
+    players.map((player) => [
+      String(player.id),
+      Number(player.roundWins ?? 0),
+    ]),
+  )
+}
+
 function playEffectAnimation(result) {
   if (!result?.type) {
     return Promise.resolve(false)
@@ -350,10 +405,14 @@ function playEffectAnimation(result) {
 
   return new Promise((resolve) => {
     effectAnimationResolve = resolve
-    effectAnimationTimeout = window.setTimeout(() => {
-      settleEffectAnimation(nextResult, false)
-    }, 8000)
     activeEffectResult.value = nextResult
+
+    effectAnimationTimeout = window.setTimeout(
+      () => {
+        settleEffectAnimation(nextResult, nextResult.type === 'protection')
+      },
+      nextResult.type === 'protection' ? 1000 : 8000,
+    )
   })
 }
 
@@ -417,6 +476,25 @@ function preparePendingPlay(card) {
   resetPendingChoices()
 }
 
+function cardRequiresPlayChoices(card) {
+  return (
+    card?.targetMode === 'opponent' ||
+    card?.targetMode === 'anyPlayer' ||
+    Boolean(card?.requiresGuess)
+  )
+}
+
+function emitPlayCard(card, targetPlayerId = null, guessedRank = null) {
+  emit('play-card', {
+    card,
+    cardId: card.id,
+    cardRank: card.rank,
+    effectKey: card.effectKey,
+    targetPlayerId,
+    guessedRank,
+  })
+}
+
 function selectTargetPlayer(playerId) {
   if (!selectableTargetPlayerIds.value.includes(playerId)) {
     return
@@ -440,14 +518,7 @@ function confirmPendingPlay() {
 
   const playedCard = pendingPlay.value.card
 
-  emit('play-card', {
-    card: playedCard,
-    cardId: playedCard.id,
-    cardRank: playedCard.rank,
-    effectKey: playedCard.effectKey,
-    targetPlayerId: selectedTargetPlayerId.value,
-    guessedRank: selectedGuessRank.value,
-  })
+  emitPlayCard(playedCard, selectedTargetPlayerId.value, selectedGuessRank.value)
 
   pendingPlay.value = null
   resetPendingChoices()
@@ -488,7 +559,11 @@ async function playActiveCard() {
     })
 
     if (didPlay) {
-      preparePendingPlay(card)
+      if (cardRequiresPlayChoices(card)) {
+        preparePendingPlay(card)
+      } else {
+        emitPlayCard(card)
+      }
     }
   } finally {
     resetInteraction()
@@ -581,6 +656,36 @@ onBeforeUnmount(() => {
   stopEffectAnimation()
 })
 
+watch(
+  () => [props.currentTurnPlayerId, resolvedCurrentPlayerId.value],
+  ([turnPlayerId], [previousTurnPlayerId] = []) => {
+    if (
+      isExplicitCurrentPlayerTurn.value &&
+      String(turnPlayerId) !== String(previousTurnPlayerId)
+    ) {
+      playTurnNotice()
+    }
+  },
+  { immediate: true },
+)
+
+watch(
+  () => getRoundWinSnapshot(props.players),
+  (nextWins, previousWins = {}) => {
+    const winner = props.players.find((player) => {
+      const playerId = String(player.id)
+      const nextWinCount = Number(nextWins[playerId] ?? 0)
+      const previousWinCount = Number(previousWins[playerId] ?? nextWinCount)
+
+      return nextWinCount > previousWinCount
+    })
+
+    if (winner) {
+      playRoundWinnerNotice(winner)
+    }
+  },
+)
+
 defineExpose({
   playDrawAnimation,
   playEffectAnimation,
@@ -662,6 +767,16 @@ defineExpose({
           :position="player.position"
         />
       </TransitionGroup>
+
+      <Transition name="protection-aura-fade">
+        <ProtectionAura
+          v-if="activeProtectionAnimationPlayer"
+          :key="`protection-block-${activeEffectResult.id}`"
+          :success-key="activeEffectResult.id"
+          screen-anchored
+          :position="activeProtectionAnimationPlayer.position"
+        />
+      </Transition>
 
       <section
         v-if="pendingPlay"
@@ -784,6 +899,21 @@ defineExpose({
       @update:sound-volume="setSoundVolume"
       @return-lobby="emit('return-lobby')"
       @restart-game="emit('restart-game')"
+    />
+
+    <FlyInTextModal
+      :is-open="isTurnNoticeOpen"
+      text="輪到你的回合"
+      @close="isTurnNoticeOpen = false"
+    />
+
+    <FlyInTextModal
+      :is-open="isRoundWinnerNoticeOpen"
+      text="回合勝利"
+      :player-name="roundWinnerNotice?.name ?? ''"
+      :avatar-url="roundWinnerNotice?.avatarUrl ?? ''"
+      :duration="2400"
+      @close="isRoundWinnerNoticeOpen = false"
     />
 
     <RotateDeviceNotice />

@@ -235,8 +235,9 @@ function normalizeEffectAnimationResult(result) {
     case 'cleaner': {
       const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
       const targetCard = result.targetCard ? normalizeCard(result.targetCard) : null
+      const revealCard = result.revealCard !== false
 
-      return targetPlayerId && targetCard
+      return targetPlayerId && (targetCard || !revealCard)
         ? {
             ...result,
             id,
@@ -245,7 +246,7 @@ function normalizeEffectAnimationResult(result) {
               normalizeAnimationPlayerId(result.viewerPlayerId) ??
               resolvedCurrentPlayerId.value,
             targetCard,
-            revealCard: result.revealCard !== false,
+            revealCard,
           }
         : null
     }
@@ -264,6 +265,18 @@ function normalizeEffectAnimationResult(result) {
             id,
             targetPlayerId,
             targetCard,
+          }
+        : null
+    }
+
+    case 'protection': {
+      const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
+
+      return targetPlayerId
+        ? {
+            ...result,
+            id,
+            targetPlayerId,
           }
         : null
     }

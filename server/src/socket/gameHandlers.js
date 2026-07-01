@@ -18,6 +18,55 @@ function emitGameAction(target, roomCode, action) {
     target.emit("game:action", createGameActionPayload(roomCode, action))
 }
 
+function getPlayerId(player) {
+    return Number(player?.playerId ?? player?.id)
+}
+
+function createAnimationResultForViewer(animationResult, viewerPlayerId, sourcePlayerId) {
+    if (animationResult?.type !== "cleaner") {
+        return animationResult
+    }
+
+    const numericViewerPlayerId = Number(viewerPlayerId)
+    const numericSourcePlayerId = Number(sourcePlayerId)
+
+    if (numericViewerPlayerId === numericSourcePlayerId) {
+        return {
+            ...animationResult,
+            viewerPlayerId: numericSourcePlayerId,
+            revealCard: true,
+        }
+    }
+
+    return {
+        type: "cleaner",
+        targetPlayerId: animationResult.targetPlayerId,
+        viewerPlayerId: numericSourcePlayerId,
+        revealCard: false,
+    }
+}
+
+function emitPlayCardActionToPlayers(io, roomCode, state, action) {
+    const players = Array.isArray(state?.players) ? state.players : []
+
+    players.forEach((player) => {
+        const viewerPlayerId = getPlayerId(player)
+
+        if (!viewerPlayerId) {
+            return
+        }
+
+        emitGameAction(io.to(`game:${roomCode}:player:${viewerPlayerId}`), roomCode, {
+            ...action,
+            animationResult: createAnimationResultForViewer(
+                action.animationResult,
+                viewerPlayerId,
+                action.playerId,
+            ),
+        })
+    })
+}
+
 async function emitGameStateToPlayers(io, roomCode, state) {
     const players = Array.isArray(state.players) ? state.players : []
 
@@ -164,7 +213,7 @@ function registerGameHandlers(io, socket) {
                 viewerPlayerId: Number(playerId),
             })
 
-            emitGameAction(io.to(`game:${roomCode}`), roomCode, {
+            emitPlayCardActionToPlayers(io, roomCode, result.state, {
                 id: result.actionLog?.id ? `play-card:${result.actionLog.id}` : undefined,
                 type: "play-card",
                 playerId: Number(playerId),
