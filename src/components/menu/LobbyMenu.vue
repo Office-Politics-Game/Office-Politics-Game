@@ -8,7 +8,6 @@
         class="social-flip-face social-flip-front relative h-full w-full bg-[length:100%_100%] bg-center shadow-2xl"
         :style="{ backgroundImage: `url(${menuBg})` }"
       >
-        <!-- 開始遊玩 -->
         <button
           class="menu-btn left-[35px] top-[32px] h-[244px] w-[170px] gap-6 lg:left-[58px] lg:top-[53px] lg:h-[407px] lg:w-[283px]"
           @click="$router.push({ name: 'LobbyGameMenu' })"
@@ -16,28 +15,26 @@
           <div class="btn-content">
             <img
               src="../../assets/images/icon-card.png"
-              alt="開始遊玩"
+              alt="開始對局"
               class="h-auto w-[78px] object-contain lg:w-[120px]"
             />
-            <span class="text-lg font-bold tracking-wider">開始遊玩</span>
+            <span class="text-lg font-bold tracking-wider">開始對局</span>
           </div>
         </button>
 
-        <!-- 個人區域 -->
         <button
           class="menu-btn left-[212px] top-[32px] h-[148px] w-[220px] lg:left-[353px] lg:top-[53px] lg:h-[247px] lg:w-[367px]"
         >
           <div class="btn-content">
             <img
               src="../../assets/images/icon-personal.png"
-              alt="個人區域"
+              alt="個人資料"
               class="h-auto w-[59px] object-contain lg:w-[90px]"
             />
-            <span class="mt-2 text-lg font-bold tracking-wider">個人區域</span>
+            <span class="mt-2 text-lg font-bold tracking-wider">個人資料</span>
           </div>
         </button>
 
-        <!-- 社交 -->
         <button
           class="menu-btn right-[40px] top-[32px] h-[88px] w-[96px] lg:right-[67px] lg:top-[53px] lg:h-[147px] lg:w-[160px]"
           :disabled="isSocialTransitioning"
@@ -53,7 +50,6 @@
           </div>
         </button>
 
-        <!-- 設定 -->
         <button
           class="menu-btn right-[40px] top-[126px] h-[70px] w-[96px] lg:right-[67px] lg:top-[210px] lg:h-[117px] lg:w-[160px]"
         >
@@ -67,7 +63,6 @@
           </div>
         </button>
 
-        <!-- 招募 -->
         <button
           class="menu-btn left-[212px] bottom-[47px] h-[90px] w-[95px] lg:left-[353px] lg:bottom-[79px] lg:h-[150px] lg:w-[158px]"
         >
@@ -81,9 +76,10 @@
           </div>
         </button>
 
-        <!-- 商城 -->
         <button
           class="menu-btn left-[314px] bottom-[47px] h-[90px] w-[86px] lg:left-[523px] lg:bottom-[79px] lg:h-[150px] lg:w-[143px]"
+          :disabled="isMallTransitioning"
+          @click="openMallPage"
         >
           <div class="btn-content">
             <img
@@ -95,7 +91,6 @@
           </div>
         </button>
 
-        <!-- 打卡下班 -->
         <button
           class="menu-btn right-[40px] bottom-[47px] h-[74px] w-[130px] lg:right-[67px] lg:bottom-[79px] lg:h-[124px] lg:w-[217px]"
           @click="$router.push('/')"
@@ -103,10 +98,10 @@
           <div class="btn-content">
             <img
               src="../../assets/images/icon-quit.png"
-              alt="打卡下班"
+              alt="離開遊戲"
               class="h-auto w-[32px] object-contain lg:w-[48px]"
             />
-            <span class="mt-1 text-lg font-bold tracking-wider">打卡下班</span>
+            <span class="mt-1 text-lg font-bold tracking-wider">離開遊戲</span>
           </div>
         </button>
       </section>
@@ -117,8 +112,8 @@
       >
         <div class="social-flip-backdrop"></div>
         <div class="social-flip-copy">
-          <span>社交</span>
-          <strong>交誼聽</strong>
+          <span>社交通訊</span>
+          <strong>同事連線中</strong>
         </div>
       </section>
     </div>
@@ -133,10 +128,11 @@ import menuBg from "@/assets/images/menu.webp";
 
 const router = useRouter();
 const isSocialTransitioning = ref(false);
+const isMallTransitioning = ref(false);
 const SOCIAL_FLIP_DURATION = 700;
 
 function openFriendPage() {
-  if (isSocialTransitioning.value) {
+  if (isSocialTransitioning.value || isMallTransitioning.value) {
     return;
   }
 
@@ -150,6 +146,23 @@ function openFriendPage() {
   window.setTimeout(() => {
     router.push("/friend");
   }, SOCIAL_FLIP_DURATION);
+}
+
+function openMallPage() {
+  if (isMallTransitioning.value || isSocialTransitioning.value) {
+    return;
+  }
+
+  isMallTransitioning.value = true;
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    router.push("/mall");
+    return;
+  }
+
+  window.setTimeout(() => {
+    router.push("/mall");
+  }, 180);
 }
 </script>
 
