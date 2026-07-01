@@ -44,6 +44,14 @@ function buildCardEffectAnimationResult(context, effectResult) {
 
   switch (cardName) {
     case 'Cleaner':
+      if (targetProtected) {
+        return {
+          type: 'protection',
+          targetPlayerId,
+          sourceType: 'cleaner',
+        }
+      }
+
       return targetCard
         ? {
             type: 'cleaner',
@@ -73,6 +81,14 @@ function buildCardEffectAnimationResult(context, effectResult) {
         : null
 
     case 'Manager': {
+      if (targetProtected) {
+        return {
+          type: 'protection',
+          targetPlayerId,
+          sourceType: 'manager',
+        }
+      }
+
       if (!sourceCard || !targetCard) {
         return null
       }
@@ -97,6 +113,13 @@ function buildCardEffectAnimationResult(context, effectResult) {
       }
     }
 
+    case 'Senior':
+      return {
+        type: 'protection',
+        targetPlayerId: playerId,
+        sourceType: 'senior',
+      }
+
     case 'PM':
       return effectResult?.discardedCard
         ? {
@@ -108,6 +131,14 @@ function buildCardEffectAnimationResult(context, effectResult) {
         : null
 
     case 'HR':
+      if (targetProtected) {
+        return {
+          type: 'protection',
+          targetPlayerId,
+          sourceType: 'hr',
+        }
+      }
+
       return sourceCard && targetCard
         ? {
             type: 'swap',

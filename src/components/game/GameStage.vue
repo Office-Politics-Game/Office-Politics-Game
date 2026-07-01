@@ -7,6 +7,7 @@ import { useGameAnimationRects } from '@/composables/useGameAnimationRects'
 import CardDrawAnimation from './CardDrawAnimation.vue'
 import CardGuessSelector from './CardGuessSelector.vue'
 import CardPlayAnimation from './CardPlayAnimation.vue'
+import CardShuffleAnimation from './CardShuffleAnimation.vue'
 import CardSwapAnimation from './CardSwapAnimation.vue'
 import CleanerAnimation from './CleanerAnimation.vue'
 import FlyInTextModal from './FlyInTextModal.vue'
@@ -100,6 +101,7 @@ const playerSeats = ref(null)
 const playerHand = ref(null)
 const cardDrawAnimation = ref(null)
 const cardPlayAnimation = ref(null)
+const cardShuffleAnimation = ref(null)
 const activeEffectResult = ref(null)
 const activeCard = ref(null)
 const originRect = ref(null)
@@ -112,6 +114,10 @@ const isOverPlayZone = ref(false)
 const isTurnNoticeOpen = ref(false)
 const isRoundWinnerNoticeOpen = ref(false)
 const roundWinnerNotice = ref(null)
+const isInitialRoundDrawAnimating = ref(false)
+const initialRoundDealtPlayerIds = ref([])
+const lastInitialRoundDealSignature = ref(null)
+const locallyHiddenPlayedCardIds = ref([])
 const pendingPlay = ref(null)
 const selectedTargetPlayerId = ref(null)
 const selectedGuessRank = ref(null)
@@ -120,6 +126,7 @@ let effectAnimationTimeout = null
 let effectAnimationSequence = 0
 let pointerMoveHandler = null
 let pointerUpHandler = null
+const hiddenPlayedCardTimers = new Map()
 const resolvedCurrentPlayerId = computed(
   () =>
     props.currentPlayerId ??
@@ -187,13 +194,51 @@ const selectableTargetPlayerIds = computed(() => {
     })
     .map((player) => player.id)
 })
-const resolvedPlayerHandCardCounts = computed(() => props.playerHandCardCounts)
-const visibleHandCards = computed(() => {
-  const pendingCardId = pendingPlay.value?.card?.id
+const initialRoundDealtPlayerIdSet = computed(
+  () => new Set(initialRoundDealtPlayerIds.value),
+)
+const resolvedPlayerHandCardCounts = computed(() => {
+  if (!isInitialRoundDrawAnimating.value) {
+    return props.playerHandCardCounts
+  }
 
-  return pendingCardId
+  return Object.fromEntries(
+    props.players.map((player) => [
+      player.id,
+      initialRoundDealtPlayerIdSet.value.has(player.id)
+        ? Number(props.playerHandCardCounts[player.id] ?? 0)
+        : 0,
+    ]),
+  )
+})
+const visibleHandCards = computed(() => {
+  if (
+    isInitialRoundDrawAnimating.value &&
+    resolvedCurrentPlayerId.value &&
+    !initialRoundDealtPlayerIdSet.value.has(String(resolvedCurrentPlayerId.value))
+  ) {
+    return []
+  }
+
+  const pendingCardId = pendingPlay.value?.card?.id
+  const hiddenCardIds = new Set(locallyHiddenPlayedCardIds.value)
+  const cards = pendingCardId
     ? props.handCards.filter((card) => card.id !== pendingCardId)
     : props.handCards
+
+  return cards.filter((card) => !hiddenCardIds.has(card.id))
+})
+const advisorRuleDisabledCardIds = computed(() => {
+  const hasAdvisor = visibleHandCards.value.some(isAdvisorCard)
+  const hasPmOrHr = visibleHandCards.value.some(isPmOrHrCard)
+
+  if (!hasAdvisor || !hasPmOrHr) {
+    return []
+  }
+
+  return visibleHandCards.value
+    .filter((card) => !isAdvisorCard(card))
+    .map((card) => card.id)
 })
 const visibleDiscardCards = computed(() => {
   const pendingCard = pendingPlay.value?.card
@@ -242,6 +287,7 @@ const canConfirmPendingPlay = computed(() => {
 })
 const isPlayInteractionLocked = computed(() =>
   props.isLoading ||
+  isInitialRoundDrawAnimating.value ||
   !isCurrentPlayerTurn.value ||
   Boolean(activeCard.value) ||
   Boolean(pendingPlay.value) ||
@@ -262,8 +308,101 @@ const dragPreviewStyle = computed(() => {
   }
 })
 
+function getCardName(card) {
+  return String(card?.name ?? '').trim().toLowerCase()
+}
+
+function getCardRank(card) {
+  return Number(card?.rank ?? card?.cardRank ?? card?.value)
+}
+
+function isAdvisorCard(card) {
+  return getCardRank(card) === 7 || ['advisor', 'adviser'].includes(getCardName(card))
+}
+
+function isPmOrHrCard(card) {
+  const cardName = getCardName(card)
+
+  return getCardRank(card) === 5 ||
+    getCardRank(card) === 6 ||
+    cardName === 'pm' ||
+    cardName === 'hr'
+}
+
 function isSelfDraw(playerId) {
   return !playerId || animationRects.isSelfPlayer(playerId)
+}
+
+function getInitialRoundDealSignature() {
+  if (
+    props.players.length === 0 ||
+    props.discardCards.length > 0 ||
+    props.handCards.length !== 1
+  ) {
+    return null
+  }
+
+  const handCounts = props.players.map((player) =>
+    Number(props.playerHandCardCounts[player.id] ?? 0),
+  )
+
+  if (handCounts.some((count) => count !== 1)) {
+    return null
+  }
+
+  return props.players
+    .map((player) => `${player.id}:${player.roundWins}:${props.playerHandCardCounts[player.id]}`)
+    .join('|')
+}
+
+function getInitialRoundDealCard(playerId) {
+  return animationRects.isSelfPlayer(playerId) ? props.handCards[0] : null
+}
+
+async function playInitialRoundDrawSequence(signature) {
+  if (!signature || isInitialRoundDrawAnimating.value) {
+    return
+  }
+
+  isInitialRoundDrawAnimating.value = true
+  initialRoundDealtPlayerIds.value = []
+  await nextTick()
+
+  try {
+    const deckPose = tableCardPilesRef.value?.getDeckAnimationPose?.()
+
+    if (deckPose) {
+      await cardShuffleAnimation.value?.play({
+        deckPose,
+        deckCount: Number(props.deckCount) || 0,
+      })
+    }
+
+    for (const player of props.players) {
+      const didDraw = await playDrawAnimation(
+        getInitialRoundDealCard(player.id),
+        player.id,
+      )
+
+      initialRoundDealtPlayerIds.value = [
+        ...new Set([
+          ...initialRoundDealtPlayerIds.value,
+          player.id,
+        ]),
+      ]
+
+      if (!didDraw) {
+        await nextTick()
+      }
+    }
+  } finally {
+    initialRoundDealtPlayerIds.value = props.players.map((player) => player.id)
+    isInitialRoundDrawAnimating.value = false
+
+    if (isExplicitCurrentPlayerTurn.value) {
+      playTurnNotice({ force: true })
+    }
+  }
 }
 
 function requestDraw() {
@@ -353,8 +492,18 @@ function stopEffectAnimation() {
   settleEffectAnimation(null, false)
 }
 
-function playTurnNotice() {
-  if (isRoundWinnerNoticeOpen.value) {
+function playTurnNotice({ force = false } = {}) {
+  const initialRoundDealSignature = getInitialRoundDealSignature()
+
+  if (
+    isRoundWinnerNoticeOpen.value ||
+    isInitialRoundDrawAnimating.value ||
+    (
+      !force &&
+      initialRoundDealSignature &&
+      lastInitialRoundDealSignature.value !== initialRoundDealSignature
+    )
+  ) {
     return
   }
 
@@ -484,7 +633,39 @@ function cardRequiresPlayChoices(card) {
   )
 }
 
+function clearHiddenPlayedCard(cardId) {
+  const timer = hiddenPlayedCardTimers.get(cardId)
+
+  if (timer) {
+    window.clearTimeout(timer)
+    hiddenPlayedCardTimers.delete(cardId)
+  }
+
+  locallyHiddenPlayedCardIds.value = locallyHiddenPlayedCardIds.value.filter(
+    (hiddenCardId) => hiddenCardId !== cardId,
+  )
+}
+
+function hideSubmittedCard(cardId) {
+  if (!cardId || locallyHiddenPlayedCardIds.value.includes(cardId)) {
+    return
+  }
+
+  locallyHiddenPlayedCardIds.value = [
+    ...locallyHiddenPlayedCardIds.value,
+    cardId,
+  ]
+
+  const timer = window.setTimeout(() => {
+    clearHiddenPlayedCard(cardId)
+  }, 5000)
+
+  hiddenPlayedCardTimers.set(cardId, timer)
+}
+
 function emitPlayCard(card, targetPlayerId = null, guessedRank = null) {
+  hideSubmittedCard(card.id)
+
   emit('play-card', {
     card,
     cardId: card.id,
@@ -609,7 +790,10 @@ function handleWindowPointerUp(event) {
 }
 
 function handleCardPointerDown(card, event) {
-  if (isPlayInteractionLocked.value) {
+  if (
+    isPlayInteractionLocked.value ||
+    advisorRuleDisabledCardIds.value.includes(card.id)
+  ) {
     return
   }
 
@@ -654,6 +838,8 @@ onBeforeUnmount(() => {
   clearPointerListeners()
   cardPlayAnimation.value?.stop?.()
   stopEffectAnimation()
+  hiddenPlayedCardTimers.forEach((timer) => window.clearTimeout(timer))
+  hiddenPlayedCardTimers.clear()
 })
 
 watch(
@@ -665,6 +851,19 @@ watch(
     ) {
       playTurnNotice()
     }
+  },
+  { immediate: true },
+)
+
+watch(
+  getInitialRoundDealSignature,
+  (signature) => {
+    if (!signature || signature === lastInitialRoundDealSignature.value) {
+      return
+    }
+
+    lastInitialRoundDealSignature.value = signature
+    playInitialRoundDrawSequence(signature)
   },
   { immediate: true },
 )
@@ -683,6 +882,17 @@ watch(
     if (winner) {
       playRoundWinnerNotice(winner)
     }
+  },
+)
+
+watch(
+  () => props.handCards.map((card) => card.id),
+  (cardIds) => {
+    const handCardIdSet = new Set(cardIds)
+
+    locallyHiddenPlayedCardIds.value
+      .filter((cardId) => !handCardIdSet.has(cardId))
+      .forEach(clearHiddenPlayedCard)
   },
 )
 
@@ -710,6 +920,7 @@ defineExpose({
       <PlayerSeats
         ref="playerSeats"
         :players="players"
+        :dealt-player-ids="initialRoundDealtPlayerIds"
         :player-hand-card-counts="resolvedPlayerHandCardCounts"
         :is-target-selection-active="Boolean(pendingPlay) && pendingRequiresTarget"
         :selectable-player-ids="selectableTargetPlayerIds"
@@ -755,6 +966,7 @@ defineExpose({
           ref="playerHand"
           :cards="visibleHandCards"
           :dragging-card-id="draggingCardId"
+          :disabled-card-ids="advisorRuleDisabledCardIds"
           @card-pointerdown="handleCardPointerDown"
         />
       </div>
@@ -826,6 +1038,7 @@ defineExpose({
         ref="cardDrawAnimation"
         :card="activeDrawCard"
       />
+      <CardShuffleAnimation ref="cardShuffleAnimation" />
 
       <div
         v-if="hasActivePlay && isDragging"

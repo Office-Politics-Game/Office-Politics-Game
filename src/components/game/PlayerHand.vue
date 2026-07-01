@@ -19,6 +19,11 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  disabledCardIds: {
+    type: Array,
+    default: () => [],
+    validator: (cardIds) => cardIds.every((cardId) => typeof cardId === 'string'),
+  },
 })
 
 const emit = defineEmits(['card-pointerdown'])
@@ -48,6 +53,10 @@ function finishDraw() {
   isDrawing.value = false
 }
 
+function isCardDisabled(card) {
+  return props.disabledCardIds.includes(card.id)
+}
+
 defineExpose({
   prepareDrawTarget,
   getDrawTargetRect,
@@ -71,11 +80,15 @@ defineExpose({
       v-for="card in cards"
       :key="card.id"
       class="game-card-arrangement absolute bottom-0 left-1/2 aspect-[3/4] h-[clamp(126px,31vh,230px)] origin-bottom select-none"
-      :class="{ 'game-card-arrangement--dragging': card.id === draggingCardId }"
+      :class="{
+        'game-card-arrangement--dragging': card.id === draggingCardId,
+        'game-card-arrangement--disabled': isCardDisabled(card),
+      }"
       role="button"
-      tabindex="0"
+      :tabindex="isCardDisabled(card) ? -1 : 0"
+      :aria-disabled="isCardDisabled(card)"
       :aria-label="`出牌：${card.name}`"
-      @pointerdown="emit('card-pointerdown', card, $event)"
+      @pointerdown="!isCardDisabled(card) && emit('card-pointerdown', card, $event)"
     >
       <div class="game-card-motion size-full">
         <GameCard
@@ -119,6 +132,11 @@ defineExpose({
 
 .game-card-arrangement:active {
   cursor: grabbing;
+}
+
+.game-card-arrangement--disabled,
+.game-card-arrangement--disabled:active {
+  cursor: not-allowed;
 }
 
 .game-card-arrangement:nth-child(1) {
