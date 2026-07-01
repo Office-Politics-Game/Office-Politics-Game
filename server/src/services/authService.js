@@ -52,7 +52,7 @@ async function deleteSupabaseUserQuietly(authUserId) {
     }
 }
 
-async function registerPlayer({ username, account, password, avatarId }) {
+async function registerPlayer({ username, account, password, avatarId } = {}) {
     const trimmedUsername = username?.trim()
     const trimmedAccount = account?.trim().toLowerCase()
 
@@ -130,7 +130,7 @@ async function registerPlayer({ username, account, password, avatarId }) {
     }
 }
 
-async function loginPlayer({ account, password }) {
+async function loginPlayer({ account, password } = {}) {
     const trimmedAccount = account?.trim().toLowerCase()
 
     if (!trimmedAccount) {
