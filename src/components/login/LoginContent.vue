@@ -32,12 +32,12 @@
         <span class="sr-only">帳號</span>
         <input
           class="login-input w-full border outline-0 pr-[78px]"
-          type="text" v-model="username"
+          type="text" v-model="account"
           autocomplete="username"
           placeholder="帳號"
         />
-        <p v-if="usernameError" class="login-error">
-          {{ usernameError }}
+        <p v-if="accountError" class="login-error">
+          {{ accountError }}
         </p>
         <span
           class="absolute right-2 top-1/2 flex -translate-y-1/2 gap-1"
@@ -156,14 +156,14 @@ const emit = defineEmits(["close"]);
 const authStore = useAuthStore();
 const router = useRouter();
 
-const username = ref("");
+const account = ref("");
 const password = ref("");
-const usernameError = ref("");
+const accountError = ref("");
 const passwordError = ref("");
 function validateLoginForm(){
-  usernameError.value = username.value.trim() ? "" : "請輸入帳號";
+  accountError.value = account.value.trim() ? "" : "請輸入帳號";
   passwordError.value = password.value.trim() ? "" : "請輸入密碼";
-  return !usernameError.value && !passwordError.value
+  return !accountError.value && !passwordError.value
 }
 async function handleLogin(){
   const isValid = validateLoginForm()
@@ -172,7 +172,7 @@ async function handleLogin(){
   }
   try {
     await authStore.login({
-      username: username.value.trim(),
+      account: account.value.trim(),
       password: password.value,
     });
 

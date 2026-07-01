@@ -1,140 +1,141 @@
 <template>
-    <section
-        class="login-card relative w-full overflow-hidden px-6 py-7 sm:px-8 sm:py-8 max-lg:landscape:max-w-[92vw] max-lg:landscape:px-4 max-lg:landscape:py-3 lg:max-w-[420px]"
-        aria-labelledby="register-title"
+  <section
+    class="login-card relative w-full overflow-hidden px-6 py-7 sm:px-8 sm:py-8 max-lg:landscape:max-w-[92vw] max-lg:landscape:px-4 max-lg:landscape:py-3 lg:max-w-[420px]"
+    aria-labelledby="register-title"
+  >
+    <div
+      class="absolute inset-x-8 top-0 h-px login-rule"
+      aria-hidden="true"
+    ></div>
+    <button
+      type="button"
+      class="btn-dark tap-pop absolute right-3 top-3 grid h-9 w-9 place-items-center"
+      aria-label="返回登入頁"
+      :disabled="isSubmitting"
+      @click="goLogin"
     >
-        <div
-          class="absolute inset-x-8 top-0 h-px login-rule"
-          aria-hidden="true"
-        ></div>
+      <span aria-hidden="true">×</span>
+    </button>
+    <h2
+      id="register-title"
+      class="mb-7 text-center font-black login-title max-lg:landscape:mb-3"
+    >
+      註冊
+    </h2>
+    <form
+      class="grid gap-3.5 max-lg:landscape:gap-2"
+      @submit.prevent="handleRegister"
+    >
+      <label class="relative block">
+        <span class="sr-only">用戶名稱</span>
+        <input
+          v-model.trim="form.username"
+          class="login-input w-full border outline-0"
+          type="text"
+          autocomplete="name"
+          placeholder="用戶名稱"
+          :disabled="isSubmitting"
+        />
+      </label>
+      <label class="relative block">
+        <span class="sr-only">Email帳號</span>
+        <input
+          v-model.trim="form.account"
+          class="login-input w-full border outline-0"
+          type="email"
+          autocomplete="email"
+          inputmode="email"
+          placeholder="Email帳號"
+          :disabled="isSubmitting"
+        />
+      </label>
+      <label class="relative block">
+        <span class="sr-only">密碼</span>
+        <input
+          v-model="form.password"
+          class="login-input w-full border outline-0"
+          type="password"
+          autocomplete="new-password"
+          placeholder="密碼"
+          :disabled="isSubmitting"
+        />
+      </label>
+      <label class="relative block">
+        <span class="sr-only">確認密碼</span>
+        <input
+          v-model="form.confirmPassword"
+          class="login-input w-full border outline-0"
+          type="password"
+          autocomplete="new-password"
+          placeholder="確認密碼"
+          :disabled="isSubmitting"
+        />
+      </label>
+      <p v-if="formErrorMessage" class="login-error" role="alert">{{ formErrorMessage }}</p>
+      <div
+        v-if="apiStatusMessage"
+        class="auth-alert"
+        :class="[
+          apiStatusType === 'success' ? 'is-success' : 'is-error',
+          isAlertLeaving ? 'is-leaving' : '',
+        ]"
+        :role="apiStatusType === 'success' ? 'status' : 'alert'"
+      >
+        <div class="auth-alert__icon" aria-hidden="true">
+          <svg
+            v-if="apiStatusType === 'success'"
+            class="auth-alert__svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              class="auth-alert__mark auth-alert__check"
+              clip-rule="evenodd"
+              d="m12 1c-6.075 0-11 4.925-11 11s4.925 11 11 11 11-4.925 11-11-4.925-11-11-11zm4.768 9.14c.0878-.1004.1546-.21726.1966-.34383.0419-.12657.0581-.26026.0477-.39319-.0105-.13293-.0475-.26242-.1087-.38085-.0613-.11844-.1456-.22342-.2481-.30879-.1024-.08536-.2209-.14938-.3484-.18828s-.2616-.0519-.3942-.03823c-.1327.01366-.2612.05372-.3782.1178-.1169.06409-.2198.15091-.3027.25537l-4.3 5.159-2.225-2.226c-.1886-.1822-.4412-.283-.7034-.2807s-.51301.1075-.69842.2929-.29058.4362-.29285.6984c-.00228.2622.09851.5148.28067.7034l3 3c.0983.0982.2159.1748.3454.2251.1295.0502.2681.0729.4069.0665.1387-.0063.2747-.0414.3991-.1032.1244-.0617.2347-.1487.3236-.2554z"
+              fill-rule="evenodd"
+            />
+          </svg>
+          <svg
+            v-else
+            class="auth-alert__svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              class="auth-alert__mark"
+              clip-rule="evenodd"
+              d="M12 1C5.925 1 1 5.925 1 12s4.925 11 11 11 11-4.925 11-11S18.075 1 12 1Zm3.7 7.3a1 1 0 0 0-1.4 0L12 10.6 9.7 8.3a1 1 0 1 0-1.4 1.4l2.3 2.3-2.3 2.3a1 1 0 1 0 1.4 1.4l2.3-2.3 2.3 2.3a1 1 0 0 0 1.4-1.4L13.4 12l2.3-2.3a1 1 0 0 0 0-1.4Z"
+              fill-rule="evenodd"
+            />
+          </svg>
+        </div>
+        <div class="auth-alert__title">
+          {{ apiStatusMessage }}
+        </div>
+      </div>
+      <div
+        class="mt-1.5 grid grid-cols-2 gap-3 max-lg:landscape:mt-1 max-lg:landscape:gap-2"
+      >
         <button
+          class="login-button is-secondary tap-pop flex cursor-pointer items-center justify-center"
           type="button"
-          class="btn-dark tap-pop absolute right-3 top-3 grid h-9 w-9 place-items-center"
-          aria-label="返回登入頁"
           :disabled="isSubmitting"
           @click="goLogin"
         >
-            <span aria-hidden="true">×</span>
+          返回登入
         </button>
-        <h2
-          id="register-title"
-          class="mb-7 text-center font-black login-title max-lg:landscape:mb-3"
+        <button
+          class="login-button is-primary tap-pop flex cursor-pointer items-center justify-center"
+          type="submit"
+          :disabled="isSubmitting"
         >
-          註冊
-        </h2>
-        <form
-          class="grid gap-3.5 max-lg:landscape:gap-2"
-          @submit.prevent="handleRegister"
-        >
-            <label class="relative block">
-                <span class="sr-only">用戶名稱</span>
-                <input
-                v-model.trim="form.username"
-                class="login-input w-full border outline-0"
-                type="text"
-                autocomplete="name"
-                placeholder="用戶名稱"
-                :disabled="isSubmitting"
-                />
-            </label>
-            <label class="relative block">
-                <span class="sr-only">帳號</span>
-                <input
-                v-model.trim="form.account"
-                class="login-input w-full border outline-0"
-                type="text"
-                autocomplete="username"
-                placeholder="帳號"
-                :disabled="isSubmitting"
-                />
-            </label>
-            <label class="relative block">
-                <span class="sr-only">密碼</span>
-                <input
-                v-model="form.password"
-                class="login-input w-full border outline-0"
-                type="password"
-                autocomplete="new-password"
-                placeholder="密碼"
-                :disabled="isSubmitting"
-                />
-            </label>
-            <label class="relative block">
-                <span class="sr-only">確認密碼</span>
-                <input
-                v-model="form.confirmPassword"
-                class="login-input w-full border outline-0"
-                type="password"
-                autocomplete="new-password"
-                placeholder="確認密碼"
-                :disabled="isSubmitting"
-                />
-            </label>
-            <p v-if="formErrorMessage" class="login-error" role="alert">{{ formErrorMessage }}</p>
-            <div
-                v-if="apiStatusMessage"
-                class="auth-alert"
-                :class="[
-                    apiStatusType === 'success' ? 'is-success' : 'is-error',
-                    isAlertLeaving ? 'is-leaving' : '',
-                ]"
-                :role="apiStatusType === 'success' ? 'status' : 'alert'"
-                >
-                <div class="auth-alert__icon" aria-hidden="true">
-                    <svg
-                    v-if="apiStatusType === 'success'"
-                    class="auth-alert__svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                    >
-                    <path
-                        class="auth-alert__mark auth-alert__check"
-                        clip-rule="evenodd"
-                        d="m12 1c-6.075 0-11 4.925-11 11s4.925 11 11 11 11-4.925 11-11-4.925-11-11-11zm4.768 9.14c.0878-.1004.1546-.21726.1966-.34383.0419-.12657.0581-.26026.0477-.39319-.0105-.13293-.0475-.26242-.1087-.38085-.0613-.11844-.1456-.22342-.2481-.30879-.1024-.08536-.2209-.14938-.3484-.18828s-.2616-.0519-.3942-.03823c-.1327.01366-.2612.05372-.3782.1178-.1169.06409-.2198.15091-.3027.25537l-4.3 5.159-2.225-2.226c-.1886-.1822-.4412-.283-.7034-.2807s-.51301.1075-.69842.2929-.29058.4362-.29285.6984c-.00228.2622.09851.5148.28067.7034l3 3c.0983.0982.2159.1748.3454.2251.1295.0502.2681.0729.4069.0665.1387-.0063.2747-.0414.3991-.1032.1244-.0617.2347-.1487.3236-.2554z"
-                        fill-rule="evenodd"
-                    />
-                    </svg>
-                    <svg
-                    v-else
-                    class="auth-alert__svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                    >
-                    <path
-                        class="auth-alert__mark"
-                        clip-rule="evenodd"
-                        d="M12 1C5.925 1 1 5.925 1 12s4.925 11 11 11 11-4.925 11-11S18.075 1 12 1Zm3.7 7.3a1 1 0 0 0-1.4 0L12 10.6 9.7 8.3a1 1 0 1 0-1.4 1.4l2.3 2.3-2.3 2.3a1 1 0 1 0 1.4 1.4l2.3-2.3 2.3 2.3a1 1 0 0 0 1.4-1.4L13.4 12l2.3-2.3a1 1 0 0 0 0-1.4Z"
-                        fill-rule="evenodd"
-                    />
-                    </svg>
-                </div>
-                <div class="auth-alert__title">
-                    {{ apiStatusMessage }}
-                </div>
-            </div>
-            <div
-                class="mt-1.5 grid grid-cols-2 gap-3 max-lg:landscape:mt-1 max-lg:landscape:gap-2"
-            >
-                <button
-                class="login-button is-secondary tap-pop flex cursor-pointer items-center justify-center"
-                type="button"
-                :disabled="isSubmitting"
-                @click="goLogin"
-                >
-                返回登入
-                </button>
-                <button
-                class="login-button is-primary tap-pop flex cursor-pointer items-center justify-center"
-                type="submit"
-                :disabled="isSubmitting"
-                >
-                {{ isSubmitting ? "註冊中..." : "註冊" }}
-                </button>
-            </div>
-        </form>
-    </section>
+          {{ isSubmitting ? "註冊中..." : "註冊" }}
+        </button>
+      </div>
+    </form>
+  </section>
 </template>
 
 <script setup>
@@ -150,6 +151,7 @@ const form = reactive({
   account: "",
   password: "",
   confirmPassword: "",
+  avatarId: 1
 });
 
 const formErrorMessage = ref("")
@@ -164,6 +166,8 @@ const ALERT_FADE_MS = 420
 let alertTimer = null
 let fadeTimer = null
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 function validateRegisterForm() {
   clearApiStatus()
 
@@ -173,8 +177,13 @@ function validateRegisterForm() {
   }
 
   if (!form.account) {
-    formErrorMessage.value = "請輸入帳號"
+    formErrorMessage.value = "請輸入Email帳號"
     return false
+  }
+
+  if (!EMAIL_REGEX.test(form.account)) {
+    formErrorMessage.value = "Email帳號格式有誤";
+    return false;
   }
 
   if (!form.password) {
@@ -210,9 +219,10 @@ async function handleRegister() {
 
   try {
     await authStore.register({
-      username: form.username,
-      account: form.account,
-      password: form.password
+      username: form.username.trim(),
+      account: form.account.trim().toLowerCase(),
+      password: form.password,
+      avatarId: form.avatarId ?? 1
     })
 
     formErrorMessage.value = ""
