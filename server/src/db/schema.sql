@@ -17,6 +17,31 @@ CREATE TABLE players (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE players
+ADD COLUMN IF NOT EXISTS account VARCHAR(255) UNIQUE;
+
+ALTER TABLE players
+ALTER COLUMN avatar_id SET DEFAULT 1;
+
+UPDATE players
+SET avatar_id = 1
+WHERE avatar_id IS NULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.table_constraints
+    WHERE table_name = 'players'
+      AND constraint_name = 'players_auth_user_id_fkey'
+  ) THEN
+    ALTER TABLE players
+    ADD CONSTRAINT players_auth_user_id_fkey
+    FOREIGN KEY (auth_user_id)
+    REFERENCES auth.users(id);
+  END IF;
+END $$;
+
 CREATE TABLE friends (
   id SERIAL PRIMARY KEY,
   player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
