@@ -42,19 +42,6 @@ BEGIN
   END IF;
 END $$;
 
-CREATE TABLE friends (
-  id SERIAL PRIMARY KEY,
-  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-  friend_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-  status VARCHAR(20) NOT NULL DEFAULT 'pending',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  CHECK (player_id <> friend_id),
-  CHECK (status IN ('pending', 'accepted', 'blocked'))
-);
-
-CREATE UNIQUE INDEX unique_friend_pair
-ON friends(LEAST(player_id, friend_id), GREATEST(player_id, friend_id));
-
 CREATE TABLE player_currency_logs (
   id SERIAL PRIMARY KEY,
   player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,

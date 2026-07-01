@@ -38,13 +38,14 @@
         />
       </label>
       <label class="relative block">
-        <span class="sr-only">帳號</span>
+        <span class="sr-only">Email帳號</span>
         <input
           v-model.trim="form.account"
           class="login-input w-full border outline-0"
-          type="text"
-          autocomplete="username"
-          placeholder="帳號"
+          type="email"
+          autocomplete="email"
+          inputmode="email"
+          placeholder="Email帳號"
           :disabled="isSubmitting"
         />
       </label>
@@ -165,6 +166,8 @@ const ALERT_FADE_MS = 420
 let alertTimer = null
 let fadeTimer = null
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 function validateRegisterForm() {
   clearApiStatus()
 
@@ -174,8 +177,13 @@ function validateRegisterForm() {
   }
 
   if (!form.account) {
-    formErrorMessage.value = "請輸入帳號"
+    formErrorMessage.value = "請輸入Email帳號"
     return false
+  }
+
+  if (!EMAIL_REGEX.test(form.account)) {
+    formErrorMessage.value = "Email帳號格式有誤";
+    return false;
   }
 
   if (!form.password) {
@@ -212,7 +220,7 @@ async function handleRegister() {
   try {
     await authStore.register({
       username: form.username.trim(),
-      account: form.account.trim(),
+      account: form.account.trim().toLowerCase(),
       password: form.password,
       avatarId: form.avatarId ?? 1
     })
