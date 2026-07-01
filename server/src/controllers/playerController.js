@@ -1,4 +1,5 @@
 import { createGuest } from "../services/playerService.js"
+import { getPlayerCurrency } from "../services/currencyService.js"
 
 async function handleCreateGuest(req, res){
   try {
@@ -19,4 +20,19 @@ async function handleCreateGuest(req, res){
   }
 }
 
-export { handleCreateGuest }
+async function handleGetPlayerCurrency(req, res) {
+  try {
+    const { playerId } = req.params
+
+    const currency = await getPlayerCurrency(Number(playerId))
+
+    return res.status(200).json({ currency })
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: error.statusCode ? error.message : "取得玩家遊戲幣失敗",
+      error: error.message,
+    })
+  }
+}
+
+export { handleCreateGuest, handleGetPlayerCurrency }
