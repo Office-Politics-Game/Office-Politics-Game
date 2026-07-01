@@ -1,34 +1,111 @@
 <template>
   <main
-    class="mall-view relative flex min-h-screen w-screen items-center justify-center overflow-hidden bg-[#1e1e1e] px-3 py-4 md:px-5"
+    class="mall-view relative flex min-h-screen w-screen items-center justify-center overflow-hidden bg-[#1e1e1e] px-1 py-1 md:px-5 md:py-4"
     :style="{ backgroundImage: `url(${bgDashboard})` }"
   >
     <div class="absolute inset-0 bg-[rgba(0,19,50,0.36)]"></div>
 
-    <section class="mall-shell relative z-10 flex h-[92vh] w-[95vw] max-w-[1360px] flex-col overflow-hidden border border-white/25 bg-white/82 shadow-2xl backdrop-blur-md">
-      <header class="mall-topbar grid grid-cols-[1fr_auto] gap-4 border-b border-slate-300/80 px-4 py-4 md:grid-cols-[minmax(0,1.3fr)_minmax(320px,1fr)_auto] md:px-6">
-        <div class="min-w-0">
-          <p class="text-[11px] font-bold uppercase tracking-[0.28em] text-slate-500 md:text-xs">
+    <section class="mall-shell relative z-10 flex h-[98svh] w-[98vw] max-w-[1360px] flex-col overflow-hidden border border-white/25 bg-white/82 shadow-2xl backdrop-blur-md md:h-[92vh] md:w-[95vw]">
+      <button
+        type="button"
+        class="mobile-menu-button md:hidden"
+        :aria-expanded="isMenuOpen"
+        aria-label="開啟選單"
+        @click="isMenuOpen = true"
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <Transition name="drawer-fade">
+        <div
+          v-if="isMenuOpen"
+          class="mobile-menu-layer md:hidden"
+          @click.self="isMenuOpen = false"
+        >
+          <aside class="mobile-menu-panel" aria-label="商城選單">
+            <div class="flex items-start justify-between gap-3 border-b border-slate-300/80 pb-3">
+              <div>
+                <p class="m-0 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
+                  OFFICE POLITICS
+                </p>
+                <h2 class="mt-1 font-display text-xl font-black tracking-[0.06em] text-slate-900">
+                  商城
+                </h2>
+                <p class="mt-1 text-xs font-semibold text-slate-600">
+                  選擇你的辦公室風格
+                </p>
+              </div>
+
+              <button
+                type="button"
+                class="close-button mobile-menu-close"
+                aria-label="關閉選單"
+                @click="isMenuOpen = false"
+              >
+                ×
+              </button>
+            </div>
+
+            <div class="mt-3 grid grid-cols-3 gap-2">
+              <div
+                v-for="metric in headerMetrics"
+                :key="metric.label"
+                class="border border-slate-300/70 bg-white/75 px-2 py-1.5 text-right"
+              >
+                <div class="text-[9px] font-bold tracking-[0.08em] text-slate-500">
+                  {{ metric.label }}
+                </div>
+                <div class="mt-0.5 text-sm font-black text-slate-900">
+                  {{ metric.value }}
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3 border border-slate-300 bg-[linear-gradient(180deg,#f9fbfd,#eef4f9)] p-3">
+              <div class="text-[10px] font-bold tracking-[0.12em] text-slate-500">
+                目前分類
+              </div>
+              <div class="mt-1 text-base font-black text-slate-900">
+                {{ activeCategoryMeta.name }}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="btn-dark mt-3 h-9 w-full text-xs font-bold"
+              @click="goLobby"
+            >
+              返回大廳
+            </button>
+          </aside>
+        </div>
+      </Transition>
+
+      <header class="mall-topbar hidden grid-cols-[minmax(0,1fr)_auto] gap-1.5 border-b border-slate-300/80 px-2 py-2 md:grid md:grid-cols-[minmax(0,1.3fr)_minmax(320px,1fr)_auto] md:gap-4 md:px-6 md:py-4">
+        <div class="order-1 min-w-0 md:order-none">
+          <p class="hidden text-[11px] font-bold uppercase tracking-[0.28em] text-slate-500 md:block md:text-xs">
             OFFICE POLITICS
           </p>
-          <h1 class="mt-1 font-display text-3xl font-black tracking-[0.08em] text-slate-900 md:text-5xl">
+          <h1 class="font-display text-xl font-black tracking-[0.06em] text-slate-900 md:mt-1 md:text-5xl md:tracking-[0.08em]">
             商城
           </h1>
-          <p class="mt-2 text-sm font-semibold tracking-[0.06em] text-slate-600 md:text-base">
+          <p class="hidden mt-1 text-xs font-semibold tracking-[0.04em] text-slate-600 md:mt-2 md:block md:text-base md:tracking-[0.06em]">
             選擇你的辦公室風格
           </p>
         </div>
 
-        <div class="grid grid-cols-2 gap-2 md:grid-cols-3">
+        <div class="order-3 col-span-2 grid grid-cols-3 gap-1 md:order-none md:col-span-1 md:gap-2">
           <div
             v-for="metric in headerMetrics"
             :key="metric.label"
-            class="border border-slate-300/70 bg-white/70 px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
+            class="border border-slate-300/70 bg-white/70 px-1.5 py-1 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] md:px-3 md:py-2"
           >
-            <div class="text-[11px] font-bold tracking-[0.14em] text-slate-500">
+            <div class="text-[9px] font-bold tracking-[0.06em] text-slate-500 md:text-[11px] md:tracking-[0.14em]">
               {{ metric.label }}
             </div>
-            <div class="mt-1 text-lg font-black text-slate-900 md:text-xl">
+            <div class="text-sm font-black text-slate-900 md:mt-1 md:text-xl">
               {{ metric.value }}
             </div>
           </div>
@@ -36,7 +113,7 @@
 
         <button
           type="button"
-          class="btn-dark h-11 whitespace-nowrap px-4 py-2 text-sm font-bold"
+          class="btn-dark order-2 h-8 whitespace-nowrap px-2.5 py-1 text-xs font-bold md:order-none md:h-11 md:px-4 md:py-2 md:text-sm"
           @click="router.push('/lobby')"
         >
           返回大廳
@@ -45,16 +122,16 @@
 
       <div class="grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-hidden lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside class="scroll-area min-h-0 overflow-y-auto border-b border-slate-300/80 bg-[linear-gradient(180deg,rgba(238,244,251,0.96),rgba(221,230,241,0.9))] lg:border-b-0 lg:border-r">
-          <div class="border-b border-slate-300/80 px-4 py-4 md:px-5">
-            <div class="text-xs font-bold tracking-[0.2em] text-slate-500">
+          <div class="hidden border-b border-slate-300/80 px-3 py-3 md:block md:px-5 md:py-4">
+            <div class="text-[11px] font-bold tracking-[0.16em] text-slate-500 md:text-xs md:tracking-[0.2em]">
               分類導覽
             </div>
-            <div class="mt-2 text-lg font-black text-slate-900">
+            <div class="mt-1 text-base font-black text-slate-900 md:mt-2 md:text-lg">
               商品分類
             </div>
           </div>
 
-          <nav class="grid gap-2 p-3 md:p-4">
+          <nav class="category-list grid gap-1.5 p-1.5 md:gap-2 md:p-4">
             <button
               v-for="category in categoriesWithCount"
               :key="category.id"
@@ -65,14 +142,14 @@
             >
               <div class="flex items-start justify-between gap-3">
                 <div>
-                  <div class="text-sm font-black tracking-[0.08em]">
+                  <div class="text-xs font-black tracking-[0.06em] md:text-sm md:tracking-[0.08em]">
                     {{ category.name }}
                   </div>
-                  <div class="mt-1 text-xs leading-5 text-slate-500">
+                  <div class="hidden mt-1 text-[11px] leading-4 text-slate-500 md:block md:text-xs md:leading-5">
                     {{ category.description }}
                   </div>
                 </div>
-                <span class="mt-0.5 border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-bold text-slate-600">
+                <span class="mt-0.5 border border-slate-300 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-600 md:px-2 md:text-[11px]">
                   {{ category.count }}
                 </span>
               </div>
@@ -81,35 +158,35 @@
         </aside>
 
         <section class="scroll-area min-h-0 overflow-y-auto bg-[linear-gradient(180deg,rgba(247,250,253,0.92),rgba(235,241,247,0.9))]">
-          <div class="grid gap-4 p-4 md:p-5">
+          <div class="grid gap-2 p-2 md:gap-4 md:p-5">
             <article class="featured-panel overflow-hidden border border-slate-300/80 bg-[linear-gradient(130deg,rgba(6,29,55,0.96),rgba(69,87,104,0.92))] text-white">
-              <div class="grid gap-4 p-5 md:grid-cols-[minmax(0,1fr)_220px] md:p-6">
+              <div class="grid gap-2 p-2.5 md:grid-cols-[minmax(0,1fr)_220px] md:gap-4 md:p-6">
                 <div>
-                  <div class="inline-flex border border-white/25 bg-white/10 px-2 py-1 text-[11px] font-bold tracking-[0.18em] text-slate-100">
+                  <div class="inline-flex border border-white/25 bg-white/10 px-2 py-0.5 text-[9px] font-bold tracking-[0.1em] text-slate-100 md:py-1 md:text-[11px] md:tracking-[0.18em]">
                     精選推薦
                   </div>
-                  <h2 class="mt-3 font-display text-2xl font-black tracking-[0.08em] md:text-3xl">
+                  <h2 class="mt-1 font-display text-base font-black tracking-[0.04em] md:mt-3 md:text-3xl md:tracking-[0.08em]">
                     {{ featuredItem.name }}
                   </h2>
-                  <p class="mt-2 max-w-[38rem] text-sm leading-6 text-slate-200">
+                  <p class="hidden mt-1.5 max-w-[38rem] text-xs leading-5 text-slate-200 md:mt-2 md:block md:text-sm md:leading-6">
                     {{ featuredItem.summary }}
                   </p>
                 </div>
 
-                <div class="grid content-between gap-4 border border-white/16 bg-white/10 p-4 backdrop-blur-sm">
+                <div class="hidden content-between gap-3 border border-white/16 bg-white/10 p-3 backdrop-blur-sm md:grid md:gap-4 md:p-4">
                   <div>
-                    <div class="text-[11px] font-bold tracking-[0.18em] text-slate-200">
+                    <div class="text-[10px] font-bold tracking-[0.14em] text-slate-200 md:text-[11px] md:tracking-[0.18em]">
                       預算餘額
                     </div>
-                    <div class="mt-2 text-3xl font-black text-white">
+                    <div class="mt-1 text-2xl font-black text-white md:mt-2 md:text-3xl">
                       {{ budgetDisplay }}
                     </div>
                   </div>
                   <div>
-                    <div class="text-[11px] font-bold tracking-[0.18em] text-slate-300">
+                    <div class="text-[10px] font-bold tracking-[0.14em] text-slate-300 md:text-[11px] md:tracking-[0.18em]">
                       目前分類
                     </div>
-                    <div class="mt-2 inline-flex border border-white/25 bg-white/10 px-3 py-1 text-sm font-bold text-white">
+                    <div class="mt-1 inline-flex border border-white/25 bg-white/10 px-2.5 py-1 text-xs font-bold text-white md:mt-2 md:px-3 md:text-sm">
                       {{ activeCategoryMeta.name }}
                     </div>
                   </div>
@@ -119,17 +196,17 @@
 
             <div
               v-if="filteredItems.length === 0"
-              class="empty-state border border-dashed border-slate-300 bg-white/70 px-6 py-12 text-center"
+              class="empty-state border border-dashed border-slate-300 bg-white/70 px-4 py-8 text-center md:px-6 md:py-12"
             >
-              <div class="text-xl font-black tracking-[0.08em] text-slate-900">
+              <div class="text-lg font-black tracking-[0.06em] text-slate-900 md:text-xl md:tracking-[0.08em]">
                 目前沒有可顯示商品
               </div>
-              <p class="mt-3 text-sm leading-6 text-slate-500">
+              <p class="mt-2 text-xs leading-5 text-slate-500 md:mt-3 md:text-sm md:leading-6">
                 更多內容準備中，敬請期待
               </p>
             </div>
 
-            <div v-else class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div v-else class="grid gap-2 md:gap-3 md:grid-cols-2 xl:grid-cols-3">
               <MallProductCard
                 v-for="item in filteredItems"
                 :key="item.id"
@@ -146,24 +223,24 @@
     <Transition name="modal-fade-up">
       <div
         v-if="isDetailModalOpen && selectedItem"
-        class="absolute inset-0 z-30 flex items-center justify-center bg-[rgba(0,19,50,0.42)] px-3 py-6 backdrop-blur-[2px]"
+        class="absolute inset-0 z-30 flex items-center justify-center bg-[rgba(0,19,50,0.42)] px-2 py-2 backdrop-blur-[2px] md:px-3 md:py-6"
         @click.self="closeItemDetail"
       >
         <div class="modal-panel flex max-h-[88vh] w-full max-w-[840px] flex-col overflow-hidden border border-white/35 bg-white/92 shadow-2xl">
-          <header class="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 md:px-6">
+          <header class="flex items-start justify-between gap-2 border-b border-slate-200 px-2.5 py-2 md:gap-4 md:px-6 md:py-4">
             <div>
-              <div class="text-[11px] font-bold tracking-[0.16em] text-slate-500">
+              <div class="text-[9px] font-bold tracking-[0.1em] text-slate-500 md:text-[11px] md:tracking-[0.16em]">
                 商品明細
               </div>
-              <div class="mt-2 flex flex-wrap items-center gap-2">
-                <h3 class="font-display text-3xl font-black tracking-[0.05em] text-slate-900">
+              <div class="mt-1 flex flex-wrap items-center gap-1.5 md:mt-2 md:gap-2">
+                <h3 class="font-display text-xl font-black tracking-[0.03em] text-slate-900 md:text-3xl md:tracking-[0.05em]">
                   {{ selectedItem.name }}
                 </h3>
-                <span class="border border-slate-300 bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-700">
+                <span class="border border-slate-300 bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700 md:px-2 md:py-1 md:text-[11px]">
                   {{ selectedItem.categoryLabel }}
                 </span>
               </div>
-              <p class="mt-2 text-sm leading-6 text-slate-600">
+              <p class="hidden mt-1.5 text-xs leading-5 text-slate-600 md:mt-2 md:block md:text-sm md:leading-6">
                 {{ selectedItem.description }}
               </p>
             </div>
@@ -178,9 +255,9 @@
             </button>
           </header>
 
-          <div class="scroll-area min-h-0 overflow-y-auto px-5 py-5 md:px-6">
-            <div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_240px]">
-              <div class="grid gap-4">
+          <div class="scroll-area min-h-0 overflow-y-auto px-2.5 py-2.5 md:px-6 md:py-5">
+            <div class="grid gap-2 md:grid-cols-[minmax(0,1fr)_240px] md:gap-4">
+              <div class="grid gap-2 md:gap-4">
                 <div class="modal-preview">
                   <img
                     :src="selectedItem.previewImage"
@@ -190,7 +267,7 @@
                   <div class="modal-preview__overlay"></div>
                 </div>
 
-                <div class="grid gap-3 border border-slate-300 bg-white p-4">
+                <div class="grid gap-1.5 border border-slate-300 bg-white p-2.5 md:gap-3 md:p-4">
                   <div class="detail-row">
                     <span>分類</span>
                     <strong>{{ selectedItem.categoryLabel }}</strong>
@@ -206,12 +283,12 @@
                 </div>
               </div>
 
-              <aside class="grid content-start gap-4">
-                <div class="border border-slate-300 bg-[linear-gradient(180deg,#f9fbfd,#eef4f9)] p-4">
-                  <div class="text-[11px] font-bold tracking-[0.16em] text-slate-500">
+              <aside class="grid grid-cols-[minmax(0,1fr)_auto] content-start gap-2 md:grid-cols-1 md:gap-4">
+                <div class="border border-slate-300 bg-[linear-gradient(180deg,#f9fbfd,#eef4f9)] p-2.5 md:p-4">
+                  <div class="text-[9px] font-bold tracking-[0.1em] text-slate-500 md:text-[11px] md:tracking-[0.16em]">
                     可用代幣
                   </div>
-                  <div class="mt-1 text-3xl font-black text-slate-900">
+                  <div class="mt-0.5 text-lg font-black text-slate-900 md:mt-1 md:text-3xl">
                     {{ budgetDisplay }}
                   </div>
                 </div>
@@ -253,6 +330,7 @@ const headerMetrics = mallHeaderMetrics;
 const activeCategory = ref(categories[0].id);
 const selectedItem = ref(mockItems[0]);
 const isDetailModalOpen = ref(false);
+const isMenuOpen = ref(false);
 
 const categoriesWithCount = computed(() =>
   categories.map((category) => ({
@@ -284,8 +362,22 @@ function closeItemDetail() {
   isDetailModalOpen.value = false;
 }
 
+function goLobby() {
+  isMenuOpen.value = false;
+  router.push("/lobby");
+}
+
 function handleEscape(event) {
-  if (event.key === "Escape" && isDetailModalOpen.value) {
+  if (event.key !== "Escape") {
+    return;
+  }
+
+  if (isMenuOpen.value) {
+    isMenuOpen.value = false;
+    return;
+  }
+
+  if (isDetailModalOpen.value) {
     closeItemDetail();
   }
 }
@@ -388,6 +480,53 @@ onBeforeUnmount(() => {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.18),
     0 18px 34px rgba(0, 19, 50, 0.18);
+}
+
+.mobile-menu-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 8px 20px rgba(0, 19, 50, 0.14);
+}
+
+.mobile-menu-button span {
+  display: block;
+  width: 16px;
+  height: 2px;
+  background: var(--brand-active);
+}
+
+.mobile-menu-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(0, 19, 50, 0.34);
+  backdrop-filter: blur(2px);
+}
+
+.mobile-menu-panel {
+  width: min(78vw, 280px);
+  height: 100%;
+  overflow-y: auto;
+  border-left: 1px solid rgba(255, 255, 255, 0.5);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(235, 241, 247, 0.94)),
+    rgba(255, 255, 255, 0.92);
+  padding: 14px;
+  box-shadow: -18px 0 42px rgba(0, 19, 50, 0.22);
+}
+
+.mobile-menu-close {
+  flex: 0 0 auto;
 }
 
 .modal-preview {
@@ -526,6 +665,144 @@ onBeforeUnmount(() => {
   transition:
     transform 240ms cubic-bezier(0.22, 0.61, 0.36, 1),
     opacity 220ms ease;
+}
+
+.drawer-fade-enter-active,
+.drawer-fade-leave-active {
+  transition: opacity 180ms ease;
+}
+
+.drawer-fade-enter-active .mobile-menu-panel,
+.drawer-fade-leave-active .mobile-menu-panel {
+  transition: transform 200ms ease;
+}
+
+.drawer-fade-enter-from,
+.drawer-fade-leave-to {
+  opacity: 0;
+}
+
+.drawer-fade-enter-from .mobile-menu-panel,
+.drawer-fade-leave-to .mobile-menu-panel {
+  transform: translateX(100%);
+}
+
+@media (max-width: 767px) {
+  .mall-topbar {
+    align-items: start;
+  }
+
+  .category-list {
+    display: flex;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x proximity;
+  }
+
+  .category-card {
+    width: min(46vw, 140px);
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    padding: 8px;
+  }
+
+  .category-card:hover {
+    transform: none;
+  }
+
+  .scroll-area::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .modal-panel {
+    width: min(94vw, 360px);
+    max-height: 86svh;
+  }
+
+  .modal-preview {
+    height: 112px;
+    aspect-ratio: auto;
+  }
+
+  .detail-row {
+    gap: 6px;
+    padding-bottom: 6px;
+    font-size: 10px;
+  }
+
+  .detail-row strong {
+    font-size: var(--text-xs);
+  }
+
+  .close-button {
+    width: 30px;
+    height: 30px;
+    font-size: 20px;
+  }
+
+  .item-action {
+    align-self: stretch;
+    min-width: 82px;
+    padding: 7px 10px;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+  }
+
+  :deep(.item-card) {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 6px 10px;
+    padding: 9px;
+  }
+
+  :deep(.item-card:hover) {
+    transform: none;
+  }
+
+  :deep(.item-card__preview) {
+    grid-row: 1 / span 2;
+    height: 68px;
+    aspect-ratio: auto;
+  }
+
+  :deep(.item-card > div:nth-of-type(2)) {
+    min-width: 0;
+    margin-top: 0;
+  }
+
+  :deep(.item-card > div:nth-of-type(2) > div) {
+    overflow: hidden;
+    font-size: var(--text-sm);
+    letter-spacing: 0.03em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  :deep(.item-card > div:nth-of-type(3)) {
+    min-width: 0;
+    margin-top: 0;
+    gap: 6px;
+  }
+
+  :deep(.item-card > div:nth-of-type(3) > div:first-child > div:first-child) {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+  }
+
+  :deep(.item-card > div:nth-of-type(3) > div:first-child > div:last-child) {
+    margin-top: 1px;
+    font-size: var(--text-md);
+  }
+
+  :deep(.item-card .item-action) {
+    min-width: 52px;
+    padding: 7px 8px;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
