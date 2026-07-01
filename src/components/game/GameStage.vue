@@ -112,15 +112,18 @@ const draggingCardId = ref(null)
 const isDragging = ref(false)
 const isOverPlayZone = ref(false)
 const isTurnNoticeOpen = ref(false)
+const isRoundStartNoticeOpen = ref(false)
 const isRoundWinnerNoticeOpen = ref(false)
 const roundWinnerNotice = ref(null)
 const isInitialRoundDrawAnimating = ref(false)
 const initialRoundDealtPlayerIds = ref([])
 const lastInitialRoundDealSignature = ref(null)
+const lastRoundStartNoticeKey = ref(null)
 const locallyHiddenPlayedCardIds = ref([])
 const pendingPlay = ref(null)
 const selectedTargetPlayerId = ref(null)
 const selectedGuessRank = ref(null)
+let roundStartNoticeResolve = null
 let effectAnimationResolve = null
 let effectAnimationTimeout = null
 let effectAnimationSequence = 0
@@ -162,6 +165,9 @@ const {
 } = useAudioSettings();
 
 const hasActivePlay = computed(() => Boolean(activeCard.value && originRect.value))
+const roundStartNoticeText = computed(() =>
+  `第 ${props.roundNumber} 回合開始`,
+)
 const isCurrentPlayerTurn = computed(() => {
   if (!props.currentTurnPlayerId || !resolvedCurrentPlayerId.value) {
     return true
@@ -355,6 +361,10 @@ function getInitialRoundDealSignature() {
     .join('|')
 }
 
+function getRoundStartNoticeKey(signature) {
+  return signature ? `${props.roundNumber}:${signature}` : null
+}
+
 function getInitialRoundDealCard(playerId) {
   return animationRects.isSelfPlayer(playerId) ? props.handCards[0] : null
 }
@@ -398,6 +408,8 @@ async function playInitialRoundDrawSequence(signature) {
   } finally {
     initialRoundDealtPlayerIds.value = props.players.map((player) => player.id)
     isInitialRoundDrawAnimating.value = false
+
+    await playRoundStartNotice(signature)
 
     if (isExplicitCurrentPlayerTurn.value) {
       playTurnNotice({ force: true })
@@ -492,10 +504,46 @@ function stopEffectAnimation() {
   settleEffectAnimation(null, false)
 }
 
+function settleRoundStartNotice(completed = false) {
+  const resolve = roundStartNoticeResolve
+  roundStartNoticeResolve = null
+  resolve?.(completed)
+}
+
+function closeRoundStartNotice() {
+  isRoundStartNoticeOpen.value = false
+  settleRoundStartNotice(true)
+}
+
+async function playRoundStartNotice(signature = getInitialRoundDealSignature()) {
+  const noticeKey = getRoundStartNoticeKey(signature)
+
+  if (
+    !noticeKey ||
+    isRoundWinnerNoticeOpen.value ||
+    lastRoundStartNoticeKey.value === noticeKey
+  ) {
+    return false
+  }
+
+  lastRoundStartNoticeKey.value = noticeKey
+  isTurnNoticeOpen.value = false
+  isRoundStartNoticeOpen.value = false
+  settleRoundStartNotice(false)
+
+  await nextTick()
+
+  return new Promise((resolve) => {
+    roundStartNoticeResolve = resolve
+    isRoundStartNoticeOpen.value = true
+  })
+}
+
 function playTurnNotice({ force = false } = {}) {
   const initialRoundDealSignature = getInitialRoundDealSignature()
 
   if (
+    isRoundStartNoticeOpen.value ||
     isRoundWinnerNoticeOpen.value ||
     isInitialRoundDrawAnimating.value ||
     (
@@ -519,6 +567,8 @@ function playRoundWinnerNotice(player) {
     return
   }
 
+  isRoundStartNoticeOpen.value = false
+  settleRoundStartNotice(false)
   isTurnNoticeOpen.value = false
   isRoundWinnerNoticeOpen.value = false
   roundWinnerNotice.value = {
@@ -563,6 +613,33 @@ function playEffectAnimation(result) {
       nextResult.type === 'protection' ? 1000 : 8000,
     )
   })
+}
+
+async function playRemoteCardPlayAnimation(action) {
+  const playerId = action?.playerId
+  const card = action?.discardedCard
+
+  if (!playerId || !card || animationRects.isSelfPlayer(playerId)) {
+    return false
+  }
+
+  const player = props.players.find(
+    (candidate) => String(candidate.id) === String(playerId),
+  )
+  const originRect = animationRects.getPlayerHandRect(playerId)
+  const targetRect = animationRects.getDiscardRect()
+
+  if (!originRect || !targetRect) {
+    return false
+  }
+
+  return Boolean(await cardPlayAnimation.value?.play({
+    card,
+    originRect,
+    targetRect,
+    position: player?.position ?? 'top',
+    faceUp: false,
+  }))
 }
 
 function handleEffectAnimationComplete(result) {
@@ -838,6 +915,7 @@ onBeforeUnmount(() => {
   clearPointerListeners()
   cardPlayAnimation.value?.stop?.()
   stopEffectAnimation()
+  settleRoundStartNotice(false)
   hiddenPlayedCardTimers.forEach((timer) => window.clearTimeout(timer))
   hiddenPlayedCardTimers.clear()
 })
@@ -866,6 +944,23 @@ watch(
     playInitialRoundDrawSequence(signature)
   },
   { immediate: true },
+)
+
+watch(
+  () => props.roundNumber,
+  () => {
+    const signature = getInitialRoundDealSignature()
+
+    if (
+      !signature ||
+      signature !== lastInitialRoundDealSignature.value ||
+      isInitialRoundDrawAnimating.value
+    ) {
+      return
+    }
+
+    playRoundStartNotice(signature)
+  },
 )
 
 watch(
@@ -899,6 +994,7 @@ watch(
 defineExpose({
   playDrawAnimation,
   playEffectAnimation,
+  playRemoteCardPlayAnimation,
 });
 </script>
 
@@ -1112,6 +1208,12 @@ defineExpose({
       @update:sound-volume="setSoundVolume"
       @return-lobby="emit('return-lobby')"
       @restart-game="emit('restart-game')"
+    />
+
+    <FlyInTextModal
+      :is-open="isRoundStartNoticeOpen"
+      :text="roundStartNoticeText"
+      @close="closeRoundStartNotice"
     />
 
     <FlyInTextModal

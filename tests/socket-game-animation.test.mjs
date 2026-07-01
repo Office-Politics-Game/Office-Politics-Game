@@ -47,8 +47,31 @@ test('game view subscribes to socket actions and defers state while animations r
   assert.match(source, /isPlayingSocketAction\.value/)
   assert.match(source, /socketActionQueue = socketActionQueue/)
   assert.match(source, /playDrawAnimation\?\.\(drawnCard, playerId\)/)
+  assert.match(source, /const discardedCard = event\.discardedCard[\s\S]*normalizeCard\(event\.discardedCard\)/)
+  assert.match(source, /playRemoteCardPlayAnimation\?\.\(\{[\s\S]*discardedCard/)
   assert.match(source, /playEffectAnimation\?\.\(animationResult\)/)
+  assert.ok(
+    source.indexOf('playRemoteCardPlayAnimation') <
+      source.indexOf('playEffectAnimation?.(animationResult)'),
+  )
   assert.match(source, /onBeforeUnmount\(\(\) => \{[\s\S]*off\('game:action'/)
+})
+
+test('game stage exposes remote opponent play animation for socket play-card actions', async () => {
+  const source = await readSource('src/components/game/GameStage.vue')
+  const remotePlayFunction = source.slice(
+    source.indexOf('async function playRemoteCardPlayAnimation'),
+    source.indexOf('function handleEffectAnimationComplete'),
+  )
+
+  assert.match(source, /playRemoteCardPlayAnimation,/)
+  assert.match(remotePlayFunction, /animationRects\.isSelfPlayer\(playerId\)/)
+  assert.match(remotePlayFunction, /return false/)
+  assert.match(remotePlayFunction, /animationRects\.getPlayerHandRect\(playerId\)/)
+  assert.match(remotePlayFunction, /animationRects\.getDiscardRect\(\)/)
+  assert.match(remotePlayFunction, /cardPlayAnimation\.value\?\.play/)
+  assert.match(remotePlayFunction, /position: player\?\.position \?\? 'top'/)
+  assert.match(remotePlayFunction, /faceUp: false/)
 })
 
 test('socket client exposes a timeout ack helper for game actions', async () => {

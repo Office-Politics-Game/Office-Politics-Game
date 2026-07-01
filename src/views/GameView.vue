@@ -439,6 +439,14 @@ async function playSocketGameAction(event) {
 
   if (event.type === 'play-card') {
     const animationResult = normalizeEffectAnimationResult(event.animationResult)
+    const discardedCard = event.discardedCard
+      ? normalizeCard(event.discardedCard)
+      : null
+
+    await gameStage.value?.playRemoteCardPlayAnimation?.({
+      ...event,
+      discardedCard,
+    })
 
     if (animationResult) {
       await gameStage.value?.playEffectAnimation?.(animationResult)
