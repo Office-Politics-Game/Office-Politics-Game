@@ -238,199 +238,17 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import MallProductCard from "@/components/mall/MallProductCard.vue";
 import bgDashboard from "@/assets/images/bg-dashboard.webp";
-import cardBgAdvisor from "@/assets/images/card-bg-advisor.webp";
-import cardBgManager from "@/assets/images/card-bg-manager.webp";
-import cardBgSenior from "@/assets/images/card-bg-senior.webp";
-import cardBgBack from "@/assets/images/card-bg-back.webp";
-import waitingRoomOne from "@/assets/images/waiting-room-1.webp";
-import waitingRoomTwo from "@/assets/images/waiting-room-2.webp";
-import waitingRoomThree from "@/assets/images/waiting-room-3.webp";
-import roomMenu from "@/assets/images/room-menu.webp";
-import playerOne from "@/assets/images/player-1.png";
-import playerTwo from "@/assets/images/player-2.png";
+import {
+  mallCategories,
+  mallHeaderMetrics,
+  mallItems,
+} from "@/mocks/mallMockData.js";
 
 const router = useRouter();
 
-const categories = [
-  {
-    id: "card-front",
-    name: "卡面",
-    description: "替你的角色卡換上更有氣場的正面造型。",
-  },
-  {
-    id: "card-back",
-    name: "卡背",
-    description: "讓每一次出牌，都有更高辨識度的背面設計。",
-  },
-  {
-    id: "ticket",
-    name: "抽卡券",
-    description: "累積抽卡券，解鎖更多驚喜與收藏。",
-  },
-  {
-    id: "board",
-    name: "盤面",
-    description: "更換牌桌場景，打造你的專屬對局氛圍。",
-  },
-  {
-    id: "avatar",
-    name: "頭像",
-    description: "用頭像展現你的職場人設。",
-  },
-];
-
-const mockItems = [
-  {
-    id: "front-01",
-    category: "card-front",
-    categoryLabel: "卡面",
-    name: "顧問風格卡面",
-    description: "以資深顧問卡面為基底，讓角色卡在對局中更有氣場。",
-    summary: "適合想強化角色卡正面視覺存在感的玩家。",
-    price: "620",
-    actionLabel: "立即購買",
-    actionState: "buy",
-    previewImage: cardBgAdvisor,
-  },
-  {
-    id: "front-02",
-    category: "card-front",
-    categoryLabel: "卡面",
-    name: "主管風格卡面",
-    description: "深色線條與穩定排版，適合偏管理層風格的牌面展示。",
-    summary: "冷色系配置，走穩重職場風格。",
-    price: "480",
-    actionLabel: "已擁有",
-    actionState: "owned",
-    previewImage: cardBgManager,
-  },
-  {
-    id: "front-03",
-    category: "card-front",
-    categoryLabel: "卡面",
-    name: "資深階級卡面",
-    description: "提升牌面存在感，適合用來塑造高位階辦公室氛圍。",
-    summary: "視覺更有層級感，適合高階角色風格。",
-    price: "760",
-    actionLabel: "立即購買",
-    actionState: "buy",
-    previewImage: cardBgSenior,
-  },
-  {
-    id: "back-01",
-    category: "card-back",
-    categoryLabel: "卡背",
-    name: "經典卡背",
-    description: "以現有卡背為基礎優化識別度，出牌時更容易被注意到。",
-    summary: "保留既有風格，同時提高辨識度。",
-    price: "320",
-    actionLabel: "立即購買",
-    actionState: "buy",
-    previewImage: cardBgBack,
-  },
-  {
-    id: "back-02",
-    category: "card-back",
-    categoryLabel: "卡背",
-    name: "深藍識別卡背",
-    description: "更加穩重的背面配置，適合偏冷調的職場風格。",
-    summary: "專為深藍灰主題配置的卡背樣式。",
-    price: "450",
-    actionLabel: "敬請期待",
-    actionState: "coming",
-    previewImage: cardBgBack,
-  },
-  {
-    id: "ticket-01",
-    category: "ticket",
-    categoryLabel: "抽卡券",
-    name: "單張抽卡券",
-    description: "累積收藏的入門選擇，用於抽取更多卡面與造型。",
-    summary: "適合想先小量補充抽卡資源的玩家。",
-    price: "100",
-    actionLabel: "立即購買",
-    actionState: "buy",
-    previewImage: roomMenu,
-  },
-  {
-    id: "ticket-02",
-    category: "ticket",
-    categoryLabel: "抽卡券",
-    name: "十連抽卡券包",
-    description: "一次補足抽卡資源，適合想快速擴充收藏的玩家。",
-    summary: "集中補充抽卡券的高效率方案。",
-    price: "900",
-    actionLabel: "立即購買",
-    actionState: "buy",
-    previewImage: roomMenu,
-  },
-  {
-    id: "board-01",
-    category: "board",
-    categoryLabel: "盤面",
-    name: "會議室盤面",
-    description: "把對局牌桌換成更像正式會議室的視覺配置。",
-    summary: "適合喜歡正式辦公室氣氛的對局風格。",
-    price: "540",
-    actionLabel: "立即購買",
-    actionState: "buy",
-    previewImage: waitingRoomOne,
-  },
-  {
-    id: "board-02",
-    category: "board",
-    categoryLabel: "盤面",
-    name: "部門辦公區盤面",
-    description: "以辦公區與工位感為主的盤面風格，整體更貼近大廳主題。",
-    summary: "桌面元素較豐富，視覺更貼近現有首頁。",
-    price: "680",
-    actionLabel: "已擁有",
-    actionState: "owned",
-    previewImage: waitingRoomTwo,
-  },
-  {
-    id: "board-03",
-    category: "board",
-    categoryLabel: "盤面",
-    name: "高層樓層盤面",
-    description: "偏高階管理層風格的牌桌場景，讓對局氛圍更沉穩。",
-    summary: "更適合冷調與高階角色牌面搭配。",
-    price: "760",
-    actionLabel: "敬請期待",
-    actionState: "coming",
-    previewImage: waitingRoomThree,
-  },
-  {
-    id: "avatar-01",
-    category: "avatar",
-    categoryLabel: "頭像",
-    name: "新人頭像",
-    description: "以新人角色形象作為頭像，建立初入職場的角色定位。",
-    summary: "適合輕鬆、入門型的角色人設。",
-    price: "180",
-    actionLabel: "立即購買",
-    actionState: "buy",
-    previewImage: playerOne,
-  },
-  {
-    id: "avatar-02",
-    category: "avatar",
-    categoryLabel: "頭像",
-    name: "幹練頭像",
-    description: "較成熟的角色形象，適合搭配冷調與高階卡面風格。",
-    summary: "更穩重、俐落的辦公室角色印象。",
-    price: "280",
-    actionLabel: "已擁有",
-    actionState: "owned",
-    previewImage: playerTwo,
-  },
-];
-
-const headerMetrics = [
-  { label: "可用代幣", value: "2,400" },
-  { label: "已擁有", value: "04" },
-  { label: "待上架", value: "03" },
-];
+const categories = mallCategories;
+const mockItems = mallItems;
+const headerMetrics = mallHeaderMetrics;
 
 const activeCategory = ref(categories[0].id);
 const selectedItem = ref(mockItems[0]);
@@ -595,13 +413,16 @@ onBeforeUnmount(() => {
     linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 48%);
 }
 
-.item-action--modal {
+.item-action {
   border: 1px solid transparent;
-  width: 100%;
   padding: 10px 16px;
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.08em;
+}
+
+.item-action--modal {
+  width: 100%;
 }
 
 .item-action--buy {
