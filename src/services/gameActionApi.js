@@ -1,5 +1,8 @@
-const ACTION_API_PATH = "/api/actions"
-const ROOM_API_PATH = "/api/rooms"
+import { API_BASE_URL } from "./apiClient.js"
+
+const ACTION_API_PATH = `${API_BASE_URL}/actions`
+const GAME_STATE_API_PATH = `${API_BASE_URL}/game-states`
+const ROOM_API_PATH = `${API_BASE_URL}/rooms`
 
 async function parseJsonResponse(response) {
   return response.json().catch(() => null)
@@ -65,7 +68,7 @@ function getRoomGameState(roomCode, playerId) {
   const query = new URLSearchParams({ playerId: String(playerId) })
 
   return requestGameActionApi(
-    `/api/game-states/room/${encodeURIComponent(roomCode)}?${query.toString()}`,
+    `${GAME_STATE_API_PATH}/room/${encodeURIComponent(roomCode)}?${query.toString()}`,
     createRequestOptions("GET"),
   )
 }

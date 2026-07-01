@@ -527,7 +527,12 @@ async function refreshRoomState({ onProgress } = {}) {
   const data = await getRoomGameState(normalizedRoomCode.value, requestedPlayerId.value)
   onProgress?.(80)
 
-  const nextGameState = data.state ?? data.gameState ?? null
+  const nextGameState = data?.state ?? data?.gameState ?? null
+
+  if (!nextGameState) {
+    throw new Error('Game state response did not include state')
+  }
+
   const nextPlayers = Array.isArray(nextGameState?.players) ? nextGameState.players : []
 
   if (nextPlayers.length !== 4) {
@@ -544,7 +549,7 @@ async function refreshRoomState({ onProgress } = {}) {
     currentPlayerId: requestedPlayerId.value,
     currentTurnPlayerId:
       nextGameState?.currentTurnPlayerId ??
-      data.currentTurnPlayerId ??
+      data?.currentTurnPlayerId ??
       null,
   })
   onProgress?.(100)
