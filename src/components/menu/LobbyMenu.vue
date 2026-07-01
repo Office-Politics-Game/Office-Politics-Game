@@ -15,10 +15,10 @@
           <div class="btn-content">
             <img
               src="../../assets/images/icon-card.png"
-              alt="開始對局"
+              alt="開始遊玩"
               class="h-auto w-[78px] object-contain lg:w-[120px]"
             />
-            <span class="text-lg font-bold tracking-wider">開始對局</span>
+            <span class="text-lg font-bold tracking-wider">開始遊玩</span>
           </div>
         </button>
 
@@ -28,10 +28,10 @@
           <div class="btn-content">
             <img
               src="../../assets/images/icon-personal.png"
-              alt="個人資料"
+              alt="個人區域"
               class="h-auto w-[59px] object-contain lg:w-[90px]"
             />
-            <span class="mt-2 text-lg font-bold tracking-wider">個人資料</span>
+            <span class="mt-2 text-lg font-bold tracking-wider">個人區域</span>
           </div>
         </button>
 
@@ -98,10 +98,10 @@
           <div class="btn-content">
             <img
               src="../../assets/images/icon-quit.png"
-              alt="離開遊戲"
+              alt="打卡下班"
               class="h-auto w-[32px] object-contain lg:w-[48px]"
             />
-            <span class="mt-1 text-lg font-bold tracking-wider">離開遊戲</span>
+            <span class="mt-1 text-lg font-bold tracking-wider">打卡下班</span>
           </div>
         </button>
       </section>
@@ -112,8 +112,8 @@
       >
         <div class="social-flip-backdrop"></div>
         <div class="social-flip-copy">
-          <span>社交通訊</span>
-          <strong>同事連線中</strong>
+          <span>社交</span>
+          <strong>交誼聽</strong>
         </div>
       </section>
     </div>
