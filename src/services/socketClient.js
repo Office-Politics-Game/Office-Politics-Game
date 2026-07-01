@@ -1,11 +1,12 @@
 import { io } from "socket.io-client"
 
 const DEFAULT_ACK_TIMEOUT_MS = 5000
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "/"
 let socket = null
 
 function getSocket() {
   if (!socket) {
-    socket = io("/", {
+    socket = io(SOCKET_URL, {
       autoConnect: false,
     })
   }
@@ -52,6 +53,7 @@ function disconnectSocket() {
 }
 
 export {
+  SOCKET_URL,
   getSocket,
   connectSocket,
   emitWithAck,

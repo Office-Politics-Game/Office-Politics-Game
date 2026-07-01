@@ -1,5 +1,7 @@
 import axios from "axios";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+
 function normalizeApiError(error) {
   const responseData = error?.response?.data ?? null;
   const status = error?.response?.status ?? null;
@@ -19,7 +21,7 @@ function normalizeApiError(error) {
 }
 
 const apiClient = axios.create({
-  baseURL: "/api",
+  baseURL: API_BASE_URL,
 });
 
 apiClient.interceptors.response.use(
@@ -27,4 +29,4 @@ apiClient.interceptors.response.use(
   (error) => Promise.reject(normalizeApiError(error)),
 );
 
-export { apiClient };
+export { apiClient, API_BASE_URL };

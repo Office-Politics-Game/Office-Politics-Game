@@ -33,3 +33,18 @@
 |    **3**    | **部門主管**    |     2      | 與一名玩家秘密比大小，點數小者淘汰。           | _「KPI沒達標，你就滾蛋吧。」_              |
 |    **2**    | **打掃阿姨**    |     2      | 秘密觀看一名玩家的手牌。                       | _「打掃阿姨知道所有秘密...」_              |
 |    **1**    | **實習生**      |     5      | 猜測一名玩家的手牌，猜中則對方淘汰。           | _「實習生很愛八卦，卻所知甚少...」_        |
+
+---
+
+## Deployment Notes
+
+For a Vercel frontend with a Render backend, configure these environment variables:
+
+- Vercel frontend:
+  - `VITE_API_BASE_URL=https://<render-service-host>/api`
+  - `VITE_SOCKET_URL=https://<render-service-host>`
+- Render backend:
+  - `CORS_ORIGIN=https://<vercel-app-host>`
+  - `DATABASE_URL=<postgres-connection-string>`
+
+Local development does not require `VITE_API_BASE_URL` or `VITE_SOCKET_URL`. When they are not set, the frontend falls back to `/api` for HTTP requests and `/` for Socket.IO, so the existing Vite dev proxy continues to route requests to `http://localhost:3000`.
