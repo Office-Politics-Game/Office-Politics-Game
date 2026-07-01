@@ -25,15 +25,12 @@ export const useAuthStore = defineStore("auth", {
 
       try {
         const data = await registerApi(payload);
-        this.currentPlayer = data.player || null;
-        this.token = data.token || "";
-        this.isLoggedIn = Boolean(this.token);
 
-        return data;
-      } catch (error) {
-        this.errorMessage = getErrorMessage(error, "註冊失敗");
+        return data
+      } catch(error){
+        this.errorMessage = getErrorMessage(error, "註冊失敗")
         throw error;
-      } finally {
+      } finally{
         this.isLoading = false;
       }
     },
