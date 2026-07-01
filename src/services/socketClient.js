@@ -1,5 +1,6 @@
 import { io } from "socket.io-client"
 
+const DEFAULT_ACK_TIMEOUT_MS = 5000
 let socket = null
 
 function getSocket() {
@@ -22,6 +23,28 @@ function connectSocket() {
   return activeSocket
 }
 
+function emitWithAck(eventName, payload, { timeout = DEFAULT_ACK_TIMEOUT_MS } = {}) {
+  const activeSocket = connectSocket()
+
+  return new Promise((resolve, reject) => {
+    activeSocket.timeout(timeout).emit(eventName, payload, (error, response) => {
+      if (error) {
+        reject(error)
+        return
+      }
+
+      if (response?.ok === false) {
+        const responseError = new Error(response.error?.message || "Socket request failed")
+        responseError.data = response.error
+        reject(responseError)
+        return
+      }
+
+      resolve(response?.data ?? response)
+    })
+  })
+}
+
 function disconnectSocket() {
   if (socket?.connected) {
     socket.disconnect()
@@ -31,5 +54,6 @@ function disconnectSocket() {
 export {
   getSocket,
   connectSocket,
+  emitWithAck,
   disconnectSocket,
 }

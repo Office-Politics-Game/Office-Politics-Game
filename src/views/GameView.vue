@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import LoadingScreen from '@/components/common/LoadingScreen.vue'
@@ -13,6 +13,7 @@ import {
   getRoomGameState,
   playCard as playGameCard,
 } from '@/services/gameActionApi'
+import { connectSocket, emitWithAck } from '@/services/socketClient'
 import { useGameStateStore } from '@/stores/gameStateStore'
 import { normalizeCard } from '@/utils/cardUtils'
 import { resolveAvatarUrl } from '@/utils/playerUtils'
@@ -35,7 +36,14 @@ const initialLoadError = ref('')
 const loadingProgress = ref(0)
 const gameStage = ref(null)
 const isDrawing = ref(false)
+const isSocketActionSubmitting = ref(false)
+const isPlayingSocketAction = ref(false)
+const pendingSocketGameState = ref(null)
 let effectAnimationSequence = 0
+let activeGameSocket = null
+let socketActionQueue = Promise.resolve()
+let pendingSocketActionCount = 0
+const handledSocketActionIds = new Set()
 
 const turnStatus = computed(() => ({
   roundNumber: gameState.value?.roundNumber ?? gameState.value?.round ?? 1,
@@ -325,6 +333,165 @@ function normalizeEffectAnimationResult(result) {
   }
 }
 
+function getStatePayload(data) {
+  return data?.state ?? data?.gameState ?? data ?? null
+}
+
+function applyGameStatePayload(data) {
+  const nextGameState = getStatePayload(data)
+  const nextPlayers = Array.isArray(nextGameState?.players) ? nextGameState.players : []
+
+  if (nextPlayers.length === 0) {
+    return false
+  }
+
+  const nextCurrentPlayerId =
+    requestedPlayerId.value ?? currentPlayerId.value ?? resolvedCurrentPlayerId.value
+  const nextCurrentPlayer = nextPlayers.find(
+    (player) => String(getPlayerId(player)) === String(nextCurrentPlayerId),
+  ) ?? null
+
+  gameStateStore.$patch({
+    gameState: nextGameState,
+    currentPlayer: nextCurrentPlayer,
+    currentPlayerId: nextCurrentPlayerId,
+    currentTurnPlayerId:
+      nextGameState?.currentTurnPlayerId ??
+      data?.currentTurnPlayerId ??
+      null,
+  })
+
+  return true
+}
+
+function shouldDeferSocketState() {
+  return isDrawing.value || isPlayingSocketAction.value || isSocketActionSubmitting.value
+}
+
+function handleSocketGameState(data) {
+  if (shouldDeferSocketState()) {
+    pendingSocketGameState.value = data
+    return
+  }
+
+  applyGameStatePayload(data)
+}
+
+function flushPendingSocketGameState() {
+  if (shouldDeferSocketState() || !pendingSocketGameState.value) {
+    return
+  }
+
+  const nextState = pendingSocketGameState.value
+  pendingSocketGameState.value = null
+  applyGameStatePayload(nextState)
+}
+
+function rememberSocketAction(actionId) {
+  if (!actionId) {
+    return false
+  }
+
+  if (handledSocketActionIds.has(actionId)) {
+    return true
+  }
+
+  handledSocketActionIds.add(actionId)
+
+  if (handledSocketActionIds.size > 100) {
+    handledSocketActionIds.clear()
+  }
+
+  return false
+}
+
+async function playSocketGameAction(event) {
+  if (!event?.type || event.roomCode !== normalizedRoomCode.value) {
+    return
+  }
+
+  await nextTick()
+
+  if (event.type === 'draw-card') {
+    const playerId = normalizeAnimationPlayerId(event.playerId)
+    const drawnCard = event.drawnCard ? normalizeCard(event.drawnCard) : null
+
+    if (animationRectsSelfPlayer(playerId) && !drawnCard) {
+      return
+    }
+
+    await gameStage.value?.playDrawAnimation?.(drawnCard, playerId)
+    return
+  }
+
+  if (event.type === 'play-card') {
+    const animationResult = normalizeEffectAnimationResult(event.animationResult)
+
+    if (animationResult) {
+      await gameStage.value?.playEffectAnimation?.(animationResult)
+    }
+  }
+}
+
+function animationRectsSelfPlayer(playerId) {
+  return !playerId || String(playerId) === String(resolvedCurrentPlayerId.value)
+}
+
+function handleSocketGameAction(event) {
+  if (event?.roomCode !== normalizedRoomCode.value || rememberSocketAction(event.id)) {
+    return
+  }
+
+  pendingSocketActionCount += 1
+  isPlayingSocketAction.value = true
+
+  socketActionQueue = socketActionQueue
+    .then(() => playSocketGameAction(event))
+    .catch((error) => {
+      console.warn('[game:view] socket-action:animation-failed', {
+        event,
+        error,
+      })
+    })
+    .finally(() => {
+      pendingSocketActionCount = Math.max(0, pendingSocketActionCount - 1)
+
+      if (pendingSocketActionCount === 0) {
+        isPlayingSocketAction.value = false
+        flushPendingSocketGameState()
+      }
+    })
+}
+
+function bindGameSocketListeners(socket) {
+  socket.off('game:action', handleSocketGameAction)
+  socket.off('game:state', handleSocketGameState)
+  socket.on('game:action', handleSocketGameAction)
+  socket.on('game:state', handleSocketGameState)
+}
+
+async function subscribeGameSocket() {
+  if (!normalizedRoomCode.value || !resolvedCurrentPlayerId.value) {
+    return
+  }
+
+  activeGameSocket = connectSocket()
+  bindGameSocketListeners(activeGameSocket)
+
+  try {
+    await emitWithAck('game:subscribe', {
+      roomCode: normalizedRoomCode.value,
+      playerId: resolvedCurrentPlayerId.value,
+    })
+  } catch (error) {
+    console.warn('[game:view] socket-subscribe:failed', {
+      roomCode: normalizedRoomCode.value,
+      playerId: resolvedCurrentPlayerId.value,
+      error,
+    })
+  }
+}
+
 async function refreshRoomState({ onProgress } = {}) {
   if (!normalizedRoomCode.value || !requestedPlayerId.value) {
     throw new Error('Missing roomCode or playerId')
@@ -398,30 +565,16 @@ async function handleDrawRequest() {
   isDrawing.value = true
 
   try {
-    const data = await drawGameCard(normalizedRoomCode.value, {
+    const data = await emitWithAck('game:draw-card', {
+      roomCode: normalizedRoomCode.value,
       playerId: resolvedCurrentPlayerId.value,
     })
-    const rawDrawnCard = data?.drawnCard ?? data?.card ?? null
 
-    if (!rawDrawnCard) {
-      throw new Error('Draw card response did not include a card')
+    if (data?.state) {
+      pendingSocketGameState.value = data.state
     }
-
-    const drawnCard = normalizeCard(rawDrawnCard)
-
-    await nextTick()
-
-    if (!gameStage.value?.playDrawAnimation) {
-      throw new Error('Game stage draw animation is unavailable')
-    }
-
-    await gameStage.value.playDrawAnimation(
-      drawnCard,
-      resolvedCurrentPlayerId.value,
-    )
-    await refreshRoomState()
   } catch (error) {
-    console.warn('[game:view] draw-card:failed', {
+    console.warn('[game:view] draw-card:socket-failed', {
       roomCode: normalizedRoomCode.value,
       playerId: resolvedCurrentPlayerId.value,
       error,
@@ -429,12 +582,40 @@ async function handleDrawRequest() {
     })
 
     try {
+      const data = await drawGameCard(normalizedRoomCode.value, {
+        playerId: resolvedCurrentPlayerId.value,
+      })
+      const rawDrawnCard = data?.drawnCard ?? data?.card ?? null
+
+      if (!rawDrawnCard) {
+        throw new Error('Draw card response did not include a card')
+      }
+
+      const drawnCard = normalizeCard(rawDrawnCard)
+
+      await nextTick()
+
+      if (!gameStage.value?.playDrawAnimation) {
+        throw new Error('Game stage draw animation is unavailable')
+      }
+
+      await gameStage.value.playDrawAnimation(
+        drawnCard,
+        resolvedCurrentPlayerId.value,
+      )
       await refreshRoomState()
-    } catch (refreshError) {
-      console.warn('[game:view] draw-card:refresh-failed', refreshError)
+    } catch (fallbackError) {
+      console.warn('[game:view] draw-card:fallback-failed', fallbackError)
+
+      try {
+        await refreshRoomState()
+      } catch (refreshError) {
+        console.warn('[game:view] draw-card:refresh-failed', refreshError)
+      }
     }
   } finally {
     isDrawing.value = false
+    flushPendingSocketGameState()
   }
 }
 
@@ -450,35 +631,64 @@ async function handlePlayCard(payload) {
     guessedCardName: getGuessedCardName(payload.guessedRank),
   }
 
+  isSocketActionSubmitting.value = true
+
   try {
-    const data = await playGameCard(normalizedRoomCode.value, playPayload)
-    const animationResult = normalizeEffectAnimationResult(data?.animationResult)
+    const data = await emitWithAck('game:play-card', {
+      roomCode: normalizedRoomCode.value,
+      ...playPayload,
+    })
 
-    if (animationResult && gameStage.value?.playEffectAnimation) {
-      try {
-        await gameStage.value.playEffectAnimation(animationResult)
-      } catch (animationError) {
-        console.warn('[game:view] play-card:animation-failed', {
-          animationResult,
-          error: animationError,
-        })
-      }
+    if (data?.state) {
+      pendingSocketGameState.value = data.state
     }
-
-    await refreshRoomState()
   } catch (error) {
-    console.warn('[game:view] play-card:failed', {
+    console.warn('[game:view] play-card:socket-failed', {
       roomCode: normalizedRoomCode.value,
       playPayload,
       error,
       errorData: error?.data,
     })
-    await refreshRoomState()
+
+    try {
+      const data = await playGameCard(normalizedRoomCode.value, playPayload)
+      const animationResult = normalizeEffectAnimationResult(data?.animationResult)
+
+      if (animationResult && gameStage.value?.playEffectAnimation) {
+        try {
+          await gameStage.value.playEffectAnimation(animationResult)
+        } catch (animationError) {
+          console.warn('[game:view] play-card:animation-failed', {
+            animationResult,
+            error: animationError,
+          })
+        }
+      }
+
+      await refreshRoomState()
+    } catch (fallbackError) {
+      console.warn('[game:view] play-card:fallback-failed', {
+        roomCode: normalizedRoomCode.value,
+        playPayload,
+        error: fallbackError,
+        errorData: fallbackError?.data,
+      })
+      await refreshRoomState()
+    }
+  } finally {
+    isSocketActionSubmitting.value = false
+    flushPendingSocketGameState()
   }
 }
 
 onMounted(() => {
   loadInitialRoomState()
+  subscribeGameSocket()
+})
+
+onBeforeUnmount(() => {
+  activeGameSocket?.off('game:action', handleSocketGameAction)
+  activeGameSocket?.off('game:state', handleSocketGameState)
 })
 
 watch(
@@ -489,6 +699,7 @@ watch(
     }
 
     loadInitialRoomState()
+    subscribeGameSocket()
   },
 )
 </script>
@@ -516,7 +727,7 @@ watch(
     :draw-player-id="resolvedCurrentPlayerId || null"
     :current-player-id="resolvedCurrentPlayerId"
     :current-turn-player-id="currentTurnPlayerId"
-    :is-loading="isLoading || isDrawing"
+    :is-loading="isLoading || isDrawing || isSocketActionSubmitting || isPlayingSocketAction"
     @draw-request="handleDrawRequest"
     @play-card="handlePlayCard"
   />

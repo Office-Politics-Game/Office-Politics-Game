@@ -258,7 +258,7 @@ function requestDraw() {
 }
 
 async function playDrawAnimation(card, playerId = null) {
-  if (isDrawAnimating.value || !card) {
+  if (isDrawAnimating.value) {
     return false
   }
 
@@ -266,8 +266,12 @@ async function playDrawAnimation(card, playerId = null) {
     playerId ?? props.drawPlayerId ?? resolvedCurrentPlayerId.value
   const shouldDrawSelf = isSelfDraw(activeDrawPlayerId)
 
+  if (shouldDrawSelf && !card) {
+    return false
+  }
+
   isDrawAnimating.value = true
-  activeDrawCard.value = { ...card }
+  activeDrawCard.value = card ? { ...card } : null
 
   if (shouldDrawSelf) {
     playerHand.value?.prepareDrawTarget()
