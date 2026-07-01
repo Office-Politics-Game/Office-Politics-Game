@@ -256,18 +256,25 @@
           </header>
 
           <div class="scroll-area min-h-0 overflow-y-auto px-2.5 py-2.5 md:px-6 md:py-5">
-            <div class="grid gap-2 md:grid-cols-[minmax(0,1fr)_240px] md:gap-4">
-              <div class="grid gap-2 md:gap-4">
-                <div class="modal-preview">
+            <div class="modal-detail-card">
+              <div class="modal-detail-card__media">
+                <button
+                  type="button"
+                  class="modal-preview"
+                  aria-label="檢視商品大圖"
+                  @click="openImagePreview"
+                >
                   <img
                     :src="selectedItem.previewImage"
                     :alt="`${selectedItem.name} 預覽圖`"
                     class="modal-preview__image"
                   />
                   <div class="modal-preview__overlay"></div>
-                </div>
+                </button>
+              </div>
 
-                <div class="grid gap-1.5 border border-slate-300 bg-white p-2.5 md:gap-3 md:p-4">
+              <div class="modal-detail-card__info">
+                <div class="modal-detail-card__rows">
                   <div class="detail-row">
                     <span>分類</span>
                     <strong>{{ selectedItem.categoryLabel }}</strong>
@@ -281,9 +288,8 @@
                     <strong>{{ selectedItem.actionLabel }}</strong>
                   </div>
                 </div>
-              </div>
 
-              <aside class="grid grid-cols-[minmax(0,1fr)_auto] content-start gap-2 md:grid-cols-1 md:gap-4">
+              <aside class="modal-detail-card__purchase">
                 <div class="border border-slate-300 bg-[linear-gradient(180deg,#f9fbfd,#eef4f9)] p-2.5 md:p-4">
                   <div class="text-[9px] font-bold tracking-[0.1em] text-slate-500 md:text-[11px] md:tracking-[0.16em]">
                     可用代幣
@@ -302,9 +308,31 @@
                   {{ selectedItem.actionLabel }}
                 </button>
               </aside>
+              </div>
             </div>
           </div>
         </div>
+      </div>
+    </Transition>
+    <Transition name="modal-fade-up">
+      <div
+        v-if="isImagePreviewOpen && selectedItem"
+        class="image-preview-layer"
+        @click.self="closeImagePreview"
+      >
+        <button
+          type="button"
+          class="close-button image-preview-close"
+          aria-label="關閉商品大圖"
+          @click="closeImagePreview"
+        >
+          ×
+        </button>
+        <img
+          :src="selectedItem.previewImage"
+          :alt="`${selectedItem.name} large preview`"
+          class="image-preview-image"
+        />
       </div>
     </Transition>
   </main>
@@ -331,6 +359,7 @@ const activeCategory = ref(categories[0].id);
 const selectedItem = ref(mockItems[0]);
 const isDetailModalOpen = ref(false);
 const isMenuOpen = ref(false);
+const isImagePreviewOpen = ref(false);
 
 const categoriesWithCount = computed(() =>
   categories.map((category) => ({
@@ -360,6 +389,15 @@ function openItemDetail(item) {
 
 function closeItemDetail() {
   isDetailModalOpen.value = false;
+  isImagePreviewOpen.value = false;
+}
+
+function openImagePreview() {
+  isImagePreviewOpen.value = true;
+}
+
+function closeImagePreview() {
+  isImagePreviewOpen.value = false;
 }
 
 function goLobby() {
@@ -374,6 +412,11 @@ function handleEscape(event) {
 
   if (isMenuOpen.value) {
     isMenuOpen.value = false;
+    return;
+  }
+
+  if (isImagePreviewOpen.value) {
+    closeImagePreview();
     return;
   }
 
@@ -529,19 +572,65 @@ onBeforeUnmount(() => {
   flex: 0 0 auto;
 }
 
+.modal-detail-card {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.08fr) minmax(260px, 0.92fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.modal-detail-card__media,
+.modal-detail-card__info,
+.modal-detail-card__purchase {
+  min-width: 0;
+}
+
+.modal-detail-card__info {
+  display: grid;
+  gap: 10px;
+}
+
+.modal-detail-card__rows {
+  border: 1px solid rgba(160, 166, 179, 0.45);
+  background: rgba(255, 255, 255, 0.82);
+  padding: 14px;
+}
+
+.modal-detail-card__purchase {
+  display: grid;
+  gap: 8px;
+}
+
 .modal-preview {
   position: relative;
+  display: grid;
+  width: 100%;
+  min-height: 240px;
+  place-items: center;
   overflow: hidden;
   aspect-ratio: 16 / 9;
+  padding: 0;
   border: 1px solid rgba(160, 166, 179, 0.45);
   background: linear-gradient(180deg, rgba(203, 213, 225, 0.4), rgba(148, 163, 184, 0.28));
+  cursor: zoom-in;
 }
 
 .modal-preview__image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
   display: block;
+  width: auto;
+  height: auto;
+  max-width: calc(100% - 12px);
+  max-height: calc(100% - 12px);
+  object-fit: contain;
+  object-position: center;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 16px 34px rgba(0, 19, 50, 0.16);
+}
+
+.modal-preview__overlay {
+  display: block;
+  pointer-events: none;
 }
 
 .modal-preview__overlay {
@@ -550,6 +639,35 @@ onBeforeUnmount(() => {
   background:
     linear-gradient(180deg, rgba(0, 19, 50, 0.08), rgba(0, 19, 50, 0.48)),
     linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 48%);
+}
+
+.image-preview-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(0, 19, 50, 0.78);
+  backdrop-filter: blur(6px);
+}
+
+.image-preview-close {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.image-preview-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(92vw, 980px);
+  max-height: 88svh;
+  object-fit: contain;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.36);
 }
 
 .item-action {
@@ -687,6 +805,13 @@ onBeforeUnmount(() => {
   transform: translateX(100%);
 }
 
+@media (min-width: 1024px) {
+  .mobile-menu-button,
+  .mobile-menu-layer {
+    display: none !important;
+  }
+}
+
 @media (max-width: 767px) {
   .mall-topbar {
     align-items: start;
@@ -720,9 +845,31 @@ onBeforeUnmount(() => {
     max-height: 86svh;
   }
 
+  .modal-detail-card {
+    grid-template-columns: minmax(104px, 0.72fr) minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .modal-detail-card__info {
+    gap: 6px;
+  }
+
+  .modal-detail-card__rows {
+    padding: 8px;
+  }
+
   .modal-preview {
-    height: 112px;
+    min-height: 104px;
     aspect-ratio: auto;
+  }
+
+  .modal-preview__image {
+    max-width: calc(100% - 8px);
+    max-height: calc(100% - 8px);
+  }
+
+  .modal-detail-card__purchase {
+    gap: 6px;
   }
 
   .detail-row {
@@ -745,61 +892,6 @@ onBeforeUnmount(() => {
     align-self: stretch;
     min-width: 82px;
     padding: 7px 10px;
-    font-size: 10px;
-    letter-spacing: 0.05em;
-  }
-
-  :deep(.item-card) {
-    display: grid;
-    grid-template-columns: 88px minmax(0, 1fr);
-    grid-template-rows: auto auto;
-    align-items: center;
-    gap: 6px 10px;
-    padding: 9px;
-  }
-
-  :deep(.item-card:hover) {
-    transform: none;
-  }
-
-  :deep(.item-card__preview) {
-    grid-row: 1 / span 2;
-    height: 68px;
-    aspect-ratio: auto;
-  }
-
-  :deep(.item-card > div:nth-of-type(2)) {
-    min-width: 0;
-    margin-top: 0;
-  }
-
-  :deep(.item-card > div:nth-of-type(2) > div) {
-    overflow: hidden;
-    font-size: var(--text-sm);
-    letter-spacing: 0.03em;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  :deep(.item-card > div:nth-of-type(3)) {
-    min-width: 0;
-    margin-top: 0;
-    gap: 6px;
-  }
-
-  :deep(.item-card > div:nth-of-type(3) > div:first-child > div:first-child) {
-    font-size: 9px;
-    letter-spacing: 0.06em;
-  }
-
-  :deep(.item-card > div:nth-of-type(3) > div:first-child > div:last-child) {
-    margin-top: 1px;
-    font-size: var(--text-md);
-  }
-
-  :deep(.item-card .item-action) {
-    min-width: 52px;
-    padding: 7px 8px;
     font-size: 10px;
     letter-spacing: 0.05em;
   }
