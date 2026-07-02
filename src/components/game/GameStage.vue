@@ -291,6 +291,7 @@ const canConfirmPendingPlay = computed(() => {
 
   return true
 })
+const isHandDrawRequired = computed(() => props.canDraw)
 const isPlayInteractionLocked = computed(() =>
   props.isLoading ||
   isInitialRoundDrawAnimating.value ||
@@ -299,6 +300,18 @@ const isPlayInteractionLocked = computed(() =>
   Boolean(pendingPlay.value) ||
   isDrawAnimating.value ||
   Boolean(activeEffectResult.value),
+)
+const isHandPlayInteractionLocked = computed(() =>
+  isPlayInteractionLocked.value || isHandDrawRequired.value,
+)
+const isDeckDrawDisabled = computed(() =>
+  isPlayInteractionLocked.value || !props.canDraw,
+)
+const handDisabledMessage = computed(() =>
+  isHandDrawRequired.value ? '請先抽下一張牌' : '',
+)
+const deckBlockedMessage = computed(() =>
+  !isCurrentPlayerTurn.value ? '還沒輪到你' : '',
 )
 const dragPreviewStyle = computed(() => {
   if (!hasActivePlay.value || !originRect.value || !dragPoint.value || !isDragging.value) {
@@ -868,7 +881,7 @@ function handleWindowPointerUp(event) {
 
 function handleCardPointerDown(card, event) {
   if (
-    isPlayInteractionLocked.value ||
+    isHandPlayInteractionLocked.value ||
     advisorRuleDisabledCardIds.value.includes(card.id)
   ) {
     return
@@ -1051,7 +1064,8 @@ defineExpose({
           ref="tableCardPilesRef"
           :deck-count="deckCount"
           :discard-cards="visibleDiscardCards"
-          :is-draw-disabled="isPlayInteractionLocked || !canDraw"
+          :is-draw-disabled="isDeckDrawDisabled"
+          :draw-disabled-message="deckBlockedMessage"
           :is-drop-target-active="isOverPlayZone && hasActivePlay"
           @draw="requestDraw"
         />
@@ -1063,6 +1077,8 @@ defineExpose({
           :cards="visibleHandCards"
           :dragging-card-id="draggingCardId"
           :disabled-card-ids="advisorRuleDisabledCardIds"
+          :is-interaction-disabled="isHandDrawRequired"
+          :disabled-message="handDisabledMessage"
           @card-pointerdown="handleCardPointerDown"
         />
       </div>

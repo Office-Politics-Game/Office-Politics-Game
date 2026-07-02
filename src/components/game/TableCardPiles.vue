@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { gsap } from 'gsap'
 import cardBackUrl from '@/assets/images/card-bg-back.webp'
 import GameCard from './GameCard.vue'
+import HoverBlockHint from './HoverBlockHint.vue'
 
 const props = defineProps({
   deckCount: {
@@ -32,6 +33,10 @@ const props = defineProps({
   isDrawDisabled: {
     type: Boolean,
     default: false,
+  },
+  drawDisabledMessage: {
+    type: String,
+    default: '',
   },
   isDropTargetActive: {
     type: Boolean,
@@ -73,6 +78,12 @@ const topDiscardCard = computed(() => {
 
 const isDeckInteractionDisabled = computed(
   () => props.isDrawDisabled || props.isDeckHidden || isDeckPressing.value,
+)
+const isDeckButtonDisabled = computed(
+  () => props.isDeckHidden || isDeckPressing.value,
+)
+const isDrawBlockedWithMessage = computed(
+  () => props.isDrawDisabled && Boolean(props.drawDisabledMessage) && !props.isDeckHidden,
 )
 
 function getDeckRect() {
@@ -332,12 +343,17 @@ onUnmounted(() => {
       class="flex flex-col items-center gap-[clamp(6px,1.4vh,12px)]"
       :aria-label="`牌庫，剩餘 ${deckCount} 張`"
     >
+      <div
+        class="table-card-pile-target relative"
+        :class="{ 'hover-block-hint-target': isDrawBlockedWithMessage }"
+      >
       <button
         ref="deckPile"
         type="button"
         class="table-card-pile table-card-pile--deck card-stack relative aspect-[3/4] h-[clamp(108px,25vh,220px)]"
         :class="{ 'table-card-pile--hidden': isDeckHidden }"
-        :disabled="isDeckInteractionDisabled"
+        :disabled="isDeckButtonDisabled"
+        :aria-disabled="isDeckInteractionDisabled"
         :aria-label="`抽牌，牌庫剩餘 ${deckCount} 張`"
         @click="handleDeckDraw"
       >
@@ -352,6 +368,12 @@ onUnmounted(() => {
           draggable="false"
         />
       </button>
+        <HoverBlockHint
+          v-if="isDrawBlockedWithMessage"
+          class="table-card-pile__blocked-hint"
+          :message="props.drawDisabledMessage"
+        />
+      </div>
 
       <p
         aria-hidden="true"
@@ -395,6 +417,18 @@ onUnmounted(() => {
   perspective: 1100px;
 }
 
+.table-card-pile-target :global(.table-card-pile__blocked-hint) {
+  top: 18%;
+  bottom: auto;
+  transform: translateX(-50%);
+}
+
+@media (min-width: 1024px) {
+  .table-card-pile-target :global(.table-card-pile__blocked-hint) {
+    top: 40%;
+  }
+}
+
 .table-card-pile {
   isolation: isolate;
   transform-origin: 50% 100%;
@@ -429,7 +463,7 @@ onUnmounted(() => {
     box-shadow 0.18s ease;
 }
 
-.table-card-pile--deck:hover:not(:disabled) {
+.table-card-pile--deck:hover:not(:disabled):not([aria-disabled='true']) {
   filter:
     brightness(1.06)
     drop-shadow(0 4px 4px rgba(0, 19, 50, 0.34))
@@ -441,8 +475,9 @@ onUnmounted(() => {
   box-shadow: 0 0 0 5px var(--brand-focus);
 }
 
-.table-card-pile--deck:disabled {
-  cursor: not-allowed;
+.table-card-pile--deck:disabled,
+.table-card-pile--deck[aria-disabled='true'] {
+  cursor: default;
 }
 
 .table-card-pile--hidden {

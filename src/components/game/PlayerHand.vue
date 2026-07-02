@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import GameCard from './GameCard.vue'
+import HoverBlockHint from './HoverBlockHint.vue'
 
 const props = defineProps({
   cards: {
@@ -23,6 +24,14 @@ const props = defineProps({
     type: Array,
     default: () => [],
     validator: (cardIds) => cardIds.every((cardId) => typeof cardId === 'string'),
+  },
+  isInteractionDisabled: {
+    type: Boolean,
+    default: false,
+  },
+  disabledMessage: {
+    type: String,
+    default: '',
   },
 })
 
@@ -54,6 +63,10 @@ function finishDraw() {
 }
 
 function isCardDisabled(card) {
+  return props.isInteractionDisabled || props.disabledCardIds.includes(card.id)
+}
+
+function isCardRuleDisabled(card) {
   return props.disabledCardIds.includes(card.id)
 }
 
@@ -83,6 +96,9 @@ defineExpose({
       :class="{
         'game-card-arrangement--dragging': card.id === draggingCardId,
         'game-card-arrangement--disabled': isCardDisabled(card),
+        'game-card-arrangement--interaction-disabled': props.isInteractionDisabled,
+        'game-card-arrangement--rule-disabled': isCardRuleDisabled(card),
+        'hover-block-hint-target': props.isInteractionDisabled,
       }"
       role="button"
       :tabindex="isCardDisabled(card) ? -1 : 0"
@@ -97,6 +113,10 @@ defineExpose({
           :frame-url="card.frameUrl"
         />
       </div>
+      <HoverBlockHint
+        v-if="props.isInteractionDisabled && props.disabledMessage"
+        :message="props.disabledMessage"
+      />
     </div>
 
     <div
@@ -134,9 +154,14 @@ defineExpose({
   cursor: grabbing;
 }
 
-.game-card-arrangement--disabled,
-.game-card-arrangement--disabled:active {
+.game-card-arrangement--rule-disabled,
+.game-card-arrangement--rule-disabled:active {
   cursor: not-allowed;
+}
+
+.game-card-arrangement--interaction-disabled,
+.game-card-arrangement--interaction-disabled:active {
+  cursor: default;
 }
 
 .game-card-arrangement:nth-child(1) {
