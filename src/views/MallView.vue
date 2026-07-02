@@ -4,14 +4,6 @@
     :style="{ backgroundImage: `url(${bgDashboard})` }"
   >
     <div class="absolute inset-0 bg-[rgba(0,19,50,0.36)]"></div>
-    <div class="tablet-portrait-notice" role="status" aria-live="polite">
-      <div class="tablet-portrait-notice__panel">
-        <div class="tablet-portrait-notice__icon">↻</div>
-        <h2>請橫放裝置</h2>
-        <p>商城在平板橫向畫面會有較完整的商品與分類排版。</p>
-      </div>
-    </div>
-
     <section class="mall-shell relative z-10 flex h-[98svh] w-[98vw] max-w-[1360px] flex-col overflow-hidden border border-white/25 bg-white/82 shadow-2xl backdrop-blur-md md:h-[92vh] md:w-[95vw]">
       <header class="mobile-storebar xl:hidden">
         <div class="min-w-0">
@@ -488,7 +480,7 @@ onBeforeUnmount(() => {
   background:
     linear-gradient(116deg, transparent 0 31%, rgba(54, 83, 143, 0.38) 31.2% 55%, transparent 55.2%),
     repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 5px),
-    radial-gradient(circle at 78% 24%, rgba(132, 204, 22, 0.14), transparent 28%),
+    radial-gradient(circle at 78% 24%, rgba(0, 70, 244, 0.18), transparent 28%),
     radial-gradient(circle at 18% 80%, rgba(168, 85, 247, 0.18), transparent 30%);
   pointer-events: none;
 }
@@ -523,7 +515,7 @@ onBeforeUnmount(() => {
   left: 0;
   height: 3px;
   content: "";
-  background: linear-gradient(90deg, transparent, rgba(190, 242, 100, 0.95), transparent);
+  background: linear-gradient(90deg, transparent, rgba(0, 70, 244, 0.95), transparent);
 }
 
 .mall-topbar h1,
@@ -541,21 +533,21 @@ onBeforeUnmount(() => {
 }
 
 .mall-topbar > div:nth-child(2) > div > div:last-child {
-  color: rgb(190, 242, 100);
-  text-shadow: 0 0 14px rgba(132, 204, 22, 0.35);
+  color: rgb(134, 179, 224);
+  text-shadow: 0 0 14px rgba(0, 70, 244, 0.45);
 }
 
 .mall-topbar .btn-dark,
 .mobile-menu-panel .btn-dark {
-  border-color: rgba(190, 242, 100, 0.7);
-  background: linear-gradient(180deg, rgba(163, 230, 53, 0.95), rgba(77, 124, 15, 0.95));
-  color: rgb(15, 23, 42);
+  border-color: rgba(0, 70, 244, 0.7);
+  background: linear-gradient(180deg, rgba(0, 70, 244, 0.95), rgba(70, 85, 99, 0.95));
+  color: white;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
 }
 
 .scroll-area {
   scrollbar-width: thin;
-  scrollbar-color: rgba(190, 242, 100, 0.72) rgba(15, 23, 42, 0.7);
+  scrollbar-color: rgba(0, 70, 244, 0.72) rgba(15, 23, 42, 0.7);
 }
 
 .scroll-area::-webkit-scrollbar {
@@ -570,11 +562,11 @@ onBeforeUnmount(() => {
 
 .scroll-area::-webkit-scrollbar-thumb {
   border: 2px solid rgba(15, 23, 42, 0.75);
-  background: linear-gradient(180deg, rgba(190, 242, 100, 0.9), rgba(21, 128, 61, 0.88));
+  background: linear-gradient(180deg, rgba(0, 70, 244, 0.9), rgba(70, 85, 99, 0.88));
 }
 
 .scroll-area::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(217, 249, 157, 0.95), rgba(132, 204, 22, 0.92));
+  background: linear-gradient(180deg, rgba(134, 179, 224, 0.95), rgba(0, 70, 244, 0.92));
 }
 
 .mall-shell > .grid > aside {
@@ -613,27 +605,27 @@ onBeforeUnmount(() => {
 
 .category-card:hover {
   transform: translateY(-1px);
-  border-color: rgba(190, 242, 100, 0.72);
+  border-color: rgba(0, 70, 244, 0.72);
   background: linear-gradient(180deg, rgba(30, 75, 90, 0.98), rgba(15, 46, 62, 0.98));
 }
 
 .category-card.active {
-  border-color: rgba(190, 242, 100, 0.95);
-  background: linear-gradient(180deg, rgba(163, 230, 53, 0.92), rgba(101, 163, 13, 0.92));
+  border-color: rgba(0, 70, 244, 0.95);
+  background: linear-gradient(180deg, rgba(0, 70, 244, 0.92), rgba(70, 85, 99, 0.92));
   box-shadow:
-    inset 4px 0 0 rgba(236, 252, 203, 0.98),
-    0 0 22px rgba(132, 204, 22, 0.28);
-  color: rgb(15, 23, 42);
+    inset 4px 0 0 rgba(134, 179, 224, 0.98),
+    0 0 22px rgba(0, 70, 244, 0.34);
+  color: white;
 }
 
 .category-card span {
-  border-color: rgba(190, 242, 100, 0.32);
+  border-color: rgba(0, 70, 244, 0.32);
   background: rgba(2, 6, 23, 0.42);
   color: currentColor;
 }
 
 .featured-panel {
-  border-color: rgba(190, 242, 100, 0.28);
+  border-color: rgba(0, 70, 244, 0.28);
   background:
     linear-gradient(110deg, rgba(2, 6, 23, 0.96) 0 42%, rgba(30, 58, 138, 0.42) 42.2% 67%, rgba(2, 6, 23, 0.94) 67.2%),
     rgba(2, 6, 23, 0.9);
@@ -647,51 +639,6 @@ onBeforeUnmount(() => {
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-}
-
-.tablet-portrait-notice {
-  display: none;
-}
-
-.tablet-portrait-notice__panel {
-  width: min(72vw, 420px);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  background: rgba(255, 255, 255, 0.12);
-  padding: 34px 28px;
-  text-align: center;
-  color: white;
-  box-shadow:
-    0 24px 70px rgba(0, 19, 50, 0.34),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(12px);
-}
-
-.tablet-portrait-notice__icon {
-  margin: 0 auto 14px;
-  display: grid;
-  width: 58px;
-  height: 58px;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.42);
-  background: rgba(255, 255, 255, 0.12);
-  font-size: 34px;
-  font-weight: 900;
-}
-
-.tablet-portrait-notice h2 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 34px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-}
-
-.tablet-portrait-notice p {
-  margin: 12px 0 0;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.7;
 }
 
 .mobile-storebar {
@@ -716,9 +663,9 @@ onBeforeUnmount(() => {
 }
 
 .mobile-storebar span:not(.mobile-menu-button span) {
-  border-color: rgba(190, 242, 100, 0.52);
-  background: rgba(163, 230, 53, 0.14);
-  color: rgb(217, 249, 157);
+  border-color: rgba(0, 70, 244, 0.52);
+  background: rgba(0, 70, 244, 0.16);
+  color: rgb(134, 179, 224);
 }
 
 .mobile-menu-button {
@@ -728,7 +675,7 @@ onBeforeUnmount(() => {
   width: 34px;
   height: 34px;
   place-items: center;
-  border: 1px solid rgba(190, 242, 100, 0.5);
+  border: 1px solid rgba(0, 70, 244, 0.55);
   background: rgba(15, 23, 42, 0.9);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
@@ -737,7 +684,7 @@ onBeforeUnmount(() => {
   display: block;
   width: 16px;
   height: 2px;
-  background: rgb(190, 242, 100);
+  background: rgb(134, 179, 224);
 }
 
 .mobile-menu-layer {
@@ -754,7 +701,7 @@ onBeforeUnmount(() => {
   width: min(78vw, 280px);
   height: 100%;
   overflow-y: auto;
-  border-left: 1px solid rgba(190, 242, 100, 0.34);
+  border-left: 1px solid rgba(0, 70, 244, 0.38);
   background:
     linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(2, 6, 23, 0.96)),
     rgba(2, 6, 23, 0.96);
@@ -830,9 +777,9 @@ onBeforeUnmount(() => {
 }
 
 .modal-panel header span {
-  border-color: rgba(190, 242, 100, 0.45);
-  background: rgba(163, 230, 53, 0.14);
-  color: rgb(217, 249, 157);
+  border-color: rgba(0, 70, 244, 0.45);
+  background: rgba(0, 70, 244, 0.16);
+  color: rgb(134, 179, 224);
 }
 
 .modal-detail-card__purchase > div {
@@ -846,8 +793,8 @@ onBeforeUnmount(() => {
 }
 
 .modal-detail-card__purchase > div > div:last-child {
-  color: rgb(190, 242, 100);
-  text-shadow: 0 0 14px rgba(132, 204, 22, 0.35);
+  color: rgb(134, 179, 224);
+  text-shadow: 0 0 14px rgba(0, 70, 244, 0.45);
 }
 
 .modal-preview {
@@ -936,13 +883,13 @@ onBeforeUnmount(() => {
 }
 
 .item-action--buy {
-  border-color: rgba(190, 242, 100, 0.75);
-  background: linear-gradient(180deg, rgba(163, 230, 53, 0.95), rgba(77, 124, 15, 0.95));
-  color: rgb(15, 23, 42);
+  border-color: rgba(0, 70, 244, 0.75);
+  background: linear-gradient(180deg, rgba(0, 70, 244, 0.95), rgba(70, 85, 99, 0.95));
+  color: white;
 }
 
 .item-action--buy:hover {
-  background: linear-gradient(180deg, rgba(217, 249, 157, 0.98), rgba(132, 204, 22, 0.95));
+  background: linear-gradient(180deg, rgba(134, 179, 224, 0.98), rgba(0, 70, 244, 0.95));
 }
 
 .item-action--owned {
@@ -1007,9 +954,9 @@ onBeforeUnmount(() => {
 
 .close-button:hover {
   transform: translateY(-1px);
-  border-color: rgba(190, 242, 100, 0.8);
-  background: rgba(190, 242, 100, 0.9);
-  color: rgb(15, 23, 42);
+  border-color: rgba(0, 70, 244, 0.8);
+  background: rgba(0, 70, 244, 0.9);
+  color: white;
 }
 
 .close-button:focus-visible {
@@ -1124,22 +1071,6 @@ onBeforeUnmount(() => {
   .product-list > * {
     flex: 0 0 calc((100% - 24px) / 4);
     scroll-snap-align: start;
-  }
-}
-
-@media (min-width: 768px) and (max-width: 1279px) and (orientation: portrait) {
-  .tablet-portrait-notice {
-    position: fixed;
-    inset: 0;
-    z-index: 100;
-    display: flex;
-    min-height: 100dvh;
-    align-items: center;
-    justify-content: center;
-    padding: 28px;
-    background:
-      linear-gradient(145deg, rgba(0, 19, 50, 0.92), rgba(45, 70, 95, 0.92)),
-      rgba(0, 19, 50, 0.88);
   }
 }
 

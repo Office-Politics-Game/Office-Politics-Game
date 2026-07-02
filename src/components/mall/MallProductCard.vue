@@ -78,17 +78,17 @@ defineEmits(["select"]);
 
 .item-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(190, 242, 100, 0.72);
+  border-color: rgba(0, 70, 244, 0.72);
   box-shadow:
-    inset 0 0 0 1px rgba(190, 242, 100, 0.18),
+    inset 0 0 0 1px rgba(0, 70, 244, 0.18),
     0 16px 28px rgba(0, 0, 0, 0.26);
 }
 
 .item-card.active {
-  border-color: rgba(163, 230, 53, 0.9);
+  border-color: rgba(0, 70, 244, 0.9);
   box-shadow:
-    inset 0 0 0 1px rgba(163, 230, 53, 0.32),
-    0 0 0 3px rgba(163, 230, 53, 0.16),
+    inset 0 0 0 1px rgba(0, 70, 244, 0.32),
+    0 0 0 3px rgba(0, 70, 244, 0.16),
     0 18px 30px rgba(0, 0, 0, 0.28);
 }
 
@@ -161,19 +161,19 @@ defineEmits(["select"]);
 
 .item-card__price {
   margin-top: 2px;
-  color: rgb(190, 242, 100);
+  color: rgb(134, 179, 224);
   font-size: 22px;
-  text-shadow: 0 0 12px rgba(132, 204, 22, 0.35);
+  text-shadow: 0 0 12px rgba(0, 70, 244, 0.45);
 }
 
 .item-action {
   width: auto;
   min-width: 82px;
   min-height: 34px;
-  border: 1px solid rgba(190, 242, 100, 0.75);
-  background: linear-gradient(180deg, rgba(163, 230, 53, 0.95), rgba(77, 124, 15, 0.95));
+  border: 1px solid rgba(0, 70, 244, 0.75);
+  background: linear-gradient(180deg, rgba(0, 70, 244, 0.95), rgba(70, 85, 99, 0.95));
   padding: 7px 8px;
-  color: rgb(15, 23, 42);
+  color: white;
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.06em;
@@ -196,12 +196,12 @@ defineEmits(["select"]);
 }
 
 .item-action--buy {
-  background: linear-gradient(180deg, rgba(163, 230, 53, 0.95), rgba(77, 124, 15, 0.95));
-  color: rgb(15, 23, 42);
+  background: linear-gradient(180deg, rgba(0, 70, 244, 0.95), rgba(70, 85, 99, 0.95));
+  color: white;
 }
 
 .item-action--buy:hover {
-  background: linear-gradient(180deg, rgba(217, 249, 157, 0.98), rgba(132, 204, 22, 0.95));
+  background: linear-gradient(180deg, rgba(134, 179, 224, 0.98), rgba(0, 70, 244, 0.95));
 }
 
 .item-action--owned {

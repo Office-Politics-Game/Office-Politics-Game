@@ -17,7 +17,6 @@ import ManagerAnimation from './ManagerAnimation.vue'
 import PMAnimation from './PMAnimation.vue'
 import PlayerHand from './PlayerHand.vue'
 import PlayerSeats from './PlayerSeats.vue'
-import RotateDeviceNotice from './RotateDeviceNotice.vue'
 import TableCardPiles from './TableCardPiles.vue'
 import TurnStatus from './TurnStatus.vue'
 
@@ -769,7 +768,6 @@ defineExpose({
       @restart-game="emit('restart-game')"
     />
 
-    <RotateDeviceNotice />
   </main>
 </template>
 
@@ -894,7 +892,7 @@ defineExpose({
   opacity: 0.5;
 }
 
-@media (orientation: landscape), (min-width: 768px) {
+@media (orientation: landscape) {
   .game-stage {
     display: block;
   }

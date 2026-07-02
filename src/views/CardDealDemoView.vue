@@ -13,7 +13,6 @@ import playerFourUrl from '@/assets/images/player-4.png'
 import CardDealAnimation from '@/components/game/CardDealAnimation.vue'
 import PlayerHand from '@/components/game/PlayerHand.vue'
 import PlayerSeats from '@/components/game/PlayerSeats.vue'
-import RotateDeviceNotice from '@/components/game/RotateDeviceNotice.vue'
 import TableCardPiles from '@/components/game/TableCardPiles.vue'
 
 const INITIAL_DECK_COUNT = 28
@@ -250,12 +249,11 @@ onBeforeUnmount(() => {
       <CardDealAnimation ref="dealAnimation" />
     </section>
 
-    <RotateDeviceNotice />
   </main>
 </template>
 
 <style scoped>
-@media (orientation: landscape), (min-width: 768px) {
+@media (orientation: landscape) {
   .game-stage {
     display: block;
   }
