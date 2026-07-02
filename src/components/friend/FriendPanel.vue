@@ -176,7 +176,10 @@ function setActiveTab(tab) {
 
 function goLogin() {
   emit("close");
-  router.push("/login");
+  router.push({
+    name: "Entry",
+    query: { auth: "login" },
+  });
 }
 
 function loadFriendDataIfAllowed() {

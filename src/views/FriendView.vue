@@ -290,7 +290,10 @@ function setActiveTab(tab) {
 }
 
 function goLogin() {
-  router.push("/login");
+  router.push({
+    name: "Entry",
+    query: { auth: "login" },
+  });
 }
 
 function loadFriendDataIfAllowed() {

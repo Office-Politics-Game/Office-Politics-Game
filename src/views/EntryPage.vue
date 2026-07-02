@@ -47,9 +47,9 @@
       <div
         v-if="showLoginModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-        @click.self="showLoginModal = false"
+        @click.self="closeLoginModal"
       >
-        <LoginContent @close="showLoginModal = false" />
+        <LoginContent @close="closeLoginModal" />
       </div>
 
       <div
@@ -67,17 +67,33 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
+import { onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import GuestLoginModal from "@/components/login/GuestLoginModal.vue";
 import LoginContent from "@/components/login/LoginContent.vue";
 import { usePlayerStore } from "@/stores/playerStore.js";
 import bgEntryVideo from "@/assets/videos/EntryPage_BgVideo.mp4";
 
+const route = useRoute();
 const router = useRouter();
 const playerStore = usePlayerStore();
 const showLoginModal = ref(false);
 const showGuestLoginModal = ref(false);
+
+function closeLoginModal() {
+  showLoginModal.value = false;
+
+  if (route.query.auth !== "login") {
+    return;
+  }
+
+  const { auth, ...nextQuery } = route.query;
+
+  router.replace({
+    name: "Entry",
+    query: nextQuery,
+  });
+}
 
 function handleGuestCreated(player) {
   localStorage.setItem("guestPlayer", JSON.stringify(player));
@@ -101,6 +117,16 @@ onMounted(() => {
     localStorage.removeItem("guestPlayer");
   }
 });
+
+watch(
+  () => route.query.auth,
+  (auth) => {
+    if (auth === "login") {
+      showLoginModal.value = true;
+    }
+  },
+  { immediate: true },
+);
 </script>
 
 <style scoped>
