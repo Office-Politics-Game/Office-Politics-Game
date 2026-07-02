@@ -1,0 +1,22 @@
+:root {
+  --color-sky: #6bb8d4;
+  --color-sky-dark: #3a8fb5;
+  --color-gold: #c8a84b;
+  --color-white: #ffffff;
+  --color-gray-bg: #f0f0f0;
+  --color-gray-border: #d0d0d0;
+  --color-text-dark: #333333;
+  --color-text-mid: #666666;
+
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --font-display: 'Cinzel', serif;
+  --font-body: 'Noto Serif TC', serif;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}

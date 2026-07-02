@@ -1,1 +1,170 @@
 @import "tailwindcss";
+
+:root {
+  --brand-primary: #86b3e0;
+  --brand-hover: #0046f4;
+  --brand-active: #465563;
+  --brand-focus: rgba(0, 70, 244, 0.24);
+  --brand-disabled: #a0a6b3;
+  --brand-navy: #001332;
+  --gray-100: #d6d7dc;
+  --gray-200: #a0a6b3;
+  --gray-300: #8c96a5;
+  --gray-400: #6f7b8a;
+  --gray-500: #465563;
+  --surface-glass: rgba(255, 255, 255, 0.3);
+  --surface-glass-hover: rgba(255, 255, 255, 0.72);
+  --surface-glass-active: rgba(70, 85, 99, 0.88);
+  --shadow: 0 20px 60px rgba(0, 19, 50, 0.14);
+  --radius-md: 0;
+  --radius-lg: 0;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+  --text-display: 36px;
+}
+
+@theme {
+  --font-display: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+  --font-sans:
+    Inter, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial,
+    sans-serif;
+  --shadow-paper:
+    0 18px 30px rgba(18, 12, 6, 0.48), 0 3px 0 rgba(255, 255, 255, 0.55) inset;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  font-family: var(--font-sans);
+  background: var(--brand-navy);
+}
+
+@keyframes drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(12px, -18px, 0) scale(1.08);
+  }
+  100% {
+    transform: translate3d(-14px, 8px, 0) scale(0.95);
+  }
+}
+
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.92);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes swing {
+  0% { transform: rotate(0deg); }
+  15% { transform: rotate(12deg); }
+  30% { transform: rotate(-10deg); }
+  45% { transform: rotate(8deg); }
+  60% { transform: rotate(-6deg); }
+  75% { transform: rotate(4deg); }
+  90% { transform: rotate(-2deg); }
+  100% { transform: rotate(0deg); }
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --text-xs: 13px;
+    --text-sm: 14px;
+    --text-md: 17px;
+    --text-lg: 20px;
+    --text-xl: 30px;
+    --text-display: 48px;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --text-xs: 13px;
+    --text-sm: 16px;
+    --text-md: 18px;
+    --text-lg: 22px;
+    --text-xl: 36px;
+    --text-display: 64px;
+  }
+}
+
+@layer components {
+  .btn-glass {
+    @apply relative
+      px-3 py-1.5
+      lg:px-8 lg:py-2
+      /* rounded-full */
+      font-medium
+      text-white
+      bg-white/10
+      border
+      border-white/20
+      backdrop-blur
+      transition-all
+      
+      hover:bg-(--brand-hover)
+      hover:font-bold;
+
+    font-size: var(--text-md);
+
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+      0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+  .btn-dark {
+    @apply border
+    border-(--brand-primary)
+    bg-(--brand-active)
+    text-white
+    /* shadow-[0_10px_24px_rgba(70,85,99,0.24)] */
+    hover:border-(--brand-hover)
+    hover:bg-(--brand-hover)
+    hover:text-white
+    /* hover:shadow-[0_10px_24px_rgba(0,70,244,0.24)] */
+    focus-visible:outline-0
+    focus-visible:shadow-[0_0_0_4px_var(--brand-focus)];
+  }
+}
+.tap-pop {
+  @apply transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98];
+}
+
+
