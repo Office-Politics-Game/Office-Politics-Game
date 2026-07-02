@@ -202,7 +202,7 @@ async function verifyToken(token) {
 
     const { data, error } = await supabaseAdmin.auth.getUser(token)
 
-    if (error || !data.user?.id) {
+    if (error || !data?.user?.id) {
         throw createAuthError(401, "登入驗證失敗")
     }
 

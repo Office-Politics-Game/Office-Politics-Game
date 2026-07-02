@@ -65,7 +65,12 @@ export const useAuthStore = defineStore("auth", {
 
         return data
       } catch (error) {
+        this.currentPlayer = null
+        this.token = ""
+        this.isLoggedIn = false
         this.errorMessage = getErrorMessage(error, "登入失敗")
+        removeAuthToken()
+
         throw error
       } finally {
         this.isLoading = false
