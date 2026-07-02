@@ -195,4 +195,32 @@ async function loginPlayer({ account, password } = {}) {
     }
 }
 
-export { registerPlayer, loginPlayer }
+async function verifyToken(token) {
+    if (!token) {
+        throw createAuthError(401, "缺少登入驗證token")
+    }
+
+    const { data, error } = await supabaseAdmin.auth.getUser(token)
+
+    if (error || !data.user?.id) {
+        throw createAuthError(401, "登入驗證失敗")
+    }
+
+    const playerResult = await pool.query(
+        `SELECT ${PLAYER_SELECT_SQL}
+         FROM players
+         WHERE auth_user_id = $1
+         LIMIT 1`,
+        [data.user.id]
+    )
+
+    const player = playerResult.rows[0]
+
+    if (!player) {
+        throw createAuthError(404, "找不到玩家資料")
+    }
+
+    return formatPlayer(player)
+}
+
+export { registerPlayer, loginPlayer, verifyToken }
