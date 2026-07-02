@@ -64,12 +64,17 @@
             v-if="activeTab === 'friends'"
             :friends="friendStore.friends"
             :selected-friend-id="friendStore.selectedFriendId"
+            :is-loading="friendStore.isLoading"
+            :error-message="friendStore.errorMessage"
             @select="friendStore.selectFriend"
           />
 
           <div v-else-if="activeTab === 'requests'" class="h-full overflow-y-auto p-5">
             <FriendRequestList
               :requests="friendStore.requests"
+              :processing-request-ids="friendStore.processingRequestIds"
+              :is-loading="friendStore.isLoading"
+              :error-message="friendStore.errorMessage"
               @accept="friendStore.acceptRequest"
               @reject="friendStore.rejectRequest"
             />
@@ -78,7 +83,12 @@
           <div v-else class="h-full overflow-y-auto p-5">
             <AddFriendForm
               :sent-invites="friendStore.sentInvites"
+              :search-results="friendStore.searchResults"
               :notice="friendStore.noticeMessage"
+              :error-message="friendStore.searchErrorMessage"
+              :is-searching="friendStore.isSearching"
+              :is-sending="friendStore.isSending"
+              @search="friendStore.searchPlayers"
               @add-friend="friendStore.sendFriendRequest"
             />
           </div>
@@ -89,13 +99,13 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import AddFriendForm from "@/components/friend/AddFriendForm.vue";
 import FriendList from "@/components/friend/FriendList.vue";
 import FriendRequestList from "@/components/friend/FriendRequestList.vue";
 import { useFriendStore } from "@/stores/friendStore.js";
 
-defineProps({
+const props = defineProps({
   open: {
     type: Boolean,
     default: false,
@@ -109,6 +119,15 @@ const activeTab = ref("friends");
 const activeFriendCount = computed(() => {
   return friendStore.friends.filter((friend) => friend.online).length;
 });
+
+watch(
+  () => props.open,
+  (isOpen) => {
+    if (isOpen) {
+      friendStore.loadFriendData();
+    }
+  },
+);
 </script>
 
 <style scoped>
