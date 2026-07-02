@@ -80,6 +80,9 @@ const routes = [
     path: "/mall",
     name: "Mall",
     component: MallView,
+    meta: {
+      requiresAuth: true,
+    },
   },
   {
     path: "/game-menu",
@@ -144,11 +147,6 @@ router.beforeEach(async (to) => {
   }
 
   const authStore = useAuthStore()
-
-  if (authStore.isLoggedIn) {
-    return true
-  }
-
   const isVerified = await authStore.verifyToken()
 
   if (isVerified) {

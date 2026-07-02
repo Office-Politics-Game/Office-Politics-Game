@@ -25,6 +25,7 @@ export const useAuthStore = defineStore("auth", {
     token: localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) || "",
     isLoggedIn: false,
     isLoading: false,
+    hasVerifiedToken: false,
     errorMessage: ""
   }),
 
@@ -56,6 +57,7 @@ export const useAuthStore = defineStore("auth", {
         this.currentPlayer = data.player || null
         this.token = token
         this.isLoggedIn = Boolean(token)
+        this.hasVerifiedToken = Boolean(token)
 
         if (token) {
           saveAuthToken(token)
@@ -68,6 +70,7 @@ export const useAuthStore = defineStore("auth", {
         this.currentPlayer = null
         this.token = ""
         this.isLoggedIn = false
+        this.hasVerifiedToken = false
         this.errorMessage = getErrorMessage(error, "登入失敗")
         removeAuthToken()
 
@@ -78,9 +81,14 @@ export const useAuthStore = defineStore("auth", {
     },
 
     async verifyToken() {
+      if (this.hasVerifiedToken && this.isLoggedIn && this.currentPlayer) {
+        return true
+      }
+
       if (!this.token) {
         this.currentPlayer = null
         this.isLoggedIn = false
+        this.hasVerifiedToken = false
         removeAuthToken()
 
         return false
@@ -94,12 +102,14 @@ export const useAuthStore = defineStore("auth", {
 
         this.currentPlayer = data.player || null
         this.isLoggedIn = true
+        this.hasVerifiedToken = true
 
         return true
       } catch (error) {
         this.currentPlayer = null
         this.token = ""
         this.isLoggedIn = false
+        this.hasVerifiedToken = false
         this.errorMessage = getErrorMessage(error, "登入驗證失敗")
         removeAuthToken()
 
@@ -113,6 +123,7 @@ export const useAuthStore = defineStore("auth", {
       this.currentPlayer = null
       this.token = ""
       this.isLoggedIn = false
+      this.hasVerifiedToken = false
       this.errorMessage = ""
       removeAuthToken()
     },
