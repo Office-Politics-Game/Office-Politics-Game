@@ -39,7 +39,7 @@ test('all four card animations use the shared geometry helpers', async () => {
     'ManagerAnimation.vue',
     'PMAnimation.vue',
   ]) {
-    const source = await readSource(`src/components/game/${filename}`)
+    const source = await readSource(`src/components/game/animations/${filename}`)
     assert.match(source, /@\/composables\/useGameAnimationRects/)
     assert.match(source, /createFixedCardRect/)
     assert.match(source, /getEffectCardHeight/)
@@ -47,7 +47,7 @@ test('all four card animations use the shared geometry helpers', async () => {
     assert.match(source, /getScaleForHeight/)
   }
 
-  const stage = await readSource('src/components/game/GameStage.vue')
+  const stage = await readSource('src/components/game/ui/GameStage.vue')
   assert.match(stage, /useGameAnimationRects/)
   assert.match(stage, /const animationRects = useGameAnimationRects/)
   assert.match(stage, /animationRects\.getDrawRect\('source'\)/)

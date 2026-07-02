@@ -35,6 +35,51 @@ This file gives coding agents the project map and working conventions for this r
 
 Office Politics Game is a Vue 3 + Vite card game prototype with an Express backend. The frontend contains the lobby, room, game table, animations, and mock/demo views. The backend owns room/session routes, game rules, deck/hand/discard flow, player state, and PostgreSQL database access.
 
+## Fast Path For Agents
+
+Use this section first when locating relevant files. Prefer targeted `rg` searches over broad directory reads.
+
+### First Files To Check
+
+- Frontend app shell: `src/main.js`, `src/App.vue`, `src/router/`
+- Frontend state: `src/stores/`
+- Frontend API calls and client helpers: `src/services/`
+- Game table UI: `src/views/`, then `src/components/game/`
+- Room/lobby UI: `src/views/`, then `src/components/gameRoom/`
+- Backend entry and routing: `server/src/app.js`, `server/src/routes/`
+- Backend request handling: `server/src/controllers/`
+- Backend game rules and flow: `server/src/services/`, then `server/src/game/`
+- Database schema and seed data: `server/src/db/schema.sql`, `server/src/db/seedCards.js`
+- Specs and active changes: `openspec/specs/`, `openspec/changes/`
+
+### Task To File Map
+
+- UI layout or screen behavior: start in `src/views/`, then follow imported components.
+- Reusable UI behavior: start in `src/components/`.
+- Card rendering, table seats, turn status, card play animations: start in `src/components/game/`.
+- Login, register, lobby, room creation, invitation, or matching: start in `src/components/login/`, `src/components/register/`, `src/components/gameRoom/`, and related `src/views/`.
+- API contract or request shape: check both `src/services/` and matching backend route/controller/service files.
+- Game rule, turn order, deck, hand, discard, or card effect changes: start in `server/src/services/`, then update frontend mocks or UI expectations only if needed.
+- Persistent data or schema changes: start in `server/src/db/`, then check `server/tests/schema.test.js`.
+- Mock/demo behavior: start in `src/mocks/` and `tests/`.
+
+### Useful Search Terms
+
+- Room/session: `roomId`, `sessionId`, `joinRoom`, `createRoom`, `matching`
+- Player state: `playerId`, `players`, `currentPlayer`, `seat`, `hand`
+- Game state: `gameState`, `turnOrder`, `currentTurn`, `phase`, `status`
+- Cards: `cardId`, `cardEffect`, `deck`, `discard`, `draw`, `playCard`
+- API flow: `fetch`, `axios`, `api`, `controller`, `service`
+- Tests: `mock-game-state`, `card-play-interaction`, `schema`, `game flow`
+
+### Areas To Skip Unless Relevant
+
+- `dist/`: generated Vite build output.
+- `node_modules/`: dependencies.
+- `.env`: local secrets and machine-specific configuration.
+- `.vscode/`: editor settings unless the task is editor/workspace configuration.
+- Large media under `src/assets/` and `public/`: inspect only when changing assets or visual references.
+
 ## Repository Structure
 
 - `src/`: Frontend application code.

@@ -3,7 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import LoadingScreen from '@/components/common/LoadingScreen.vue'
-import GameStage from '@/components/game/GameStage.vue'
+import GameStage from '@/components/game/ui/GameStage.vue'
 import {
   cardAssetKeyByRank,
   cardAssetsByKey,

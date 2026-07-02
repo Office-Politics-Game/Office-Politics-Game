@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, watch } from 'vue'
+import { computed, onBeforeUnmount, watch } from "vue";
 
 const props = defineProps({
   isOpen: {
@@ -8,7 +8,7 @@ const props = defineProps({
   },
   title: {
     type: String,
-    default: '',
+    default: "",
   },
   text: {
     type: String,
@@ -16,45 +16,50 @@ const props = defineProps({
   },
   playerName: {
     type: String,
-    default: '',
+    default: "",
   },
   avatarUrl: {
     type: String,
-    default: '',
+    default: "",
+  },
+  tone: {
+    type: String,
+    default: "default",
+    validator: (value) => ["default", "danger"].includes(value),
   },
   duration: {
     type: Number,
     default: 1600,
     validator: (value) => value >= 0,
   },
-})
+});
 
-const emit = defineEmits(['close', 'after-leave'])
+const emit = defineEmits(["close", "after-leave"]);
 
-let closeTimer = null
+let closeTimer = null;
 
-const hasTitle = computed(() => props.title.trim().length > 0)
-const hasPlayer = computed(() =>
-  props.playerName.trim().length > 0 || props.avatarUrl.trim().length > 0,
-)
+const hasTitle = computed(() => props.title.trim().length > 0);
+const hasPlayer = computed(
+  () => props.playerName.trim().length > 0 || props.avatarUrl.trim().length > 0,
+);
 
 function clearCloseTimer() {
   if (closeTimer) {
-    window.clearTimeout(closeTimer)
-    closeTimer = null
+    window.clearTimeout(closeTimer);
+    closeTimer = null;
   }
 }
 
 function scheduleClose() {
-  clearCloseTimer()
+  clearCloseTimer();
 
   if (!props.isOpen || props.duration === 0) {
-    return
+    return;
   }
 
   closeTimer = window.setTimeout(() => {
-    emit('close')
-  }, props.duration)
+    emit("close");
+  }, props.duration);
 }
 
 watch(
@@ -65,18 +70,25 @@ watch(
     props.title,
     props.playerName,
     props.avatarUrl,
+    props.tone,
   ],
   scheduleClose,
   { immediate: true },
-)
+);
 
-onBeforeUnmount(clearCloseTimer)
+onBeforeUnmount(clearCloseTimer);
 </script>
 
 <template>
   <Teleport to="body">
     <Transition name="fly-in-text-modal" @after-leave="emit('after-leave')">
-      <div v-if="isOpen" class="fly-in-text-modal" role="status" aria-live="polite">
+      <div
+        v-if="isOpen"
+        class="fly-in-text-modal"
+        :class="`fly-in-text-modal--${tone}`"
+        role="status"
+        aria-live="polite"
+      >
         <section class="fly-in-text-modal__panel" aria-label="Game notice">
           <p v-if="hasTitle" class="fly-in-text-modal__title">{{ title }}</p>
           <figure v-if="hasPlayer" class="fly-in-text-modal__player">
@@ -110,27 +122,41 @@ onBeforeUnmount(clearCloseTimer)
   background: rgba(0, 19, 50, 0.78);
   backdrop-filter: blur(7px);
   pointer-events: none;
+  --fly-in-player-accent: #facc15;
+  --fly-in-player-border: rgba(250, 204, 21, 0.78);
+  --fly-in-player-ring: rgba(250, 204, 21, 0.14);
+  --fly-in-player-glow: rgba(250, 204, 21, 0.72);
+  --fly-in-player-deep-glow: rgba(245, 158, 11, 0.48);
+  --fly-in-player-name-glow: rgba(250, 204, 21, 0.24);
+}
+
+.fly-in-text-modal--danger {
+  --fly-in-player-accent: #f87171;
+  --fly-in-player-border: rgba(248, 113, 113, 0.86);
+  --fly-in-player-ring: rgba(248, 113, 113, 0.16);
+  --fly-in-player-glow: rgba(248, 113, 113, 0.78);
+  --fly-in-player-deep-glow: rgba(220, 38, 38, 0.5);
+  --fly-in-player-name-glow: rgba(248, 113, 113, 0.28);
 }
 
 .fly-in-text-modal__panel {
   display: grid;
   width: min(520px, 86vw);
-  min-height: clamp(96px, 16vh, 150px);
+  min-height: clamp(68px, 12vh, 118px);
   place-items: center;
   align-content: center;
-  gap: 10px;
-  padding: clamp(18px, 3vw, 30px);
+  gap: 6px;
+  padding: clamp(10px, 2vw, 18px);
   color: #f8fafc;
-  background:
-    linear-gradient(
-      90deg,
-      rgba(0, 19, 50, 0),
-      rgba(15, 23, 42, 0.9) 24%,
-      rgba(0, 19, 50, 0.94) 50%,
-      rgba(15, 23, 42, 0.9) 76%,
-      rgba(0, 19, 50, 0)
-    );
-  
+  background: linear-gradient(
+    90deg,
+    rgba(0, 19, 50, 0),
+    rgba(15, 23, 42, 0.9) 24%,
+    rgba(0, 19, 50, 0.94) 50%,
+    rgba(15, 23, 42, 0.9) 76%,
+    rgba(0, 19, 50, 0)
+  );
+
   text-align: center;
   text-transform: uppercase;
   transform-origin: 50% 50%;
@@ -174,17 +200,17 @@ onBeforeUnmount(clearCloseTimer)
   aspect-ratio: 1;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid rgba(250, 204, 21, 0.78);
+  border: 2px solid var(--fly-in-player-border);
   background: rgba(15, 23, 42, 0.8);
   box-shadow:
     0 10px 24px rgba(0, 0, 0, 0.36),
-    0 0 0 6px rgba(250, 204, 21, 0.14),
-    0 0 22px rgba(250, 204, 21, 0.72),
-    0 0 54px rgba(245, 158, 11, 0.48);
+    0 0 0 6px var(--fly-in-player-ring),
+    0 0 22px var(--fly-in-player-glow),
+    0 0 54px var(--fly-in-player-deep-glow);
 }
 
 .fly-in-text-modal__name {
-  color: #facc15;
+  color: var(--fly-in-player-accent);
   font-size: var(--text-md);
   font-weight: 900;
   letter-spacing: 0;
@@ -192,7 +218,7 @@ onBeforeUnmount(clearCloseTimer)
   text-transform: none;
   text-shadow:
     0 3px 12px rgba(0, 0, 0, 0.52),
-    0 0 18px rgba(250, 204, 21, 0.24);
+    0 0 18px var(--fly-in-player-name-glow);
   overflow-wrap: anywhere;
 }
 
@@ -238,7 +264,7 @@ onBeforeUnmount(clearCloseTimer)
 @media (max-width: 640px) {
   .fly-in-text-modal__panel {
     width: min(100%, 420px);
-    min-height: 128px;
+    min-height: 96px;
   }
 }
 

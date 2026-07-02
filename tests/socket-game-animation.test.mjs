@@ -58,7 +58,7 @@ test('game view subscribes to socket actions and defers state while animations r
 })
 
 test('game stage exposes remote opponent play animation for socket play-card actions', async () => {
-  const source = await readSource('src/components/game/GameStage.vue')
+  const source = await readSource('src/components/game/ui/GameStage.vue')
   const remotePlayFunction = source.slice(
     source.indexOf('async function playRemoteCardPlayAnimation'),
     source.indexOf('function handleEffectAnimationComplete'),

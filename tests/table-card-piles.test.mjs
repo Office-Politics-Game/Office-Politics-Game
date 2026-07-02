@@ -5,7 +5,7 @@ import test from 'node:test'
 const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
 test('game stage imports and renders the table card piles', async () => {
-  const source = await readSource('src/components/game/GameStage.vue')
+  const source = await readSource('src/components/game/ui/GameStage.vue')
 
   assert.match(source, /import TableCardPiles from '\.\/TableCardPiles\.vue'/)
   assert.match(source, /<TableCardPiles/)
@@ -22,7 +22,7 @@ test('game stage imports and renders the table card piles', async () => {
 })
 
 test('table card piles use scoped GSAP pointer tilt with lifecycle cleanup', async () => {
-  const source = await readSource('src/components/game/TableCardPiles.vue')
+  const source = await readSource('src/components/game/ui/TableCardPiles.vue')
 
   assert.match(source, /import \{ gsap \} from 'gsap'/)
   for (const vueImport of ['onMounted', 'onUnmounted', 'ref']) {
@@ -42,7 +42,7 @@ test('table card piles use scoped GSAP pointer tilt with lifecycle cleanup', asy
 })
 
 test('deck and discard piles keep distinct tabletop rotations and shadows', async () => {
-  const source = await readSource('src/components/game/TableCardPiles.vue')
+  const source = await readSource('src/components/game/ui/TableCardPiles.vue')
 
   assert.match(source, /ref="deckPile"/)
   assert.match(source, /ref="discardPile"/)
@@ -63,7 +63,7 @@ test('deck and discard piles keep distinct tabletop rotations and shadows', asyn
 })
 
 test('deck pile is an accessible guarded draw button with shared hover hint', async () => {
-  const source = await readSource('src/components/game/TableCardPiles.vue')
+  const source = await readSource('src/components/game/ui/TableCardPiles.vue')
 
   assert.match(source, /import HoverBlockHint from '\.\/HoverBlockHint\.vue'/)
   assert.match(source, /isDrawDisabled:/)
@@ -88,7 +88,7 @@ test('deck pile is an accessible guarded draw button with shared hover hint', as
 })
 
 test('deck click feedback emits draw after a guarded GSAP timeline', async () => {
-  const source = await readSource('src/components/game/TableCardPiles.vue')
+  const source = await readSource('src/components/game/ui/TableCardPiles.vue')
 
   assert.match(source, /const isDeckPressing = ref\(false\)/)
   assert.match(source, /function handleDeckDraw\(\)/)

@@ -4,20 +4,20 @@ import gameTableBackgroundUrl from '@/assets/images/bg-game-table.webp'
 import { cardAssetsByKey } from '@/constants/cardAssets'
 import { guestAvatars, guestNicknames } from '@/constants/guestOptions'
 import { fallbackAvatars } from '@/constants/playerAssets'
-import CardDealAnimation from '@/components/game/CardDealAnimation.vue'
-import CardDrawAnimation from '@/components/game/CardDrawAnimation.vue'
-import CardPlayAnimation from '@/components/game/CardPlayAnimation.vue'
-import CardShuffleAnimation from '@/components/game/CardShuffleAnimation.vue'
-import CardSwapAnimation from '@/components/game/CardSwapAnimation.vue'
-import CleanerAnimation from '@/components/game/CleanerAnimation.vue'
-import FlyInTextModal from '@/components/game/FlyInTextModal.vue'
-import GameCard from '@/components/game/GameCard.vue'
-import InternAnimation from '@/components/game/InternAnimation.vue'
-import ManagerAnimation from '@/components/game/ManagerAnimation.vue'
-import PMAnimation from '@/components/game/PMAnimation.vue'
-import PlayerSeats from '@/components/game/PlayerSeats.vue'
-import ProtectionAura from '@/components/game/ProtectionAura.vue'
-import TableCardPiles from '@/components/game/TableCardPiles.vue'
+import CardDealAnimation from '@/components/game/animations/CardDealAnimation.vue'
+import CardDrawAnimation from '@/components/game/animations/CardDrawAnimation.vue'
+import CardPlayAnimation from '@/components/game/animations/CardPlayAnimation.vue'
+import CardShuffleAnimation from '@/components/game/animations/CardShuffleAnimation.vue'
+import CardSwapAnimation from '@/components/game/animations/CardSwapAnimation.vue'
+import CleanerAnimation from '@/components/game/animations/CleanerAnimation.vue'
+import FlyInTextModal from '@/components/game/animations/FlyInTextModal.vue'
+import GameCard from '@/components/game/ui/GameCard.vue'
+import InternAnimation from '@/components/game/animations/InternAnimation.vue'
+import ManagerAnimation from '@/components/game/animations/ManagerAnimation.vue'
+import PMAnimation from '@/components/game/animations/PMAnimation.vue'
+import PlayerSeats from '@/components/game/ui/PlayerSeats.vue'
+import ProtectionAura from '@/components/game/animations/ProtectionAura.vue'
+import TableCardPiles from '@/components/game/ui/TableCardPiles.vue'
 import { createMockGameState } from '@/mocks/mockGameState.js'
 
 const SELF_PLAYER_ID = 'player-bottom'
@@ -635,6 +635,7 @@ onUnmounted(() => {
       :result="managerResult"
       :get-player-hand-rect="getPlayerHandRect"
       :get-discard-rect="getDiscardRect"
+      :is-self-player="isSelfPlayer"
       @complete="(result) => clearEffectResult('manager', result)"
     />
     <PMAnimation
