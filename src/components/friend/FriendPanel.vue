@@ -29,7 +29,7 @@
             </button>
           </div>
 
-          <nav class="mt-4 grid grid-cols-3 border border-gray-200 bg-gray-50 text-sm">
+          <nav class="mt-4 grid grid-cols-4 border border-gray-200 bg-gray-50 text-sm">
             <button
               type="button"
               class="panel-tab"
@@ -56,6 +56,15 @@
             >
               加入
             </button>
+
+            <button
+              type="button"
+              class="panel-tab"
+              :class="{ active: activeTab === 'blocks' }"
+              @click="activeTab = 'blocks'"
+            >
+              封鎖 {{ friendStore.blockedPlayerCount }}
+            </button>
           </nav>
         </header>
 
@@ -66,7 +75,12 @@
             :selected-friend-id="friendStore.selectedFriendId"
             :is-loading="friendStore.isLoading"
             :error-message="friendStore.errorMessage"
+            :show-actions="true"
+            :is-friend-processing="friendStore.isFriendshipProcessing"
+            :is-player-processing="friendStore.isPlayerProcessing"
             @select="friendStore.selectFriend"
+            @remove="confirmRemoveFriend"
+            @block="confirmBlockPlayer"
           />
 
           <div v-else-if="activeTab === 'requests'" class="h-full overflow-y-auto p-5">
@@ -80,7 +94,7 @@
             />
           </div>
 
-          <div v-else class="h-full overflow-y-auto p-5">
+          <div v-else-if="activeTab === 'add'" class="h-full overflow-y-auto p-5">
             <AddFriendForm
               :sent-invites="friendStore.sentInvites"
               :search-results="friendStore.searchResults"
@@ -88,8 +102,20 @@
               :error-message="friendStore.searchErrorMessage"
               :is-searching="friendStore.isSearching"
               :is-sending="friendStore.isSending"
+              :is-player-processing="friendStore.isPlayerProcessing"
               @search="friendStore.searchPlayers"
               @add-friend="friendStore.sendFriendRequest"
+              @block-player="confirmBlockPlayer"
+            />
+          </div>
+
+          <div v-else class="h-full overflow-y-auto p-5">
+            <BlockedPlayerList
+              :blocked-players="friendStore.blockedPlayers"
+              :is-loading="friendStore.isLoading"
+              :error-message="friendStore.errorMessage"
+              :is-block-processing="friendStore.isBlockProcessing"
+              @unblock="confirmUnblockPlayer"
             />
           </div>
         </section>
@@ -101,6 +127,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import AddFriendForm from "@/components/friend/AddFriendForm.vue";
+import BlockedPlayerList from "@/components/friend/BlockedPlayerList.vue";
 import FriendList from "@/components/friend/FriendList.vue";
 import FriendRequestList from "@/components/friend/FriendRequestList.vue";
 import { useFriendStore } from "@/stores/friendStore.js";
@@ -119,6 +146,46 @@ const activeTab = ref("friends");
 const activeFriendCount = computed(() => {
   return friendStore.friends.filter((friend) => friend.online).length;
 });
+
+function confirmRemoveFriend(friend) {
+  if (!friend?.friendshipId) {
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `確定要解除與 ${friend.name} 的好友關係嗎？`,
+  );
+
+  if (confirmed) {
+    friendStore.removeFriend(friend.friendshipId);
+  }
+}
+
+function confirmBlockPlayer(player) {
+  if (!player?.playerId) {
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `確定要封鎖 ${player.name} 嗎？封鎖後將無法互相送出好友邀請。`,
+  );
+
+  if (confirmed) {
+    friendStore.blockPlayer(player.playerId);
+  }
+}
+
+function confirmUnblockPlayer(player) {
+  if (!player?.blockId) {
+    return;
+  }
+
+  const confirmed = window.confirm(`確定要取消封鎖 ${player.name} 嗎？`);
+
+  if (confirmed) {
+    friendStore.unblockPlayer(player.blockId);
+  }
+}
 
 watch(
   () => props.open,
