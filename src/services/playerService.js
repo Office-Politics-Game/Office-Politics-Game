@@ -6,4 +6,10 @@ async function createGuestPlayer({ username, avatarId }) {
   return data.player;
 }
 
-export { createGuestPlayer };
+function searchPlayers({ keyword, playerId }) {
+  return apiClient.get("/players/search", {
+    params: { keyword, playerId },
+  });
+}
+
+export { createGuestPlayer, searchPlayers };

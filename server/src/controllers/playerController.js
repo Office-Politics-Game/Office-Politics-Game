@@ -1,4 +1,18 @@
-import { createGuest } from "../services/playerService.js"
+import { createGuest, searchPlayers } from "../services/playerService.js"
+
+function getErrorStatus(error){
+  return error.statusCode || 500
+}
+
+function parsePositiveInteger(value){
+  const numberValue = Number(value)
+
+  if (!Number.isInteger(numberValue) || numberValue <= 0){
+    return null
+  }
+
+  return numberValue
+}
 
 async function handleCreateGuest(req, res){
   try {
@@ -12,11 +26,31 @@ async function handleCreateGuest(req, res){
 
     res.status(201).json({ player })
   } catch (error){
-    res.status(500).json({
-      message: "建立玩家失敗",
+    res.status(getErrorStatus(error)).json({
+      message: error.statusCode ? error.message : "建立玩家失敗",
       error: error.message,
     })
   }
 }
 
-export { handleCreateGuest }
+async function handleSearchPlayers(req, res){
+  try {
+    const keyword = req.query.keyword
+    const viewerPlayerId = parsePositiveInteger(req.query.playerId)
+
+    if (!viewerPlayerId){
+      return res.status(400).json({ message: "缺少玩家ID" })
+    }
+
+    const players = await searchPlayers({ keyword, viewerPlayerId })
+
+    return res.status(200).json({ players })
+  } catch (error){
+    return res.status(getErrorStatus(error)).json({
+      message: error.statusCode ? error.message : "搜尋玩家失敗",
+      error: error.message,
+    })
+  }
+}
+
+export { handleCreateGuest, handleSearchPlayers }

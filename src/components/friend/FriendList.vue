@@ -10,7 +10,21 @@
     </div>
 
     <div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-      <template v-if="filteredFriends.length">
+      <div
+        v-if="isLoading"
+        class="border border-dashed border-[var(--gray-100)] bg-white/70 p-6 text-center text-sm font-bold text-[var(--gray-400)]"
+      >
+        好友資料載入中...
+      </div>
+
+      <div
+        v-else-if="errorMessage"
+        class="border border-[var(--brand-hover)] bg-[rgba(0,70,244,0.08)] p-6 text-center text-sm font-bold text-[var(--brand-hover)]"
+      >
+        {{ errorMessage }}
+      </div>
+
+      <template v-else-if="filteredFriends.length">
         <section
           v-for="group in visibleGroups"
           :key="group.key"
@@ -52,6 +66,14 @@ const props = defineProps({
     default: () => [],
   },
   selectedFriendId: {
+    type: String,
+    default: "",
+  },
+  isLoading: {
+    type: Boolean,
+    default: false,
+  },
+  errorMessage: {
     type: String,
     default: "",
   },

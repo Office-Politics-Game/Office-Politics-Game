@@ -1,7 +1,21 @@
 <template>
   <section class="space-y-3">
     <div
-      v-if="requests.length === 0"
+      v-if="isLoading"
+      class="border border-dashed border-[var(--gray-100)] bg-white/70 p-6 text-center text-sm font-bold text-[var(--gray-400)]"
+    >
+      好友邀請載入中...
+    </div>
+
+    <div
+      v-else-if="errorMessage"
+      class="border border-[var(--brand-hover)] bg-[rgba(0,70,244,0.08)] p-6 text-center text-sm font-bold text-[var(--brand-hover)]"
+    >
+      {{ errorMessage }}
+    </div>
+
+    <div
+      v-else-if="requests.length === 0"
       class="border border-dashed border-gray-300 bg-white/70 p-6 text-center text-sm text-gray-500"
     >
       目前沒有好友邀請
@@ -31,17 +45,19 @@
         <button
           type="button"
           class="border border-gray-300 bg-white px-3 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200"
+          :disabled="isProcessing(request.id)"
           @click="emit('reject', request.id)"
         >
-          拒絕
+          {{ isProcessing(request.id) ? "處理中..." : "拒絕" }}
         </button>
 
         <button
           type="button"
           class="bg-slate-800 px-3 py-2 text-sm font-bold text-white transition hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200"
+          :disabled="isProcessing(request.id)"
           @click="emit('accept', request.id)"
         >
-          接受
+          {{ isProcessing(request.id) ? "處理中..." : "接受" }}
         </button>
       </div>
     </article>
@@ -49,12 +65,28 @@
 </template>
 
 <script setup>
-defineProps({
+const props = defineProps({
   requests: {
     type: Array,
     default: () => [],
   },
+  processingRequestIds: {
+    type: Array,
+    default: () => [],
+  },
+  isLoading: {
+    type: Boolean,
+    default: false,
+  },
+  errorMessage: {
+    type: String,
+    default: "",
+  },
 });
 
 const emit = defineEmits(["accept", "reject"]);
+
+function isProcessing(requestId) {
+  return props.processingRequestIds.includes(requestId);
+}
 </script>
