@@ -5,6 +5,7 @@ import Lobby from "../views/Lobby.vue";
 import LobbyMenu from "@/components/menu/LobbyMenu.vue";
 import GameView from "../views/GameView.vue";
 import FriendView from "@/views/FriendView.vue";
+import MallView from "@/views/MallView.vue";
 import Result from "@/views/Result.vue";
 import LoadingView from "@/views/LoadingView.vue";
 import GameMenuPanel from "@/components/gameRoom/GameMenuPanel.vue";
@@ -65,6 +66,11 @@ const routes = [
     path: "/friend",
     name: "Friend",
     component: FriendView,
+  },
+  {
+    path: "/mall",
+    name: "Mall",
+    component: MallView,
   },
   {
     path: "/game-menu",

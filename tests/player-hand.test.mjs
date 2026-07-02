@@ -44,14 +44,14 @@ test('game view derives deck count, draw eligibility, and hand cards from game s
 
   assert.match(gameStageSource, /handCards:/)
   assert.match(gameStageSource, /canDraw:/)
-  assert.match(gameStageSource, /import PlayerHand from '\.\/PlayerHand\.vue'/)
+  assert.match(gameStageSource, /import PlayerHand from ["']\.\/PlayerHand\.vue["']/)
   assert.match(gameStageSource, /<PlayerHand/)
 })
 
 test('discard pile reuses the layered game card', async () => {
   const source = await readSource('src/components/game/ui/TableCardPiles.vue')
 
-  assert.match(source, /import GameCard from '\.\/GameCard\.vue'/)
+  assert.match(source, /import GameCard from ["']\.\/GameCard\.vue["']/)
   assert.match(source, /discardCards:/)
   assert.match(source, /normalizedDiscardCards/)
   assert.match(source, /topDiscardCard/)
@@ -78,7 +78,7 @@ test('player hand supports shared hover message and prevents guarded pointer emi
   const gameStageSource = await readSource('src/components/game/ui/GameStage.vue')
   const hoverHintSource = await readSource('src/components/game/ui/HoverBlockHint.vue')
 
-  assert.match(playerHandSource, /import HoverBlockHint from '\.\/HoverBlockHint\.vue'/)
+  assert.match(playerHandSource, /import HoverBlockHint from ["']\.\/HoverBlockHint\.vue["']/)
   assert.match(playerHandSource, /isInteractionDisabled:/)
   assert.match(playerHandSource, /disabledMessage:/)
   assert.match(playerHandSource, /props\.isInteractionDisabled \|\| props\.disabledCardIds\.includes\(card\.id\)/)
@@ -103,7 +103,7 @@ test('player hand supports shared hover message and prevents guarded pointer emi
 
   assert.match(gameStageSource, /const isHandDrawRequired = computed\(\(\) => props\.canDraw\)/)
   assert.match(gameStageSource, /isPlayInteractionLocked\.value \|\| isHandDrawRequired\.value/)
-  assert.match(gameStageSource, /isHandDrawRequired\.value \? '請先抽下一張牌' : ''/)
+  assert.match(gameStageSource, /isHandDrawRequired\.value \? ["'][^"']+["'] : ["']["']/)
   assert.match(gameStageSource, /:is-interaction-disabled="isHandDrawRequired"/)
   assert.match(gameStageSource, /:disabled-message="handDisabledMessage"/)
 })

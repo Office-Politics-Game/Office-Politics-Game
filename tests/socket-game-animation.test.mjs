@@ -70,7 +70,7 @@ test('game stage exposes remote opponent play animation for socket play-card act
   assert.match(remotePlayFunction, /animationRects\.getPlayerHandRect\(playerId\)/)
   assert.match(remotePlayFunction, /animationRects\.getDiscardRect\(\)/)
   assert.match(remotePlayFunction, /cardPlayAnimation\.value\?\.play/)
-  assert.match(remotePlayFunction, /position: player\?\.position \?\? 'top'/)
+  assert.match(remotePlayFunction, /position: player\?\.position \?\? ["']top["']/)
   assert.match(remotePlayFunction, /faceUp: false/)
 })
 

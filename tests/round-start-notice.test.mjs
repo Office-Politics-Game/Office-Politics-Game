@@ -8,7 +8,7 @@ const readSource = (path) =>
 test('game stage displays a round start notice with FlyInTextModal text from roundNumber', async () => {
   const source = await readSource('src/components/game/ui/GameStage.vue')
 
-  assert.match(source, /import FlyInTextModal from '\.\.\/animations\/FlyInTextModal\.vue'/)
+  assert.match(source, /import FlyInTextModal from ["']\.\.\/animations\/FlyInTextModal\.vue["']/)
   assert.match(source, /const isRoundStartNoticeOpen = ref\(false\)/)
   assert.match(source, /const roundStartNoticeText = computed\(\(\) =>[\s\S]*`\u7b2c \$\{props\.roundNumber\} \u56de\u5408\u958b\u59cb`/)
   assert.match(source, /:is-open="isRoundStartNoticeOpen"[\s\S]*:text="roundStartNoticeText"[\s\S]*@close="closeRoundStartNotice"/)
@@ -51,7 +51,7 @@ test('game stage displays an eliminated player notice with avatar and name', asy
   assert.match(source, /Boolean\(player\.isEliminated\)/)
   assert.match(
     source,
-    /Boolean\(nextEliminated\[playerId\]\) && !Boolean\(previousEliminated\[playerId\]\)/,
+    /Boolean\(nextEliminated\[playerId\]\)[\s\S]*&&[\s\S]*!Boolean\(previousEliminated\[playerId\]\)/,
   )
   assert.match(source, /playPlayerEliminatedNotice\(eliminatedPlayer\)/)
   assert.match(source, /:is-open="isPlayerEliminatedNoticeOpen"[\s\S]*text="\u73a9\u5bb6\u6dd8\u6c70"[\s\S]*:player-name="playerEliminatedNotice\?\.name \?\? ''"[\s\S]*:avatar-url="playerEliminatedNotice\?\.avatarUrl \?\? ''"[\s\S]*tone="danger"/)

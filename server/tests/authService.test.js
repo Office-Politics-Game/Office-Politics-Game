@@ -3,6 +3,7 @@ import { jest } from "@jest/globals"
 const mockQuery = jest.fn()
 const mockCreateUser = jest.fn()
 const mockDeleteUser = jest.fn()
+const mockSignInWithPassword = jest.fn()
 
 jest.unstable_mockModule("../src/db/index.js", () => ({
     default: {
@@ -13,27 +14,30 @@ jest.unstable_mockModule("../src/db/index.js", () => ({
 jest.unstable_mockModule("../src/db/supabaseClient.js", () => ({
     supabaseAdmin: {
         auth: {
+            signInWithPassword: mockSignInWithPassword,
             admin: {
                 createUser: mockCreateUser,
-                deleteUser: mockDeleteUser,
-            },
-        },
+                deleteUser: mockDeleteUser
+            }
+        }
     }
 }))
 
-const { registerPlayer } = await import("../src/services/authService.js")
+const { registerPlayer, loginPlayer } = await import("../src/services/authService.js")
 
 const SELECT_DUPLICATE_PLAYER_SQL = `SELECT username, account
          FROM players
          WHERE username = $1 OR account = $2
          LIMIT 1`
 
+const PLAYER_SELECT_SQL = `id, auth_user_id, username, account, avatar_id,
+    level, exp, coins, gems, tickets,
+    win_count, lose_count, total_games,
+    is_online, last_login_at, created_at, updated_at`
+
 const INSERT_PLAYER_SQL = `INSERT INTO players (auth_user_id, username, account, avatar_id)
             VALUES ($1, $2, $3, $4)
-            RETURNING id, auth_user_id, username, account, avatar_id,
-                level, exp, coins, gems, tickets,
-                win_count, lose_count, total_games,
-                is_online, last_login_at, created_at, updated_at`
+            RETURNING ${PLAYER_SELECT_SQL}`
 
 //假資料庫的玩家資料
 function createPlayerRow(overrides = {}) {
@@ -64,6 +68,7 @@ describe("註冊玩家服務", () => {
         mockQuery.mockReset()
         mockCreateUser.mockReset()
         mockDeleteUser.mockReset()
+        mockSignInWithPassword.mockReset()
     })
 
     test("未輸入用戶名稱時，丟出錯誤", async () => {
@@ -459,5 +464,156 @@ describe("註冊玩家服務", () => {
         ).rejects.toThrow("db資料表寫入失敗")
 
         expect(mockDeleteUser).toHaveBeenCalledWith("auth-user-001")
+    })
+})
+
+describe("登入玩家服務", () => {
+    beforeEach(() => {
+        mockQuery.mockReset()
+        mockCreateUser.mockReset()
+        mockDeleteUser.mockReset()
+        mockSignInWithPassword.mockReset()
+    })
+
+    test("未輸入Email帳號時，丟出錯誤", async () => {
+        await expect(
+            loginPlayer({
+                account: "",
+                password: "123456"
+            })
+        ).rejects.toThrow("請輸入Email帳號")
+
+        expect(mockQuery).not.toHaveBeenCalled()
+        expect(mockSignInWithPassword).not.toHaveBeenCalled()
+    })
+
+    test("Email格式不正確時，丟出錯誤", async () => {
+        await expect(
+            loginPlayer({
+                account: "test001",
+                password: "123456"
+            })
+        ).rejects.toThrow("Email格式不正確")
+
+        expect(mockQuery).not.toHaveBeenCalled()
+        expect(mockSignInWithPassword).not.toHaveBeenCalled()
+    })
+
+    test("未輸入密碼時，丟出錯誤", async () => {
+        await expect(
+            loginPlayer({
+                account: "test@example.com",
+                password: ""
+            })
+        ).rejects.toThrow("請輸入密碼")
+
+        expect(mockQuery).not.toHaveBeenCalled()
+        expect(mockSignInWithPassword).not.toHaveBeenCalled()
+    })
+
+    test("帳號不存在時，丟出錯誤", async () => {
+        mockQuery.mockResolvedValueOnce({
+            rows: []
+        })
+
+        await expect(
+            loginPlayer({
+                account: "test@example.com",
+                password: "123456"
+            })
+        ).rejects.toThrow("帳號不存在")
+
+        expect(mockQuery).toHaveBeenCalledTimes(1)
+        expect(mockSignInWithPassword).not.toHaveBeenCalled()
+    })
+
+    test("密碼錯誤時，丟出錯誤", async () => {
+        mockQuery.mockResolvedValueOnce({
+            rows: [createPlayerRow()]
+        })
+
+        mockSignInWithPassword.mockResolvedValueOnce({
+            data: {
+                user: null,
+                session: null
+            },
+            error: new Error("Invalid login credentials")
+        })
+
+        await expect(
+            loginPlayer({
+                account: "test@example.com",
+                password: "wrong-password"
+            })
+        ).rejects.toThrow("密碼錯誤")
+
+        expect(mockSignInWithPassword).toHaveBeenCalledWith({
+            email: "test@example.com",
+            password: "wrong-password",
+        })
+    })
+
+    test("登入成功時，回傳會員資料與token", async () => {
+        mockQuery
+            .mockResolvedValueOnce({
+                rows: [createPlayerRow()]
+            })
+            .mockResolvedValueOnce({
+                rows: [
+                    createPlayerRow({
+                        is_online: true,
+                        last_login_at: "2026-07-01T03:30:00.000Z",
+                        updated_at: "2026-07-01T03:30:00.000Z",
+                    })
+                ]
+            })
+
+        mockSignInWithPassword.mockResolvedValueOnce({
+            data: {
+                user: {
+                    id: "auth-user-001",
+                },
+                session: {
+                    access_token: "mock-access-token",
+                },
+            },
+            error: null
+        })
+
+        const result = await loginPlayer({
+            account: "test@example.com",
+            password: "123456"
+        })
+
+        expect(mockSignInWithPassword).toHaveBeenCalledWith({
+            email: "test@example.com",
+            password: "123456"
+        })
+
+        expect(result).toEqual({
+            player: {
+                id: 1,
+                authUserId: "auth-user-001",
+                username: "測試玩家",
+                account: "test@example.com",
+                avatarId: 2,
+                level: 1,
+                exp: 0,
+                coins: 0,
+                gems: 0,
+                tickets: 0,
+                winCount: 0,
+                loseCount: 0,
+                totalGames: 0,
+                isOnline: true,
+                lastLoginAt: "2026-07-01T03:30:00.000Z",
+                createdAt: "2026-07-01T00:00:00.000Z",
+                updatedAt: "2026-07-01T03:30:00.000Z",
+            },
+            token: "mock-access-token"
+        })
+
+        expect(result.player.password).toBeUndefined()
+        expect(result.player.passwordHash).toBeUndefined()
     })
 })
