@@ -17,18 +17,30 @@ CREATE TABLE players (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE friends (
-  id SERIAL PRIMARY KEY,
-  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-  friend_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-  status VARCHAR(20) NOT NULL DEFAULT 'pending',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  CHECK (player_id <> friend_id),
-  CHECK (status IN ('pending', 'accepted', 'blocked'))
-);
+ALTER TABLE players
+ADD COLUMN IF NOT EXISTS account VARCHAR(255) UNIQUE;
 
-CREATE UNIQUE INDEX unique_friend_pair
-ON friends(LEAST(player_id, friend_id), GREATEST(player_id, friend_id));
+ALTER TABLE players
+ALTER COLUMN avatar_id SET DEFAULT 1;
+
+UPDATE players
+SET avatar_id = 1
+WHERE avatar_id IS NULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.table_constraints
+    WHERE table_name = 'players'
+      AND constraint_name = 'players_auth_user_id_fkey'
+  ) THEN
+    ALTER TABLE players
+    ADD CONSTRAINT players_auth_user_id_fkey
+    FOREIGN KEY (auth_user_id)
+    REFERENCES auth.users(id);
+  END IF;
+END $$;
 
 CREATE TABLE player_currency_logs (
   id SERIAL PRIMARY KEY,
@@ -92,46 +104,6 @@ CREATE TABLE player_equipped_items (
   board_skin_item_id INTEGER REFERENCES shop_items(id) ON DELETE SET NULL,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
-CREATE TABLE friend_requests (
-  id SERIAL PRIMARY KEY,
-  sender_player_id INTEGER NOT NULL REFERENCES players(id),
-  receiver_player_id INTEGER NOT NULL REFERENCES players(id),
-  status VARCHAR(20) NOT NULL DEFAULT 'pending',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  responded_at TIMESTAMP,
-  CONSTRAINT friend_requests_no_self
-    CHECK (sender_player_id <> receiver_player_id),
-  CONSTRAINT friend_requests_status_check
-    CHECK (status IN ('pending', 'accepted', 'rejected'))
-);
-
-CREATE UNIQUE INDEX unique_pending_friend_request_pair
-ON friend_requests(
-  LEAST(sender_player_id, receiver_player_id),
-  GREATEST(sender_player_id, receiver_player_id)
-)
-WHERE status = 'pending';
-
-CREATE INDEX friend_requests_sender_player_id_idx
-ON friend_requests(sender_player_id);
-
-CREATE INDEX friend_requests_receiver_player_id_idx
-ON friend_requests(receiver_player_id);
-
-CREATE TABLE friends (
-  id SERIAL PRIMARY KEY,
-  player_id INTEGER NOT NULL REFERENCES players(id),
-  friend_player_id INTEGER NOT NULL REFERENCES players(id),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT friends_no_self
-    CHECK (player_id <> friend_player_id),
-  CONSTRAINT unique_friend_pair
-    UNIQUE (player_id, friend_player_id)
-);
-
-CREATE INDEX friends_friend_player_id_idx
-ON friends(friend_player_id);
 
 CREATE TABLE game_rooms (
   id SERIAL PRIMARY KEY,
