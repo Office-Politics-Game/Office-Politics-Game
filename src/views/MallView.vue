@@ -210,7 +210,27 @@
             </article>
 
             <div
-              v-if="filteredItems.length === 0"
+              v-if="statusMessage"
+              class="status-state border border-slate-600/70 bg-slate-950/80 px-4 py-3 text-sm font-bold text-slate-100"
+              role="status"
+            >
+              {{ statusMessage }}
+            </div>
+
+            <div
+              v-if="isShopLoading"
+              class="empty-state border border-dashed border-slate-300 bg-white/70 px-4 py-8 text-center md:px-6 md:py-12"
+            >
+              <div class="text-lg font-black tracking-[0.06em] text-slate-900 md:text-xl md:tracking-[0.08em]">
+                載入商城商品中
+              </div>
+              <p class="mt-2 text-xs leading-5 text-slate-500 md:mt-3 md:text-sm md:leading-6">
+                正在同步後端商城資料。
+              </p>
+            </div>
+
+            <div
+              v-else-if="filteredItems.length === 0"
               class="empty-state border border-dashed border-slate-300 bg-white/70 px-4 py-8 text-center md:px-6 md:py-12"
             >
               <div class="text-lg font-black tracking-[0.06em] text-slate-900 md:text-xl md:tracking-[0.08em]">
@@ -227,6 +247,7 @@
                 :key="item.id"
                 :item="item"
                 :active="selectedItem?.id === item.id && isDetailModalOpen"
+                @purchase="purchaseItem"
                 @select="openItemDetail"
               />
             </div>
@@ -318,9 +339,10 @@
                   type="button"
                   class="item-action item-action--modal"
                   :class="`item-action--${selectedItem.actionState}`"
-                  :disabled="selectedItem.actionState !== 'buy'"
+                  :disabled="selectedItem.actionState !== 'buy' || isPurchasing"
+                  @click="purchaseSelectedItem"
                 >
-                  {{ selectedItem.actionLabel }}
+                  {{ isPurchasing ? "處理中" : selectedItem.actionLabel }}
                 </button>
               </aside>
               </div>
@@ -355,36 +377,112 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import MallProductCard from "@/components/mall/MallProductCard.vue";
 import bgDashboard from "@/assets/images/bg-dashboard.webp";
 import {
   mallCategories,
-  mallHeaderMetrics,
   mallItems,
 } from "@/mocks/mallMockData.js";
+import {
+  getPlayerShopItems,
+  getShopItems,
+  purchaseShopItem,
+} from "@/services/shopApi.js";
+import {
+  formatNumber,
+  getCurrencyBalance,
+  getOwnedShopItemIdSet,
+  normalizeShopItem,
+  shopTypeCategoryMap,
+} from "@/services/shopItemMapper.js";
+import { useAuthStore } from "@/stores/authStore.js";
+import { useCurrencyStore } from "@/stores/currencyStore.js";
+import { usePlayerStore } from "@/stores/playerStore.js";
 
+const route = useRoute();
 const router = useRouter();
+const authStore = useAuthStore();
+const currencyStore = useCurrencyStore();
+const playerStore = usePlayerStore();
 
 const categories = mallCategories;
-const mockItems = mallItems;
-const headerMetrics = mallHeaderMetrics;
+const fallbackItems = mallItems;
+const shopItems = ref([]);
+const playerItems = ref([]);
+const isShopLoading = ref(false);
+const isPurchasing = ref(false);
+const statusMessage = ref("");
 
 const activeCategory = ref(categories[0].id);
-const selectedItem = ref(mockItems[0]);
+const selectedItem = ref(null);
 const isDetailModalOpen = ref(false);
 const isMenuOpen = ref(false);
 const isImagePreviewOpen = ref(false);
 
+function getStoredGuestPlayer() {
+  if (typeof localStorage === "undefined") {
+    return null;
+  }
+
+  try {
+    return JSON.parse(localStorage.getItem("guestPlayer") || "null");
+  } catch {
+    return null;
+  }
+}
+
+const currentPlayerId = computed(() => {
+  const routePlayerId = Number(route.query.playerId);
+
+  if (Number.isInteger(routePlayerId) && routePlayerId > 0) {
+    return routePlayerId;
+  }
+
+  const storedGuestPlayer = getStoredGuestPlayer();
+
+  return (
+    authStore.currentPlayer?.id ??
+    playerStore.currentPlayerId ??
+    storedGuestPlayer?.id ??
+    null
+  );
+});
+
+const fallbackImageByCategory = computed(() =>
+  fallbackItems.reduce((accumulator, item) => {
+    if (!accumulator[item.category]) {
+      accumulator[item.category] = item.previewImage;
+    }
+
+    return accumulator;
+  }, {}),
+);
+
+const ownedShopItemIds = computed(() => getOwnedShopItemIdSet(playerItems.value));
+
+const normalizedItems = computed(() =>
+  shopItems.value.map((item) => {
+    const category = shopTypeCategoryMap[item.type];
+
+    return normalizeShopItem(item, {
+      categories,
+      fallbackImage:
+        fallbackImageByCategory.value[category] ?? fallbackItems[0]?.previewImage,
+      ownedShopItemIds: ownedShopItemIds.value,
+    });
+  }),
+);
+
 const categoriesWithCount = computed(() =>
   categories.map((category) => ({
     ...category,
-    count: mockItems.filter((item) => item.category === category.id).length,
+    count: normalizedItems.value.filter((item) => item.category === category.id).length,
   })),
 );
 
 const filteredItems = computed(() =>
-  mockItems.filter((item) => item.category === activeCategory.value),
+  normalizedItems.value.filter((item) => item.category === activeCategory.value),
 );
 
 const activeCategoryMeta = computed(
@@ -394,8 +492,61 @@ const activeCategoryMeta = computed(
     ) ?? categoriesWithCount.value[0],
 );
 
-const featuredItem = computed(() => filteredItems.value[0] ?? mockItems[0]);
-const budgetDisplay = computed(() => "2,400");
+const featuredItem = computed(
+  () => filteredItems.value[0] ?? normalizedItems.value[0] ?? fallbackItems[0],
+);
+const budgetDisplay = computed(() =>
+  formatNumber(
+    getCurrencyBalance(selectedItem.value?.currency ?? "coin", {
+      coins: currencyStore.coins,
+      gems: currencyStore.gems,
+      tickets: currencyStore.tickets,
+    }),
+  ),
+);
+
+const headerMetrics = computed(() => [
+  { label: "可用代幣", value: formatNumber(currencyStore.coins) },
+  { label: "已擁有", value: String(playerItems.value.length).padStart(2, "0") },
+  {
+    label: "待上架",
+    value: String(
+      normalizedItems.value.filter((item) => item.actionState === "coming").length,
+    ).padStart(2, "0"),
+  },
+]);
+
+function getErrorMessage(error, fallbackMessage) {
+  return error?.data?.message || error?.message || fallbackMessage;
+}
+
+async function loadShopData() {
+  const playerId = currentPlayerId.value;
+
+  isShopLoading.value = true;
+  statusMessage.value = "";
+
+  try {
+    const [shopData, ownedData] = await Promise.all([
+      getShopItems({ activeOnly: true }),
+      playerId ? getPlayerShopItems(playerId) : Promise.resolve({ items: [] }),
+      playerId ? currencyStore.fetchPlayerCurrency(playerId) : Promise.resolve(null),
+    ]);
+
+    shopItems.value = shopData.items ?? [];
+    playerItems.value = ownedData.items ?? [];
+
+    if (!playerId) {
+      statusMessage.value = "尚未取得玩家 ID，商品可瀏覽但無法購買。";
+    }
+  } catch (error) {
+    statusMessage.value = getErrorMessage(error, "商城資料載入失敗，請稍後再試。");
+    shopItems.value = [];
+    playerItems.value = [];
+  } finally {
+    isShopLoading.value = false;
+  }
+}
 
 function openItemDetail(item) {
   selectedItem.value = item;
@@ -418,6 +569,55 @@ function closeImagePreview() {
 function goLobby() {
   isMenuOpen.value = false;
   router.push("/lobby");
+}
+
+async function purchaseItem(item) {
+  if (!currentPlayerId.value) {
+    statusMessage.value = "尚未取得玩家 ID，請先登入或從玩家流程進入商城。";
+    return;
+  }
+
+  if (item.actionState !== "buy" || isPurchasing.value) {
+    return;
+  }
+
+  isPurchasing.value = true;
+  statusMessage.value = "";
+
+  try {
+    const result = await purchaseShopItem({
+      playerId: currentPlayerId.value,
+      shopItemId: item.id,
+      quantity: 1,
+    });
+
+    if (result.currency) {
+      currencyStore.coins = result.currency.coins ?? currencyStore.coins;
+      currencyStore.gems = result.currency.gems ?? currencyStore.gems;
+      currencyStore.tickets = result.currency.tickets ?? currencyStore.tickets;
+    }
+
+    await Promise.all([
+      getPlayerShopItems(currentPlayerId.value).then((data) => {
+        playerItems.value = data.items ?? [];
+      }),
+      getShopItems({ activeOnly: true }).then((data) => {
+        shopItems.value = data.items ?? [];
+      }),
+    ]);
+
+    statusMessage.value = "購買成功，商品已加入持有清單。";
+  } catch (error) {
+    statusMessage.value = getErrorMessage(error, "購買失敗，請確認餘額或商品狀態。");
+  } finally {
+    isPurchasing.value = false;
+  }
+}
+
+function purchaseSelectedItem() {
+  if (selectedItem.value) {
+    purchaseItem(selectedItem.value);
+  }
 }
 
 function handleEscape(event) {
@@ -448,14 +648,26 @@ watch(
       return;
     }
 
-    if (!nextItems.some((item) => item.id === selectedItem.value?.id)) {
-      selectedItem.value = nextItems[0];
+    const nextSelectedItem = nextItems.find(
+      (item) => item.id === selectedItem.value?.id,
+    );
+
+    if (nextSelectedItem) {
+      selectedItem.value = nextSelectedItem;
+      return;
     }
+
+    selectedItem.value = nextItems[0];
   },
   { immediate: true },
 );
 
+watch(currentPlayerId, () => {
+  loadShopData();
+});
+
 onMounted(() => {
+  loadShopData();
   window.addEventListener("keydown", handleEscape);
 });
 

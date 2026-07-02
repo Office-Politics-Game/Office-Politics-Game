@@ -1,0 +1,21 @@
+import { apiClient } from "./apiClient.js";
+
+const SHOP_API_PATH = "/shop";
+
+function getShopItems(params = {}) {
+  return apiClient.get(`${SHOP_API_PATH}/items`, { params });
+}
+
+function getPlayerShopItems(playerId) {
+  return apiClient.get(`${SHOP_API_PATH}/players/${playerId}/items`);
+}
+
+function purchaseShopItem({ playerId, shopItemId, quantity = 1 }) {
+  return apiClient.post(`${SHOP_API_PATH}/purchase`, {
+    playerId,
+    shopItemId,
+    quantity,
+  });
+}
+
+export { getPlayerShopItems, getShopItems, purchaseShopItem };
