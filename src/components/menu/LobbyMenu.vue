@@ -27,7 +27,6 @@
           </div>
         </button>
 
-        <!-- 個人區域 -->
         <button
           class="menu-btn left-[212px] top-[32px] h-[148px] w-[220px] lg:left-[353px] lg:top-[53px] lg:h-[247px] lg:w-[367px]"
         >
@@ -41,7 +40,6 @@
           </div>
         </button>
 
-        <!-- 社交 -->
         <button
           class="menu-btn right-[40px] top-[32px] h-[88px] w-[96px] lg:right-[67px] lg:top-[53px] lg:h-[147px] lg:w-[160px]"
           :disabled="isSocialTransitioning"
@@ -57,7 +55,6 @@
           </div>
         </button>
 
-        <!-- 設定 -->
         <button
           class="menu-btn right-[40px] top-[126px] h-[70px] w-[96px] lg:right-[67px] lg:top-[210px] lg:h-[117px] lg:w-[160px]"
         >
@@ -71,7 +68,6 @@
           </div>
         </button>
 
-        <!-- 招募 -->
         <button
           class="menu-btn left-[212px] bottom-[47px] h-[90px] w-[95px] lg:left-[353px] lg:bottom-[79px] lg:h-[150px] lg:w-[158px]"
         >
@@ -85,9 +81,10 @@
           </div>
         </button>
 
-        <!-- 商城 -->
         <button
           class="menu-btn left-[314px] bottom-[47px] h-[90px] w-[86px] lg:left-[523px] lg:bottom-[79px] lg:h-[150px] lg:w-[143px]"
+          :disabled="isMallTransitioning"
+          @click="openMallPage"
         >
           <div class="btn-content">
             <img
@@ -99,7 +96,6 @@
           </div>
         </button>
 
-        <!-- 打卡下班 -->
         <button
           class="menu-btn right-[40px] bottom-[47px] h-[74px] w-[130px] lg:right-[67px] lg:bottom-[79px] lg:h-[124px] lg:w-[217px]"
           @click="leaveLobby"
@@ -144,6 +140,7 @@ const authStore = useAuthStore();
 const currencyStore = useCurrencyStore();
 const playerStore = usePlayerStore();
 const isSocialTransitioning = ref(false);
+const isMallTransitioning = ref(false);
 const SOCIAL_FLIP_DURATION = 700;
 
 function getCurrentPlayerId() {
@@ -153,17 +150,17 @@ function getCurrentPlayerId() {
 watch(
   getCurrentPlayerId,
   (playerId) => {
-  if (!playerId) {
-    return;
-  }
+    if (!playerId) {
+      return;
+    }
 
-  currencyStore.fetchPlayerCurrency(playerId).catch(() => {});
+    currencyStore.fetchPlayerCurrency(playerId).catch(() => {});
   },
   { immediate: true }
 );
 
 function openFriendPage() {
-  if (isSocialTransitioning.value) {
+  if (isSocialTransitioning.value || isMallTransitioning.value) {
     return;
   }
 
@@ -184,6 +181,23 @@ function leaveLobby() {
   playerStore.resetPlayer();
   currencyStore.resetCurrency();
   router.push("/");
+}
+
+function openMallPage() {
+  if (isMallTransitioning.value || isSocialTransitioning.value) {
+    return;
+  }
+
+  isMallTransitioning.value = true;
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    router.push("/mall");
+    return;
+  }
+
+  window.setTimeout(() => {
+    router.push("/mall");
+  }, 180);
 }
 </script>
 
