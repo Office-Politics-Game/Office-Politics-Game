@@ -8,6 +8,8 @@
         class="social-flip-face social-flip-front relative h-full w-full bg-[length:100%_100%] bg-center shadow-2xl"
         :style="{ backgroundImage: `url(${menuBg})` }"
       >
+        <RoomInvitationNotice />
+
         <!-- 開始遊玩 -->
         <button
           class="menu-btn left-[35px] top-[32px] h-[244px] w-[170px] gap-6 lg:left-[58px] lg:top-[53px] lg:h-[407px] lg:w-[283px]"
@@ -128,6 +130,7 @@
 <script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
+import RoomInvitationNotice from "@/components/gameRoom/RoomInvitationNotice.vue";
 import friendBg from "@/assets/images/bg-friend-view.webp";
 import menuBg from "@/assets/images/menu.webp";
 

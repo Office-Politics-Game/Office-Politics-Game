@@ -151,9 +151,11 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "../../stores/authStore.js";
+import { usePlayerStore } from "@/stores/playerStore.js";
 
 const emit = defineEmits(["close"]);
 const authStore = useAuthStore();
+const playerStore = usePlayerStore();
 const router = useRouter();
 
 const username = ref("");
@@ -175,6 +177,10 @@ async function handleLogin(){
       username: username.value.trim(),
       password: password.value,
     });
+
+    if (authStore.currentPlayer) {
+      playerStore.setCurrentPlayer(authStore.currentPlayer);
+    }
 
     emit("close");
     await router.push("/lobby");
