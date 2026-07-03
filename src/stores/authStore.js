@@ -1,94 +1,135 @@
-import { defineStore } from "pinia";
+import { defineStore } from "pinia"
 import {
   register as registerApi,
   login as loginApi,
   verifyToken as verifyTokenApi,
-} from "../services/authApi.js";
+} from "../services/authApi.js"
+
+const AUTH_TOKEN_STORAGE_KEY = "gameAuthToken"
 
 function getErrorMessage(error, fallbackMessage) {
-  return error?.data?.message || error?.message || fallbackMessage;
+  return error?.data?.message || error?.message || fallbackMessage
+}
+
+function saveAuthToken(token) {
+  localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token)
+}
+
+function removeAuthToken() {
+  localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
 }
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     currentPlayer: null,
-    token: "",
+    token: localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) || "",
     isLoggedIn: false,
     isLoading: false,
-    errorMessage: "",
+    hasVerifiedToken: false,
+    errorMessage: ""
   }),
 
   actions: {
     async register(payload) {
-      this.isLoading = true;
-      this.errorMessage = "";
+      this.isLoading = true
+      this.errorMessage = ""
 
       try {
-        const data = await registerApi(payload);
+        const data = await registerApi(payload)
 
         return data
       } catch(error){
         this.errorMessage = getErrorMessage(error, "註冊失敗")
-        throw error;
+        throw error
       } finally{
-        this.isLoading = false;
+        this.isLoading = false
       }
     },
 
     async login(payload) {
-      this.isLoading = true;
-      this.errorMessage = "";
+      this.isLoading = true
+      this.errorMessage = ""
 
       try {
-        const data = await loginApi(payload);
+        const data = await loginApi(payload)
+        const token = data.token || ""
 
-        this.currentPlayer = data.player || null;
-        this.token = data.token || "";
-        this.isLoggedIn = Boolean(this.token);
+        this.currentPlayer = data.player || null
+        this.token = token
+        this.isLoggedIn = Boolean(token)
+        this.hasVerifiedToken = Boolean(token)
 
-        return data;
+        if (token) {
+          saveAuthToken(token)
+        } else {
+          removeAuthToken()
+        }
+
+        return data
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "登入失敗");
-        throw error;
+        this.currentPlayer = null
+        this.token = ""
+        this.isLoggedIn = false
+        this.hasVerifiedToken = false
+        this.errorMessage = getErrorMessage(error, "登入失敗")
+        removeAuthToken()
+
+        throw error
       } finally {
-        this.isLoading = false;
+        this.isLoading = false
       }
     },
 
     async verifyToken() {
-      if (!this.token) {
-        this.isLoggedIn = false;
-        return false;
+      if (this.hasVerifiedToken && this.isLoggedIn && this.currentPlayer) {
+        return true
       }
 
-      this.isLoading = true;
-      this.errorMessage = "";
+      if (!this.token) {
+        this.currentPlayer = null
+        this.isLoggedIn = false
+        this.hasVerifiedToken = false
+        removeAuthToken()
+
+        return false
+      }
+
+      this.isLoading = true
+      this.errorMessage = ""
 
       try {
-        const data = await verifyTokenApi(this.token);
-        this.currentPlayer = data.player || null;
-        this.isLoggedIn = true;
-        return true;
+        const data = await verifyTokenApi(this.token)
+
+        this.currentPlayer = data.player || null
+        this.isLoggedIn = true
+        this.hasVerifiedToken = true
+
+        return true
       } catch (error) {
-        this.currentPlayer = null;
-        this.token = "";
-        this.isLoggedIn = false;
-        this.errorMessage = getErrorMessage(error, "登入驗證失敗");
-        return false;
+        this.currentPlayer = null
+        this.token = ""
+        this.isLoggedIn = false
+        this.hasVerifiedToken = false
+        this.errorMessage = getErrorMessage(error, "登入驗證失敗")
+        removeAuthToken()
+
+        return false
       } finally {
-        this.isLoading = false;
+        this.isLoading = false
       }
     },
 
     logout() {
-      this.currentPlayer = null;
-      this.token = "";
-      this.isLoggedIn = false;
-      this.errorMessage = "";
+      this.currentPlayer = null
+      this.token = ""
+      this.isLoggedIn = false
+      this.hasVerifiedToken = false
+      this.errorMessage = ""
+      removeAuthToken()
     },
 
     clearError() {
-      this.errorMessage = "";
-    },
-  },
-});
+      this.errorMessage = ""
+    }
+  }
+})
