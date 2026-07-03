@@ -1,10 +1,14 @@
 import {
   acceptFriendRequest,
+  blockPlayer,
+  getBlockedPlayers,
   getFriends,
   getReceivedFriendRequests,
   getSentFriendRequests,
   rejectFriendRequest,
+  removeFriend,
   sendFriendRequest,
+  unblockPlayer,
 } from "../services/friendService.js"
 
 function getErrorStatus(error){
@@ -44,6 +48,56 @@ async function handleSendFriendRequest(req, res){
   }
 }
 
+async function handleRemoveFriend(req, res){
+  try {
+    const body = req.body ?? {}
+    const friendshipId = parsePositiveInteger(req.params.id)
+    const playerId = parsePositiveInteger(body.playerId ?? req.query.playerId)
+
+    if (!friendshipId || !playerId){
+      return res.status(400).json({ message: "缺少好友關係ID或玩家ID" })
+    }
+
+    const friendship = await removeFriend({ friendshipId, playerId })
+
+    return res.status(200).json({
+      message: "已解除好友",
+      friendship,
+    })
+  } catch (error){
+    return res.status(getErrorStatus(error)).json({
+      message: error.statusCode ? error.message : "解除好友失敗",
+      error: error.message,
+    })
+  }
+}
+
+async function handleBlockPlayer(req, res){
+  try {
+    const body = req.body ?? {}
+    const playerId = parsePositiveInteger(body.playerId)
+    const targetPlayerId = parsePositiveInteger(
+      body.targetPlayerId ?? body.friendId
+    )
+
+    if (!playerId || !targetPlayerId){
+      return res.status(400).json({ message: "缺少玩家ID或封鎖對象ID" })
+    }
+
+    const block = await blockPlayer({ playerId, targetPlayerId })
+
+    return res.status(200).json({
+      message: "已封鎖玩家",
+      block,
+    })
+  } catch (error){
+    return res.status(getErrorStatus(error)).json({
+      message: error.statusCode ? error.message : "封鎖玩家失敗",
+      error: error.message,
+    })
+  }
+}
+
 async function handleGetReceivedFriendRequests(req, res){
   try {
     const playerId = parsePositiveInteger(req.query.playerId)
@@ -77,6 +131,49 @@ async function handleGetSentFriendRequests(req, res){
   } catch (error){
     return res.status(getErrorStatus(error)).json({
       message: error.statusCode ? error.message : "取得送出的好友邀請失敗",
+      error: error.message,
+    })
+  }
+}
+
+async function handleGetBlockedPlayers(req, res){
+  try {
+    const playerId = parsePositiveInteger(req.query.playerId)
+
+    if (!playerId){
+      return res.status(400).json({ message: "缺少玩家ID" })
+    }
+
+    const blockedPlayers = await getBlockedPlayers({ playerId })
+
+    return res.status(200).json({ blockedPlayers })
+  } catch (error){
+    return res.status(getErrorStatus(error)).json({
+      message: error.statusCode ? error.message : "取得封鎖名單失敗",
+      error: error.message,
+    })
+  }
+}
+
+async function handleUnblockPlayer(req, res){
+  try {
+    const body = req.body ?? {}
+    const blockId = parsePositiveInteger(req.params.id)
+    const playerId = parsePositiveInteger(body.playerId)
+
+    if (!blockId || !playerId){
+      return res.status(400).json({ message: "缺少封鎖關係ID或玩家ID" })
+    }
+
+    const block = await unblockPlayer({ blockId, playerId })
+
+    return res.status(200).json({
+      message: "已取消封鎖",
+      block,
+    })
+  } catch (error){
+    return res.status(getErrorStatus(error)).json({
+      message: error.statusCode ? error.message : "取消封鎖失敗",
       error: error.message,
     })
   }
@@ -151,9 +248,13 @@ async function handleGetFriends(req, res){
 
 export {
   handleAcceptFriendRequest,
+  handleBlockPlayer,
+  handleGetBlockedPlayers,
   handleGetFriends,
   handleGetReceivedFriendRequests,
   handleGetSentFriendRequests,
+  handleRemoveFriend,
   handleRejectFriendRequest,
   handleSendFriendRequest,
+  handleUnblockPlayer,
 }

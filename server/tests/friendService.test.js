@@ -10,11 +10,15 @@ jest.unstable_mockModule("../src/db/index.js", () => ({
 
 const {
   acceptFriendRequest,
+  blockPlayer,
+  getBlockedPlayers,
   getFriends,
   getReceivedFriendRequests,
   getSentFriendRequests,
   rejectFriendRequest,
+  removeFriend,
   sendFriendRequest,
+  unblockPlayer,
 } = await import("../src/services/friendService.js")
 
 beforeEach(()=>{
@@ -80,6 +84,116 @@ describe("sendFriendRequest", ()=>{
       message: "好友邀請已存在",
       statusCode: 409,
     })
+  })
+
+  test("已封鎖關係不允許送出好友邀請", async ()=>{
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ id: 1 }, { id: 2 }] })
+      .mockResolvedValueOnce({
+        rows: [{ id: 10, status: "blocked" }],
+      })
+
+    await expect(
+      sendFriendRequest({ playerId: 1, targetPlayerId: 2 })
+    ).rejects.toMatchObject({
+      message: "無法送出好友邀請",
+      statusCode: 403,
+    })
+  })
+})
+
+describe("removeFriend", ()=>{
+  test("解除 accepted 好友關係", async ()=>{
+    queryMock.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 10,
+          player_id: 1,
+          friend_id: 2,
+          status: "accepted",
+          created_at: "2026-06-30T00:00:00.000Z",
+        },
+      ],
+    })
+
+    const friendship = await removeFriend({ friendshipId: 10, playerId: 1 })
+
+    expect(friendship.status).toBe("accepted")
+    expect(queryMock).toHaveBeenCalledWith(
+      expect.stringContaining("DELETE FROM friends"),
+      [10, 1]
+    )
+    expect(queryMock.mock.calls[0][0]).toContain("status = 'accepted'")
+  })
+
+  test("找不到 accepted 關係時回傳錯誤", async ()=>{
+    queryMock.mockResolvedValueOnce({ rows: [] })
+
+    await expect(
+      removeFriend({ friendshipId: 10, playerId: 1 })
+    ).rejects.toMatchObject({
+      message: "找不到可解除的好友關係",
+      statusCode: 404,
+    })
+  })
+})
+
+describe("blockPlayer", ()=>{
+  test("沒有既有關係時新增 blocked 關係", async ()=>{
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ id: 1 }, { id: 2 }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 10,
+            player_id: 1,
+            friend_id: 2,
+            status: "blocked",
+            created_at: "2026-06-30T00:00:00.000Z",
+          },
+        ],
+      })
+
+    const block = await blockPlayer({ playerId: 1, targetPlayerId: 2 })
+
+    expect(block.status).toBe("blocked")
+    expect(queryMock).toHaveBeenLastCalledWith(
+      expect.stringContaining("INSERT INTO friends"),
+      [1, 2]
+    )
+  })
+
+  test("既有 pending 或 accepted 關係封鎖後改成 blocked", async ()=>{
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ id: 1 }, { id: 2 }] })
+      .mockResolvedValueOnce({
+        rows: [{ id: 10, player_id: 2, friend_id: 1, status: "accepted" }],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 10,
+            player_id: 1,
+            friend_id: 2,
+            status: "blocked",
+            created_at: "2026-06-30T00:00:00.000Z",
+          },
+        ],
+      })
+
+    const block = await blockPlayer({ playerId: 1, targetPlayerId: 2 })
+
+    expect(block).toMatchObject({
+      id: 10,
+      playerId: 1,
+      friendId: 2,
+      status: "blocked",
+    })
+    expect(queryMock).toHaveBeenLastCalledWith(
+      expect.stringContaining("UPDATE friends"),
+      [1, 2, 10]
+    )
   })
 })
 
@@ -243,5 +357,76 @@ describe("getFriends", ()=>{
       expect.stringContaining("(f.player_id = $1 OR f.friend_id = $1)"),
       [1]
     )
+  })
+})
+
+describe("getBlockedPlayers", ()=>{
+  test("查詢自己封鎖的玩家名單", async ()=>{
+    queryMock.mockResolvedValueOnce({
+      rows: [
+        {
+          block_id: 10,
+          blocked_player_id: 2,
+          username: "玩家二",
+          avatar_id: 4,
+          level: 6,
+          is_online: false,
+          created_at: "2026-06-30T00:00:00.000Z",
+        },
+      ],
+    })
+
+    const blockedPlayers = await getBlockedPlayers({ playerId: 1 })
+
+    expect(blockedPlayers).toEqual([
+      {
+        blockId: 10,
+        playerId: 2,
+        username: "玩家二",
+        avatarId: 4,
+        level: 6,
+        isOnline: false,
+        createdAt: "2026-06-30T00:00:00.000Z",
+      },
+    ])
+    expect(queryMock).toHaveBeenCalledWith(
+      expect.stringContaining("WHERE f.player_id = $1"),
+      [1]
+    )
+  })
+})
+
+describe("unblockPlayer", ()=>{
+  test("封鎖者可以取消封鎖", async ()=>{
+    queryMock.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 10,
+          player_id: 1,
+          friend_id: 2,
+          status: "blocked",
+          created_at: "2026-06-30T00:00:00.000Z",
+        },
+      ],
+    })
+
+    const block = await unblockPlayer({ blockId: 10, playerId: 1 })
+
+    expect(block.status).toBe("blocked")
+    expect(queryMock).toHaveBeenCalledWith(
+      expect.stringContaining("AND player_id = $2"),
+      [10, 1]
+    )
+  })
+
+  test("非封鎖者不能取消封鎖", async ()=>{
+    queryMock.mockResolvedValueOnce({ rows: [] })
+
+    await expect(
+      unblockPlayer({ blockId: 10, playerId: 2 })
+    ).rejects.toMatchObject({
+      message: "找不到可取消封鎖的玩家",
+      statusCode: 404,
+    })
   })
 })

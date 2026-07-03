@@ -55,14 +55,29 @@
             </div>
           </div>
 
-          <button
-            type="button"
-            class="friend-button is-secondary shrink-0"
-            :disabled="isSending || Boolean(player.relationStatus)"
-            @click="emit('add-friend', player.playerId)"
-          >
-            {{ actionLabel(player) }}
-          </button>
+          <div class="flex shrink-0 flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              class="friend-button is-secondary"
+              :disabled="isSending || Boolean(player.relationStatus)"
+              @click="emit('add-friend', player.playerId)"
+            >
+              {{ actionLabel(player) }}
+            </button>
+
+            <button
+              type="button"
+              class="friend-button is-danger"
+              :disabled="
+                isSending ||
+                isPlayerProcessing(player.playerId) ||
+                player.relationStatus === 'blocked'
+              "
+              @click="emit('block-player', player)"
+            >
+              {{ blockActionLabel(player) }}
+            </button>
+          </div>
         </div>
       </article>
     </section>
@@ -89,7 +104,7 @@
 <script setup>
 import { ref } from "vue";
 
-defineProps({
+const props = defineProps({
   sentInvites: {
     type: Array,
     default: () => [],
@@ -114,9 +129,13 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  isPlayerProcessing: {
+    type: Function,
+    default: () => false,
+  },
 });
 
-const emit = defineEmits(["search", "add-friend"]);
+const emit = defineEmits(["search", "add-friend", "block-player"]);
 const keyword = ref("");
 
 function submitSearch() {
@@ -143,6 +162,18 @@ function actionLabel(player) {
   }
 
   return "送出邀請";
+}
+
+function blockActionLabel(player) {
+  if (props.isPlayerProcessing(player.playerId)) {
+    return "處理中...";
+  }
+
+  if (player.relationStatus === "blocked") {
+    return "已封鎖";
+  }
+
+  return "封鎖";
 }
 
 function statusColorClass(player) {
@@ -184,6 +215,10 @@ function statusColorClass(player) {
 
 .friend-button.is-secondary {
   @apply border-[var(--brand-primary)] bg-[var(--surface-glass)] text-[var(--brand-active)];
+}
+
+.friend-button.is-danger {
+  @apply border-[var(--brand-active)] bg-white text-[var(--brand-active)];
 }
 
 .friend-button:hover:not(:disabled) {
