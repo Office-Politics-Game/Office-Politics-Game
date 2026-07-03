@@ -27,6 +27,31 @@ function sendFriendRequest({ playerId, targetPlayerId }) {
   });
 }
 
+function removeFriend({ friendshipId, playerId }) {
+  return apiClient.delete(`${FRIEND_API_PATH}/${friendshipId}`, {
+    data: { playerId },
+  });
+}
+
+function blockPlayer({ playerId, targetPlayerId }) {
+  return apiClient.post(`${FRIEND_API_PATH}/blocks`, {
+    playerId,
+    targetPlayerId,
+  });
+}
+
+function getBlockedPlayers(playerId) {
+  return apiClient.get(`${FRIEND_API_PATH}/blocks`, {
+    params: { playerId },
+  });
+}
+
+function unblockPlayer({ blockId, playerId }) {
+  return apiClient.post(`${FRIEND_API_PATH}/blocks/${blockId}/unblock`, {
+    playerId,
+  });
+}
+
 function acceptFriendRequest({ requestId, playerId }) {
   return apiClient.post(`${FRIEND_API_PATH}/requests/${requestId}/accept`, {
     playerId,
@@ -41,9 +66,13 @@ function rejectFriendRequest({ requestId, playerId }) {
 
 export {
   acceptFriendRequest,
+  blockPlayer,
+  getBlockedPlayers,
   getFriends,
   getReceivedFriendRequests,
   getSentFriendRequests,
+  removeFriend,
   rejectFriendRequest,
   sendFriendRequest,
+  unblockPlayer,
 };
