@@ -4,6 +4,7 @@ const mockQuery = jest.fn()
 const mockCreateUser = jest.fn()
 const mockDeleteUser = jest.fn()
 const mockSignInWithPassword = jest.fn()
+const mockGetUser = jest.fn()
 
 jest.unstable_mockModule("../src/db/index.js", () => ({
     default: {
@@ -15,6 +16,7 @@ jest.unstable_mockModule("../src/db/supabaseClient.js", () => ({
     supabaseAdmin: {
         auth: {
             signInWithPassword: mockSignInWithPassword,
+            getUser: mockGetUser,
             admin: {
                 createUser: mockCreateUser,
                 deleteUser: mockDeleteUser
@@ -23,7 +25,7 @@ jest.unstable_mockModule("../src/db/supabaseClient.js", () => ({
     }
 }))
 
-const { registerPlayer, loginPlayer } = await import("../src/services/authService.js")
+const { registerPlayer, loginPlayer, verifyToken } = await import("../src/services/authService.js")
 
 const SELECT_DUPLICATE_PLAYER_SQL = `SELECT username, account
          FROM players
@@ -69,6 +71,7 @@ describe("註冊玩家服務", () => {
         mockCreateUser.mockReset()
         mockDeleteUser.mockReset()
         mockSignInWithPassword.mockReset()
+        mockGetUser.mockReset()
     })
 
     test("未輸入用戶名稱時，丟出錯誤", async () => {
@@ -473,6 +476,7 @@ describe("登入玩家服務", () => {
         mockCreateUser.mockReset()
         mockDeleteUser.mockReset()
         mockSignInWithPassword.mockReset()
+        mockGetUser.mockReset()
     })
 
     test("未輸入Email帳號時，丟出錯誤", async () => {
@@ -615,5 +619,97 @@ describe("登入玩家服務", () => {
 
         expect(result.player.password).toBeUndefined()
         expect(result.player.passwordHash).toBeUndefined()
+    })
+})
+
+describe("驗證登入狀態服務", () => {
+    beforeEach(() => {
+        mockQuery.mockReset()
+        mockCreateUser.mockReset()
+        mockDeleteUser.mockReset()
+        mockSignInWithPassword.mockReset()
+        mockGetUser.mockReset()
+    })
+
+    test("未提供token時，丟出錯誤", async () => {
+        await expect(verifyToken("")).rejects.toThrow("缺少登入驗證token")
+
+        expect(mockGetUser).not.toHaveBeenCalled()
+        expect(mockQuery).not.toHaveBeenCalled()
+    })
+
+    test("Supabase驗證token失敗時，丟出錯誤", async () => {
+        mockGetUser.mockResolvedValueOnce({
+            data: {
+                user: null
+            },
+            error: new Error("token無效")
+        })
+
+        await expect(verifyToken("token無效")).rejects.toThrow("登入驗證失敗")
+
+        expect(mockGetUser).toHaveBeenCalledWith("token無效")
+        expect(mockQuery).not.toHaveBeenCalled()
+    })
+
+    test("token有效但找不到玩家資料時，丟出錯誤", async () => {
+        mockGetUser.mockResolvedValueOnce({
+            data: {
+                user: {
+                    id: "auth-user-001"
+                }
+            },
+            error: null
+        })
+
+        mockQuery.mockResolvedValueOnce({
+            rows: []
+        })
+
+        await expect(verifyToken("有效token")).rejects.toThrow("找不到玩家資料")
+
+        expect(mockGetUser).toHaveBeenCalledWith("有效token")
+        expect(mockQuery).toHaveBeenCalledTimes(1)
+    })
+
+    test("token有效且找到玩家資料時，回傳玩家資料", async () => {
+        mockGetUser.mockResolvedValueOnce({
+            data: {
+                user: {
+                    id: "auth-user-001"
+                }
+            },
+            error: null
+        })
+
+        mockQuery.mockResolvedValueOnce({
+            rows: [createPlayerRow()]
+        })
+
+        const player = await verifyToken("有效token")
+
+        expect(mockGetUser).toHaveBeenCalledWith("有效token")
+        expect(player).toEqual({
+            id: 1,
+            authUserId: "auth-user-001",
+            username: "測試玩家",
+            account: "test@example.com",
+            avatarId: 2,
+            level: 1,
+            exp: 0,
+            coins: 0,
+            gems: 0,
+            tickets: 0,
+            winCount: 0,
+            loseCount: 0,
+            totalGames: 0,
+            isOnline: false,
+            lastLoginAt: null,
+            createdAt: "2026-07-01T00:00:00.000Z",
+            updatedAt: "2026-07-01T00:00:00.000Z"
+        })
+
+        expect(player.password).toBeUndefined()
+        expect(player.passwordHash).toBeUndefined()
     })
 })

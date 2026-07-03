@@ -41,7 +41,12 @@
             :key="friend.id"
             :friend="friend"
             :active="selectedFriendId === friend.id"
+            :show-actions="showActions"
+            :is-friend-processing="isFriendProcessing(friend.friendshipId)"
+            :is-player-processing="isPlayerProcessing(friend.playerId)"
             @select="emit('select', $event)"
+            @remove="emit('remove', $event)"
+            @block="emit('block', $event)"
           />
         </section>
       </template>
@@ -81,9 +86,21 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  showActions: {
+    type: Boolean,
+    default: false,
+  },
+  isFriendProcessing: {
+    type: Function,
+    default: () => false,
+  },
+  isPlayerProcessing: {
+    type: Function,
+    default: () => false,
+  },
 });
 
-const emit = defineEmits(["select"]);
+const emit = defineEmits(["select", "remove", "block"]);
 const keyword = ref("");
 
 const filteredFriends = computed(() => {

@@ -1,6 +1,6 @@
 <template>
   <section
-    class="rotate-device-notice fixed inset-0 z-50 flex min-h-[100dvh] w-full items-center justify-center bg-[linear-gradient(145deg,var(--brand-navy),var(--brand-active))] px-6 text-center text-white"
+    class="rotate-device-notice fixed inset-0 z-[100] flex min-h-[100dvh] w-full items-center justify-center bg-[linear-gradient(145deg,var(--brand-navy),var(--brand-active))] px-6 text-center text-white"
     aria-live="polite"
   >
     <div class="border-y border-white/45 px-6 py-7">
@@ -15,7 +15,7 @@
 </template>
 
 <style scoped>
-@media (orientation: landscape), (min-width: 768px) {
+@media (orientation: landscape) {
   .rotate-device-notice {
     display: none;
   }

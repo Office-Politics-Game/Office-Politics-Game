@@ -62,6 +62,18 @@ function mapFriend(row){
   }
 }
 
+function mapBlockedPlayer(row){
+  return {
+    blockId: row.block_id,
+    playerId: row.blocked_player_id,
+    username: row.username,
+    avatarId: row.avatar_id,
+    level: row.level,
+    isOnline: row.is_online,
+    createdAt: row.created_at,
+  }
+}
+
 async function ensurePlayersExist(playerId, targetPlayerId){
   const result = await pool.query(
     `SELECT id
@@ -124,6 +136,63 @@ async function sendFriendRequest({ playerId, targetPlayerId }){
 
     throw error
   }
+
+  return mapFriendship(result.rows[0])
+}
+
+async function removeFriend({ friendshipId, playerId }){
+  const result = await pool.query(
+    `DELETE FROM friends
+     WHERE id = $1
+       AND status = 'accepted'
+       AND (player_id = $2 OR friend_id = $2)
+     RETURNING *`,
+    [friendshipId, playerId]
+  )
+
+  if (result.rows.length === 0){
+    throw createServiceError("找不到可解除的好友關係", 404)
+  }
+
+  return mapFriendship(result.rows[0])
+}
+
+async function blockPlayer({ playerId, targetPlayerId }){
+  if (playerId === targetPlayerId){
+    throw createServiceError("不能封鎖自己")
+  }
+
+  await ensurePlayersExist(playerId, targetPlayerId)
+
+  const existingFriendship = await findExistingFriendship(playerId, targetPlayerId)
+
+  if (existingFriendship?.status === "blocked"){
+    if (
+      existingFriendship.player_id === playerId &&
+      existingFriendship.friend_id === targetPlayerId
+    ){
+      throw createServiceError("已封鎖此玩家", 409)
+    }
+
+    throw createServiceError("此玩家已與你有封鎖關係", 403)
+  }
+
+  const result = existingFriendship
+    ? await pool.query(
+      `UPDATE friends
+       SET player_id = $1,
+           friend_id = $2,
+           status = 'blocked'
+       WHERE id = $3
+       RETURNING *`,
+      [playerId, targetPlayerId, existingFriendship.id]
+    )
+    : await pool.query(
+      `INSERT INTO friends (player_id, friend_id, status)
+       VALUES ($1, $2, 'blocked')
+       RETURNING *`,
+      [playerId, targetPlayerId]
+    )
 
   return mapFriendship(result.rows[0])
 }
@@ -236,11 +305,53 @@ async function getFriends({ playerId }){
   return result.rows.map(mapFriend)
 }
 
+async function getBlockedPlayers({ playerId }){
+  const result = await pool.query(
+    `SELECT
+       f.id AS block_id,
+       f.created_at,
+       p.id AS blocked_player_id,
+       p.username,
+       p.avatar_id,
+       p.level,
+       p.is_online
+     FROM friends f
+     JOIN players p ON p.id = f.friend_id
+     WHERE f.player_id = $1
+       AND f.status = 'blocked'
+     ORDER BY f.created_at DESC`,
+    [playerId]
+  )
+
+  return result.rows.map(mapBlockedPlayer)
+}
+
+async function unblockPlayer({ blockId, playerId }){
+  const result = await pool.query(
+    `DELETE FROM friends
+     WHERE id = $1
+       AND player_id = $2
+       AND status = 'blocked'
+     RETURNING *`,
+    [blockId, playerId]
+  )
+
+  if (result.rows.length === 0){
+    throw createServiceError("找不到可取消封鎖的玩家", 404)
+  }
+
+  return mapFriendship(result.rows[0])
+}
+
 export {
   acceptFriendRequest,
+  blockPlayer,
+  getBlockedPlayers,
   getFriends,
   getReceivedFriendRequests,
   getSentFriendRequests,
   rejectFriendRequest,
+  removeFriend,
   sendFriendRequest,
+  unblockPlayer,
 }

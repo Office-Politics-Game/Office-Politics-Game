@@ -14,7 +14,7 @@
       class="friend-page-panel relative z-10 flex h-[92vh] w-[94vw] max-w-[1100px] flex-col overflow-hidden bg-white/95 shadow-2xl backdrop-blur md:h-[82vh] md:flex-row"
     >
       <aside class="flex min-h-0 w-full flex-col border-b border-[var(--gray-100)] md:w-[38%] md:border-b-0 md:border-r">
-        <div class="flex h-14 shrink-0 items-center border-b border-[var(--gray-100)] px-5">
+        <div class="flex h-14 shrink-0 items-center overflow-x-auto border-b border-[var(--gray-100)] px-5">
           <button
             type="button"
             class="tab"
@@ -41,6 +41,15 @@
           >
             加入好友
           </button>
+
+          <button
+            type="button"
+            class="tab"
+            :class="{ active: activeTab === 'blocks' }"
+            @click="activeTab = 'blocks'"
+          >
+            封鎖 {{ friendStore.blockedPlayerCount }}
+          </button>
         </div>
 
         <FriendList
@@ -49,7 +58,12 @@
           :selected-friend-id="friendStore.selectedFriendId"
           :is-loading="friendStore.isLoading"
           :error-message="friendStore.errorMessage"
+          :show-actions="true"
+          :is-friend-processing="friendStore.isFriendshipProcessing"
+          :is-player-processing="friendStore.isPlayerProcessing"
           @select="friendStore.selectFriend"
+          @remove="confirmRemoveFriend"
+          @block="confirmBlockPlayer"
         />
 
         <div v-else-if="activeTab === 'requests'" class="min-h-0 flex-1 overflow-y-auto p-5">
@@ -63,7 +77,7 @@
           />
         </div>
 
-        <div v-else class="min-h-0 flex-1 overflow-y-auto p-5">
+        <div v-else-if="activeTab === 'add'" class="min-h-0 flex-1 overflow-y-auto p-5">
           <AddFriendForm
             :sent-invites="friendStore.sentInvites"
             :search-results="friendStore.searchResults"
@@ -71,8 +85,20 @@
             :error-message="friendStore.searchErrorMessage"
             :is-searching="friendStore.isSearching"
             :is-sending="friendStore.isSending"
+            :is-player-processing="friendStore.isPlayerProcessing"
             @search="friendStore.searchPlayers"
             @add-friend="friendStore.sendFriendRequest"
+            @block-player="confirmBlockPlayer"
+          />
+        </div>
+
+        <div v-else class="min-h-0 flex-1 overflow-y-auto p-5">
+          <BlockedPlayerList
+            :blocked-players="friendStore.blockedPlayers"
+            :is-loading="friendStore.isLoading"
+            :error-message="friendStore.errorMessage"
+            :is-block-processing="friendStore.isBlockProcessing"
+            @unblock="confirmUnblockPlayer"
           />
         </div>
       </aside>
@@ -169,6 +195,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import AddFriendForm from "@/components/friend/AddFriendForm.vue";
+import BlockedPlayerList from "@/components/friend/BlockedPlayerList.vue";
 import FriendList from "@/components/friend/FriendList.vue";
 import FriendRequestList from "@/components/friend/FriendRequestList.vue";
 import BG_FriendView from "@/assets/images/bg-friend-view.webp";
@@ -226,6 +253,46 @@ function formatDetailDate(value) {
     month: "2-digit",
     day: "2-digit",
   }).format(date);
+}
+
+function confirmRemoveFriend(friend) {
+  if (!friend?.friendshipId) {
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `確定要解除與 ${friend.name} 的好友關係嗎？`,
+  );
+
+  if (confirmed) {
+    friendStore.removeFriend(friend.friendshipId);
+  }
+}
+
+function confirmBlockPlayer(player) {
+  if (!player?.playerId) {
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `確定要封鎖 ${player.name} 嗎？封鎖後將無法互相送出好友邀請。`,
+  );
+
+  if (confirmed) {
+    friendStore.blockPlayer(player.playerId);
+  }
+}
+
+function confirmUnblockPlayer(player) {
+  if (!player?.blockId) {
+    return;
+  }
+
+  const confirmed = window.confirm(`確定要取消封鎖 ${player.name} 嗎？`);
+
+  if (confirmed) {
+    friendStore.unblockPlayer(player.blockId);
+  }
 }
 
 function returnToLobby() {

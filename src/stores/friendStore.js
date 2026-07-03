@@ -1,11 +1,15 @@
 import { defineStore } from "pinia";
 import {
   acceptFriendRequest as acceptFriendRequestApi,
+  blockPlayer as blockPlayerApi,
+  getBlockedPlayers,
   getFriends as getFriendsApi,
   getReceivedFriendRequests,
   getSentFriendRequests,
+  removeFriend as removeFriendApi,
   rejectFriendRequest as rejectFriendRequestApi,
   sendFriendRequest as sendFriendRequestApi,
+  unblockPlayer as unblockPlayerApi,
 } from "@/services/friendApi.js";
 import { searchPlayers as searchPlayersApi } from "@/services/playerService.js";
 import { useAuthStore } from "@/stores/authStore.js";
@@ -123,12 +127,31 @@ function mapSentInvite(request) {
   };
 }
 
+function mapBlockedPlayer(player) {
+  const playerId = player.playerId ?? player.id;
+  const isOnline = Boolean(player.isOnline);
+
+  return {
+    id: String(player.blockId),
+    blockId: player.blockId,
+    playerId: String(playerId),
+    name: player.username || `玩家 ${playerId}`,
+    avatarId: player.avatarId,
+    level: player.level ?? 1,
+    status: isOnline ? "在線上" : "離線",
+    statusType: isOnline ? "online" : "offline",
+    online: isOnline,
+    createdAt: player.createdAt,
+  };
+}
+
 export const useFriendStore = defineStore("friend", {
   state: () => ({
     currentPlayerId: null,
     friends: [],
     requests: [],
     sentInvites: [],
+    blockedPlayers: [],
     searchResults: [],
     selectedFriendId: null,
     lastSearchKeyword: "",
@@ -139,6 +162,9 @@ export const useFriendStore = defineStore("friend", {
     isSearching: false,
     isSending: false,
     processingRequestIds: [],
+    processingFriendshipIds: [],
+    processingPlayerIds: [],
+    processingBlockIds: [],
   }),
 
   getters: {
@@ -152,8 +178,15 @@ export const useFriendStore = defineStore("friend", {
     offlineFriends: (state) =>
       state.friends.filter((friend) => friend.statusType === "offline"),
     pendingRequestCount: (state) => state.requests.length,
+    blockedPlayerCount: (state) => state.blockedPlayers.length,
     isRequestProcessing: (state) => (requestId) =>
       state.processingRequestIds.includes(requestId),
+    isFriendshipProcessing: (state) => (friendshipId) =>
+      state.processingFriendshipIds.includes(Number(friendshipId)),
+    isPlayerProcessing: (state) => (playerId) =>
+      state.processingPlayerIds.includes(Number(playerId)),
+    isBlockProcessing: (state) => (blockId) =>
+      state.processingBlockIds.includes(Number(blockId)),
   },
 
   actions: {
@@ -191,15 +224,20 @@ export const useFriendStore = defineStore("friend", {
 
       try {
         const playerId = this.getCurrentPlayerId();
-        const [friendsData, receivedData, sentData] = await Promise.all([
-          getFriendsApi(playerId),
-          getReceivedFriendRequests(playerId),
-          getSentFriendRequests(playerId),
-        ]);
+        const [friendsData, receivedData, sentData, blockedData] =
+          await Promise.all([
+            getFriendsApi(playerId),
+            getReceivedFriendRequests(playerId),
+            getSentFriendRequests(playerId),
+            getBlockedPlayers(playerId),
+          ]);
 
         this.friends = (friendsData.friends ?? []).map(mapFriend);
         this.requests = (receivedData.requests ?? []).map(mapReceivedRequest);
         this.sentInvites = (sentData.requests ?? []).map(mapSentInvite);
+        this.blockedPlayers = (blockedData.blockedPlayers ?? []).map(
+          mapBlockedPlayer,
+        );
 
         if (
           this.selectedFriendId &&
@@ -289,6 +327,142 @@ export const useFriendStore = defineStore("friend", {
         this.searchErrorMessage = error.message || "送出好友邀請失敗";
       } finally {
         this.isSending = false;
+      }
+    },
+
+    async removeFriend(friendshipId) {
+      const numericFriendshipId = toPositiveInteger(friendshipId);
+
+      if (!numericFriendshipId) {
+        this.errorMessage = "好友關係不正確";
+        return;
+      }
+
+      if (this.processingFriendshipIds.includes(numericFriendshipId)) {
+        return;
+      }
+
+      this.processingFriendshipIds.push(numericFriendshipId);
+      this.errorMessage = "";
+      this.noticeMessage = "";
+
+      const friend = this.friends.find(
+        (item) => Number(item.friendshipId) === numericFriendshipId,
+      );
+
+      try {
+        const playerId = this.getCurrentPlayerId();
+
+        await removeFriendApi({
+          friendshipId: numericFriendshipId,
+          playerId,
+        });
+        await this.loadFriendData();
+
+        this.noticeMessage = `已解除與 ${friend?.name ?? "玩家"} 的好友關係`;
+      } catch (error) {
+        this.errorMessage = error.message || "解除好友失敗";
+      } finally {
+        this.processingFriendshipIds = this.processingFriendshipIds.filter(
+          (id) => id !== numericFriendshipId,
+        );
+      }
+    },
+
+    async blockPlayer(targetPlayerId) {
+      const numericTargetPlayerId = toPositiveInteger(targetPlayerId);
+
+      if (!numericTargetPlayerId) {
+        this.errorMessage = "封鎖對象不正確";
+        return;
+      }
+
+      if (this.processingPlayerIds.includes(numericTargetPlayerId)) {
+        return;
+      }
+
+      this.processingPlayerIds.push(numericTargetPlayerId);
+      this.errorMessage = "";
+      this.searchErrorMessage = "";
+      this.noticeMessage = "";
+
+      const targetPlayer =
+        this.friends.find(
+          (friend) => Number(friend.playerId) === numericTargetPlayerId,
+        ) ??
+        this.searchResults.find(
+          (player) => Number(player.playerId) === numericTargetPlayerId,
+        );
+
+      try {
+        const playerId = this.getCurrentPlayerId();
+
+        await blockPlayerApi({
+          playerId,
+          targetPlayerId: numericTargetPlayerId,
+        });
+        await this.loadFriendData();
+
+        this.searchResults = this.searchResults.map((player) =>
+          Number(player.playerId) === numericTargetPlayerId
+            ? { ...player, relationStatus: "blocked" }
+            : player,
+        );
+        this.noticeMessage = `已封鎖 ${
+          targetPlayer?.name ?? `玩家 ${numericTargetPlayerId}`
+        }`;
+      } catch (error) {
+        const message = error.message || "封鎖玩家失敗";
+        this.errorMessage = message;
+        this.searchErrorMessage = message;
+      } finally {
+        this.processingPlayerIds = this.processingPlayerIds.filter(
+          (id) => id !== numericTargetPlayerId,
+        );
+      }
+    },
+
+    async unblockPlayer(blockId) {
+      const numericBlockId = toPositiveInteger(blockId);
+
+      if (!numericBlockId) {
+        this.errorMessage = "封鎖關係不正確";
+        return;
+      }
+
+      if (this.processingBlockIds.includes(numericBlockId)) {
+        return;
+      }
+
+      this.processingBlockIds.push(numericBlockId);
+      this.errorMessage = "";
+      this.noticeMessage = "";
+
+      const blockedPlayer = this.blockedPlayers.find(
+        (player) => Number(player.blockId) === numericBlockId,
+      );
+
+      try {
+        const playerId = this.getCurrentPlayerId();
+
+        await unblockPlayerApi({
+          blockId: numericBlockId,
+          playerId,
+        });
+        await this.loadFriendData();
+
+        this.searchResults = this.searchResults.map((player) =>
+          player.playerId === blockedPlayer?.playerId
+            ? { ...player, relationStatus: null, friendshipId: null }
+            : player,
+        );
+        this.noticeMessage = `已取消封鎖 ${blockedPlayer?.name ?? "玩家"}`;
+      } catch (error) {
+        this.errorMessage = error.message || "取消封鎖失敗";
+      } finally {
+        this.processingBlockIds = this.processingBlockIds.filter(
+          (id) => id !== numericBlockId,
+        );
       }
     },
 
