@@ -48,6 +48,11 @@
               </button>
             </div>
 
+            <CurrencyBar
+              class="mt-3"
+              :items="['coins', 'gems', 'tickets']"
+            />
+
             <div class="mt-3 grid grid-cols-3 gap-2">
               <div
                 v-for="metric in headerMetrics"
@@ -97,6 +102,11 @@
         </div>
 
         <div class="order-3 col-span-2 grid grid-cols-3 gap-1 md:order-none md:col-span-1 md:gap-2">
+          <CurrencyBar
+            class="col-span-3 -translate-x-2 justify-self-end md:-translate-x-3"
+            :items="['coins', 'gems', 'tickets']"
+          />
+
           <div
             v-for="metric in headerMetrics"
             :key="metric.label"
@@ -341,6 +351,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import CurrencyBar from "@/components/common/CurrencyBar.vue";
 import MallProductCard from "@/components/mall/MallProductCard.vue";
 import bgDashboard from "@/assets/images/bg-dashboard.webp";
 import {
@@ -348,8 +359,14 @@ import {
   mallHeaderMetrics,
   mallItems,
 } from "@/mocks/mallMockData.js";
+import { useAuthStore } from "@/stores/authStore.js";
+import { useCurrencyStore } from "@/stores/currencyStore.js";
+import { usePlayerStore } from "@/stores/playerStore.js";
 
 const router = useRouter();
+const authStore = useAuthStore();
+const currencyStore = useCurrencyStore();
+const playerStore = usePlayerStore();
 
 const categories = mallCategories;
 const mockItems = mallItems;
@@ -381,6 +398,10 @@ const activeCategoryMeta = computed(
 
 const featuredItem = computed(() => filteredItems.value[0] ?? mockItems[0]);
 const budgetDisplay = computed(() => "2,400");
+
+function getCurrentPlayerId() {
+  return authStore.currentPlayer?.id ?? playerStore.currentPlayerId;
+}
 
 function openItemDetail(item) {
   selectedItem.value = item;
@@ -436,6 +457,18 @@ watch(
     if (!nextItems.some((item) => item.id === selectedItem.value?.id)) {
       selectedItem.value = nextItems[0];
     }
+  },
+  { immediate: true },
+);
+
+watch(
+  getCurrentPlayerId,
+  (playerId) => {
+    if (!playerId) {
+      return;
+    }
+
+    currencyStore.fetchPlayerCurrency(playerId).catch(() => {});
   },
   { immediate: true },
 );
