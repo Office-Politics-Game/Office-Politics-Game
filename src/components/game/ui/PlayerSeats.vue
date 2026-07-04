@@ -61,11 +61,13 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['target-select'])
+const emit = defineEmits(["target-select"]);
 const seatElements = ref({});
 const handTargetElements = ref({});
 const dealtPlayerIdSet = computed(() => new Set(props.dealtPlayerIds));
-const selectablePlayerIdSet = computed(() => new Set(props.selectablePlayerIds));
+const selectablePlayerIdSet = computed(
+  () => new Set(props.selectablePlayerIds),
+);
 
 const positionClasses = {
   top: "top-[48px] left-1/2 -translate-x-1/2 lg:top-28",
@@ -141,7 +143,7 @@ function handleTargetSelect(player) {
     return;
   }
 
-  emit('target-select', player.id);
+  emit("target-select", player.id);
 }
 
 defineExpose({
@@ -155,7 +157,9 @@ defineExpose({
 <template>
   <div
     class="player-seats pointer-events-none absolute inset-0 z-10"
-    :class="{ 'player-seats--target-selection-active': isTargetSelectionActive }"
+    :class="{
+      'player-seats--target-selection-active': isTargetSelectionActive,
+    }"
     aria-label="玩家座位"
   >
     <div
@@ -167,7 +171,9 @@ defineExpose({
         positionClasses[player.position],
         {
           'player-seats__seat--eliminated': player.isEliminated,
-          'player-seats__seat--target-selectable': isSelectableTarget(player.id),
+          'player-seats__seat--target-selectable': isSelectableTarget(
+            player.id,
+          ),
           'player-seats__seat--target-selected': isSelectedTarget(player.id),
         },
       ]"
@@ -187,7 +193,9 @@ defineExpose({
         type="button"
         class="player-seats__target-button"
         :class="{
-          'player-seats__target-button--selectable': isSelectableTarget(player.id),
+          'player-seats__target-button--selectable': isSelectableTarget(
+            player.id,
+          ),
           'player-seats__target-button--selected': isSelectedTarget(player.id),
         }"
         :disabled="!isSelectableTarget(player.id)"
@@ -199,7 +207,7 @@ defineExpose({
       <div
         v-if="player.position !== 'bottom'"
         :ref="(element) => setHandTargetElement(player.id, element)"
-        class="player-seat-hand-target pointer-events-none absolute aspect-[3/4] h-[clamp(62px,10vh,92px)]"
+        class="player-seat-hand-target pointer-events-none absolute aspect-[3/4]"
         :class="`player-seat-hand-target--${player.position}`"
         aria-hidden="true"
       >
@@ -232,6 +240,14 @@ defineExpose({
 }
 
 .player-seat-hand-target {
+  --player-hand-target-top-gap: clamp(8px, 1.5vh, 14px);
+  --player-hand-target-left-gap: clamp(8px, 1vw, 14px);
+  --player-hand-target-right-gap: clamp(8px, 1vw, 14px);
+  --player-hand-target-left-shift: -20%;
+  --player-hand-target-right-shift: -20%;
+  --player-hand-target-left-tilt: -80deg;
+  --player-hand-target-right-tilt: 80deg;
+  height: clamp(62px, 10vh, 92px);
   z-index: 0;
   filter: drop-shadow(0 8px 12px rgba(0, 19, 50, 0.34));
 }
@@ -242,39 +258,77 @@ defineExpose({
 }
 
 .player-seat-hand-target--top {
-  top: calc(100% + clamp(8px, 1.5vh, 14px));
-  left: 50%;
-  transform: translateX(-50%);
+  top: 50%;
+  left: calc(
+    100% + var(--player-hand-target-left-gap) +
+      var(--player-hand-target-left-shift, 0px)
+  );
+  transform:
+    translateY(-50%)
+    rotate(var(--player-hand-target-left-tilt, 0deg));
 }
 
 .player-seat-hand-target--left {
   top: 50%;
-  left: calc(100% + clamp(8px, 1vw, 14px));
-  transform: translateY(-50%);
+  left: calc(
+    100% + var(--player-hand-target-left-gap) +
+      var(--player-hand-target-left-shift, 0px)
+  );
+  transform:
+    translateY(-50%)
+    rotate(var(--player-hand-target-left-tilt, 0deg));
 }
 
 .player-seat-hand-target--right {
   top: 50%;
-  right: calc(100% + clamp(8px, 1vw, 14px));
-  transform: translateY(-50%);
+  right: calc(
+    100% + var(--player-hand-target-right-gap) +
+      var(--player-hand-target-right-shift, 0px)
+  );
+  transform:
+    translateY(-50%)
+    rotate(var(--player-hand-target-right-tilt, 0deg));
 }
 
 .player-seat-hand-target--top .player-seat-hand-target__card {
-  transform:
-    translateX(var(--hand-card-offset))
-    rotate(calc(180deg - var(--hand-card-rotation)));
+  transform: translateY(var(--hand-card-offset))
+    rotate(calc(90deg + var(--hand-card-rotation)));
 }
 
 .player-seat-hand-target--left .player-seat-hand-target__card {
-  transform:
-    translateY(var(--hand-card-offset))
+  transform: translateY(var(--hand-card-offset))
     rotate(calc(90deg + var(--hand-card-rotation)));
 }
 
 .player-seat-hand-target--right .player-seat-hand-target__card {
-  transform:
-    translateY(var(--hand-card-offset))
+  transform: translateY(var(--hand-card-offset))
     rotate(calc(-90deg - var(--hand-card-rotation)));
+}
+
+@media (max-width: 1024px) {
+  .player-seat-hand-target {
+    --player-hand-target-top-gap: clamp(8px, 1.5vh, 14px);
+    --player-hand-target-left-gap: clamp(8px, 1vw, 14px);
+    --player-hand-target-right-gap: clamp(8px, 1vw, 14px);
+    --player-hand-target-left-shift: -30%;
+    --player-hand-target-right-shift: -30%;
+    --player-hand-target-left-tilt: -80deg;
+    --player-hand-target-right-tilt: 80deg;
+    height: clamp(62px, 10vh, 92px);
+  }
+}
+
+@media (min-width: 1025px) {
+  .player-seat-hand-target {
+    --player-hand-target-top-gap: clamp(8px, 1.5vh, 14px);
+    --player-hand-target-left-gap: clamp(8px, 1vw, 14px);
+    --player-hand-target-right-gap: clamp(8px, 1vw, 14px);
+    --player-hand-target-left-shift: -20%;
+    --player-hand-target-right-shift: -20%;
+    --player-hand-target-left-tilt: -80deg;
+    --player-hand-target-right-tilt: 80deg;
+    height: clamp(62px, 10vh, 92px);
+  }
 }
 
 @media (max-height: 480px) {

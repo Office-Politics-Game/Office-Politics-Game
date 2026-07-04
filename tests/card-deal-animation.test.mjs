@@ -7,7 +7,7 @@ const readSource = (path) =>
 
 test('card deal animation exposes a replayable four-card GSAP sequence', async () => {
   const componentUrl = new URL(
-    '../src/components/game/CardDealAnimation.vue',
+    '../src/components/game/animations/CardDealAnimation.vue',
     import.meta.url,
   )
 
@@ -32,7 +32,7 @@ test('card deal animation exposes a replayable four-card GSAP sequence', async (
 
 test('card deal animation supports reduced motion and cleans up timelines', async () => {
   const source = await readSource(
-    'src/components/game/CardDealAnimation.vue',
+    'src/components/game/animations/CardDealAnimation.vue',
   )
 
   assert.match(source, /prefers-reduced-motion:\s*reduce/)
@@ -44,8 +44,8 @@ test('card deal animation supports reduced motion and cleans up timelines', asyn
 })
 
 test('player hand and opponent seats expose dedicated deal targets', async () => {
-  const handSource = await readSource('src/components/game/PlayerHand.vue')
-  const seatsSource = await readSource('src/components/game/PlayerSeats.vue')
+  const handSource = await readSource('src/components/game/ui/PlayerHand.vue')
+  const seatsSource = await readSource('src/components/game/ui/PlayerSeats.vue')
 
   assert.match(handSource, /const dealTarget = ref\(null\)/)
   assert.match(handSource, /function getDealTargetRect\(\)/)

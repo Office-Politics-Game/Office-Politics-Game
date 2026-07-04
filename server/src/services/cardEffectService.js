@@ -156,11 +156,23 @@ function usePm(state, targetPlayerId) {
 
 // 人資主管：與一名玩家秘密交換手牌
 function useHr(state, playerId, targetPlayerId) {
-    const player = findPlayer(state, playerId)
-    const targetPlayer = findTargetPlayer(state, targetPlayerId)
+    const player = findPlayer(state, Number(playerId))
+    const targetPlayer = findPlayer(state, Number(targetPlayerId))
     if (!player || !targetPlayer) {
         return null
     }
+
+    if (targetPlayer.isEliminated) {
+        return null
+    }
+
+    if (targetPlayer.isProtected) {
+        return {
+            protected: true,
+            targetPlayerId: targetPlayer.playerId,
+        }
+    }
+
     return swapHands(player, targetPlayer)
 }
 

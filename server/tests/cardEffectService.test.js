@@ -171,6 +171,32 @@ describe("useHr", () => {
         expect(state.players[0].hand).toEqual([{ id: 5, name: "PM" }])
         expect(state.players[1].hand).toEqual([{ id: 3, name: "Manager" }])
     })
+
+    test("HR does not swap hands with a protected target", () => {
+        const state = createState()
+
+        const result = useHr(state, 1, 3)
+
+        expect(result).toEqual({
+            protected: true,
+            targetPlayerId: 3,
+        })
+        expect(state.players[0].hand).toEqual([{ id: 3, name: "Manager" }])
+        expect(state.players[2].hand).toEqual([{ id: 5, name: "PM" }])
+    })
+
+    test("HR handles string ids when target is protected", () => {
+        const state = createState()
+
+        const result = useHr(state, "1", "3")
+
+        expect(result).toEqual({
+            protected: true,
+            targetPlayerId: 3,
+        })
+        expect(state.players[0].hand).toEqual([{ id: 3, name: "Manager" }])
+        expect(state.players[2].hand).toEqual([{ id: 5, name: "PM" }])
+    })
 })
 
 describe("useCeo", () => {
