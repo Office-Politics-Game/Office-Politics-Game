@@ -5,7 +5,7 @@ import test from 'node:test'
 const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
 test('game card renders separate full-size background and frame layers', async () => {
-  const source = await readSource('src/components/game/GameCard.vue')
+  const source = await readSource('src/components/game/ui/GameCard.vue')
 
   for (const propName of ['name', 'backgroundUrl', 'frameUrl']) {
     assert.match(source, new RegExp(`${propName}:`))
@@ -18,7 +18,7 @@ test('game card renders separate full-size background and frame layers', async (
 })
 
 test('player hand uses separate arrangement and future motion layers', async () => {
-  const source = await readSource('src/components/game/PlayerHand.vue')
+  const source = await readSource('src/components/game/ui/PlayerHand.vue')
 
   assert.match(source, /cards:/)
   assert.match(source, /game-card-arrangement/)
@@ -31,7 +31,7 @@ test('player hand uses separate arrangement and future motion layers', async () 
 
 test('game view derives deck count, draw eligibility, and hand cards from game state', async () => {
   const gameViewSource = await readSource('src/views/GameView.vue')
-  const gameStageSource = await readSource('src/components/game/GameStage.vue')
+  const gameStageSource = await readSource('src/components/game/ui/GameStage.vue')
 
   assert.match(gameViewSource, /const deckCount = computed\(\(\) => gameState\.value\?\.deckCount \?\? 0\)/)
   assert.match(gameViewSource, /const handCards = computed\(/)
@@ -44,14 +44,14 @@ test('game view derives deck count, draw eligibility, and hand cards from game s
 
   assert.match(gameStageSource, /handCards:/)
   assert.match(gameStageSource, /canDraw:/)
-  assert.match(gameStageSource, /import PlayerHand from '\.\/PlayerHand\.vue'/)
+  assert.match(gameStageSource, /import PlayerHand from ["']\.\/PlayerHand\.vue["']/)
   assert.match(gameStageSource, /<PlayerHand/)
 })
 
 test('discard pile reuses the layered game card', async () => {
-  const source = await readSource('src/components/game/TableCardPiles.vue')
+  const source = await readSource('src/components/game/ui/TableCardPiles.vue')
 
-  assert.match(source, /import GameCard from '\.\/GameCard\.vue'/)
+  assert.match(source, /import GameCard from ["']\.\/GameCard\.vue["']/)
   assert.match(source, /discardCards:/)
   assert.match(source, /normalizedDiscardCards/)
   assert.match(source, /topDiscardCard/)
@@ -61,20 +61,55 @@ test('discard pile reuses the layered game card', async () => {
 })
 
 test('player hand exposes card pointer interaction without owning play logic', async () => {
-  const source = await readSource('src/components/game/PlayerHand.vue')
+  const source = await readSource('src/components/game/ui/PlayerHand.vue')
 
   assert.match(source, /defineEmits\(\['card-pointerdown'\]\)/)
   assert.match(source, /role="button"/)
-  assert.match(source, /tabindex="0"/)
-  assert.match(source, /@pointerdown="emit\('card-pointerdown', card, \$event\)"/)
+  assert.match(source, /:tabindex="isCardDisabled\(card\) \? -1 : 0"/)
+  assert.match(source, /@pointerdown="!isCardDisabled\(card\) && emit\('card-pointerdown', card, \$event\)"/)
   assert.match(source, /draggingCardId:/)
   assert.match(source, /game-card-arrangement--dragging/)
-  assert.doesNotMatch(source, /gsap|<button|@click|@mouseenter|@mouseleave|draggable|:hover/)
+  assert.doesNotMatch(source, /gsap|<button|@click|@mouseenter|@mouseleave|draggable/)
   assert.doesNotMatch(source, /rounded-/)
 })
 
+test('player hand supports shared hover message and prevents guarded pointer emit', async () => {
+  const playerHandSource = await readSource('src/components/game/ui/PlayerHand.vue')
+  const gameStageSource = await readSource('src/components/game/ui/GameStage.vue')
+  const hoverHintSource = await readSource('src/components/game/ui/HoverBlockHint.vue')
+
+  assert.match(playerHandSource, /import HoverBlockHint from ["']\.\/HoverBlockHint\.vue["']/)
+  assert.match(playerHandSource, /isInteractionDisabled:/)
+  assert.match(playerHandSource, /disabledMessage:/)
+  assert.match(playerHandSource, /props\.isInteractionDisabled \|\| props\.disabledCardIds\.includes\(card\.id\)/)
+  assert.match(playerHandSource, /game-card-arrangement--interaction-disabled/)
+  assert.match(playerHandSource, /'hover-block-hint-target': props\.isInteractionDisabled/)
+  assert.match(playerHandSource, /<HoverBlockHint/)
+  assert.match(playerHandSource, /:message="props\.disabledMessage"/)
+  assert.doesNotMatch(playerHandSource, /game-card-arrangement__disabled-message/)
+  assert.doesNotMatch(playerHandSource, /:title=/)
+  assert.match(playerHandSource, /@pointerdown="!isCardDisabled\(card\) && emit\('card-pointerdown', card, \$event\)"/)
+  assert.match(playerHandSource, /\.game-card-arrangement--rule-disabled,[\s\S]*cursor: not-allowed/)
+  assert.match(playerHandSource, /\.game-card-arrangement--interaction-disabled,[\s\S]*cursor: default/)
+
+  assert.match(hoverHintSource, /message:/)
+  assert.match(hoverHintSource, /class="hover-block-hint"/)
+  assert.match(hoverHintSource, /display:\s*none/)
+  assert.match(hoverHintSource, /:global\(\.hover-block-hint-target:hover \.hover-block-hint\)\s*\{[\s\S]*display:\s*block/)
+  assert.match(hoverHintSource, /background:\s*rgba\(15,\s*23,\s*42/)
+  assert.match(hoverHintSource, /color:\s*#f8fafc/)
+  assert.match(hoverHintSource, /padding:\s*4px 8px/)
+  assert.doesNotMatch(hoverHintSource, /transition|animation|box-shadow|backdrop|modal/i)
+
+  assert.match(gameStageSource, /const isHandDrawRequired = computed\(\(\) => props\.canDraw\)/)
+  assert.match(gameStageSource, /isPlayInteractionLocked\.value \|\| isHandDrawRequired\.value/)
+  assert.match(gameStageSource, /isHandDrawRequired\.value \? ["'][^"']+["'] : ["']["']/)
+  assert.match(gameStageSource, /:is-interaction-disabled="isHandDrawRequired"/)
+  assert.match(gameStageSource, /:disabled-message="handDisabledMessage"/)
+})
+
 test('player hand exposes a draw target and renders its final cards from data', async () => {
-  const source = await readSource('src/components/game/PlayerHand.vue')
+  const source = await readSource('src/components/game/ui/PlayerHand.vue')
 
   assert.doesNotMatch(source, /previewCard:/)
   assert.match(source, /const drawTarget = ref\(null\)/)

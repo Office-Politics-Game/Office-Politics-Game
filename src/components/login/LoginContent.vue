@@ -1,6 +1,6 @@
 <template>
   <section
-    class="login-card relative w-full overflow-hidden px-6 py-7 sm:px-8 sm:py-8 max-lg:landscape:max-w-[92vw] max-lg:landscape:px-4 max-lg:landscape:py-3 lg:max-w-[420px]"
+    class="login-card relative w-full max-w-[420px] max-h-[calc(100dvh-32px)] overflow-y-auto overflow-x-hidden px-6 py-7 sm:px-8 sm:py-8 max-[420px]:px-5 max-[420px]:py-6"
     aria-labelledby="login-title"
   >
     <div
@@ -29,38 +29,48 @@
       @submit.prevent="handleLogin"
     >
       <label class="relative block">
-        <span class="sr-only">帳號</span>
+        <span class="sr-only">Email帳號</span>
         <input
+          v-model.trim="account"
           class="login-input w-full border outline-0 pr-[78px]"
-          type="text" v-model="username"
-          autocomplete="username"
-          placeholder="帳號"
+          type="email"
+          autocomplete="email"
+          inputmode="email"
+          placeholder="Email帳號"
+          :disabled="authStore.isLoading"
+          @input="clearLoginError"
         />
-        <p v-if="usernameError" class="login-error">
-          {{ usernameError }}
+        <p v-if="accountError" class="login-error" role="alert">
+          {{ accountError }}
         </p>
-        <span
-          class="absolute right-2 top-1/2 flex -translate-y-1/2 gap-1"
-          aria-hidden="true"
-        >
-          <!-- <button class="login-field-icon grid h-8 w-8 place-items-center" type="button" tabindex="-1">×</button> -->
-          <!-- <button class="login-field-icon grid h-8 w-8 place-items-center" type="button" tabindex="-1">⌄</button> -->
-        </span>
       </label>
 
       <label class="relative block">
         <span class="sr-only">密碼</span>
         <input
-          class="login-input w-full border outline-0"
-          type="password" v-model="password"
+          v-model="password"
+          class="login-input w-full border outline-0 pr-14"
+          :type="showPassword ? 'text' : 'password'"
           autocomplete="current-password"
           placeholder="密碼"
+          :disabled="authStore.isLoading"
+          @input="clearLoginError"
         />
-        <p v-if="passwordError" class="login-error">
+        <button
+          type="button"
+          class="password-toggle"
+          :aria-label="showPassword ? '隱藏密碼' : '顯示密碼'"
+          :disabled="authStore.isLoading"
+          @click="showPassword = !showPassword"
+        >
+          <EyeOff v-if="showPassword" class="password-toggle__icon" />
+          <Eye v-else class="password-toggle__icon" />
+        </button>
+        <p v-if="passwordError" class="login-error" role="alert">
           {{ passwordError }}
         </p>
       </label>
-      <p v-if="authStore.errorMessage" class="login-error">
+      <p v-if="authStore.errorMessage" class="login-error" role="alert">
         {{ authStore.errorMessage }}
       </p>
       <div
@@ -68,15 +78,18 @@
       >
         <button
           class="login-button is-secondary tap-pop flex cursor-pointer items-center justify-center"
-          type="button" @click="goRegister"
+          type="button"
+          :disabled="authStore.isLoading"
+          @click="goRegister"
         >
           註冊
         </button>
         <button
           class="login-button is-primary tap-pop flex cursor-pointer items-center justify-center"
           type="submit"
+          :disabled="authStore.isLoading"
         >
-          登入
+          {{ authStore.isLoading ? "登入中..." : "登入" }}
         </button>
       </div>
     </form>
@@ -87,25 +100,28 @@
       <button
         class="login-link inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0"
         type="button"
+        :disabled="authStore.isLoading"
+        @click="emit('open-guest')"
       >
-        訪客登入 <span aria-hidden="true">›</span>
+        訪客遊玩 <span aria-hidden="true">›</span>
       </button>
       <button
-        class="login-link inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0"
+        class="login-link inline-flex items-center gap-1 border-0 bg-transparent p-0"
         type="button"
+        disabled
       >
-        取回密碼 <span aria-hidden="true">›</span>
+        忘記密碼 <span aria-hidden="true">›</span>
       </button>
     </div>
 
     <div class="login-divider relative my-5 text-center max-lg:landscape:my-2">
       <span class="relative px-3">其他登入方式</span>
     </div>
-
     <div class="grid grid-cols-2 gap-3 max-lg:landscape:gap-2">
       <button
-        class="social-button tap-pop flex cursor-pointer items-center justify-center"
+        class="social-button tap-pop flex items-center justify-center"
         type="button"
+        disabled
       >
         <span
           class="grid h-6 w-6 place-items-center rounded-full bg-[#1877f2] text-sm font-black text-white"
@@ -115,8 +131,9 @@
         Facebook
       </button>
       <button
-        class="social-button tap-pop flex cursor-pointer items-center justify-center"
+        class="social-button tap-pop flex items-center justify-center"
         type="button"
+        disabled
       >
         <svg
           class="h-6 w-6"
@@ -148,49 +165,84 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
-import { useRouter } from "vue-router";
-import { useAuthStore } from "../../stores/authStore.js";
-import { usePlayerStore } from "@/stores/playerStore.js";
+import { ref } from "vue"
+import { useRouter } from "vue-router"
+import { useAuthStore } from "../../stores/authStore.js"
+import { Eye, EyeOff } from "lucide-vue-next"
+import { usePlayerStore } from "@/stores/playerStore.js"
 
-const emit = defineEmits(["close"]);
-const authStore = useAuthStore();
-const playerStore = usePlayerStore();
-const router = useRouter();
+const emit = defineEmits(["close", "open-guest", "open-register"])
+const authStore = useAuthStore()
+const playerStore = usePlayerStore()
+const router = useRouter()
 
-const username = ref("");
-const password = ref("");
-const usernameError = ref("");
-const passwordError = ref("");
-function validateLoginForm(){
-  usernameError.value = username.value.trim() ? "" : "請輸入帳號";
-  passwordError.value = password.value.trim() ? "" : "請輸入密碼";
-  return !usernameError.value && !passwordError.value
-}
-async function handleLogin(){
-  const isValid = validateLoginForm()
-  if(!isValid){
-    return;
+const account = ref("")
+const password = ref("")
+const accountError = ref("")
+const passwordError = ref("")
+const showPassword = ref(false)
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function clearLoginError() {
+  authStore.clearError()
+
+  if (account.value.trim()) {
+    accountError.value = ""
   }
+
+  if (password.value.trim()) {
+    passwordError.value = ""
+  }
+}
+
+function validateLoginForm() {
+  authStore.clearError()
+
+  const trimmedAccount = account.value.trim()
+
+  if (!trimmedAccount) {
+    accountError.value = "請輸入Email帳號"
+  } else if (!EMAIL_REGEX.test(trimmedAccount)) {
+    accountError.value = "Email帳號格式有誤"
+  } else {
+    accountError.value = ""
+  }
+
+  passwordError.value = password.value.trim() ? "" : "請輸入密碼"
+
+  return !accountError.value && !passwordError.value
+}
+
+async function handleLogin() {
+  if (authStore.isLoading) {
+    return
+  }
+
+  if (!validateLoginForm()) {
+    return
+  }
+
   try {
     await authStore.login({
-      username: username.value.trim(),
+      account: account.value.trim().toLowerCase(),
       password: password.value,
-    });
+    })
 
     if (authStore.currentPlayer) {
-      playerStore.setCurrentPlayer(authStore.currentPlayer);
+      playerStore.setCurrentPlayer(authStore.currentPlayer)
     }
 
-    emit("close");
-    await router.push("/lobby");
-  } catch (error) {
-    console.error(error);
+    emit("close")
+    await router.push("/lobby")
+  } catch {
+    return
   }
 }
 
-function goRegister(){
-  router.push("/register")
+function goRegister() {
+  authStore.clearError()
+  emit("open-register")
 }
 </script>
 
@@ -226,7 +278,13 @@ function goRegister(){
     text-[var(--text-md)]
     font-bold
     transition-[border-color,background-color,box-shadow]
-    duration-[180ms];
+    duration-[180ms]
+    disabled:cursor-not-allowed
+    disabled:opacity-60;
+}
+
+.login-error {
+  @apply m-0 text-sm font-bold text-[var(--brand-hover)];
 }
 
 .login-input::placeholder {
@@ -239,13 +297,16 @@ function goRegister(){
     shadow-[0_0_0_4px_var(--brand-focus)];
 }
 
-.login-field-icon {
-  @apply border-0
-    rounded-[var(--radius-md)]
-    bg-transparent
-    text-[var(--brand-disabled)]
-    text-[var(--text-md)]
-    font-extrabold;
+.password-toggle {
+  @apply absolute right-3 top-6 grid h-8 w-8 -translate-y-1/2 place-items-center border-0 bg-transparent text-[var(--brand-active)] transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+.password-toggle:hover:not(:disabled) {
+  @apply text-[var(--brand-hover)];
+}
+
+.password-toggle__icon {
+  @apply h-5 w-5;
 }
 
 .login-button,
@@ -255,7 +316,9 @@ function goRegister(){
     text-[var(--text-sm)]
     font-extrabold
     transition-[border-color,background-color,box-shadow,color]
-    duration-[180ms];
+    duration-[180ms]
+    disabled:cursor-not-allowed
+    disabled:opacity-60;
 }
 
 .login-button {
@@ -272,8 +335,8 @@ function goRegister(){
     shadow-[0_10px_24px_rgba(70,85,99,0.24)];
 }
 
-.login-button:hover,
-.social-button:hover {
+.login-button:hover:not(:disabled),
+.social-button:hover:not(:disabled) {
   @apply border-[var(--brand-hover)]
     bg-[var(--brand-hover)]
     text-white
@@ -292,10 +355,10 @@ function goRegister(){
 }
 
 .login-link {
-  @apply text-inherit font-bold;
+  @apply text-inherit font-bold disabled:cursor-not-allowed disabled:opacity-60;
 }
 
-.login-link:hover {
+.login-link:hover:not(:disabled) {
   @apply text-[var(--brand-hover)];
 }
 
@@ -324,6 +387,47 @@ function goRegister(){
   .login-button,
   .social-button {
     @apply min-h-11;
+  }
+}
+
+@media (max-width: 1024px) and (max-height: 560px) and (orientation: landscape) {
+  .login-card {
+    max-width: 360px;
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 20px 24px;
+  }
+
+  .login-title {
+    margin-bottom: 16px;
+    font-size: 28px;
+    line-height: 1.15;
+  }
+
+  .login-input {
+    min-height: 40px;
+    font-size: 14px;
+    padding-left: 12px;
+    padding-right: 44px;
+  }
+
+  .password-toggle {
+    top: 20px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+  }
+
+  .password-toggle__icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .login-button,
+  .social-button {
+    min-height: 40px;
+    font-size: 14px;
   }
 }
 </style>

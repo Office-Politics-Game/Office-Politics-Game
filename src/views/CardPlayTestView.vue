@@ -4,18 +4,20 @@ import gameTableBackgroundUrl from '@/assets/images/bg-game-table.webp'
 import { cardAssetsByKey } from '@/constants/cardAssets'
 import { guestAvatars, guestNicknames } from '@/constants/guestOptions'
 import { fallbackAvatars } from '@/constants/playerAssets'
-import CardDealAnimation from '@/components/game/CardDealAnimation.vue'
-import CardDrawAnimation from '@/components/game/CardDrawAnimation.vue'
-import CardPlayAnimation from '@/components/game/CardPlayAnimation.vue'
-import CardShuffleAnimation from '@/components/game/CardShuffleAnimation.vue'
-import CardSwapAnimation from '@/components/game/CardSwapAnimation.vue'
-import CleanerAnimation from '@/components/game/CleanerAnimation.vue'
-import GameCard from '@/components/game/GameCard.vue'
-import InternAnimation from '@/components/game/InternAnimation.vue'
-import ManagerAnimation from '@/components/game/ManagerAnimation.vue'
-import PMAnimation from '@/components/game/PMAnimation.vue'
-import PlayerSeats from '@/components/game/PlayerSeats.vue'
-import TableCardPiles from '@/components/game/TableCardPiles.vue'
+import CardDealAnimation from '@/components/game/animations/CardDealAnimation.vue'
+import CardDrawAnimation from '@/components/game/animations/CardDrawAnimation.vue'
+import CardPlayAnimation from '@/components/game/animations/CardPlayAnimation.vue'
+import CardShuffleAnimation from '@/components/game/animations/CardShuffleAnimation.vue'
+import CardSwapAnimation from '@/components/game/animations/CardSwapAnimation.vue'
+import CleanerAnimation from '@/components/game/animations/CleanerAnimation.vue'
+import FlyInTextModal from '@/components/game/animations/FlyInTextModal.vue'
+import GameCard from '@/components/game/ui/GameCard.vue'
+import InternAnimation from '@/components/game/animations/InternAnimation.vue'
+import ManagerAnimation from '@/components/game/animations/ManagerAnimation.vue'
+import PMAnimation from '@/components/game/animations/PMAnimation.vue'
+import PlayerSeats from '@/components/game/ui/PlayerSeats.vue'
+import ProtectionAura from '@/components/game/animations/ProtectionAura.vue'
+import TableCardPiles from '@/components/game/ui/TableCardPiles.vue'
 import { createMockGameState } from '@/mocks/mockGameState.js'
 
 const SELF_PLAYER_ID = 'player-bottom'
@@ -81,12 +83,17 @@ const opponentCardRefs = ref({})
 
 const deckCount = ref(INITIAL_DECK_COUNT)
 const isBusy = ref(false)
+const isSelfProtected = ref(true)
+const protectionSuccessKey = ref(0)
 const activeDrawCard = ref(null)
 const cleanerResult = ref(null)
 const internResult = ref(null)
 const managerResult = ref(null)
 const pmResult = ref(null)
 const swapResult = ref(null)
+const isFlyInTextOpen = ref(false)
+const isRoundWinnerNoticeOpen = ref(false)
+const demoRoundWinner = ref(null)
 const lastAction = ref('Ready')
 const effectResolvers = new Map()
 const discardCards = ref([
@@ -122,7 +129,14 @@ const opponentCards = [
 ]
 
 const controls = computed(() => [
+  {
+    label: isSelfProtected.value ? 'Protect On' : 'Protect Off',
+    action: toggleSelfProtection,
+  },
+  { label: 'Defense Success', action: playProtectionSuccess },
   { label: 'HR Swap', action: playSwapAnimation },
+  { label: 'Fly-in Text', action: playFlyInTextModal },
+  { label: 'Round Winner', action: playRoundWinnerNotice },
   { label: '發牌', action: playDealAnimation },
   { label: '洗牌', action: playShuffleAnimation },
   { label: '自己抽牌', action: () => playDrawAnimation(SELF_PLAYER_ID) },
@@ -206,6 +220,15 @@ function setBusyState(label) {
 
 function releaseBusyState() {
   isBusy.value = false
+}
+
+function toggleSelfProtection() {
+  isSelfProtected.value = !isSelfProtected.value
+}
+
+function playProtectionSuccess() {
+  isSelfProtected.value = true
+  protectionSuccessKey.value += 1
 }
 
 function uniqueId(prefix) {
@@ -422,6 +445,23 @@ function playSwapAnimation() {
   return complete
 }
 
+function playFlyInTextModal() {
+  isFlyInTextOpen.value = false
+
+  return nextTick().then(() => {
+    isFlyInTextOpen.value = true
+  })
+}
+
+function playRoundWinnerNotice() {
+  isRoundWinnerNoticeOpen.value = false
+  demoRoundWinner.value = players[0]
+
+  return nextTick().then(() => {
+    isRoundWinnerNoticeOpen.value = true
+  })
+}
+
 function waitForEffectComplete(type, id) {
   return new Promise((resolve) => {
     const key = `${type}:${id}`
@@ -537,7 +577,18 @@ onUnmounted(() => {
       />
     </section>
 
-    <section class="animation-test__hand" aria-label="自己的手牌">
+    <section
+      class="animation-test__hand"
+      :class="{ 'animation-test__hand--protected': isSelfProtected }"
+      aria-label="自己的手牌"
+    >
+      <Transition name="protection-aura-fade">
+        <ProtectionAura
+          v-if="isSelfProtected"
+          :success-key="protectionSuccessKey"
+        />
+      </Transition>
+
       <button
         v-for="(card, index) in handCards"
         :key="card.id"
@@ -584,6 +635,7 @@ onUnmounted(() => {
       :result="managerResult"
       :get-player-hand-rect="getPlayerHandRect"
       :get-discard-rect="getDiscardRect"
+      :is-self-player="isSelfPlayer"
       @complete="(result) => clearEffectResult('manager', result)"
     />
     <PMAnimation
@@ -600,6 +652,21 @@ onUnmounted(() => {
       :result="swapResult"
       :get-player-hand-rect="getPlayerHandRect"
       @complete="(result) => clearEffectResult('swap', result)"
+    />
+
+    <FlyInTextModal
+      :is-open="isFlyInTextOpen"
+      text="Crisis Alert"
+      @close="isFlyInTextOpen = false"
+    />
+
+    <FlyInTextModal
+      :is-open="isRoundWinnerNoticeOpen"
+      text="回合勝利"
+      :player-name="demoRoundWinner?.name ?? ''"
+      :avatar-url="demoRoundWinner?.avatarUrl ?? ''"
+      :duration="2400"
+      @close="isRoundWinnerNoticeOpen = false"
     />
   </main>
 </template>
@@ -806,6 +873,7 @@ onUnmounted(() => {
 
 .animation-test__hand-card {
   position: relative;
+  z-index: 1;
   width: clamp(76px, 8vw, 126px);
   aspect-ratio: 3 / 4;
   margin-left: clamp(-26px, -2.3vw, -12px);

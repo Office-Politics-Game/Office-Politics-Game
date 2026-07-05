@@ -6,7 +6,7 @@ const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'u
 
 test('card guess selector renders rank choices and excludes intern guesses', async () => {
   const componentUrl = new URL(
-    '../src/components/game/CardGuessSelector.vue',
+    '../src/components/game/ui/CardGuessSelector.vue',
     import.meta.url,
   )
 
@@ -23,12 +23,12 @@ test('card guess selector renders rank choices and excludes intern guesses', asy
 })
 
 test('player seats support avatar target selection without changing seat layout', async () => {
-  const source = await readSource('src/components/game/PlayerSeats.vue')
+  const source = await readSource('src/components/game/ui/PlayerSeats.vue')
 
   assert.match(source, /isTargetSelectionActive:/)
   assert.match(source, /selectablePlayerIds:/)
   assert.match(source, /selectedTargetPlayerId:/)
-  assert.match(source, /defineEmits\(\['target-select'\]\)/)
+  assert.match(source, /defineEmits\(\[["']target-select["']\]\);?/)
   assert.match(source, /selectablePlayerIdSet/)
   assert.match(source, /player-seats--target-selection-active/)
   assert.match(source, /player-seats__seat--target-selectable/)
@@ -41,20 +41,20 @@ test('player seats support avatar target selection without changing seat layout'
   assert.match(source, /saturate\(/)
   assert.match(source, /@keyframes target-choice-pulse/)
   assert.doesNotMatch(source, /<img\s+[^>]*:src="player\.avatarUrl"/)
-  assert.match(source, /emit\('target-select', player\.id\)/)
+  assert.match(source, /emit\(["']target-select["'], player\.id\);?/)
 })
 
 test('game stage coordinates pending play target and guess confirmation', async () => {
-  const source = await readSource('src/components/game/GameStage.vue')
+  const source = await readSource('src/components/game/ui/GameStage.vue')
 
-  assert.match(source, /import CardGuessSelector from '\.\/CardGuessSelector\.vue'/)
+  assert.match(source, /import CardGuessSelector from ["']\.\/CardGuessSelector\.vue["']/)
   assert.match(source, /const pendingPlay = ref\(null\)/)
   assert.match(source, /const selectedTargetPlayerId = ref\(null\)/)
   assert.match(source, /const selectedGuessRank = ref\(null\)/)
   assert.match(source, /selectableTargetPlayerIds/)
   assert.match(source, /function confirmPendingPlay\(\)/)
   assert.match(source, /function cancelPendingPlay\(\)/)
-  assert.match(source, /emit\('play-card'/)
+  assert.match(source, /emit\(["']play-card["']/)
   assert.match(source, /v-if="pendingPlay"[\s\S]*class="play-target-backdrop"/)
   assert.match(source, /\.play-target-backdrop \{[\s\S]*z-index: 44[\s\S]*background: rgba\(0, 0, 0, 0\.42\)[\s\S]*backdrop-filter: blur\(5px\)/)
   assert.match(source, /<CardGuessSelector/)
