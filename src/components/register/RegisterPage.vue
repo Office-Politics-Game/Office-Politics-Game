@@ -1,6 +1,6 @@
 <template>
   <section
-    class="login-card relative w-full overflow-hidden px-6 py-7 sm:px-8 sm:py-8 max-lg:landscape:max-w-[92vw] max-lg:landscape:px-4 max-lg:landscape:py-3 lg:max-w-[420px]"
+    class="login-card relative w-full max-w-[420px] max-h-[calc(100dvh-32px)] overflow-y-auto overflow-x-hidden px-6 py-7 sm:px-8 sm:py-8 max-[420px]:px-5 max-[420px]:py-6"
     aria-labelledby="register-title"
   >
     <div
@@ -10,9 +10,9 @@
     <button
       type="button"
       class="btn-dark tap-pop absolute right-3 top-3 grid h-9 w-9 place-items-center"
-      aria-label="返回登入頁"
+      aria-label="關閉註冊視窗"
       :disabled="isSubmitting"
-      @click="goLogin"
+      @click="emit('close')"
     >
       <span aria-hidden="true">×</span>
     </button>
@@ -35,7 +35,11 @@
           autocomplete="name"
           placeholder="用戶名稱"
           :disabled="isSubmitting"
+          @input="usernameError = ''"
         />
+        <p v-if="usernameError" class="login-error" role="alert">
+          {{ usernameError }}
+        </p>
       </label>
       <label class="relative block">
         <span class="sr-only">Email帳號</span>
@@ -47,31 +51,62 @@
           inputmode="email"
           placeholder="Email帳號"
           :disabled="isSubmitting"
+          @input="accountError = ''"
         />
+        <p v-if="accountError" class="login-error" role="alert">
+          {{ accountError }}
+        </p>
       </label>
       <label class="relative block">
         <span class="sr-only">密碼</span>
         <input
           v-model="form.password"
-          class="login-input w-full border outline-0"
-          type="password"
+          class="login-input w-full border outline-0 pr-14"
+          :type="showPassword ? 'text' : 'password'"
           autocomplete="new-password"
           placeholder="密碼"
           :disabled="isSubmitting"
+          @input="handlePasswordInput"
         />
+        <button
+          type="button"
+          class="password-toggle"
+          :aria-label="showPassword ? '隱藏密碼' : '顯示密碼'"
+          :disabled="isSubmitting"
+          @click="showPassword = !showPassword"
+        >
+          <EyeOff v-if="showPassword" class="password-toggle__icon" />
+          <Eye v-else class="password-toggle__icon" />
+        </button>
+        <p v-if="passwordError" class="login-error" role="alert">
+          {{ passwordError }}
+        </p>
       </label>
       <label class="relative block">
         <span class="sr-only">確認密碼</span>
         <input
           v-model="form.confirmPassword"
-          class="login-input w-full border outline-0"
-          type="password"
+          class="login-input w-full border outline-0 pr-14"
+          :type="showConfirmPassword ? 'text' : 'password'"
           autocomplete="new-password"
           placeholder="確認密碼"
           :disabled="isSubmitting"
+          @input="confirmPasswordError = ''"
         />
+        <button
+          type="button"
+          class="password-toggle"
+          :aria-label="showConfirmPassword ? '隱藏確認密碼' : '顯示確認密碼'"
+          :disabled="isSubmitting"
+          @click="showConfirmPassword = !showConfirmPassword"
+        >
+          <EyeOff v-if="showConfirmPassword" class="password-toggle__icon" />
+          <Eye v-else class="password-toggle__icon" />
+        </button>
+        <p v-if="confirmPasswordError" class="login-error" role="alert">
+          {{ confirmPasswordError }}
+        </p>
       </label>
-      <p v-if="formErrorMessage" class="login-error" role="alert">{{ formErrorMessage }}</p>
       <div
         v-if="apiStatusMessage"
         class="auth-alert"
@@ -140,11 +175,11 @@
 
 <script setup>
 import { reactive, ref, onBeforeUnmount } from "vue"
-import { useRouter } from "vue-router"
 import { useAuthStore } from "@/stores/authStore.js"
+import { Eye, EyeOff } from "lucide-vue-next"
 
-const router = useRouter()
 const authStore = useAuthStore()
+const emit = defineEmits(["close", "back-login", "register-success"])
 
 const form = reactive({
   username: "",
@@ -152,13 +187,18 @@ const form = reactive({
   password: "",
   confirmPassword: "",
   avatarId: 1
-});
+})
 
-const formErrorMessage = ref("")
+const usernameError = ref("")
+const accountError = ref("")
+const passwordError = ref("")
+const confirmPasswordError = ref("")
 const apiStatusMessage = ref("")
 const apiStatusType = ref("")
 const isAlertLeaving = ref(false)
 const isSubmitting = ref(false)
+const showPassword = ref(false)
+const showConfirmPassword = ref(false)
 
 const ALERT_VISIBLE_MS = 1200
 const ALERT_FADE_MS = 420
@@ -168,41 +208,54 @@ let fadeTimer = null
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+function clearRegisterErrors() {
+  usernameError.value = ""
+  accountError.value = ""
+  passwordError.value = ""
+  confirmPasswordError.value = ""
+}
+
 function validateRegisterForm() {
   clearApiStatus()
 
-  if (!form.username) {
-    formErrorMessage.value = "請輸入用戶名稱"
-    return false
+  const trimmedUsername = form.username.trim()
+  const trimmedAccount = form.account.trim()
+
+  usernameError.value = trimmedUsername ? "" : "請輸入用戶名稱"
+
+  if (!trimmedAccount) {
+    accountError.value = "請輸入Email帳號"
+  } else if (!EMAIL_REGEX.test(trimmedAccount)) {
+    accountError.value = "Email帳號格式有誤"
+  } else {
+    accountError.value = ""
   }
 
-  if (!form.account) {
-    formErrorMessage.value = "請輸入Email帳號"
-    return false
+  passwordError.value = form.password.trim() ? "" : "請輸入密碼"
+
+  if (!form.confirmPassword.trim()) {
+    confirmPasswordError.value = "請再次輸入密碼"
+  } else if (form.password !== form.confirmPassword) {
+    confirmPasswordError.value = "密碼不一致，請重新輸入"
+  } else {
+    confirmPasswordError.value = ""
   }
 
-  if (!EMAIL_REGEX.test(form.account)) {
-    formErrorMessage.value = "Email帳號格式有誤";
-    return false;
-  }
+  return (
+    !usernameError.value &&
+    !accountError.value &&
+    !passwordError.value &&
+    !confirmPasswordError.value
+  )
+}
 
-  if (!form.password) {
-    formErrorMessage.value = "請輸入密碼"
-    return false
-  }
+function handlePasswordInput() {
+  passwordError.value = ""
 
-  if (!form.confirmPassword) {
-    formErrorMessage.value = "請再次輸入密碼"
-    return false
+  if (confirmPasswordError.value === "密碼不一致，請重新輸入") {
+    form.confirmPassword = ""
+    confirmPasswordError.value = ""
   }
-
-  if (form.password !== form.confirmPassword) {
-    formErrorMessage.value = "密碼不一致，請重新輸入"
-    return false
-  }
-
-  formErrorMessage.value = ""
-  return true
 }
 
 async function handleRegister() {
@@ -225,9 +278,9 @@ async function handleRegister() {
       avatarId: form.avatarId ?? 1
     })
 
-    formErrorMessage.value = ""
+    clearRegisterErrors()
     showApiStatus("success", "註冊成功，正在返回登入頁面", () => {
-      router.push("/login")
+      emit("register-success")
     })
   } catch (error) {
     showApiStatus(
@@ -281,7 +334,7 @@ function showApiStatus(type, message, onFinished) {
 
 function goLogin() {
   clearApiStatus()
-  router.push("/login")
+  emit("back-login")
 }
 
 onBeforeUnmount(() => {
@@ -338,6 +391,18 @@ onBeforeUnmount(() => {
 
 .login-error {
   @apply m-0 text-sm font-bold text-[var(--brand-hover)];
+}
+
+.password-toggle {
+  @apply absolute right-3 top-6 grid h-8 w-8 -translate-y-1/2 place-items-center border-0 bg-transparent text-[var(--brand-active)] transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+.password-toggle:hover:not(:disabled) {
+  @apply text-[var(--brand-hover)];
+}
+
+.password-toggle__icon {
+  @apply h-5 w-5;
 }
 
 .login-button {
@@ -482,6 +547,46 @@ onBeforeUnmount(() => {
 
   .login-button {
     @apply min-h-11;
+  }
+}
+
+@media (max-width: 1024px) and (max-height: 560px) and (orientation: landscape) {
+  .login-card {
+    max-width: 360px;
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 20px 24px;
+  }
+
+  .login-title {
+    margin-bottom: 16px;
+    font-size: 28px;
+    line-height: 1.15;
+  }
+
+  .login-input {
+    min-height: 40px;
+    font-size: 14px;
+    padding-left: 12px;
+    padding-right: 44px;
+  }
+
+  .password-toggle {
+    top: 20px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+  }
+
+  .password-toggle__icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .login-button {
+    min-height: 40px;
+    font-size: 14px;
   }
 }
 </style>
