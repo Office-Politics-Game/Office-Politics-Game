@@ -1,6 +1,72 @@
 import { getState } from "../services/gameStateService.js"
 import { drawCardAction, playCardAction } from "../services/gameActionService.js"
 
+function createActionId(type) {
+    return `${type}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`
+}
+
+function createGameActionPayload(roomCode, action) {
+    return {
+        ...action,
+        id: action.id ?? createActionId(action.type),
+        roomCode,
+        createdAt: action.createdAt ?? new Date().toISOString(),
+    }
+}
+
+function emitGameAction(target, roomCode, action) {
+    target.emit("game:action", createGameActionPayload(roomCode, action))
+}
+
+function getPlayerId(player) {
+    return Number(player?.playerId ?? player?.id)
+}
+
+function createAnimationResultForViewer(animationResult, viewerPlayerId, sourcePlayerId) {
+    if (animationResult?.type !== "cleaner") {
+        return animationResult
+    }
+
+    const numericViewerPlayerId = Number(viewerPlayerId)
+    const numericSourcePlayerId = Number(sourcePlayerId)
+
+    if (numericViewerPlayerId === numericSourcePlayerId) {
+        return {
+            ...animationResult,
+            viewerPlayerId: numericSourcePlayerId,
+            revealCard: true,
+        }
+    }
+
+    return {
+        type: "cleaner",
+        targetPlayerId: animationResult.targetPlayerId,
+        viewerPlayerId: numericSourcePlayerId,
+        revealCard: false,
+    }
+}
+
+function emitPlayCardActionToPlayers(io, roomCode, state, action) {
+    const players = Array.isArray(state?.players) ? state.players : []
+
+    players.forEach((player) => {
+        const viewerPlayerId = getPlayerId(player)
+
+        if (!viewerPlayerId) {
+            return
+        }
+
+        emitGameAction(io.to(`game:${roomCode}:player:${viewerPlayerId}`), roomCode, {
+            ...action,
+            animationResult: createAnimationResultForViewer(
+                action.animationResult,
+                viewerPlayerId,
+                action.playerId,
+            ),
+        })
+    })
+}
+
 async function emitGameStateToPlayers(io, roomCode, state) {
     const players = Array.isArray(state.players) ? state.players : []
 
@@ -89,6 +155,18 @@ function registerGameHandlers(io, socket) {
                 viewerPlayerId: Number(playerId),
             })
 
+            const drawAction = createGameActionPayload(roomCode, {
+                type: "draw-card",
+                playerId: Number(playerId),
+            })
+            const playerRoom = `game:${roomCode}:player:${playerId}`
+
+            io.to(playerRoom).emit("game:action", {
+                ...drawAction,
+                drawnCard: result.drawnCard,
+            })
+            io.to(`game:${roomCode}`).except(playerRoom).emit("game:action", drawAction)
+
             await emitGameStateToPlayers(io, roomCode, result.state)
 
             if (typeof callback === "function") {
@@ -133,6 +211,15 @@ function registerGameHandlers(io, socket) {
             const gameState = await getState({
                 roomCode,
                 viewerPlayerId: Number(playerId),
+            })
+
+            emitPlayCardActionToPlayers(io, roomCode, result.state, {
+                id: result.actionLog?.id ? `play-card:${result.actionLog.id}` : undefined,
+                type: "play-card",
+                playerId: Number(playerId),
+                targetPlayerId: targetPlayerId ? Number(targetPlayerId) : null,
+                discardedCard: result.discardedCard,
+                animationResult: result.animationResult,
             })
 
             await emitGameStateToPlayers(io, roomCode, result.state)

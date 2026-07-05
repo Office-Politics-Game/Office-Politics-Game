@@ -6,8 +6,8 @@ const readSource = (path) =>
   readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
 test('player avatar keeps the player data and token rendering contract', async () => {
-  const avatarSource = await readSource('src/components/game/PlayerAvatar.vue')
-  const seatsSource = await readSource('src/components/game/PlayerSeats.vue')
+  const avatarSource = await readSource('src/components/game/ui/PlayerAvatar.vue')
+  const seatsSource = await readSource('src/components/game/ui/PlayerSeats.vue')
 
   for (const propName of [
     'name',
@@ -56,7 +56,7 @@ test('player avatar keeps the player data and token rendering contract', async (
 
 test('game view derives four viewer-relative player records and passes them through the stage', async () => {
   const gameViewSource = await readSource('src/views/GameView.vue')
-  const gameStageSource = await readSource('src/components/game/GameStage.vue')
+  const gameStageSource = await readSource('src/components/game/ui/GameStage.vue')
 
   assert.match(gameViewSource, /const seatPositions = \['top', 'left', 'right', 'bottom'\]/)
   assert.match(gameViewSource, /const players = computed\(\(\) =>/)
@@ -83,9 +83,9 @@ test('the selected bonus cheque badge exists as a PNG asset', async () => {
 })
 
 test('game table shows the brand beside a standalone settings icon', async () => {
-  const gameStageSource = await readSource('src/components/game/GameStage.vue')
+  const gameStageSource = await readSource('src/components/game/ui/GameStage.vue')
   const settingsSource = await readSource(
-    'src/components/game/GameSettingsIcon.vue',
+    'src/components/game/ui/GameSettingsIcon.vue',
   )
 
   assert.match(gameStageSource, /logo-en-white\.png/)
