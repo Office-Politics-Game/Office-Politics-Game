@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { Copy, Play } from "@lucide/vue";
 import { useRouter } from "vue-router";
@@ -67,6 +67,9 @@ function createRoomPlayerSlot(player) {
     avatar: null,
     canToggleReady:
       player.playerId === playerStore.currentPlayerId && player.role !== "host",
+    showActionButton:
+      player.playerId === playerStore.currentPlayerId && player.role !== "host",
+    actionLabel: Boolean(player.isReady) ? "取消準備" : "準備",
   };
 }
 
@@ -76,6 +79,15 @@ const playerSlots = computed(() =>
 
     if (roomPlayer) {
       return createRoomPlayerSlot(roomPlayer);
+    }
+
+    if (roomCode.value) {
+      return {
+        isHost: false,
+        option1: "等待玩家",
+        showActionButton: false,
+        isActionDisabled: true,
+      };
     }
 
     if (localPlayerSlots.value[index]) {
@@ -124,7 +136,7 @@ async function toggleReady(slot) {
 }
 
 function handleAddComputer(index) {
-  if (index === 0 || players.value[index]) {
+  if (roomCode.value || index === 0 || players.value[index]) {
     return;
   }
 
@@ -141,7 +153,7 @@ function handleAddComputer(index) {
 }
 
 function handleRemovePlayer(index) {
-  if (index === 0) {
+  if (roomCode.value || index === 0) {
     return;
   }
 
@@ -172,7 +184,7 @@ async function handleStartRoom() {
     playerId: playerStore.currentPlayerId,
   });
 
-  router.push("/loading");
+  navigateToLoading();
 }
 
 async function copyRoomCode() {
@@ -183,11 +195,27 @@ async function copyRoomCode() {
   await navigator.clipboard.writeText(roomCode.value);
 }
 
+function navigateToLoading() {
+  router.push({
+    name: "Loading",
+    query: {
+      roomCode: roomCode.value,
+      playerId: playerStore.currentPlayerId,
+    },
+  });
+}
+
 onMounted(async () => {
   const rankingPlayers = await getRankingList();
   availablePlayers.value = rankingPlayers;
 
-  if (roomCode.value && !players.value.length) {
+  if (roomCode.value && playerStore.currentPlayerId) {
+    await roomStore.subscribeToRoom({
+      roomCode: roomCode.value,
+      playerId: playerStore.currentPlayerId,
+      force: true,
+    }).catch(() => roomStore.fetchRoomState());
+  } else if (roomCode.value && !players.value.length) {
     await roomStore.fetchRoomState();
   }
 
@@ -202,6 +230,23 @@ onMounted(async () => {
     }));
   }
 });
+
+onBeforeUnmount(() => {
+  if (roomCode.value) {
+    roomStore.unsubscribeFromRoom(roomCode.value);
+  }
+});
+
+watch(
+  () => roomStore.room?.status,
+  (status, previousStatus) => {
+    if (status !== "playing" || status === previousStatus || !roomCode.value) {
+      return;
+    }
+
+    navigateToLoading();
+  },
+);
 </script>
 
 <template>

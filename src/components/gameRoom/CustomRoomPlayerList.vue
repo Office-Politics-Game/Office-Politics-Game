@@ -100,6 +100,7 @@ defineEmits(["add-computer", "remove-player", "toggle-ready"]);
             <button
               class="room-player-option-button m-0 w-full whitespace-nowrap border-0 bg-transparent text-center text-[14px] font-black leading-[1.12] lg:text-[28px]"
               type="button"
+              :disabled="slot.isActionDisabled"
               @click="$emit('add-computer', index)"
             >
               {{ slot.option1 }}
@@ -108,13 +109,14 @@ defineEmits(["add-computer", "remove-player", "toggle-ready"]);
               v-if="slot.option2"
               class="room-player-option-button m-0 w-full whitespace-nowrap border-0 bg-transparent text-center text-[14px] font-black leading-[1.12] lg:text-[28px]"
               type="button"
+              :disabled="slot.isActionDisabled"
             >
               {{ slot.option2 }}
             </button>
           </div>
 
           <button
-            v-if="!slot.isHost && slot.name"
+            v-if="!slot.isHost && slot.name && slot.showActionButton !== false"
             class="btn-dark tap-pop room-ready-button relative z-[1] mt-3 self-center rounded px-3 py-[5px] text-[11px] font-black leading-none lg:mt-[30px] lg:px-5 lg:py-2 lg:text-[15px]"
             type="button"
             @click="
@@ -123,7 +125,7 @@ defineEmits(["add-computer", "remove-player", "toggle-ready"]);
                 : $emit('remove-player', index)
             "
           >
-            {{ slot.canToggleReady ? (slot.isReady ? "取消準備" : "準備") : "踢除" }}
+            {{ slot.actionLabel ?? (slot.canToggleReady ? (slot.isReady ? "取消準備" : "準備") : "踢除") }}
           </button>
         </div>
       </article>
@@ -166,10 +168,21 @@ defineEmits(["add-computer", "remove-player", "toggle-ready"]);
     transform 180ms ease;
 }
 
+.room-player-option-button:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
 .room-player-option-button:hover {
   color: var(--brand-hover, #0046f4);
   opacity: 0.92;
   transform: translateY(-1px);
+}
+
+.room-player-option-button:disabled:hover,
+.room-player-option-button:disabled:active {
+  color: var(--brand-active, #465563);
+  transform: none;
 }
 
 .room-player-option-button:active {
