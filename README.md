@@ -19,7 +19,7 @@
 
 ---
 
-## 技術棧 (Tech Stack)
+## 技術應用 (Tech Stack)
 
 ### Frontend
 
