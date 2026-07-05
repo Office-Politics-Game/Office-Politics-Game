@@ -6,12 +6,22 @@ const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'u
 
 test('room invitation schema and backend routes are registered', async () => {
   const schemaSource = await readSource('server/src/db/schema.sql')
+  const migrationReadmeSource = await readSource('server/src/db/migrations/README.md')
+  const migrationSource = await readSource(
+    'server/src/db/migrations/20260703_create_room_invitations.sql',
+  )
   const appSource = await readSource('server/src/app.js')
   const routeSource = await readSource('server/src/routes/roomInvitationRoutes.js')
 
   assert.match(schemaSource, /CREATE TABLE room_invitations/)
   assert.match(schemaSource, /unique_pending_room_invitation/)
   assert.match(schemaSource, /status IN \('pending', 'accepted', 'rejected', 'expired'\)/)
+  assert.match(migrationReadmeSource, /schema\.sql/)
+  assert.match(migrationReadmeSource, /migrations\/\*\.sql/)
+  assert.match(migrationSource, /CREATE TABLE IF NOT EXISTS room_invitations/)
+  assert.match(migrationSource, /CREATE UNIQUE INDEX IF NOT EXISTS unique_pending_room_invitation/)
+  assert.match(migrationSource, /ON room_invitations\(room_id, invitee_player_id\)/)
+  assert.match(migrationSource, /WHERE status = 'pending'/)
   assert.match(appSource, /roomInvitationRouter/)
   assert.match(routeSource, /rooms\/:roomCode\/invitations/)
   assert.match(routeSource, /room-invitations\/:id\/accept/)
