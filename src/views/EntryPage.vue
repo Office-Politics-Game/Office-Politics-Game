@@ -82,8 +82,8 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, onMounted, ref, watch } from "vue";
+import { useRouter, useRoute } from "vue-router";
 import GuestLoginModal from "@/components/login/GuestLoginModal.vue";
 import LoginContent from "@/components/login/LoginContent.vue";
 import RegisterPage from "@/components/register/RegisterPage.vue";
