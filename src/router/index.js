@@ -6,6 +6,7 @@ import LobbyMenu from "@/components/menu/LobbyMenu.vue";
 import GameView from "../views/GameView.vue";
 import FriendView from "@/views/FriendView.vue";
 import MallView from "@/views/MallView.vue";
+import ProfileView from "@/views/ProfileView.vue";
 import Result from "@/views/Result.vue";
 import LoadingView from "@/views/LoadingView.vue";
 import GameMenuPanel from "@/components/gameRoom/GameMenuPanel.vue";
@@ -71,6 +72,11 @@ const routes = [
     path: "/mall",
     name: "Mall",
     component: MallView,
+  },
+  {
+    path: "/profile",
+    name: "Profile",
+    component: ProfileView,
   },
   {
     path: "/game-menu",
