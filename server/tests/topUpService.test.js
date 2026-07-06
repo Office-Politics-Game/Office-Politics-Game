@@ -1,0 +1,148 @@
+import { jest } from "@jest/globals"
+
+const queryMock = jest.fn()
+const addCurrencyMock = jest.fn()
+
+jest.unstable_mockModule("../src/db/index.js", () => ({
+    default: {
+        query: queryMock,
+    },
+}))
+
+jest.unstable_mockModule("../src/services/currencyService.js", () => ({
+    addCurrency: addCurrencyMock,
+}))
+
+const {
+    getTopUpPackages,
+    createTopUpOrder,
+    mockPayTopUpOrder,
+} = await import("../src/services/topUpService.js")
+
+beforeEach(() => {
+    queryMock.mockReset()
+    addCurrencyMock.mockReset()
+})
+
+describe("topUpService", () => {
+    test("getTopUpPackages() returns available top up packages", () => {
+        const packages = getTopUpPackages()
+
+        expect(packages).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    id: "gems_60",
+                    currency: "diamond",
+                    amount: 60,
+                    price: 30,
+                }),
+            ])
+        )
+    })
+
+    test("createTopUpOrder() creates pending order", async () => {
+        queryMock
+            .mockResolvedValueOnce({
+                rows: [{ id: 1 }],
+            })
+            .mockResolvedValueOnce({
+                rows: [
+                    {
+                        id: 10,
+                        player_id: 1,
+                        package_id: "gems_60",
+                        currency: "diamond",
+                        amount: 60,
+                        price: 30,
+                        status: "pending",
+                    },
+                ],
+            })
+
+        const order = await createTopUpOrder(1, "gems_60")
+
+        expect(order.status).toBe("pending")
+        expect(queryMock).toHaveBeenCalledTimes(2)
+        expect(queryMock.mock.calls[1][1]).toEqual([
+            1,
+            "gems_60",
+            "diamond",
+            60,
+            30,
+        ])
+    })
+
+    test("createTopUpOrder() rejects missing player", async () => {
+        queryMock.mockResolvedValueOnce({
+            rows: [],
+        })
+
+        await expect(createTopUpOrder(999, "gems_60")).rejects.toMatchObject({
+            statusCode: 404,
+        })
+
+        expect(queryMock).toHaveBeenCalledTimes(1)
+    })
+
+    test("createTopUpOrder() rejects unknown package", async () => {
+        await expect(createTopUpOrder(1, "bad_package")).rejects.toMatchObject({
+            statusCode: 404,
+        })
+
+        expect(queryMock).not.toHaveBeenCalled()
+    })
+
+    test("mockPayTopUpOrder() marks order paid and adds currency", async () => {
+        queryMock
+            .mockResolvedValueOnce({
+                rows: [
+                    {
+                        id: 10,
+                        player_id: 1,
+                        currency: "diamond",
+                        amount: 60,
+                        status: "pending",
+                    },
+                ],
+            })
+            .mockResolvedValueOnce({
+                rows: [
+                    {
+                        id: 10,
+                        player_id: 1,
+                        currency: "diamond",
+                        amount: 60,
+                        status: "paid",
+                    },
+                ],
+            })
+
+        const order = await mockPayTopUpOrder(10)
+
+        expect(order.status).toBe("paid")
+        expect(addCurrencyMock).toHaveBeenCalledWith(
+            1,
+            "diamond",
+            60,
+            "top_up",
+            expect.any(String)
+        )
+    })
+
+    test("mockPayTopUpOrder() rejects paid order", async () => {
+        queryMock.mockResolvedValueOnce({
+            rows: [
+                {
+                    id: 10,
+                    status: "paid",
+                },
+            ],
+        })
+
+        await expect(mockPayTopUpOrder(10)).rejects.toMatchObject({
+            statusCode: 409,
+        })
+
+        expect(addCurrencyMock).not.toHaveBeenCalled()
+    })
+})
