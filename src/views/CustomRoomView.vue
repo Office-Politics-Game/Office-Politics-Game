@@ -6,12 +6,12 @@ import { useRouter } from "vue-router";
 import PlayerList from "@/components/gameRoom/CustomRoomPlayerList.vue";
 import { getRankingList } from "@/services/rankingService.js";
 import BG from "@/assets/images/bg-dashboard.webp";
-import { usePlayerStore } from "@/stores/playerStore.js";
+import { useCurrentPlayerId } from "@/composables/useCurrentPlayerId.js";
 import { useRoomStore } from "@/stores/roomStore.js";
 
 const router = useRouter();
 const roomStore = useRoomStore();
-const playerStore = usePlayerStore();
+const { currentPlayerId } = useCurrentPlayerId();
 
 const { roomCode, players, errorMessage, isLoading, isRoomReadyToStart } =
   storeToRefs(roomStore);
@@ -66,7 +66,8 @@ function createRoomPlayerSlot(player) {
     name: player.username,
     avatar: null,
     canToggleReady:
-      player.playerId === playerStore.currentPlayerId && player.role !== "host",
+      String(player.playerId) === String(currentPlayerId.value) &&
+      player.role !== "host",
   };
 }
 
@@ -87,7 +88,9 @@ const playerSlots = computed(() =>
 );
 
 const currentPlayerEntry = computed(() =>
-  players.value.find((player) => player.playerId === playerStore.currentPlayerId),
+  players.value.find(
+    (player) => String(player.playerId) === String(currentPlayerId.value),
+  ),
 );
 
 const isHostPlayer = computed(
@@ -169,7 +172,7 @@ async function handleStartRoom() {
   }
 
   await roomStore.startRoom(roomCode.value, {
-    playerId: playerStore.currentPlayerId,
+    playerId: currentPlayerId.value,
   });
 
   router.push("/loading");

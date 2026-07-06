@@ -8,7 +8,7 @@ import createIcon from "@/assets/images/icon-create.png";
 import waitingRoomOne from "@/assets/images/waiting-room-1.webp";
 import waitingRoomTwo from "@/assets/images/waiting-room-2.webp";
 import waitingRoomThree from "@/assets/images/waiting-room-3.webp";
-import { usePlayerStore } from "@/stores/playerStore.js";
+import { useCurrentPlayerId } from "@/composables/useCurrentPlayerId.js";
 import { useRoomStore } from "@/stores/roomStore.js";
 
 const roomActions = [
@@ -37,7 +37,7 @@ const roomActions = [
 
 const router = useRouter();
 const roomStore = useRoomStore();
-const playerStore = usePlayerStore();
+const { currentPlayerId } = useCurrentPlayerId();
 
 const roomId = ref("");
 const activeAction = ref("");
@@ -72,11 +72,20 @@ function startMatchTimer() {
 }
 
 async function handleCreateRoom() {
-  await roomStore.createRoom({
-    hostPlayerId: playerStore.currentPlayerId,
-  });
+  if (!currentPlayerId.value) {
+    roomStore.errorMessage = "請先登入或建立訪客玩家。";
+    return;
+  }
 
-  router.push("/custom-room");
+  try {
+    await roomStore.createRoom({
+      hostPlayerId: currentPlayerId.value,
+    });
+
+    router.push("/custom-room");
+  } catch {
+    return;
+  }
 }
 
 async function handleJoinRoom() {
@@ -87,11 +96,20 @@ async function handleJoinRoom() {
     return;
   }
 
-  await roomStore.joinRoom(normalizedRoomId, {
-    playerId: playerStore.currentPlayerId,
-  });
+  if (!currentPlayerId.value) {
+    roomStore.errorMessage = "請先登入或建立訪客玩家。";
+    return;
+  }
 
-  router.push("/custom-room");
+  try {
+    await roomStore.joinRoom(normalizedRoomId, {
+      playerId: currentPlayerId.value,
+    });
+
+    router.push("/custom-room");
+  } catch {
+    return;
+  }
 }
 
 async function handleActionClick(action) {
@@ -121,6 +139,10 @@ onBeforeUnmount(stopMatchTimer);
       v-for="action in roomActions"
       :key="action.title"
       class="waiting-room-item pointer-events-auto absolute"
+      :class="{
+        'is-join-expanded':
+          action.title === '加入房間' && activeAction === '加入房間',
+      }"
       @click="handleActionClick(action)"
     >
       <img
@@ -130,10 +152,13 @@ onBeforeUnmount(stopMatchTimer);
         aria-hidden="true"
       />
 
-      <button
+      <div
         class="waiting-room-button absolute border-0 bg-transparent p-0 text-center"
-        type="button"
+        role="button"
+        tabindex="0"
         :aria-label="action.title"
+        @keydown.enter.self.prevent="handleActionClick(action)"
+        @keydown.space.self.prevent="handleActionClick(action)"
       >
         <span
           class="waiting-room-content pointer-events-none flex h-full w-full flex-col items-center"
@@ -185,6 +210,7 @@ onBeforeUnmount(stopMatchTimer);
               type="text"
               placeholder="請輸入房號"
               @click.stop
+              @keydown.enter.stop.prevent="handleJoinRoom"
             />
             <button
               class="btn-dark mt-1 block w-full !text-[11px] lg:!text-[14px]"
@@ -203,7 +229,7 @@ onBeforeUnmount(stopMatchTimer);
             建立中
           </span>
         </span>
-      </button>
+      </div>
     </div>
 
     <p
@@ -248,6 +274,11 @@ onBeforeUnmount(stopMatchTimer);
 .waiting-room-item:active {
   --hover-y: 12px;
   filter: drop-shadow(0 8px 14px rgba(70, 85, 99, 0.24));
+}
+
+.waiting-room-item.is-join-expanded:active {
+  --hover-y: -12px;
+  filter: drop-shadow(0 12px 18px rgba(0, 70, 244, 0.22));
 }
 
 .waiting-room-button {
