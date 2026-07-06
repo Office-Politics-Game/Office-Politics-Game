@@ -1,6 +1,59 @@
 <script setup>
-import { Crown, UserRound } from '@lucide/vue';
-import inviteFriendModal from '@/assets/images/modal-invite-friend.png';
+import { computed, ref, watch } from "vue";
+import { Crown, UserRound } from "@lucide/vue";
+import inviteFriendModal from "@/assets/images/modal-invite-friend.png";
+
+const props = defineProps({
+  friends: {
+    type: Array,
+    default: () => [],
+  },
+  isLoading: {
+    type: Boolean,
+    default: false,
+  },
+  isSending: {
+    type: Boolean,
+    default: false,
+  },
+  errorMessage: {
+    type: String,
+    default: "",
+  },
+  notice: {
+    type: String,
+    default: "",
+  },
+});
+
+const emit = defineEmits(["close", "send"]);
+const selectedFriendId = ref("");
+
+const selectedFriend = computed(() => {
+  return props.friends.find((friend) => friend.id === selectedFriendId.value) ?? null;
+});
+
+watch(
+  () => props.friends,
+  (friends) => {
+    if (!friends.some((friend) => friend.id === selectedFriendId.value)) {
+      selectedFriendId.value = friends[0]?.id ?? "";
+    }
+  },
+  { immediate: true },
+);
+
+function selectFriend(friendId) {
+  selectedFriendId.value = friendId;
+}
+
+function sendInvitation() {
+  if (!selectedFriend.value || props.isSending) {
+    return;
+  }
+
+  emit("send", selectedFriend.value);
+}
 </script>
 
 <template>
@@ -24,19 +77,64 @@ import inviteFriendModal from '@/assets/images/modal-invite-friend.png';
           <span></span>
         </div>
       </header>
-      <section class="friend-row" aria-label="好友欄位示意">
-        <input type="checkbox" class="friend-checkbox" aria-hidden="true" />
-        <span class="friend-avatar" aria-hidden="true">
-          <UserRound :stroke-width="2.2" />
-        </span>
-        <span class="friend-id">玩家ID</span>
+
+      <section class="friend-row" aria-label="好友清單">
+        <div v-if="isLoading" class="friend-empty-state">
+          好友清單載入中...
+        </div>
+        <div v-else-if="errorMessage" class="friend-empty-state is-error">
+          {{ errorMessage }}
+        </div>
+        <div v-else-if="!friends.length" class="friend-empty-state">
+          目前沒有可邀請的好友
+        </div>
+        <div v-else class="friend-list">
+          <button
+            v-for="friend in friends"
+            :key="friend.id"
+            class="friend-option"
+            :class="{ 'is-selected': selectedFriendId === friend.id }"
+            type="button"
+            @click="selectFriend(friend.id)"
+          >
+            <input
+              class="friend-checkbox"
+              type="checkbox"
+              :checked="selectedFriendId === friend.id"
+              tabindex="-1"
+              aria-hidden="true"
+              @click.prevent
+            />
+            <span class="friend-avatar" aria-hidden="true">
+              <UserRound :stroke-width="2.2" />
+            </span>
+            <span class="friend-meta">
+              <span class="friend-id">{{ friend.name }}</span>
+              <span class="friend-status">
+                {{ friend.playerId }}｜{{ friend.status }}
+              </span>
+            </span>
+          </button>
+        </div>
       </section>
+
+      <p v-if="notice" class="invite-notice">{{ notice }}</p>
+
       <footer class="invite-actions">
-        <button class="invite-action-button invite-action-button-light" type="button">
+        <button
+          class="invite-action-button invite-action-button-light"
+          type="button"
+          @click="emit('close')"
+        >
           <span>取消</span>
         </button>
-        <button class="invite-action-button invite-action-button-primary" type="button">
-          <span>發送邀請</span>
+        <button
+          class="invite-action-button invite-action-button-primary"
+          type="button"
+          :disabled="isLoading || isSending || !selectedFriend"
+          @click="sendInvitation"
+        >
+          <span>{{ isSending ? "發送中" : "發送邀請" }}</span>
         </button>
       </footer>
     </div>
@@ -71,7 +169,8 @@ import inviteFriendModal from '@/assets/images/modal-invite-friend.png';
 }
 
 .invite-brand {
-  @apply mx-auto flex items-center justify-center gap-2 text-[#9a8468];
+  @apply mx-auto flex items-center justify-center gap-2;
+  color: var(--brand-active, #465563);
   width: clamp(72px, 13vw, 92px);
 }
 
@@ -87,14 +186,16 @@ import inviteFriendModal from '@/assets/images/modal-invite-friend.png';
 }
 
 .invite-title {
-  @apply font-black leading-none tracking-normal text-[#2d241b];
+  @apply font-black leading-none tracking-normal;
   margin-top: clamp(1px, 0.5vw, 3px);
+  color: var(--brand-navy, #001332);
   font-family: var(--font-sans, Inter, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
   font-size: clamp(16px, 3.8vw, 21px);
 }
 
 .invite-rule {
-  @apply mx-auto flex items-center justify-center gap-2 text-[#8c785f];
+  @apply mx-auto flex items-center justify-center gap-2;
+  color: var(--brand-primary, #86b3e0);
   width: 54%;
   margin-top: clamp(3px, 0.7vw, 4px);
 }
@@ -111,18 +212,53 @@ import inviteFriendModal from '@/assets/images/modal-invite-friend.png';
 }
 
 .friend-row {
-  @apply absolute left-1/2 z-[1] grid items-center;
-  top: 42.5%;
+  @apply absolute left-1/2 z-[1];
+  top: 39%;
   width: 56%;
-  min-height: 18px;
+  height: 28%;
   transform: translateX(-50%);
-  grid-template-columns: auto auto minmax(0, 1fr);
-  gap: 6px;
   border: 1px solid var(--brand-primary, #86b3e0);
   border-radius: var(--radius-md, 0);
   background: var(--surface-glass, rgba(255, 255, 255, 0.3));
-  padding: 2px 8px;
+  padding: 4px;
   box-shadow: 0 5px 10px rgba(0, 19, 50, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.58);
+}
+
+.friend-list {
+  @apply h-full overflow-y-auto;
+  display: grid;
+  gap: 4px;
+  padding-right: 2px;
+}
+
+.friend-option {
+  @apply grid w-full cursor-pointer items-center border bg-transparent text-left;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 6px;
+  min-height: 24px;
+  border-color: rgba(134, 179, 224, 0.62);
+  border-radius: var(--radius-md, 0);
+  color: var(--brand-active, #465563);
+  padding: 2px 6px;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.friend-option.is-selected {
+  border-color: var(--brand-hover, #0046f4);
+  background: rgba(134, 179, 224, 0.32);
+}
+
+.friend-option:hover {
+  border-color: var(--brand-hover, #0046f4);
+  background: var(--surface-glass-hover, rgba(255, 255, 255, 0.72));
+}
+
+.friend-option:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 4px var(--brand-focus, rgba(0, 70, 244, 0.24));
 }
 
 .friend-checkbox {
@@ -136,16 +272,20 @@ import inviteFriendModal from '@/assets/images/modal-invite-friend.png';
 }
 
 .friend-avatar {
-  @apply grid place-items-center rounded-full;
+  @apply grid place-items-center;
   width: 16px;
   aspect-ratio: 1;
-  border: 1px solid rgba(120, 96, 67, 0.34);
-  background: radial-gradient(circle at 50% 34%, #f0e5d3, #bba98e);
-  color: #6b5f51;
+  border: 1px solid rgba(70, 85, 99, 0.34);
+  background: rgba(134, 179, 224, 0.36);
+  color: var(--brand-active, #465563);
 }
 
 .friend-avatar svg {
   @apply h-[58%] w-[58%];
+}
+
+.friend-meta {
+  @apply grid min-w-0 gap-0.5;
 }
 
 .friend-id {
@@ -155,6 +295,39 @@ import inviteFriendModal from '@/assets/images/modal-invite-friend.png';
   font-size: 11px;
   font-weight: 900;
   line-height: 1;
+}
+
+.friend-status {
+  @apply overflow-hidden whitespace-nowrap text-ellipsis;
+  color: var(--gray-400, #6f7b8a);
+  font-family: var(--font-sans, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.friend-empty-state {
+  @apply grid h-full place-items-center text-center;
+  color: var(--brand-active, #465563);
+  font-family: var(--font-sans, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.friend-empty-state.is-error {
+  color: var(--brand-hover, #0046f4);
+}
+
+.invite-notice {
+  @apply absolute left-1/2 z-[1] m-0 text-center;
+  bottom: 25%;
+  width: 56%;
+  transform: translateX(-50%);
+  color: var(--brand-hover, #0046f4);
+  font-family: var(--font-sans, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.2;
 }
 
 .invite-actions {
@@ -198,7 +371,7 @@ import inviteFriendModal from '@/assets/images/modal-invite-friend.png';
   background: rgba(134, 179, 224, 0.34);
 }
 
-.invite-action-button:hover {
+.invite-action-button:hover:not(:disabled) {
   transform: translateY(-2px);
   border-color: var(--brand-hover, #0046f4);
   background: var(--brand-hover, #0046f4);
@@ -206,7 +379,7 @@ import inviteFriendModal from '@/assets/images/modal-invite-friend.png';
   box-shadow: 0 10px 24px rgba(0, 70, 244, 0.24);
 }
 
-.invite-action-button:active {
+.invite-action-button:active:not(:disabled) {
   transform: translateY(1px);
   border-color: var(--brand-active, #465563);
   background: var(--brand-active, #465563);
@@ -217,6 +390,14 @@ import inviteFriendModal from '@/assets/images/modal-invite-friend.png';
 .invite-action-button:focus-visible {
   outline: 0;
   box-shadow: 0 0 0 4px var(--brand-focus, rgba(0, 70, 244, 0.24));
+}
+
+.invite-action-button:disabled {
+  cursor: not-allowed;
+  border-color: transparent;
+  background: rgba(160, 166, 179, 0.62);
+  color: #ffffff;
+  box-shadow: none;
 }
 
 @media (min-width: 768px) {
@@ -260,9 +441,18 @@ import inviteFriendModal from '@/assets/images/modal-invite-friend.png';
 
   .friend-row {
     width: 56%;
-    min-height: 24px;
+    height: 28%;
+    padding: 6px;
+  }
+
+  .friend-list {
+    gap: 6px;
+  }
+
+  .friend-option {
+    min-height: 32px;
     gap: 8px;
-    padding: 3px 12px;
+    padding: 3px 10px;
   }
 
   .friend-checkbox {
@@ -275,6 +465,18 @@ import inviteFriendModal from '@/assets/images/modal-invite-friend.png';
 
   .friend-id {
     font-size: 16px;
+  }
+
+  .friend-status {
+    font-size: 11px;
+  }
+
+  .friend-empty-state {
+    font-size: 14px;
+  }
+
+  .invite-notice {
+    font-size: 12px;
   }
 
   .invite-actions {
@@ -330,9 +532,14 @@ import inviteFriendModal from '@/assets/images/modal-invite-friend.png';
 
   .friend-row {
     width: 54%;
-    min-height: 30px;
+    height: 28%;
+    padding: 8px;
+  }
+
+  .friend-option {
+    min-height: 40px;
     gap: 10px;
-    padding: 4px 14px;
+    padding: 4px 12px;
   }
 
   .friend-checkbox {
@@ -345,6 +552,10 @@ import inviteFriendModal from '@/assets/images/modal-invite-friend.png';
 
   .friend-id {
     font-size: 20px;
+  }
+
+  .friend-status {
+    font-size: 12px;
   }
 
   .invite-actions {
@@ -392,11 +603,20 @@ import inviteFriendModal from '@/assets/images/modal-invite-friend.png';
   }
 
   .friend-row {
-    top: 42.5%;
+    top: 39%;
     width: 56%;
+    height: 28%;
+    padding: 3px;
+  }
+
+  .friend-list {
+    gap: 3px;
+  }
+
+  .friend-option {
     min-height: clamp(16px, 4vh, 22px);
     gap: 5px;
-    padding: 2px 8px;
+    padding: 2px 6px;
   }
 
   .friend-checkbox {
@@ -409,6 +629,11 @@ import inviteFriendModal from '@/assets/images/modal-invite-friend.png';
 
   .friend-id {
     font-size: clamp(10px, 2.2vw, 13px);
+  }
+
+  .friend-status,
+  .invite-notice {
+    font-size: 9px;
   }
 
   .invite-actions {
