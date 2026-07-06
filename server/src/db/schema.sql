@@ -144,6 +144,23 @@ CREATE UNIQUE INDEX unique_pending_room_invitation
 ON room_invitations(room_id, invitee_player_id)
 WHERE status = 'pending';
 
+CREATE TABLE direct_messages (
+  id SERIAL PRIMARY KEY,
+  sender_player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  receiver_player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  content TEXT NOT NULL CHECK (LENGTH(BTRIM(content)) > 0),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CHECK (sender_player_id <> receiver_player_id)
+);
+
+CREATE INDEX direct_messages_conversation_idx
+ON direct_messages(
+  LEAST(sender_player_id, receiver_player_id),
+  GREATEST(sender_player_id, receiver_player_id),
+  created_at,
+  id
+);
+
 CREATE TABLE matches (
   id SERIAL PRIMARY KEY,
   room_id INTEGER REFERENCES game_rooms(id),
