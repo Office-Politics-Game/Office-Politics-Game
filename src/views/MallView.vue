@@ -24,7 +24,7 @@
           type="button"
           class="mobile-menu-button"
           :aria-expanded="isMenuOpen"
-          aria-label="????閰制?"
+          aria-label="?????????"
           @click="isMenuOpen = true"
         >
           <span></span>
@@ -39,7 +39,7 @@
           class="mobile-menu-layer xl:hidden"
           @click.self="isMenuOpen = false"
         >
-          <aside class="mobile-menu-panel" aria-label="????閰制?">
+          <aside class="mobile-menu-panel" aria-label="?????????">
             <div class="flex items-start justify-between gap-3 border-b border-slate-300/80 pb-3">
               <div>
                 <p class="m-0 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
@@ -49,14 +49,14 @@
                   ???
                 </h2>
                 <p class="mt-1 text-xs font-semibold text-slate-600">
-                  ?鞊??遴??憸脰??嗆?乒??
+                  ??????????????????????????
                 </p>
               </div>
 
               <button
                 type="button"
                 class="close-button mobile-menu-close"
-                aria-label="?謚??閰制?"
+                aria-label="?????????"
                 @click="isMenuOpen = false"
               >
                 ?
@@ -85,7 +85,7 @@
 
             <div class="mt-3 border border-slate-300 bg-[linear-gradient(180deg,#f9fbfd,#eef4f9)] p-3">
               <div class="text-[10px] font-bold tracking-[0.12em] text-slate-500">
-                ?獢????
+                ??????????????
               </div>
               <div class="mt-1 text-base font-black text-slate-900">
                 {{ activeCategoryMeta.name }}
@@ -97,7 +97,7 @@
               class="btn-dark mt-3 h-9 w-full text-xs font-bold"
               @click="goLobby"
             >
-              擗???剜頛?
+              ???????????????????????
             </button>
           </aside>
         </div>
@@ -112,7 +112,7 @@
             ???
           </h1>
           <p class="hidden mt-1 text-xs font-semibold tracking-[0.04em] text-slate-600 xl:mt-2 xl:block xl:text-base xl:tracking-[0.06em]">
-            ?鞊??遴??憸脰??嗆?乒??
+            ??????????????????????????
           </p>
         </div>
 
@@ -141,7 +141,7 @@
           class="btn-dark order-2 h-8 whitespace-nowrap px-2.5 py-1 text-xs font-bold xl:order-none xl:h-11 xl:px-4 xl:py-2 xl:text-sm"
           @click="router.push('/lobby')"
         >
-          擗???剜頛?
+          ???????????????????????
         </button>
       </header>
 
@@ -149,7 +149,7 @@
         <aside class="scroll-area min-h-0 overflow-y-auto border-b border-slate-300/80 bg-[linear-gradient(180deg,rgba(238,244,251,0.96),rgba(221,230,241,0.9))] xl:border-b-0 xl:border-r">
           <div class="hidden border-b border-slate-300/80 px-3 py-3 xl:block xl:px-5 xl:py-4">
             <div class="text-[11px] font-bold tracking-[0.16em] text-slate-500 xl:text-xs xl:tracking-[0.2em]">
-              ?????瘙?
+              ????????
             </div>
             <div class="mt-1 text-base font-black text-slate-900 xl:mt-2 xl:text-lg">
               ??????
@@ -188,7 +188,7 @@
               <div class="grid gap-2 p-2.5 xl:grid-cols-[minmax(0,1fr)_150px] xl:gap-2.5 xl:p-3">
                 <div>
                   <div class="inline-flex border border-white/25 bg-white/10 px-2 py-0.5 text-[9px] font-bold tracking-[0.1em] text-slate-100 md:text-[9px] md:tracking-[0.14em]">
-                    ?蹓??魂
+                    ?????????????
                   </div>
                   <h2 class="mt-1 font-display text-base font-black tracking-[0.04em] md:mt-1.5 md:text-xl md:tracking-[0.05em]">
                     {{ featuredItem.name }}
@@ -201,7 +201,7 @@
                 <div class="hidden content-between gap-1.5 border border-white/16 bg-white/10 p-2.5 backdrop-blur-sm xl:grid">
                   <div>
                     <div class="text-[9px] font-bold tracking-[0.1em] text-slate-200">
-                      ????死?
+                      ????????????
                     </div>
                     <div class="mt-0.5 text-xl font-black text-white">
                       {{ budgetDisplay }}
@@ -209,7 +209,7 @@
                   </div>
                   <div>
                     <div class="text-[9px] font-bold tracking-[0.1em] text-slate-300">
-                      ?獢????
+                      ??????????????
                     </div>
                     <div class="mt-0.5 inline-flex border border-white/25 bg-white/10 px-2 py-0.5 text-[11px] font-bold text-white">
                       {{ activeCategoryMeta.name }}
@@ -232,10 +232,10 @@
               class="empty-state border border-dashed border-slate-300 bg-white/70 px-4 py-8 text-center md:px-6 md:py-12"
             >
               <div class="text-lg font-black tracking-[0.06em] text-slate-900 md:text-xl md:tracking-[0.08em]">
-                ??????????
+                ????????????????????????
               </div>
               <p class="mt-2 text-xs leading-5 text-slate-500 md:mt-3 md:text-sm md:leading-6">
-                ??謓??駁??綽????????
+                ???????????????????????????
               </p>
             </div>
 
@@ -244,10 +244,10 @@
               class="empty-state border border-dashed border-slate-300 bg-white/70 px-4 py-8 text-center md:px-6 md:py-12"
             >
               <div class="text-lg font-black tracking-[0.06em] text-slate-900 md:text-xl md:tracking-[0.08em]">
-                ?獢??????恬??瑞????
+                ?????????????????????????
               </div>
               <p class="mt-2 text-xs leading-5 text-slate-500 md:mt-3 md:text-sm md:leading-6">
-                ?皜???寞??□????蟡??賹?
+                ??????????????????????????????
               </p>
             </div>
 
@@ -276,7 +276,7 @@
           <header class="flex items-start justify-between gap-2 border-b border-slate-200 px-2.5 py-2 md:gap-4 md:px-6 md:py-4">
             <div>
               <div class="text-[9px] font-bold tracking-[0.1em] text-slate-500 md:text-[11px] md:tracking-[0.16em]">
-                ?????
+                ??????????????
               </div>
               <div class="mt-1 flex flex-wrap items-center gap-1.5 md:mt-2 md:gap-2">
                 <h3 class="font-display text-xl font-black tracking-[0.03em] text-slate-900 md:text-3xl md:tracking-[0.05em]">
@@ -294,7 +294,7 @@
             <button
               type="button"
               class="close-button"
-              aria-label="?謚???"
+              aria-label="??????????????"
               @click="closeItemDetail"
             >
               ?
@@ -307,54 +307,53 @@
                 <button
                   type="button"
                   class="modal-preview"
-                  aria-label="?潘撩?????剜?"
+                  aria-label="???????????????????????"
                   @click="openImagePreview"
                 >
                   <img
                     :src="selectedItem.previewImage"
-                    :alt="`${selectedItem.name} ??????
+                    :alt="selectedItem.name + ' preview'"
                     class="modal-preview__image"
                   />
                   <div class="modal-preview__overlay"></div>
                 </button>
               </div>
-
               <div class="modal-detail-card__info">
                 <div class="modal-detail-card__rows">
                   <div class="detail-row">
-                    <span>???</span>
+                    <span>Category</span>
                     <strong>{{ selectedItem.categoryLabel }}</strong>
                   </div>
                   <div class="detail-row">
-                    <span>?撖僱</span>
+                    <span>Price</span>
                     <strong>{{ selectedItem.price }}</strong>
                   </div>
                   <div class="detail-row">
-                    <span>????/span>
+                    <span>Status</span>
                     <strong>{{ selectedItem.actionLabel }}</strong>
                   </div>
                 </div>
 
-              <aside class="modal-detail-card__purchase">
-                <div class="border border-slate-300 bg-[linear-gradient(180deg,#f9fbfd,#eef4f9)] p-2.5 md:p-4">
-                  <div class="text-[9px] font-bold tracking-[0.1em] text-slate-500 md:text-[11px] md:tracking-[0.16em]">
-                    ?????擐?
+                <aside class="modal-detail-card__purchase">
+                  <div class="border border-slate-300 bg-[linear-gradient(180deg,#f9fbfd,#eef4f9)] p-2.5 md:p-4">
+                    <div class="text-[9px] font-bold tracking-[0.1em] text-slate-500 md:text-[11px] md:tracking-[0.16em]">
+                      Balance
+                    </div>
+                    <div class="mt-0.5 text-lg font-black text-slate-900 md:mt-1 md:text-3xl">
+                      {{ budgetDisplay }}
+                    </div>
                   </div>
-                  <div class="mt-0.5 text-lg font-black text-slate-900 md:mt-1 md:text-3xl">
-                    {{ budgetDisplay }}
-                  </div>
-                </div>
 
-                <button
-                  type="button"
-                  class="item-action item-action--modal"
-                  :class="`item-action--${selectedItem.actionState}`"
-                  :disabled="selectedItem.actionState !== 'buy' || isPurchasing"
-                  @click="purchaseSelectedItem"
-                >
-                  {{ isPurchasing ? "????? : selectedItem.actionLabel }}
-                </button>
-              </aside>
+                  <button
+                    type="button"
+                    class="item-action item-action--modal"
+                    :class="`item-action--${selectedItem.actionState}`"
+                    :disabled="selectedItem.actionState !== 'buy' || isPurchasing"
+                    @click="purchaseSelectedItem"
+                  >
+                    {{ isPurchasing ? 'Processing' : selectedItem.actionLabel }}
+                  </button>
+                </aside>
               </div>
             </div>
           </div>
@@ -370,7 +369,7 @@
         <button
           type="button"
           class="close-button image-preview-close"
-          aria-label="?謚?????剜?"
+          aria-label="???????????????????????"
           @click="closeImagePreview"
         >
           ?
@@ -517,16 +516,15 @@ const budgetDisplay = computed(() =>
 );
 
 const headerMetrics = computed(() => [
-  { label: "可用代幣", value: formatNumber(currencyStore.coins) },
-  { label: "已擁有", value: String(playerItems.value.length).padStart(2, "0") },
+  { label: "Balance", value: formatNumber(currencyStore.coins) },
+  { label: "Owned", value: String(playerItems.value.length).padStart(2, "0") },
   {
-    label: "待上架",
+    label: "Coming Soon",
     value: String(
       normalizedItems.value.filter((item) => item.actionState === "coming").length,
     ).padStart(2, "0"),
   },
 ]);
-
 function getErrorMessage(error, fallbackMessage) {
   return error?.data?.message || error?.message || fallbackMessage;
 }
@@ -548,10 +546,10 @@ async function loadShopData() {
     playerItems.value = ownedData.items ?? [];
 
     if (!playerId) {
-      statusMessage.value = "尚未取得玩家 ID，商品可瀏覽但無法購買。";
+      statusMessage.value = "Player ID is unavailable. You can browse items but cannot purchase yet.";
     }
   } catch (error) {
-    statusMessage.value = getErrorMessage(error, "商城資料載入失敗，請稍後再試。");
+    statusMessage.value = getErrorMessage(error, "Failed to load shop data. Please try again later.");
     shopItems.value = [];
     playerItems.value = [];
   } finally {
@@ -584,7 +582,7 @@ function goLobby() {
 
 async function purchaseItem(item) {
   if (!currentPlayerId.value) {
-    statusMessage.value = "尚未取得玩家 ID，請重新登入後再購買商品。";
+    statusMessage.value = "Player ID is unavailable. Please sign in again before purchasing.";
     return;
   }
 
@@ -617,9 +615,9 @@ async function purchaseItem(item) {
       }),
     ]);
 
-    statusMessage.value = "購買成功，已更新持有狀態與貨幣餘額。";
+    statusMessage.value = "Purchase successful. Ownership and currency have been updated.";
   } catch (error) {
-    statusMessage.value = getErrorMessage(error, "購買失敗，請檢查餘額或稍後再試。");
+    statusMessage.value = getErrorMessage(error, "Purchase failed. Please check balance or try again later.");
   } finally {
     isPurchasing.value = false;
   }
