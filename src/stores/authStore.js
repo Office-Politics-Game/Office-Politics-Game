@@ -3,6 +3,8 @@ import {
   register as registerApi,
   login as loginApi,
   verifyToken as verifyTokenApi,
+  forgotPassword as forgotPasswordApi,
+  resetPassword as resetPasswordApi
 } from "../services/authApi.js"
 
 const AUTH_TOKEN_STORAGE_KEY = "gameAuthToken"
@@ -74,6 +76,34 @@ export const useAuthStore = defineStore("auth", {
         this.errorMessage = getErrorMessage(error, "登入失敗")
         removeAuthToken()
 
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async forgotPassword(payload) {
+      this.isLoading = true
+      this.errorMessage = ""
+
+      try {
+        return await forgotPasswordApi(payload)
+      } catch (error) {
+        this.errorMessage = getErrorMessage(error, "重設密碼信寄送失敗")
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async resetPassword(payload) {
+      this.isLoading = true
+      this.errorMessage = ""
+
+      try {
+        return await resetPasswordApi(payload)
+      } catch (error) {
+        this.errorMessage = getErrorMessage(error, "密碼重設失敗")
         throw error
       } finally {
         this.isLoading = false
