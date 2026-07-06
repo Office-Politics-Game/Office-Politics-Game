@@ -2,7 +2,7 @@
   <div class="social-flip-scene h-81 w-144 lg:h-135 lg:w-240">
     <div
       class="social-flip-card"
-      :class="{ 'is-flipped': isSocialTransitioning }"
+      :class="{ 'is-flipped': isSocialTransitioning || isProfileTransitioning }"
     >
       <section
         class="social-flip-face social-flip-front relative h-full w-full bg-[length:100%_100%] bg-center shadow-2xl"
@@ -17,6 +17,7 @@
         <!-- 開始遊玩 -->
         <button
           class="menu-btn left-[35px] top-[32px] h-[244px] w-[170px] gap-6 lg:left-[58px] lg:top-[53px] lg:h-[407px] lg:w-[283px]"
+          :disabled="isAnyPageTransitioning"
           @click="$router.push({ name: 'LobbyGameMenu' })"
         >
           <div class="btn-content">
@@ -31,6 +32,8 @@
 
         <button
           class="menu-btn left-[212px] top-[32px] h-[148px] w-[220px] lg:left-[353px] lg:top-[53px] lg:h-[247px] lg:w-[367px]"
+          :disabled="isAnyPageTransitioning"
+          @click="openProfilePage"
         >
           <div class="btn-content">
             <img
@@ -44,7 +47,7 @@
 
         <button
           class="menu-btn right-[40px] top-[32px] h-[88px] w-[96px] lg:right-[67px] lg:top-[53px] lg:h-[147px] lg:w-[160px]"
-          :disabled="isSocialTransitioning"
+          :disabled="isAnyPageTransitioning"
           @click="openFriendPage"
         >
           <div class="btn-content">
@@ -59,6 +62,7 @@
 
         <button
           class="menu-btn right-[40px] top-[126px] h-[70px] w-[96px] lg:right-[67px] lg:top-[210px] lg:h-[117px] lg:w-[160px]"
+          :disabled="isAnyPageTransitioning"
         >
           <div class="btn-content">
             <img
@@ -72,6 +76,7 @@
 
         <button
           class="menu-btn left-[212px] bottom-[47px] h-[90px] w-[95px] lg:left-[353px] lg:bottom-[79px] lg:h-[150px] lg:w-[158px]"
+          :disabled="isAnyPageTransitioning"
         >
           <div class="btn-content">
             <img
@@ -85,7 +90,7 @@
 
         <button
           class="menu-btn left-[314px] bottom-[47px] h-[90px] w-[86px] lg:left-[523px] lg:bottom-[79px] lg:h-[150px] lg:w-[143px]"
-          :disabled="isMallTransitioning"
+          :disabled="isAnyPageTransitioning"
           @click="openMallPage"
         >
           <div class="btn-content">
@@ -100,6 +105,7 @@
 
         <button
           class="menu-btn right-[40px] bottom-[47px] h-[74px] w-[130px] lg:right-[67px] lg:bottom-[79px] lg:h-[124px] lg:w-[217px]"
+          :disabled="isAnyPageTransitioning"
           @click="leaveLobby"
         >
           <div class="btn-content">
@@ -115,12 +121,12 @@
 
       <section
         class="social-flip-face social-flip-back relative h-full w-full bg-cover bg-center shadow-2xl"
-        :style="{ backgroundImage: `url(${friendBg})` }"
+        :style="{ backgroundImage: `url(${transitionBackBg})` }"
       >
         <div class="social-flip-backdrop"></div>
         <div class="social-flip-copy">
-          <span>社交</span>
-          <strong>交誼聽</strong>
+          <span>{{ transitionBackTitle }}</span>
+          <strong>{{ transitionBackSubtitle }}</strong>
         </div>
       </section>
     </div>
@@ -128,10 +134,11 @@
 </template>
 
 <script setup>
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import RoomInvitationNotice from "@/components/gameRoom/RoomInvitationNotice.vue";
 import friendBg from "@/assets/images/bg-friend-view.webp";
+import profileBg from "@/assets/images/bg-personal.webp";
 import menuBg from "@/assets/images/menu.webp";
 import CurrencyBar from "@/components/common/CurrencyBar.vue";
 import { useAuthStore } from "@/stores/authStore.js";
@@ -143,8 +150,29 @@ const authStore = useAuthStore();
 const currencyStore = useCurrencyStore();
 const playerStore = usePlayerStore();
 const isSocialTransitioning = ref(false);
+const isProfileTransitioning = ref(false);
 const isMallTransitioning = ref(false);
 const SOCIAL_FLIP_DURATION = 700;
+const PROFILE_FLIP_DURATION = 700;
+
+const isAnyPageTransitioning = computed(
+  () =>
+    isSocialTransitioning.value ||
+    isProfileTransitioning.value ||
+    isMallTransitioning.value,
+);
+
+const transitionBackBg = computed(() =>
+  isProfileTransitioning.value ? profileBg : friendBg,
+);
+
+const transitionBackTitle = computed(() =>
+  isProfileTransitioning.value ? "個人區域" : "社交",
+);
+
+const transitionBackSubtitle = computed(() =>
+  isProfileTransitioning.value ? "辦公桌" : "交誼廳",
+);
 
 function getCurrentPlayerId() {
   return authStore.currentPlayer?.id ?? playerStore.currentPlayerId;
@@ -163,7 +191,7 @@ watch(
 );
 
 function openFriendPage() {
-  if (isSocialTransitioning.value || isMallTransitioning.value) {
+  if (isAnyPageTransitioning.value) {
     return;
   }
 
@@ -179,7 +207,28 @@ function openFriendPage() {
   }, SOCIAL_FLIP_DURATION);
 }
 
+function openProfilePage() {
+  if (isAnyPageTransitioning.value) {
+    return;
+  }
+
+  isProfileTransitioning.value = true;
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    router.push("/profile");
+    return;
+  }
+
+  window.setTimeout(() => {
+    router.push("/profile");
+  }, PROFILE_FLIP_DURATION);
+}
+
 function leaveLobby() {
+  if (isAnyPageTransitioning.value) {
+    return;
+  }
+
   authStore.logout();
   playerStore.resetPlayer();
   currencyStore.resetCurrency();
@@ -187,7 +236,7 @@ function leaveLobby() {
 }
 
 function openMallPage() {
-  if (isMallTransitioning.value || isSocialTransitioning.value) {
+  if (isAnyPageTransitioning.value) {
     return;
   }
 
