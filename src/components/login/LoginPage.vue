@@ -51,7 +51,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue"
+import { ref } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import LoginContent from "@/components/login/LoginContent.vue"
 import GuestLoginModal from "@/components/login/GuestLoginModal.vue"
@@ -67,7 +67,6 @@ const playerStore = usePlayerStore()
 const showGuestLoginModal = ref(false)
 const authPageMode = ref(route.path === "/register" ? "register" : "login")
 const resetPasswordToken = ref("")
-const isRegisterPage = computed(() => route.path === "/register")
 
 function goEntryPage() {
   router.push("/")

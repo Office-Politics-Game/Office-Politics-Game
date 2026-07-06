@@ -117,7 +117,7 @@ async function handleForgotPassword() {
       account: account.value.trim().toLowerCase()
     })
 
-    successMessage.value = data?.message || "重設密碼信已透過電子郵件傳送至{ account.value }"
+    successMessage.value = data?.message || "已寄出重設密碼信，請到信箱查收"
   } catch {
     return
   }

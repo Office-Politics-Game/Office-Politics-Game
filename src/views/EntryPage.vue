@@ -135,21 +135,6 @@ function openGuestModal() {
   showGuestLoginModal.value = true;
 }
 
-function closeLoginModal() {
-  showLoginModal.value = false;
-
-  if (route.query.auth !== "login") {
-    return;
-  }
-
-  const { auth, ...nextQuery } = route.query;
-
-  router.replace({
-    name: "Entry",
-    query: nextQuery,
-  });
-}
-
 function handleGuestCreated(player) {
   localStorage.setItem("guestPlayer", JSON.stringify(player));
   playerStore.setCurrentPlayer(player);
