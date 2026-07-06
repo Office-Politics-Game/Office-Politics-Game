@@ -31,6 +31,19 @@
           <span></span>
           <span></span>
         </button>
+        <div class="tablet-storebar-actions">
+          <CurrencyBar
+            class="tablet-storebar-currency"
+            :items="['coins', 'gems', 'tickets']"
+          />
+          <button
+            type="button"
+            class="btn-dark tablet-storebar-return h-11 whitespace-nowrap px-4 py-2 text-sm font-bold"
+            @click="goLobby"
+          >
+            返回大廳
+          </button>
+        </div>
       </header>
 
       <Transition name="drawer-fade">
@@ -64,7 +77,7 @@
             </div>
 
             <CurrencyBar
-              class="mt-3"
+              class="mobile-menu-currencybar mt-3"
               :items="['coins', 'gems', 'tickets']"
             />
 
@@ -101,9 +114,9 @@
           </p>
         </div>
 
-        <div class="order-3 col-span-2 grid grid-cols-3 gap-1 xl:order-none xl:col-span-1 xl:gap-2">
+        <div class="order-3 col-span-2 grid grid-cols-3 gap-1 self-center xl:order-none xl:col-span-1 xl:gap-2 xl:self-start xl:pt-2">
           <CurrencyBar
-            class="col-span-3 -translate-x-2 justify-self-end xl:-translate-x-3"
+            class="col-span-3 justify-self-end"
             :items="['coins', 'gems', 'tickets']"
           />
 
@@ -725,6 +738,7 @@ onBeforeUnmount(() => {
 }
 
 .mall-topbar .btn-dark,
+.tablet-storebar-actions .btn-dark,
 .mobile-menu-panel .btn-dark {
   border-color: rgba(0, 70, 244, 0.7);
   background: linear-gradient(180deg, rgba(0, 70, 244, 0.95), rgba(70, 85, 99, 0.95));
@@ -855,6 +869,10 @@ onBeforeUnmount(() => {
   color: rgb(134, 179, 224);
 }
 
+.tablet-storebar-actions {
+  display: none;
+}
+
 .mobile-menu-button {
   position: relative;
   z-index: 20;
@@ -910,6 +928,39 @@ onBeforeUnmount(() => {
 
 .mobile-menu-close {
   flex: 0 0 auto;
+}
+
+.mobile-menu-currencybar {
+  width: 100%;
+  margin-inline: auto;
+}
+
+.mobile-menu-currencybar:deep(section) {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+}
+
+.mobile-menu-currencybar:deep(section > div) {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.mobile-menu-currencybar:deep(section > div > div) {
+  min-width: 0;
+  justify-content: center;
+}
+
+.mobile-menu-currencybar:deep(section > div > div > span:first-child) {
+  flex-shrink: 0;
+}
+
+.mobile-menu-currencybar:deep(section > div > div > span:last-child) {
+  min-width: 0 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 8px !important;
 }
 
 .modal-detail-card {
@@ -1268,12 +1319,95 @@ onBeforeUnmount(() => {
   }
 
   .mobile-storebar {
-    min-height: 56px;
-    padding: 6px 10px 6px 14px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 64px;
+    align-items: center;
+    padding: 8px 14px;
   }
 
   .mobile-storebar h1 {
     font-size: 24px;
+  }
+
+  .mobile-storebar .mobile-menu-button {
+    display: none;
+  }
+
+  .mobile-menu-layer {
+    display: none !important;
+  }
+
+  .tablet-storebar-actions {
+    display: flex;
+    align-items: center;
+    justify-self: end;
+    gap: 10px;
+  }
+
+  .tablet-storebar-currency {
+    width: min(35vw, 300px);
+  }
+
+  .tablet-storebar-currency:deep(section) {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    gap: 6px;
+  }
+
+  .tablet-storebar-currency:deep(section > div) {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 24px !important;
+    padding: 0 5px !important;
+  }
+
+  .tablet-storebar-currency:deep(section > div > div) {
+    min-width: 0;
+    justify-content: center;
+    gap: 4px !important;
+  }
+
+  .tablet-storebar-currency:deep(section > div > div > span:first-child) {
+    width: 15px !important;
+    height: 15px !important;
+    flex: 0 0 15px !important;
+  }
+
+  .tablet-storebar-currency:deep(section > div > div > span:last-child) {
+    min-width: 0 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px !important;
+  }
+
+  .mobile-menu-currencybar {
+    width: 94%;
+  }
+
+  .mobile-menu-currencybar:deep(section) {
+    gap: 5px;
+  }
+
+  .mobile-menu-currencybar:deep(section > div) {
+    height: 22px !important;
+    padding: 0 3px !important;
+  }
+
+  .mobile-menu-currencybar:deep(section > div > div) {
+    gap: 3px !important;
+  }
+
+  .mobile-menu-currencybar:deep(section > div > div > span:first-child) {
+    width: 13px !important;
+    height: 13px !important;
+    flex-basis: 13px !important;
+  }
+
+  .mobile-menu-currencybar:deep(section > div > div > span:last-child) {
+    font-size: 9px !important;
   }
 
   .mall-shell > .grid {
@@ -1319,6 +1453,33 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 767px) {
+  .mobile-menu-currencybar {
+    width: 92%;
+  }
+
+  .mobile-menu-currencybar:deep(section) {
+    gap: 4px;
+  }
+
+  .mobile-menu-currencybar:deep(section > div) {
+    height: 20px !important;
+    padding: 0 2px !important;
+  }
+
+  .mobile-menu-currencybar:deep(section > div > div) {
+    gap: 2px !important;
+  }
+
+  .mobile-menu-currencybar:deep(section > div > div > span:first-child) {
+    width: 12px !important;
+    height: 12px !important;
+    flex-basis: 12px !important;
+  }
+
+  .mobile-menu-currencybar:deep(section > div > div > span:last-child) {
+    font-size: 8px !important;
+  }
+
   .mall-topbar {
     align-items: start;
   }
