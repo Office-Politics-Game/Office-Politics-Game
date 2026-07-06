@@ -21,6 +21,7 @@
           <ProfileTabs
             :tabs="tabs"
             :active-tab="activeTab"
+            :locked-tabs="lockedTabs"
             @update:active-tab="$emit('update:activeTab', $event)"
           />
           <button
@@ -74,6 +75,10 @@ defineProps({
   isReturning: {
     type: Boolean,
     default: false,
+  },
+  lockedTabs: {
+    type: Array,
+    default: () => [],
   },
 });
 
