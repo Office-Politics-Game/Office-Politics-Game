@@ -17,7 +17,7 @@ test('the former combined result component is removed', async () => {
     access(new URL('../src/components/game/CardEffectResult.vue', import.meta.url)),
   )
 
-  const stage = await readSource('src/components/game/GameStage.vue')
+  const stage = await readSource('src/components/game/ui/GameStage.vue')
   const demo = await readSource('src/views/CardPlayTestView.vue')
   assert.doesNotMatch(stage, /CardEffectResult/)
   assert.doesNotMatch(demo, /CardEffectResult/)
@@ -25,7 +25,7 @@ test('the former combined result component is removed', async () => {
 
 test('each card result animation is a self-contained teleported GSAP component', async () => {
   for (const filename of animationFiles) {
-    const source = await readSource(`src/components/game/${filename}`)
+    const source = await readSource(`src/components/game/animations/${filename}`)
     assert.match(source, /<Teleport to="body">/)
     assert.match(source, /import \{ gsap \} from 'gsap'/)
     assert.match(source, /gsap\.timeline\(/)
@@ -37,7 +37,7 @@ test('each card result animation is a self-contained teleported GSAP component',
 })
 
 test('intern animation supports correct and incorrect outcomes', async () => {
-  const source = await readSource('src/components/game/InternAnimation.vue')
+  const source = await readSource('src/components/game/animations/InternAnimation.vue')
   assert.match(source, /playCorrect/)
   assert.match(source, /playIncorrect/)
   assert.match(source, /猜對啦/)
@@ -64,7 +64,7 @@ test('cardplay demo supports another player guessing the current player', async 
 })
 
 test('cleaner animation reveals for two seconds and returns to its hand', async () => {
-  const source = await readSource('src/components/game/CleanerAnimation.vue')
+  const source = await readSource('src/components/game/animations/CleanerAnimation.vue')
   assert.match(source, /getPlayerHandRect/)
   assert.match(source, /\.to\(\{\}, \{ duration: 2 \}\)/)
   assert.match(source, /rotationY:\s*180/)
@@ -74,7 +74,7 @@ test('cleaner animation reveals for two seconds and returns to its hand', async 
 })
 
 test('cleaner keeps cards hidden when another player performs the viewing', async () => {
-  const source = await readSource('src/components/game/CleanerAnimation.vue')
+  const source = await readSource('src/components/game/animations/CleanerAnimation.vue')
   const demo = await readSource('src/views/CardPlayTestView.vue')
 
   assert.match(source, /result\.viewerPlayerId/)
@@ -97,8 +97,8 @@ test('cleaner keeps cards hidden when another player performs the viewing', asyn
 })
 
 test('cleaner flips the current player card from front to back without fading', async () => {
-  const source = await readSource('src/components/game/CleanerAnimation.vue')
-  const stage = await readSource('src/components/game/GameStage.vue')
+  const source = await readSource('src/components/game/animations/CleanerAnimation.vue')
+  const stage = await readSource('src/components/game/ui/GameStage.vue')
   const demo = await readSource('src/views/CardPlayTestView.vue')
 
   assert.match(source, /isSelfPlayer:/)
@@ -132,7 +132,7 @@ test('cleaner flips the current player card from front to back without fading', 
 })
 
 test('manager animation compares, emphasizes, returns the winner, and discards the loser', async () => {
-  const source = await readSource('src/components/game/ManagerAnimation.vue')
+  const source = await readSource('src/components/game/animations/ManagerAnimation.vue')
   assert.match(source, /sourceWins = result\.outcome === 'win'/)
   assert.match(source, /targetWins = result\.outcome === 'lose'/)
   assert.match(source, /\.to\(\{\}, \{ duration: 0\.5 \}\)/)
@@ -144,7 +144,7 @@ test('manager animation compares, emphasizes, returns the winner, and discards t
 })
 
 test('manager reveals the opponent loser while shrinking, before it reaches discard', async () => {
-  const source = await readSource('src/components/game/ManagerAnimation.vue')
+  const source = await readSource('src/components/game/animations/ManagerAnimation.vue')
   const demo = await readSource('src/views/CardPlayTestView.vue')
 
   assert.match(source, /revealAtCenter = result\.revealCards !== false/)
@@ -163,8 +163,8 @@ test('manager reveals the opponent loser while shrinking, before it reaches disc
 })
 
 test('project manager animation discards then reuses normal draw animation', async () => {
-  const source = await readSource('src/components/game/PMAnimation.vue')
-  const drawSource = await readSource('src/components/game/CardDrawAnimation.vue')
+  const source = await readSource('src/components/game/animations/PMAnimation.vue')
+  const drawSource = await readSource('src/components/game/animations/CardDrawAnimation.vue')
   assert.match(source, /import CardDrawAnimation/)
   assert.match(source, /getDeckRect/)
   assert.match(source, /drawRef\.value\?\.selfDraw/)
@@ -187,7 +187,7 @@ test('project manager animation discards then reuses normal draw animation', asy
 })
 
 test('game stage and demo mount all four animations directly', async () => {
-  const stage = await readSource('src/components/game/GameStage.vue')
+  const stage = await readSource('src/components/game/ui/GameStage.vue')
   const demo = await readSource('src/views/CardPlayTestView.vue')
 
   for (const component of [

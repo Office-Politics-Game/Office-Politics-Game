@@ -30,16 +30,20 @@
         />
       </div>
 
-      <!-- 按鈕容器 -->
-      <div class="flex flex-col gap-4 w-full max-w-60 lg:max-w-xs">
-        <!-- 登入遊玩按鈕 -->
-        <button @click="showLoginModal = true" class="btn-glass tap-pop">
-          登入遊玩
+      <div class="flex w-full max-w-60 flex-col gap-4 lg:max-w-xs">
+        <button
+          class="btn-glass tap-pop"
+          type="button"
+          @click="handlePrimaryAction"
+        >
+          {{ isMemberLoggedIn ? "進入遊戲" : "登入遊玩" }}
         </button>
-
-        <!-- 訪客遊玩按鈕 -->
-        <button @click="showGuestLoginModal = true" class="btn-glass tap-pop">
-          訪客遊玩
+        <button
+          class="btn-glass tap-pop"
+          type="button"
+          @click="handleSecondaryAction"
+        >
+          {{ isMemberLoggedIn ? "登出" : "訪客遊玩" }}
         </button>
       </div>
 
@@ -47,9 +51,20 @@
       <div
         v-if="showLoginModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-        @click.self="showLoginModal = false"
+        @click.self="closeAuthModal"
       >
-        <LoginContent @close="showLoginModal = false" />
+        <LoginContent
+          v-if="authModalMode === 'login'"
+          @close="closeAuthModal"
+          @open-guest="openGuestModal"
+          @open-register="openRegisterModal"
+        />
+        <RegisterPage
+          v-else
+          @close="closeAuthModal"
+          @back-login="authModalMode = 'login'"
+          @register-success="handleRegisterSuccess"
+        />
       </div>
 
       <div
@@ -67,17 +82,67 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, onMounted, ref, watch } from "vue";
+import { useRouter, useRoute } from "vue-router";
 import GuestLoginModal from "@/components/login/GuestLoginModal.vue";
 import LoginContent from "@/components/login/LoginContent.vue";
+import RegisterPage from "@/components/register/RegisterPage.vue";
 import { usePlayerStore } from "@/stores/playerStore.js";
+import { useAuthStore } from "@/stores/authStore.js";
 import bgEntryVideo from "@/assets/videos/EntryPage_BgVideo.mp4";
 
+const route = useRoute();
 const router = useRouter();
+const authStore = useAuthStore();
 const playerStore = usePlayerStore();
 const showLoginModal = ref(false);
 const showGuestLoginModal = ref(false);
+const authModalMode = ref("login");
+
+const isMemberLoggedIn = computed(
+  () => authStore.isLoggedIn && Boolean(authStore.currentPlayer),
+);
+
+function handlePrimaryAction() {
+  if (isMemberLoggedIn.value) {
+    router.push("/lobby");
+    return;
+  }
+
+  openLoginModal();
+}
+
+function handleSecondaryAction() {
+  if (isMemberLoggedIn.value) {
+    authStore.logout();
+    showLoginModal.value = false;
+    showGuestLoginModal.value = false;
+    router.push("/");
+    return;
+  }
+
+  showGuestLoginModal.value = true;
+}
+
+function openGuestModal() {
+  showLoginModal.value = false;
+  showGuestLoginModal.value = true;
+}
+
+function closeLoginModal() {
+  showLoginModal.value = false;
+
+  if (route.query.auth !== "login") {
+    return;
+  }
+
+  const { auth, ...nextQuery } = route.query;
+
+  router.replace({
+    name: "Entry",
+    query: nextQuery,
+  });
+}
 
 function handleGuestCreated(player) {
   localStorage.setItem("guestPlayer", JSON.stringify(player));
@@ -86,7 +151,30 @@ function handleGuestCreated(player) {
   router.push("/lobby");
 }
 
-onMounted(() => {
+function openLoginModal() {
+  authModalMode.value = "login";
+  showLoginModal.value = true;
+}
+
+function openRegisterModal() {
+  authModalMode.value = "register";
+  showLoginModal.value = true;
+}
+
+function closeAuthModal() {
+  showLoginModal.value = false;
+  authModalMode.value = "login";
+}
+
+function handleRegisterSuccess() {
+  authModalMode.value = "login";
+}
+
+onMounted(async () => {
+  if (authStore.token && !authStore.hasVerifiedToken) {
+    await authStore.verifyToken();
+  }
+
   if (playerStore.currentPlayer) {
     return;
   }
@@ -101,6 +189,16 @@ onMounted(() => {
     localStorage.removeItem("guestPlayer");
   }
 });
+
+watch(
+  () => route.query.auth,
+  (auth) => {
+    if (auth === "login") {
+      showLoginModal.value = true;
+    }
+  },
+  { immediate: true },
+);
 </script>
 
 <style scoped>

@@ -25,6 +25,7 @@ const props = defineProps({
   result: { type: Object, default: null },
   getPlayerHandRect: { type: Function, default: null },
   getDiscardRect: { type: Function, default: null },
+  isSelfPlayer: { type: Function, default: null },
 })
 const emit = defineEmits(['complete'])
 
@@ -113,7 +114,9 @@ async function play(result) {
   const sourceWins = result.outcome === 'win'
   const targetWins = result.outcome === 'lose'
   const draw = !sourceWins && !targetWins
-  const revealAtCenter = result.revealCards !== false
+  const revealToViewer =
+    result.revealCards !== false &&
+    props.isSelfPlayer?.(result.sourcePlayerId) === true
   const reduced = isReducedMotion()
   const timing = getCardMotionTiming(reduced)
 
@@ -136,9 +139,6 @@ async function play(result) {
 
   const winner = sourceWins ? sourceElement : targetElement
   const loser = sourceWins ? targetElement : sourceElement
-  const loserFlipper = sourceWins
-    ? targetFlipperElement
-    : sourceFlipperElement
   const winnerScale = sourceWins ? sourceStartScale : targetStartScale
   const loserRect = sourceWins ? targetRect : sourceRect
   const discardTranslation = getTranslation(loserRect, discardRect)
@@ -153,7 +153,7 @@ async function play(result) {
       x: viewportCenter.x + gap - targetCenter.x,
       y: viewportCenter.y - targetCenter.y,
     }, { scale: 1, duration: timing.compareTravel, reduced }), '<')
-  if (revealAtCenter) {
+  if (revealToViewer) {
     timeline.value.to(
       [sourceFlipperElement, targetFlipperElement],
       getFlipVars(0, timing.flip),
@@ -173,14 +173,6 @@ async function play(result) {
       .to(winner, getEmphasisVars(1.18, { duration: timing.emphasis, reduced }))
       .to(loser, getEmphasisVars(0.76, { duration: timing.emphasis, reduced, ease: null }), '<')
       .set(loserGlowRef.value, { opacity: 1, scale: 1 }, '<')
-
-    if (!revealAtCenter) {
-      timeline.value.to(
-        loserFlipper,
-        getFlipVars(0, timing.flip),
-        '<',
-      )
-    }
 
     timeline.value
       .to({}, { duration: 0.9 })

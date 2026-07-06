@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import cardBackUrl from '@/assets/images/card-bg-back.webp'
-import GameCard from './GameCard.vue'
+import GameCard from '../ui/GameCard.vue'
 
 defineProps({
   card: {

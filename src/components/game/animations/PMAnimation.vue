@@ -28,12 +28,10 @@ const props = defineProps({
 })
 const emit = defineEmits(['complete'])
 
-const veilRef = ref(null)
 const cardLayerRef = ref(null)
 const drawRef = ref(null)
 const drawCard = ref(null)
 const showDiscardCard = ref(false)
-const showVeil = ref(false)
 const cardStyle = ref({ display: 'none' })
 
 function getCardElement() {
@@ -45,7 +43,7 @@ function getFlipperElement() {
 }
 
 function getKillTargets() {
-  return [veilRef.value, getCardElement(), getFlipperElement()]
+  return [getCardElement(), getFlipperElement()]
 }
 
 const {
@@ -63,7 +61,6 @@ const {
   reset: () => {
     drawCard.value = null
     showDiscardCard.value = false
-    showVeil.value = false
     cardStyle.value = { display: 'none' }
   },
   onStop: () => {
@@ -95,7 +92,6 @@ async function play(result) {
   beginAnimation(result)
   drawCard.value = result.newCard ?? null
   showDiscardCard.value = true
-  showVeil.value = true
   const height = getEffectCardHeight()
   const centerTranslation = getViewportCenterTranslation(originRect)
   const discardTranslation = getTranslation(originRect, discardRect)
@@ -105,7 +101,7 @@ async function play(result) {
   await nextTick()
   const cardElement = getCardElement()
   const flipperElement = getFlipperElement()
-  if (isStale(result) || !cardElement || !flipperElement || !veilRef.value) {
+  if (isStale(result) || !cardElement || !flipperElement) {
     finishAnimation(result)
     return
   }
@@ -124,9 +120,6 @@ async function play(result) {
 
   if (isStale(result)) return
   showDiscardCard.value = false
-  await nextTick()
-  if (isStale(result)) return
-  showVeil.value = false
   await nextTick()
   if (isStale(result)) return
 
@@ -154,7 +147,6 @@ onBeforeUnmount(stop)
 <template>
   <Teleport to="body">
     <div v-if="activeResult" class="pm-animation" aria-hidden="true">
-      <div v-if="showVeil" ref="veilRef" class="pm-animation__veil"></div>
       <EffectCardLayer
         v-if="showDiscardCard"
         ref="cardLayerRef"
@@ -169,6 +161,5 @@ onBeforeUnmount(stop)
 
 <style scoped>
 .pm-animation { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
-.pm-animation__veil { position: fixed; inset: 0; background: radial-gradient(circle at 50% 50%,rgba(15,23,42,.08),rgba(0,0,0,.72) 68%),linear-gradient(115deg,rgba(2,6,23,.76),rgba(15,23,42,.42)); }
 .pm-animation__card { z-index: 2; --effect-card-face-filter: drop-shadow(0 20px 28px rgba(0,0,0,.48)); }
 </style>

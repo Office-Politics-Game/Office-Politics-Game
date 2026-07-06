@@ -7,10 +7,10 @@ import playerOneUrl from '@/assets/images/player-1.png'
 import playerTwoUrl from '@/assets/images/player-2.png'
 import playerThreeUrl from '@/assets/images/player-3.png'
 import playerFourUrl from '@/assets/images/player-4.png'
-import CardDrawAnimation from '@/components/game/CardDrawAnimation.vue'
-import GameCard from '@/components/game/GameCard.vue'
-import PlayerSeats from '@/components/game/PlayerSeats.vue'
-import TableCardPiles from '@/components/game/TableCardPiles.vue'
+import CardDrawAnimation from '@/components/game/animations/CardDrawAnimation.vue'
+import GameCard from '@/components/game/ui/GameCard.vue'
+import PlayerSeats from '@/components/game/ui/PlayerSeats.vue'
+import TableCardPiles from '@/components/game/ui/TableCardPiles.vue'
 
 const discardCards = ref([
   {

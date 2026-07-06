@@ -18,6 +18,7 @@ import CardDealDemoView from "@/views/CardDealDemoView.vue";
 import AnimationDemoView from "@/views/AnimationDemoView.vue";
 import CardPlayTestView from "@/views/CardPlayTestView.vue";
 import NotFoundView from "@/views/NotFoundView.vue";
+import { useAuthStore } from "../stores/authStore.js";
 
 const routes = [
   {
@@ -28,6 +29,11 @@ const routes = [
   {
     path: "/login",
     name: "Login",
+    component: LoginPage,
+  },
+  {
+    path: "/register",
+    name: "Register",
     component: LoginPage,
   },
   {
@@ -67,11 +73,17 @@ const routes = [
     path: "/friend",
     name: "Friend",
     component: FriendView,
+    meta: {
+      requiresAuth: true,
+    },
   },
   {
     path: "/mall",
     name: "Mall",
     component: MallView,
+    meta: {
+      requiresAuth: true,
+    },
   },
   {
     path: "/profile",
@@ -102,6 +114,9 @@ const routes = [
     path: "/invite-friend",
     name: "InviteFriend",
     component: InviteFriendModal,
+    meta: {
+      requiresAuth: true,
+    },
   },
   {
     path: "/card-deal-demo",
@@ -123,16 +138,30 @@ const routes = [
     name: "NotFound",
     component: NotFoundView,
   },
-  {
-    path: "/register",
-    name: "Register",
-    component: LoginPage,
-  }
 ];
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
 });
+
+router.beforeEach(async (to) => {
+  const requiresAuth = to.matched.some((route) => route.meta.requiresAuth)
+
+  if (!requiresAuth) {
+    return true
+  }
+
+  const authStore = useAuthStore()
+  const isVerified = await authStore.verifyToken()
+
+  if (isVerified) {
+    return true
+  }
+
+  return {
+    name: "Login"
+  }
+})
 
 export default router;

@@ -8,6 +8,13 @@
         class="social-flip-face social-flip-front relative h-full w-full bg-[length:100%_100%] bg-center shadow-2xl"
         :style="{ backgroundImage: `url(${menuBg})` }"
       >
+        <RoomInvitationNotice />
+
+        <CurrencyBar
+          class="absolute bottom-4 right-8.5 lg:bottom-9 lg:right-14.5"
+          :items="['coins', 'gems']"
+        />
+        <!-- 開始遊玩 -->
         <button
           class="menu-btn left-[35px] top-[32px] h-[244px] w-[170px] gap-6 lg:left-[58px] lg:top-[53px] lg:h-[407px] lg:w-[283px]"
           :disabled="isAnyPageTransitioning"
@@ -99,7 +106,7 @@
         <button
           class="menu-btn right-[40px] bottom-[47px] h-[74px] w-[130px] lg:right-[67px] lg:bottom-[79px] lg:h-[124px] lg:w-[217px]"
           :disabled="isAnyPageTransitioning"
-          @click="$router.push('/')"
+          @click="leaveLobby"
         >
           <div class="btn-content">
             <img
@@ -127,13 +134,21 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import RoomInvitationNotice from "@/components/gameRoom/RoomInvitationNotice.vue";
 import friendBg from "@/assets/images/bg-friend-view.webp";
 import profileBg from "@/assets/images/bg-personal.webp";
 import menuBg from "@/assets/images/menu.webp";
+import CurrencyBar from "@/components/common/CurrencyBar.vue";
+import { useAuthStore } from "@/stores/authStore.js";
+import { useCurrencyStore } from "@/stores/currencyStore.js";
+import { usePlayerStore } from "@/stores/playerStore.js";
 
 const router = useRouter();
+const authStore = useAuthStore();
+const currencyStore = useCurrencyStore();
+const playerStore = usePlayerStore();
 const isSocialTransitioning = ref(false);
 const isProfileTransitioning = ref(false);
 const isMallTransitioning = ref(false);
@@ -157,6 +172,22 @@ const transitionBackTitle = computed(() =>
 
 const transitionBackSubtitle = computed(() =>
   isProfileTransitioning.value ? "辦公桌" : "交誼廳",
+);
+
+function getCurrentPlayerId() {
+  return authStore.currentPlayer?.id ?? playerStore.currentPlayerId;
+}
+
+watch(
+  getCurrentPlayerId,
+  (playerId) => {
+    if (!playerId) {
+      return;
+    }
+
+    currencyStore.fetchPlayerCurrency(playerId).catch(() => {});
+  },
+  { immediate: true }
 );
 
 function openFriendPage() {
@@ -191,6 +222,17 @@ function openProfilePage() {
   window.setTimeout(() => {
     router.push("/profile");
   }, PROFILE_FLIP_DURATION);
+}
+
+function leaveLobby() {
+  if (isAnyPageTransitioning.value) {
+    return;
+  }
+
+  authStore.logout();
+  playerStore.resetPlayer();
+  currencyStore.resetCurrency();
+  router.push("/");
 }
 
 function openMallPage() {
