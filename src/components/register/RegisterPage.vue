@@ -78,6 +78,7 @@
           <EyeOff v-if="showPassword" class="password-toggle__icon" />
           <Eye v-else class="password-toggle__icon" />
         </button>
+        <PasswordRuleList :password="form.password" />
         <p v-if="passwordError" class="login-error" role="alert">
           {{ passwordError }}
         </p>
@@ -177,6 +178,8 @@
 import { reactive, ref, onBeforeUnmount } from "vue"
 import { useAuthStore } from "@/stores/authStore.js"
 import { Eye, EyeOff } from "lucide-vue-next"
+import { getPasswordError } from "@/utils/passwordRules.js"
+import PasswordRuleList from "@/components/login/PasswordRuleList.vue"
 
 const authStore = useAuthStore()
 const emit = defineEmits(["close", "back-login", "register-success"])
@@ -231,7 +234,7 @@ function validateRegisterForm() {
     accountError.value = ""
   }
 
-  passwordError.value = form.password.trim() ? "" : "請輸入密碼"
+  passwordError.value = getPasswordError(form.password.trim())
 
   if (!form.confirmPassword.trim()) {
     confirmPasswordError.value = "請再次輸入密碼"
