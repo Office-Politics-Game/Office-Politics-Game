@@ -7,6 +7,7 @@ The friend system already supports friend lists, invitations, blocking, and logi
 - Add backend support for accepted friends to exchange direct text messages.
 - Add a REST API contract for fetching direct message history with a friend.
 - Add a REST API contract for sending a direct message to a friend.
+- Add the existing friend relationship table schema so this backend branch can run against a fresh database.
 - Add a direct message table that stores sender, receiver, content, and creation time.
 - Add backend service/controller/routes and tests for friendship, blocking, empty messages, and authorized history access.
 

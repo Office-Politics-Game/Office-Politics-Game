@@ -7,6 +7,7 @@ The backend already has friendService, friendController, friendRoutes, and exist
 **Goals:**
 
 - Add a data table for direct friend text messages.
+- Add the `friends` relationship table schema that the existing friendService and the new chatService rely on.
 - Add chatService to centralize accepted-friend authorization, blocked relationship checks, empty message validation, and authorized history access.
 - Add chatController and chatRoutes to expose REST APIs for later frontend integration.
 - Add backend tests for successful message creation, non-friend rejection, blocked rejection, empty message rejection, and history access.
@@ -25,6 +26,12 @@ The backend already has friendService, friendController, friendRoutes, and exist
 Add a `direct_messages` table with `sender_player_id`, `receiver_player_id`, `content`, and `created_at`. A message is a one-way record. Conversation history is queried with a two-way sender/receiver condition and ordered chronologically.
 
 Alternative considered: Store messages in `friends` or `action_logs`. This was rejected because `friends` represents relationship state and `action_logs` represents game actions. Mixing chat records into either table would make authorization, retrieval, and cleanup harder to maintain.
+
+### Document friend relationships in schema.sql
+
+Add a `friends` table to `server/src/db/schema.sql` with `player_id`, `friend_id`, `status`, and `created_at`. The table uses a status check for pending, accepted, and blocked relationships, prevents self-relationships, and adds a unique unordered pair index using `LEAST(player_id, friend_id)` and `GREATEST(player_id, friend_id)`. This matches friendService and chatService, which both treat a friendship as one relationship between two players regardless of direction.
+
+Alternative considered: Leave `friends` table creation outside this PR because it already exists in Supabase. This was rejected because branch 166 should be complete enough for a fresh database setup and for reviewers to understand every table used by the backend code.
 
 ### Put relationship authorization in chatService
 
@@ -49,6 +56,7 @@ Alternative considered: Add message length limits and moderation in this first i
 #### Observable behavior
 
 - Accepted friends can send direct text messages to each other through REST APIs.
+- A fresh database created from `server/src/db/schema.sql` contains the `friends` table needed by friendService and chatService.
 - The API stores trimmed message content and returns id, senderPlayerId, receiverPlayerId, content, and createdAt.
 - A player can fetch direct message history with a specified accepted friend.
 - History results contain only messages between those two players and are ordered from oldest to newest.
@@ -59,6 +67,7 @@ Alternative considered: Add message length limits and moderation in this first i
 
 - `sendDirectMessage({ playerId, friendId, content })` returns `{ id, senderPlayerId, receiverPlayerId, content, createdAt }`.
 - `getDirectMessages({ playerId, friendId })` returns an array of direct message objects.
+- `friends` rows contain `{ id, player_id, friend_id, status, created_at }`, with status limited to `pending`, `accepted`, or `blocked`.
 - `POST /api/chats/direct/:friendId/messages` accepts body `{ playerId, content }` and returns status 201 with `{ message: "訊息已送出", directMessage }`.
 - `GET /api/chats/direct/:friendId/messages?playerId=<id>` returns status 200 with `{ messages }`.
 - Controllers return 400 for missing or invalid playerId, friendId, or content.
@@ -78,6 +87,7 @@ Alternative considered: Add message length limits and moderation in this first i
 - `npm test -- chatService.test.js` passes.
 - `npm test -- chatController.test.js` passes.
 - `server/src/db/schema.sql` contains the `direct_messages` table with player foreign keys.
+- `server/src/db/schema.sql` contains the `friends` table with player foreign keys, status check, self-relationship check, and unordered pair unique index.
 - `server/src/app.js` mounts chat routes under `/api/chats`.
 
 #### Scope boundaries
@@ -90,4 +100,4 @@ Alternative considered: Add message length limits and moderation in this first i
 
 - [Risk] The current API accepts `playerId` from the request body/query, so a future frontend bug could send the wrong player id. -> Mitigation: This follows the existing friend API pattern for now; a later auth middleware change can derive player id from token.
 - [Risk] History has no pagination in the MVP, so large conversations can become expensive. -> Mitigation: The data model supports adding a future limit/before cursor without changing stored messages.
-- [Risk] `server/src/db/schema.sql` does not fully document the existing `friends` table creation even though friendService uses it. -> Mitigation: This change only adds `direct_messages`; a separate schema cleanup issue can address the existing friends table drift.
+- [Risk] Existing Supabase environments may already have a `friends` table. -> Mitigation: This schema addition is for fresh database completeness; existing environments should compare the live table before rerunning table creation SQL.

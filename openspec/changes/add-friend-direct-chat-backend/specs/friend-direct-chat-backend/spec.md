@@ -1,5 +1,14 @@
 ## ADDED Requirements
 
+### Requirement: Friend relationships have schema support
+
+The backend schema SHALL define a `friends` table that stores one relationship record for a pair of players. The table MUST store player_id, friend_id, status, and created_at, MUST restrict status to pending, accepted, or blocked, MUST prevent self-relationships, and MUST prevent duplicate unordered player pairs.
+
+#### Scenario: Fresh database has friend relationship table
+
+- **WHEN** the backend schema is applied to a fresh database
+- **THEN** the database contains a `friends` table with player foreign keys, a valid status check, a self-relationship check, and a unique unordered player pair index
+
 ### Requirement: Direct messages can be sent between accepted friends
 
 The backend SHALL allow a player to send a direct text message to another player only when the two players have an accepted friendship and neither direction of the relationship is blocked. The backend MUST store the trimmed message content with sender, receiver, and creation time.

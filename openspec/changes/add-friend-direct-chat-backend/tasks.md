@@ -19,3 +19,7 @@
 
 - [x] 4.1 Run backend verification for the completed friend direct chat backend by executing `npm test -- chatService.test.js chatController.test.js`; verify all direct chat tests pass.
 - [x] 4.2 Confirm the change stays within backend-only scope with no `src/` frontend changes and no Socket.IO event changes; verify with `git diff --stat` and source review.
+
+## 5. Fresh Database Completeness
+
+- [x] 5.1 Cover Friend relationships have schema support and Document friend relationships in schema.sql by adding a `friends` table with player foreign keys, status validation, self-relationship prevention, and unordered pair uniqueness; verify by content review of `server/src/db/schema.sql`, `spectra validate add-friend-direct-chat-backend`, and `npm.cmd test -- --runInBand --cacheDirectory=.jest-cache`.
