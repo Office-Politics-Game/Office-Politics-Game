@@ -652,7 +652,7 @@ describe("驗證登入狀態服務", () => {
         expect(mockQuery).not.toHaveBeenCalled()
     })
 
-    test("token有效但找不到玩家資料時，丟出錯誤", async () => {
+    test("token有效但找不到玩家資料時，回傳401驗證失敗", async () => {
         mockGetUser.mockResolvedValueOnce({
             data: {
                 user: {
@@ -666,7 +666,10 @@ describe("驗證登入狀態服務", () => {
             rows: []
         })
 
-        await expect(verifyToken("有效token")).rejects.toThrow("找不到玩家資料")
+        await expect(verifyToken("有效token")).rejects.toMatchObject({
+            message: "登入驗證失敗",
+            statusCode: 401,
+        })
 
         expect(mockGetUser).toHaveBeenCalledWith("有效token")
         expect(mockQuery).toHaveBeenCalledTimes(1)

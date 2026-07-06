@@ -31,7 +31,13 @@ async function handleJoinRoom() {
     playerId: currentPlayerId.value,
   });
 
-  router.push("/custom-room");
+  router.push({
+    name: "CustomRoom",
+    query: {
+      roomCode: normalizedRoomId.value,
+      playerId: currentPlayerId.value,
+    },
+  });
 }
 </script>
 

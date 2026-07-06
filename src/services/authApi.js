@@ -11,7 +11,7 @@ function login(payload) {
 }
 
 function verifyToken(token) {
-  return apiClient.get(`${AUTH_API_PATH}/verify`, {
+  return apiClient.get(`${AUTH_API_PATH}/me`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },

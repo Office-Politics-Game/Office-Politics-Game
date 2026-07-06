@@ -3,8 +3,12 @@ import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { Mail, RefreshCw } from "@lucide/vue";
 import { useRoomInvitationStore } from "@/stores/roomInvitationStore.js";
+import { useAuthStore } from "@/stores/authStore.js";
+import { usePlayerStore } from "@/stores/playerStore.js";
 
 const roomInvitationStore = useRoomInvitationStore();
+const authStore = useAuthStore();
+const playerStore = usePlayerStore();
 const router = useRouter();
 const isOpen = ref(false);
 let pollTimerId = null;
@@ -36,9 +40,16 @@ async function refreshInvitations() {
 
 async function acceptInvitation(invitation) {
   const result = await roomInvitationStore.acceptInvitation(invitation.id);
+  const playerId = authStore.currentPlayer?.id ?? playerStore.currentPlayerId ?? "";
 
   if (result?.room?.roomCode) {
-    router.push({ name: "CustomRoom" });
+    router.push({
+      name: "CustomRoom",
+      query: {
+        roomCode: result.room.roomCode,
+        playerId: String(playerId),
+      },
+    });
   }
 }
 
