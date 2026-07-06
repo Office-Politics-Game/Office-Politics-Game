@@ -175,6 +175,12 @@ onMounted(async () => {
     await authStore.verifyToken();
   }
 
+  if (authStore.currentPlayer) {
+    playerStore.setCurrentPlayer(authStore.currentPlayer);
+    localStorage.removeItem("guestPlayer");
+    return;
+  }
+
   if (playerStore.currentPlayer) {
     return;
   }

@@ -6,10 +6,12 @@ import { useRouter } from "vue-router";
 import PlayerList from "@/components/gameRoom/CustomRoomPlayerList.vue";
 import { getRankingList } from "@/services/rankingService.js";
 import BG from "@/assets/images/bg-dashboard.webp";
+import { useAuthStore } from "@/stores/authStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
 import { useRoomStore } from "@/stores/roomStore.js";
 
 const router = useRouter();
+const authStore = useAuthStore();
 const roomStore = useRoomStore();
 const playerStore = usePlayerStore();
 
@@ -18,6 +20,10 @@ const { roomCode, players, errorMessage, isLoading, isRoomReadyToStart } =
 
 const availablePlayers = ref([]);
 const localPlayerSlots = ref([]);
+
+const currentPlayerId = computed(
+  () => authStore.currentPlayer?.id ?? playerStore.currentPlayerId ?? null,
+);
 
 const emptyPlayerSlots = [
   {
@@ -66,9 +72,9 @@ function createRoomPlayerSlot(player) {
     name: player.username,
     avatar: null,
     canToggleReady:
-      player.playerId === playerStore.currentPlayerId && player.role !== "host",
+      player.playerId === currentPlayerId.value && player.role !== "host",
     showActionButton:
-      player.playerId === playerStore.currentPlayerId && player.role !== "host",
+      player.playerId === currentPlayerId.value && player.role !== "host",
     actionLabel: Boolean(player.isReady) ? "取消準備" : "準備",
   };
 }
@@ -99,7 +105,7 @@ const playerSlots = computed(() =>
 );
 
 const currentPlayerEntry = computed(() =>
-  players.value.find((player) => player.playerId === playerStore.currentPlayerId),
+  players.value.find((player) => player.playerId === currentPlayerId.value),
 );
 
 const isHostPlayer = computed(
@@ -181,7 +187,7 @@ async function handleStartRoom() {
   }
 
   await roomStore.startRoom(roomCode.value, {
-    playerId: playerStore.currentPlayerId,
+    playerId: currentPlayerId.value,
   });
 
   navigateToLoading();
@@ -200,7 +206,7 @@ function navigateToLoading() {
     name: "Loading",
     query: {
       roomCode: roomCode.value,
-      playerId: playerStore.currentPlayerId,
+      playerId: currentPlayerId.value,
     },
   });
 }
@@ -209,10 +215,10 @@ onMounted(async () => {
   const rankingPlayers = await getRankingList();
   availablePlayers.value = rankingPlayers;
 
-  if (roomCode.value && playerStore.currentPlayerId) {
+  if (roomCode.value && currentPlayerId.value) {
     await roomStore.subscribeToRoom({
       roomCode: roomCode.value,
-      playerId: playerStore.currentPlayerId,
+      playerId: currentPlayerId.value,
       force: true,
     }).catch(() => roomStore.fetchRoomState());
   } else if (roomCode.value && !players.value.length) {

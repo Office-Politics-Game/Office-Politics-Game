@@ -8,6 +8,7 @@ import createIcon from "@/assets/images/icon-create.png";
 import waitingRoomOne from "@/assets/images/waiting-room-1.webp";
 import waitingRoomTwo from "@/assets/images/waiting-room-2.webp";
 import waitingRoomThree from "@/assets/images/waiting-room-3.webp";
+import { useAuthStore } from "@/stores/authStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
 import { useRoomStore } from "@/stores/roomStore.js";
 
@@ -36,6 +37,7 @@ const roomActions = [
 ];
 
 const router = useRouter();
+const authStore = useAuthStore();
 const roomStore = useRoomStore();
 const playerStore = usePlayerStore();
 
@@ -44,6 +46,10 @@ const activeAction = ref("");
 const matchElapsedSeconds = ref(0);
 const matchTimerId = ref(null);
 const { isLoading, errorMessage } = storeToRefs(roomStore);
+
+const currentPlayerId = computed(
+  () => authStore.currentPlayer?.id ?? playerStore.currentPlayerId ?? null,
+);
 
 const Matching = computed(() => {
   const minutes = Math.floor(matchElapsedSeconds.value / 60)
@@ -73,7 +79,7 @@ function startMatchTimer() {
 
 async function handleCreateRoom() {
   await roomStore.createRoom({
-    hostPlayerId: playerStore.currentPlayerId,
+    hostPlayerId: currentPlayerId.value,
   });
 
   router.push("/custom-room");
@@ -88,7 +94,7 @@ async function handleJoinRoom() {
   }
 
   await roomStore.joinRoom(normalizedRoomId, {
-    playerId: playerStore.currentPlayerId,
+    playerId: currentPlayerId.value,
   });
 
   router.push("/custom-room");
