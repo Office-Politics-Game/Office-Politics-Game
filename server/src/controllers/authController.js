@@ -1,4 +1,4 @@
-import { registerPlayer, loginPlayer, verifyToken } from "../services/authService.js"
+import { registerPlayer, loginPlayer, verifyToken, requestPasswordReset, resetPlayerPassword } from "../services/authService.js"
 
 function getBearerToken(req) {
     const authorization = req.headers.authorization || ""
@@ -50,4 +50,28 @@ async function handleVerifyToken(req, res) {
     }
 }
 
-export { handleRegisterPlayer, handleLoginPlayer, handleVerifyToken }
+async function handleForgotPassword(req, res) {
+    try {
+        const result = await requestPasswordReset(req.body)
+
+        res.status(200).json(result)
+    } catch (error) {
+        res.status(error.statusCode || 500).json({
+            message: error.message || "重設密碼信寄送失敗"
+        })
+    }
+}
+
+async function handleResetPassword(req, res) {
+    try {
+        const result = await resetPlayerPassword(req.body)
+
+        res.status(200).json(result)
+    } catch (error) {
+        res.status(error.statusCode || 500).json({
+            message: error.message || "密碼重設失敗"
+        })
+    }
+}
+
+export { handleRegisterPlayer, handleLoginPlayer, handleVerifyToken, handleForgotPassword, handleResetPassword }
