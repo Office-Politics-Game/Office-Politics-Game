@@ -171,10 +171,8 @@ function handleRegisterSuccess() {
 }
 
 onMounted(async () => {
-  if (authStore.currentPlayer) {
-    playerStore.setCurrentPlayer(authStore.currentPlayer);
-    localStorage.removeItem("guestPlayer");
-    return;
+  if (authStore.token && !authStore.hasVerifiedToken) {
+    await authStore.verifyToken();
   }
 
   if (playerStore.currentPlayer) {

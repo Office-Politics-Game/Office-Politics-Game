@@ -217,7 +217,7 @@ async function verifyToken(token) {
     const player = playerResult.rows[0]
 
     if (!player) {
-        throw createAuthError(401, "登入驗證失敗")
+        throw createAuthError(404, "找不到玩家資料")
     }
 
     return formatPlayer(player)

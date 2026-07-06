@@ -1,8 +1,8 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { storeToRefs } from "pinia";
 import { Copy, Play } from "@lucide/vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRouter } from "vue-router";
 import InviteFriendModal from "@/components/gameRoom/InviteFriendModal.vue";
 import PlayerList from "@/components/gameRoom/CustomRoomPlayerList.vue";
 import { getRankingList } from "@/services/rankingService.js";
@@ -13,7 +13,6 @@ import { usePlayerStore } from "@/stores/playerStore.js";
 import { useRoomInvitationStore } from "@/stores/roomInvitationStore.js";
 import { useRoomStore } from "@/stores/roomStore.js";
 
-const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const friendStore = useFriendStore();
@@ -31,12 +30,6 @@ const invitingSlotIndex = ref(null);
 
 const currentPlayerId = computed(
   () => playerStore.currentPlayerId ?? authStore.currentPlayer?.id ?? null,
-);
-const routeRoomCode = computed(() =>
-  typeof route.query.roomCode === "string" ? route.query.roomCode.trim().toUpperCase() : "",
-);
-const routePlayerId = computed(() =>
-  typeof route.query.playerId === "string" ? route.query.playerId.trim() : "",
 );
 
 const emptyPlayerSlots = [
@@ -96,17 +89,6 @@ const playerSlots = computed(() =>
 
     if (roomPlayer) {
       return createRoomPlayerSlot(roomPlayer);
-    }
-
-    if (roomCode.value) {
-      return {
-        ...slot,
-        option1: "等待玩家",
-        option2: "邀請好友",
-        showActionButton: false,
-        isActionDisabled: !isHostPlayer.value,
-        canInviteFriend: isHostPlayer.value,
-      }
     }
 
     if (localPlayerSlots.value[index]) {
@@ -169,7 +151,7 @@ async function toggleReady(slot) {
 }
 
 function handleAddComputer(index) {
-  if (roomCode.value || index === 0 || players.value[index]) {
+  if (index === 0 || players.value[index]) {
     return;
   }
 
@@ -186,7 +168,7 @@ function handleAddComputer(index) {
 }
 
 function handleRemovePlayer(index) {
-  if (roomCode.value || index === 0) {
+  if (index === 0) {
     return;
   }
 
@@ -217,7 +199,7 @@ async function handleStartRoom() {
     playerId: currentPlayerId.value,
   });
 
-  navigateToLoading();
+  router.push("/loading");
 }
 
 async function openInviteFriendModal(index) {
@@ -267,34 +249,12 @@ async function copyRoomCode() {
   await navigator.clipboard.writeText(roomCode.value);
 }
 
-function navigateToLoading() {
-  router.push({
-    name: "Loading",
-    query: {
-      roomCode: roomCode.value,
-      playerId: currentPlayerId.value ?? routePlayerId.value,
-    },
-  });
-}
-
 onMounted(async () => {
   const rankingPlayers = await getRankingList();
   availablePlayers.value = rankingPlayers;
-  const activeRoomCode = roomCode.value || routeRoomCode.value;
-  const activePlayerId = currentPlayerId.value ?? routePlayerId.value;
 
-  if (!roomStore.roomCode && activeRoomCode) {
-    roomStore.roomCode = activeRoomCode;
-  }
-
-  if (activeRoomCode && activePlayerId) {
-    await roomStore.subscribeToRoom({
-      roomCode: activeRoomCode,
-      playerId: activePlayerId,
-      force: true,
-    }).catch(() => roomStore.fetchRoomState());
-  } else if (activeRoomCode && !players.value.length) {
-    await roomStore.fetchRoomState(activeRoomCode);
+  if (roomCode.value && !players.value.length) {
+    await roomStore.fetchRoomState();
   }
 
   if (!players.value.length) {
@@ -308,50 +268,6 @@ onMounted(async () => {
     }));
   }
 });
-
-onBeforeUnmount(() => {
-  if (roomCode.value) {
-    roomStore.unsubscribeFromRoom(roomCode.value);
-  }
-});
-
-watch(
-  [roomCode, currentPlayerId],
-  ([nextRoomCode, nextPlayerId]) => {
-    if (!nextRoomCode) {
-      return;
-    }
-
-    const nextQuery = {
-      ...route.query,
-      roomCode: nextRoomCode,
-      playerId: String(nextPlayerId ?? routePlayerId.value ?? ""),
-    };
-
-    if (
-      route.query.roomCode === nextQuery.roomCode &&
-      route.query.playerId === nextQuery.playerId
-    ) {
-      return;
-    }
-
-    router.replace({
-      name: "CustomRoom",
-      query: nextQuery,
-    });
-  },
-);
-
-watch(
-  () => roomStore.room?.status,
-  (status, previousStatus) => {
-    if (status !== "playing" || status === previousStatus || !roomCode.value) {
-      return;
-    }
-
-    navigateToLoading();
-  },
-);
 </script>
 
 <template>

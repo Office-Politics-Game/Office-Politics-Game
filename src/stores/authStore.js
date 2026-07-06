@@ -4,7 +4,6 @@ import {
   login as loginApi,
   verifyToken as verifyTokenApi,
 } from "../services/authApi.js"
-import { usePlayerStore } from "./playerStore.js"
 
 const AUTH_TOKEN_STORAGE_KEY = "gameAuthToken"
 
@@ -20,10 +19,6 @@ function removeAuthToken() {
   localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
 }
 
-function removeGuestPlayer() {
-  localStorage.removeItem("guestPlayer")
-}
-
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     currentPlayer: null,
@@ -35,28 +30,6 @@ export const useAuthStore = defineStore("auth", {
   }),
 
   actions: {
-    syncAuthenticatedPlayer(player) {
-      const playerStore = usePlayerStore()
-
-      this.currentPlayer = player || null
-      playerStore.setCurrentPlayer(player || null)
-
-      if (player) {
-        removeGuestPlayer()
-      }
-    },
-
-    clearSessionState() {
-      const playerStore = usePlayerStore()
-
-      this.currentPlayer = null
-      this.token = ""
-      this.isLoggedIn = false
-      this.hasVerifiedToken = false
-      playerStore.resetPlayer()
-      removeAuthToken()
-    },
-
     async register(payload) {
       this.isLoading = true
       this.errorMessage = ""
@@ -80,12 +53,11 @@ export const useAuthStore = defineStore("auth", {
       try {
         const data = await loginApi(payload)
         const token = data.token || ""
-        const player = data.player || null
 
+        this.currentPlayer = data.player || null
         this.token = token
         this.isLoggedIn = Boolean(token)
         this.hasVerifiedToken = Boolean(token)
-        this.syncAuthenticatedPlayer(player)
 
         if (token) {
           saveAuthToken(token)
@@ -95,8 +67,12 @@ export const useAuthStore = defineStore("auth", {
 
         return data
       } catch (error) {
-        this.clearSessionState()
+        this.currentPlayer = null
+        this.token = ""
+        this.isLoggedIn = false
+        this.hasVerifiedToken = false
         this.errorMessage = getErrorMessage(error, "登入失敗")
+        removeAuthToken()
 
         throw error
       } finally {
@@ -110,7 +86,10 @@ export const useAuthStore = defineStore("auth", {
       }
 
       if (!this.token) {
-        this.clearSessionState()
+        this.currentPlayer = null
+        this.isLoggedIn = false
+        this.hasVerifiedToken = false
+        removeAuthToken()
 
         return false
       }
@@ -120,16 +99,19 @@ export const useAuthStore = defineStore("auth", {
 
       try {
         const data = await verifyTokenApi(this.token)
-        const player = data.player || null
 
-        this.syncAuthenticatedPlayer(player)
+        this.currentPlayer = data.player || null
         this.isLoggedIn = true
         this.hasVerifiedToken = true
 
         return true
       } catch (error) {
-        this.clearSessionState()
+        this.currentPlayer = null
+        this.token = ""
+        this.isLoggedIn = false
+        this.hasVerifiedToken = false
         this.errorMessage = getErrorMessage(error, "登入驗證失敗")
+        removeAuthToken()
 
         return false
       } finally {
@@ -137,17 +119,13 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    async initializeSession() {
-      if (!this.token) {
-        return false
-      }
-
-      return this.verifyToken()
-    },
-
     logout() {
-      this.clearSessionState()
+      this.currentPlayer = null
+      this.token = ""
+      this.isLoggedIn = false
+      this.hasVerifiedToken = false
       this.errorMessage = ""
+      removeAuthToken()
     },
 
     clearError() {

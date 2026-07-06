@@ -117,8 +117,8 @@ describe("requireAuth middleware", () => {
     })
 
     test("service 回傳自訂 statusCode 時，使用該 statusCode", async () => {
-        const error = new Error("登入驗證失敗")
-        error.statusCode = 401
+        const error = new Error("找不到玩家資料")
+        error.statusCode = 404
         mockVerifyToken.mockRejectedValueOnce(error)
 
         const req = {
@@ -133,9 +133,9 @@ describe("requireAuth middleware", () => {
 
         expect(mockVerifyToken).toHaveBeenCalledWith("valid-token")
         expect(next).not.toHaveBeenCalled()
-        expect(res.status).toHaveBeenCalledWith(401)
+        expect(res.status).toHaveBeenCalledWith(404)
         expect(res.json).toHaveBeenCalledWith({
-            message: "登入驗證失敗"
+            message: "找不到玩家資料"
         })
     })
 })

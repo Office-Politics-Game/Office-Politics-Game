@@ -1,4 +1,14 @@
-import { registerPlayer, loginPlayer } from "../services/authService.js"
+import { registerPlayer, loginPlayer, verifyToken } from "../services/authService.js"
+
+function getBearerToken(req) {
+    const authorization = req.headers.authorization || ""
+
+    if (!authorization.startsWith("Bearer ")) {
+        return ""
+    }
+
+    return authorization.replace("Bearer ", "").trim()
+}
 
 async function handleRegisterPlayer(req, res) {
     try {
@@ -27,9 +37,12 @@ async function handleLoginPlayer(req, res) {
     }
 }
 
-async function handleGetCurrentPlayer(req, res) {
+async function handleVerifyToken(req, res) {
     try {
-        res.status(200).json({ player: req.player })
+        const token = getBearerToken(req)
+        const player = await verifyToken(token)
+
+        res.status(200).json({ player })
     } catch (error) {
         res.status(error.statusCode || 500).json({
             message: error.message || "登入驗證失敗"
@@ -37,4 +50,4 @@ async function handleGetCurrentPlayer(req, res) {
     }
 }
 
-export { handleRegisterPlayer, handleLoginPlayer, handleGetCurrentPlayer }
+export { handleRegisterPlayer, handleLoginPlayer, handleVerifyToken }

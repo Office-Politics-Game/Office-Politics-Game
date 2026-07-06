@@ -51,14 +51,6 @@
 - **Supabase JS**: Supabase client 整合。
 - **bcryptjs**: 密碼雜湊處理。
 
-### Auth API
-
-- `POST /api/auth/login`
-  - 登入成功後回傳 `token` 與 `player`。
-- `GET /api/auth/me`
-  - 透過 `Authorization: Bearer <AuthToken>` 取得目前登入玩家資料。
-- 前端會將 `AuthToken` 存在 localStorage，重新整理或重新進站時自動驗證並還原登入狀態。
-
 ### Testing & Development
 
 - **Jest**: 後端測試。
