@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import GameCard from './GameCard.vue'
+import HoverBlockHint from './HoverBlockHint.vue'
 
 const props = defineProps({
   cards: {
@@ -18,6 +19,19 @@ const props = defineProps({
   draggingCardId: {
     type: String,
     default: null,
+  },
+  disabledCardIds: {
+    type: Array,
+    default: () => [],
+    validator: (cardIds) => cardIds.every((cardId) => typeof cardId === 'string'),
+  },
+  isInteractionDisabled: {
+    type: Boolean,
+    default: false,
+  },
+  disabledMessage: {
+    type: String,
+    default: '',
   },
 })
 
@@ -48,6 +62,14 @@ function finishDraw() {
   isDrawing.value = false
 }
 
+function isCardDisabled(card) {
+  return props.isInteractionDisabled || props.disabledCardIds.includes(card.id)
+}
+
+function isCardRuleDisabled(card) {
+  return props.disabledCardIds.includes(card.id)
+}
+
 defineExpose({
   prepareDrawTarget,
   getDrawTargetRect,
@@ -71,11 +93,18 @@ defineExpose({
       v-for="card in cards"
       :key="card.id"
       class="game-card-arrangement absolute bottom-0 left-1/2 aspect-[3/4] h-[clamp(126px,31vh,230px)] origin-bottom select-none"
-      :class="{ 'game-card-arrangement--dragging': card.id === draggingCardId }"
+      :class="{
+        'game-card-arrangement--dragging': card.id === draggingCardId,
+        'game-card-arrangement--disabled': isCardDisabled(card),
+        'game-card-arrangement--interaction-disabled': props.isInteractionDisabled,
+        'game-card-arrangement--rule-disabled': isCardRuleDisabled(card),
+        'hover-block-hint-target': props.isInteractionDisabled,
+      }"
       role="button"
-      tabindex="0"
+      :tabindex="isCardDisabled(card) ? -1 : 0"
+      :aria-disabled="isCardDisabled(card)"
       :aria-label="`出牌：${card.name}`"
-      @pointerdown="emit('card-pointerdown', card, $event)"
+      @pointerdown="!isCardDisabled(card) && emit('card-pointerdown', card, $event)"
     >
       <div class="game-card-motion size-full">
         <GameCard
@@ -84,6 +113,10 @@ defineExpose({
           :frame-url="card.frameUrl"
         />
       </div>
+      <HoverBlockHint
+        v-if="props.isInteractionDisabled && props.disabledMessage"
+        :message="props.disabledMessage"
+      />
     </div>
 
     <div
@@ -119,6 +152,16 @@ defineExpose({
 
 .game-card-arrangement:active {
   cursor: grabbing;
+}
+
+.game-card-arrangement--rule-disabled,
+.game-card-arrangement--rule-disabled:active {
+  cursor: not-allowed;
+}
+
+.game-card-arrangement--interaction-disabled,
+.game-card-arrangement--interaction-disabled:active {
+  cursor: default;
 }
 
 .game-card-arrangement:nth-child(1) {

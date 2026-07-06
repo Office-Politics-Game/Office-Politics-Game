@@ -14,7 +14,6 @@ const emit = defineEmits(['complete'])
 
 const sourceLayerRef = ref(null)
 const targetLayerRef = ref(null)
-const veilRef = ref(null)
 const exchangeLineRef = ref(null)
 const sourceStyle = ref({ display: 'none' })
 const targetStyle = ref({ display: 'none' })
@@ -30,7 +29,6 @@ function getKillTargets() {
     getSourceFlipperElement(),
     getTargetElement(),
     getTargetFlipperElement(),
-    veilRef.value,
     exchangeLineRef.value,
   ]
 }
@@ -91,7 +89,7 @@ async function play(result) {
     isStale(result) ||
     !sourceElement || !sourceFlipperElement ||
     !targetElement || !targetFlipperElement ||
-    !veilRef.value || !exchangeLineRef.value
+    !exchangeLineRef.value
   ) {
     finishAnimation(result)
     return
@@ -111,7 +109,6 @@ async function play(result) {
   const reduced = isReducedMotion()
   const timing = getCardMotionTiming(reduced, { showcase: 0.48, exchange: 0.34, settle: 0.42 })
 
-  gsap.set(veilRef.value, { autoAlpha: 0 })
   gsap.set(exchangeLineRef.value, { autoAlpha: 0, xPercent: -50, yPercent: -50, scaleX: 0.42, transformOrigin: '50% 50%' })
   gsap.set([sourceElement, targetElement], { x: 0, y: 0, scale: 1, rotation: 0, autoAlpha: 1, transformOrigin: '50% 50%', transformPerspective: 1200 })
   gsap.set(sourceFlipperElement, { rotationY: 0, transformStyle: 'preserve-3d' })
@@ -121,20 +118,18 @@ async function play(result) {
 
   if (reduced) {
     timeline.value
-      .to(veilRef.value, { autoAlpha: 1, duration: timing.flash })
-      .to(exchangeLineRef.value, { autoAlpha: 0.72, scaleX: 1, duration: timing.flash }, '<')
+      .to(exchangeLineRef.value, { autoAlpha: 0.72, scaleX: 1, duration: timing.flash })
       .set(sourceElement, getMoveVars(sourceTravel, { scale: sourceEndScale, duration: 0, reduced }))
       .set(targetElement, getMoveVars(targetTravel, { scale: targetEndScale, duration: 0, reduced }))
       .set(sourceFlipperElement, { rotationY: 180 })
       .set(targetFlipperElement, { rotationY: 0 })
       .to(exchangeLineRef.value, { autoAlpha: 0, duration: timing.flash })
-      .to([sourceElement, targetElement, veilRef.value], { autoAlpha: 0, duration: timing.travel }, '<')
+      .to([sourceElement, targetElement], { autoAlpha: 0, duration: timing.travel }, '<')
     return
   }
 
   timeline.value
-    .to(veilRef.value, { autoAlpha: 1, duration: timing.flash, ease: 'power1.out' })
-    .to(sourceFlipperElement, getFlipVars(180, timing.flip), '<')
+    .to(sourceFlipperElement, getFlipVars(180, timing.flip))
     .to(sourceElement, getMoveVars(sourceShowcase, { scale: 1.24, duration: timing.showcase, ease: 'expo.out', extra: { rotation: -7 } }), '-=0.04')
     .to(targetElement, getMoveVars(targetShowcase, { scale: 1.24, duration: timing.showcase, ease: 'expo.out', extra: { rotation: 7 } }), '<')
     .to(exchangeLineRef.value, { autoAlpha: 0.8, scaleX: 1, duration: timing.flash, ease: 'power2.out' }, '-=0.16')
@@ -144,7 +139,7 @@ async function play(result) {
     .to(sourceElement, getMoveVars(sourceTravel, { scale: sourceEndScale, duration: timing.settle, ease: 'power3.inOut', extra: { rotation: -8 } }), '<')
     .to(targetElement, getMoveVars(targetTravel, { scale: targetEndScale, duration: timing.settle, ease: 'power3.inOut', extra: { rotation: 3 } }), '<')
     .to(targetFlipperElement, getFlipVars(0, timing.flip), '-=0.18')
-    .to([sourceElement, targetElement, veilRef.value], { autoAlpha: 0, duration: timing.travel, ease: 'power1.in' })
+    .to([sourceElement, targetElement], { autoAlpha: 0, duration: timing.travel, ease: 'power1.in' })
 }
 
 watch(() => props.result?.id, (id) => {
@@ -158,7 +153,6 @@ defineExpose({ stop })
 <template>
   <Teleport to="body">
     <div v-if="activeResult" class="card-swap-animation" aria-hidden="true">
-      <div ref="veilRef" class="card-swap-animation__veil"></div>
       <div ref="exchangeLineRef" class="card-swap-animation__line"></div>
       <EffectCardLayer ref="sourceLayerRef" class="card-swap-animation__card" :card="activeResult.sourceCard" :style="sourceStyle" use-image-front overlay-behind-card>
         <template #overlay><div class="card-swap-animation__glow" :style="{ '--accent': activeResult.sourceCard.color }"></div></template>
@@ -172,7 +166,6 @@ defineExpose({ stop })
 
 <style scoped>
 .card-swap-animation { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
-.card-swap-animation__veil { position: fixed; inset: 0; z-index: 0; background: radial-gradient(circle at 50% 50%, rgba(134, 179, 224, 0.24), transparent 30%), linear-gradient(120deg, rgba(0, 19, 50, 0.78), rgba(70, 85, 99, 0.44)); }
 .card-swap-animation__line { position: fixed; top: 50%; left: 50%; z-index: 1; width: min(72vw, 660px); height: 3px; background: linear-gradient(90deg, transparent, var(--brand-primary) 18%, var(--surface-glass-hover) 50%, var(--brand-primary) 82%, transparent); box-shadow: 0 0 24px rgba(134, 179, 224, 0.82); }
 .card-swap-animation__card { z-index: 2; --effect-card-face-filter: drop-shadow(0 0 16px rgba(134, 179, 224, 0.36)) drop-shadow(0 22px 30px rgba(0, 19, 50, 0.52)); }
 .card-swap-animation__glow { position: absolute; inset: -18%; border-radius: 0; background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.42), transparent 34%), radial-gradient(circle at 50% 50%, var(--accent), transparent 66%); filter: blur(16px); opacity: 0.72; }

@@ -1,8 +1,9 @@
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { gsap } from 'gsap'
-import cardBackUrl from '@/assets/images/card-bg-back.webp'
-import GameCard from './GameCard.vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { gsap } from "gsap";
+import cardBackUrl from "@/assets/images/card-bg-back.webp";
+import GameCard from "./GameCard.vue";
+import HoverBlockHint from "./HoverBlockHint.vue";
 
 const props = defineProps({
   deckCount: {
@@ -14,9 +15,9 @@ const props = defineProps({
     default: null,
     validator: (card) =>
       card === null ||
-      (typeof card?.name === 'string' &&
-        typeof card?.backgroundUrl === 'string' &&
-        typeof card?.frameUrl === 'string'),
+      (typeof card?.name === "string" &&
+        typeof card?.backgroundUrl === "string" &&
+        typeof card?.frameUrl === "string"),
   },
   discardCards: {
     type: Array,
@@ -24,14 +25,18 @@ const props = defineProps({
     validator: (cards) =>
       cards.every(
         (card) =>
-          typeof card?.name === 'string' &&
-          typeof card?.backgroundUrl === 'string' &&
-          typeof card?.frameUrl === 'string',
+          typeof card?.name === "string" &&
+          typeof card?.backgroundUrl === "string" &&
+          typeof card?.frameUrl === "string",
       ),
   },
   isDrawDisabled: {
     type: Boolean,
     default: false,
+  },
+  drawDisabledMessage: {
+    type: String,
+    default: "",
   },
   isDropTargetActive: {
     type: Boolean,
@@ -41,48 +46,59 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-})
+});
 
-const emit = defineEmits(['draw'])
+const emit = defineEmits(["draw"]);
 
-const pileArea = ref(null)
-const deckPile = ref(null)
-const discardPile = ref(null)
-const isDeckPressing = ref(false)
-const TABLE_ROTATION_X = 58
-let gsapContext
-let gsapMedia
-let pressTimeline
-let hasRequestedDraw = false
+const pileArea = ref(null);
+const deckPile = ref(null);
+const discardPile = ref(null);
+const isDeckPressing = ref(false);
+const TABLE_ROTATION_X = 58;
+let gsapContext;
+let gsapMedia;
+let pressTimeline;
+let hasRequestedDraw = false;
 
 const normalizedDiscardCards = computed(() => {
   if (props.discardCards.length > 0) {
-    return props.discardCards
+    return props.discardCards;
   }
 
-  return props.discardCard ? [props.discardCard] : []
-})
+  return props.discardCard ? [props.discardCard] : [];
+});
 
 const topDiscardCard = computed(() => {
   if (normalizedDiscardCards.value.length > 0) {
-    return normalizedDiscardCards.value[normalizedDiscardCards.value.length - 1]
+    return normalizedDiscardCards.value[
+      normalizedDiscardCards.value.length - 1
+    ];
   }
 
-  return null
-})
+  return null;
+});
 
 const isDeckInteractionDisabled = computed(
   () => props.isDrawDisabled || props.isDeckHidden || isDeckPressing.value,
-)
+);
+const isDeckButtonDisabled = computed(
+  () => props.isDeckHidden || isDeckPressing.value,
+);
+const isDrawBlockedWithMessage = computed(
+  () =>
+    props.isDrawDisabled &&
+    Boolean(props.drawDisabledMessage) &&
+    !props.isDeckHidden,
+);
 
 function getDeckRect() {
-  return deckPile.value?.getBoundingClientRect() ?? null
+  return deckPile.value?.getBoundingClientRect() ?? null;
 }
 
 function getDeckAnimationPose() {
-  const rect = getDeckRect()
+  const rect = getDeckRect();
   if (!rect || !deckPile.value) {
-    return null
+    return null;
   }
 
   return {
@@ -100,12 +116,12 @@ function getDeckAnimationPose() {
     rotationY: 0,
     rotationZ: -2,
     transformPerspective: 900,
-  }
+  };
 }
 
 function resetDeckPose() {
   if (!deckPile.value) {
-    return
+    return;
   }
 
   gsap.set(deckPile.value, {
@@ -114,57 +130,57 @@ function resetDeckPose() {
     rotationZ: -2,
     scale: 1,
     y: 0,
-    clearProps: 'filter,opacity',
-  })
+    clearProps: "filter,opacity",
+  });
 }
 
 function releaseDeckInteraction() {
-  hasRequestedDraw = false
-  isDeckPressing.value = false
-  resetDeckPose()
+  hasRequestedDraw = false;
+  isDeckPressing.value = false;
+  resetDeckPose();
 }
 
 function emitDrawAfterPress() {
-  hasRequestedDraw = true
-  emit('draw')
+  hasRequestedDraw = true;
+  emit("draw");
 
   nextTick(() => {
     if (!props.isDrawDisabled) {
-      releaseDeckInteraction()
+      releaseDeckInteraction();
     }
-  })
+  });
 }
 
 function handleDeckDraw() {
   if (isDeckInteractionDisabled.value || !deckPile.value) {
-    return
+    return;
   }
 
-  isDeckPressing.value = true
-  gsap.killTweensOf(deckPile.value)
+  isDeckPressing.value = true;
+  gsap.killTweensOf(deckPile.value);
 
   const reduceMotion = window.matchMedia(
-    '(prefers-reduced-motion: reduce)',
-  ).matches
+    "(prefers-reduced-motion: reduce)",
+  ).matches;
 
-  pressTimeline?.kill()
+  pressTimeline?.kill();
   pressTimeline = gsap.timeline({
     onComplete: emitDrawAfterPress,
-  })
+  });
 
   if (reduceMotion) {
     pressTimeline
       .to(deckPile.value, {
-        filter: 'brightness(0.82)',
+        filter: "brightness(0.82)",
         duration: 0.08,
-        ease: 'power1.out',
+        ease: "power1.out",
       })
       .to(deckPile.value, {
-        filter: 'brightness(1)',
+        filter: "brightness(1)",
         duration: 0.1,
-        ease: 'power1.out',
-      })
-    return
+        ease: "power1.out",
+      });
+    return;
   }
 
   pressTimeline
@@ -175,15 +191,15 @@ function handleDeckDraw() {
       scale: 0.96,
       y: 5,
       duration: 0.08,
-      ease: 'power2.in',
+      ease: "power2.in",
     })
     .to(deckPile.value, {
       rotationZ: -2,
       scale: 1,
       y: 0,
       duration: 0.12,
-      ease: 'back.out(1.8)',
-    })
+      ease: "back.out(1.8)",
+    });
 }
 
 function createPileTilt(element, rotationZ) {
@@ -215,12 +231,12 @@ function createPileTilt(element, rotationZ) {
 
   function handlePointerMove(event) {
     if (isDeckInteractionDisabled.value && element === deckPile.value) {
-      return
+      return;
     }
 
-    const bounds = element.getBoundingClientRect()
-    const offsetX = (event.clientX - bounds.left) / bounds.width - 0.5
-    const offsetY = (event.clientY - bounds.top) / bounds.height - 0.5
+    const bounds = element.getBoundingClientRect();
+    const offsetX = (event.clientX - bounds.left) / bounds.width - 0.5;
+    const offsetY = (event.clientY - bounds.top) / bounds.height - 0.5;
 
     moveX(offsetX * 4);
     moveY(TABLE_ROTATION_X + offsetY * -4);
@@ -229,12 +245,12 @@ function createPileTilt(element, rotationZ) {
 
   function handlePointerLeave() {
     if (isDeckInteractionDisabled.value && element === deckPile.value) {
-      return
+      return;
     }
 
-    moveX(0)
-    moveY(TABLE_ROTATION_X)
-    lift(0)
+    moveX(0);
+    moveY(TABLE_ROTATION_X);
+    lift(0);
   }
 
   element.addEventListener("pointermove", handlePointerMove, { passive: true });
@@ -250,26 +266,32 @@ watch(
   () => props.isDrawDisabled,
   (isDisabled) => {
     if (!isDisabled && hasRequestedDraw) {
-      releaseDeckInteraction()
+      releaseDeckInteraction();
     }
   },
-)
+);
 
 defineExpose({
   getDeckRect,
   getDeckAnimationPose,
   getDiscardRect() {
-    const topDiscardCard = discardPile.value?.querySelector('.table-card-pile__card:last-child')
-    return topDiscardCard?.getBoundingClientRect() ?? discardPile.value?.getBoundingClientRect() ?? null
+    const topDiscardCard = discardPile.value?.querySelector(
+      ".table-card-pile__card:last-child",
+    );
+    return (
+      topDiscardCard?.getBoundingClientRect() ??
+      discardPile.value?.getBoundingClientRect() ??
+      null
+    );
   },
   getPlayZoneRect() {
-    const bounds = pileArea.value?.getBoundingClientRect()
+    const bounds = pileArea.value?.getBoundingClientRect();
     if (!bounds) {
-      return null
+      return null;
     }
 
-    const expandX = Math.min(Math.max(bounds.width * 0.24, 110), 220)
-    const expandY = Math.min(Math.max(bounds.height * 0.16, 70), 160)
+    const expandX = Math.min(Math.max(bounds.width * 0.24, 110), 220);
+    const expandY = Math.min(Math.max(bounds.height * 0.16, 70), 160);
 
     return {
       left: bounds.left - expandX,
@@ -278,9 +300,9 @@ defineExpose({
       height: bounds.height + expandY * 2,
       right: bounds.right + expandX,
       bottom: bounds.bottom + expandY,
-    }
+    };
   },
-})
+});
 
 onMounted(() => {
   gsapContext = gsap.context(() => {
@@ -316,61 +338,77 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  pressTimeline?.kill()
-  gsapMedia?.revert()
-  gsapContext?.revert()
-})
+  pressTimeline?.kill();
+  gsapMedia?.revert();
+  gsapContext?.revert();
+});
 </script>
 
 <template>
   <div
     ref="pileArea"
-    class="pile-area flex items-end justify-center gap-[clamp(44px,8vw,112px)]"
+    class="pile-area flex items-end justify-center gap-[clamp(28px,5vw,72px)]"
     aria-label="牌庫與棄牌區"
   >
     <section
       class="flex flex-col items-center gap-[clamp(6px,1.4vh,12px)]"
       :aria-label="`牌庫，剩餘 ${deckCount} 張`"
     >
-      <button
-        ref="deckPile"
-        type="button"
-        class="table-card-pile table-card-pile--deck card-stack relative aspect-[3/4] h-[clamp(108px,25vh,220px)]"
-        :class="{ 'table-card-pile--hidden': isDeckHidden }"
-        :disabled="isDeckInteractionDisabled"
-        :aria-label="`抽牌，牌庫剩餘 ${deckCount} 張`"
-        @click="handleDeckDraw"
+      <div
+        class="table-card-pile-target relative"
+        :class="{ 'hover-block-hint-target': isDrawBlockedWithMessage }"
       >
-        <img
-          v-for="layer in 3"
-          :key="layer"
-          :src="cardBackUrl"
-          alt=""
-          aria-hidden="true"
-          class="absolute inset-0 block size-full select-none object-contain"
-          :class="`card-stack__layer--${layer}`"
-          draggable="false"
+        <button
+          ref="deckPile"
+          type="button"
+          class="table-card-pile table-card-pile--deck card-stack relative aspect-[3/4] h-[clamp(108px,25vh,220px)]"
+          :class="{ 'table-card-pile--hidden': isDeckHidden }"
+          :disabled="isDeckButtonDisabled"
+          :aria-disabled="isDeckInteractionDisabled"
+          :aria-label="`抽牌，牌庫剩餘 ${deckCount} 張`"
+          @click="handleDeckDraw"
+        >
+          <img
+            v-for="layer in 3"
+            :key="layer"
+            :src="cardBackUrl"
+            alt=""
+            aria-hidden="true"
+            class="absolute inset-0 block size-full select-none object-contain"
+            :class="`card-stack__layer--${layer}`"
+            draggable="false"
+          />
+        </button>
+        <HoverBlockHint
+          v-if="isDrawBlockedWithMessage"
+          class="table-card-pile__blocked-hint"
+          :message="props.drawDisabledMessage"
         />
-      </button>
+      </div>
 
       <p
         aria-hidden="true"
         class="m-0 text-[var(--text-xs)] font-bold tracking-[0.12em] text-white text-shadow-[0_2px_6px_var(--brand-navy)]"
       >
-        牌庫 · {{ deckCount }} 張
+        牌庫·{{ deckCount }} 張
       </p>
     </section>
 
     <section
       class="flex flex-col items-center gap-[clamp(6px,1.4vh,12px)]"
-      :aria-label="topDiscardCard ? `棄牌區，上一張牌是 ${topDiscardCard.name}` : '棄牌區'"
+      :aria-label="
+        topDiscardCard ? `棄牌區，上一張牌是 ${topDiscardCard.name}` : '棄牌區'
+      "
     >
       <div
         ref="discardPile"
         class="table-card-pile table-card-pile--discard relative aspect-[3/4] h-[clamp(108px,25vh,220px)]"
         :class="{ 'table-card-pile--active': isDropTargetActive }"
       >
-        <template v-for="(card, index) in normalizedDiscardCards" :key="`${index}-${card.name}`">
+        <template
+          v-for="(card, index) in normalizedDiscardCards"
+          :key="`${index}-${card.name}`"
+        >
           <GameCard
             :name="card.name"
             :background-url="card.backgroundUrl"
@@ -384,7 +422,7 @@ onUnmounted(() => {
         aria-hidden="true"
         class="m-0 text-[var(--text-xs)] font-bold tracking-[0.12em] text-white text-shadow-[0_2px_6px_var(--brand-navy)]"
       >
-        棄牌區 · {{ topDiscardCard ? topDiscardCard.name : '尚未出牌' }}
+        棄牌區·{{ topDiscardCard ? topDiscardCard.name : "尚未出牌" }}
       </p>
     </section>
   </div>
@@ -393,6 +431,18 @@ onUnmounted(() => {
 <style scoped>
 .pile-area {
   perspective: 1100px;
+}
+
+.table-card-pile-target :global(.table-card-pile__blocked-hint) {
+  top: 18%;
+  bottom: auto;
+  transform: translateX(-50%);
+}
+
+@media (min-width: 1024px) {
+  .table-card-pile-target :global(.table-card-pile__blocked-hint) {
+    top: 40%;
+  }
 }
 
 .table-card-pile {
@@ -429,10 +479,8 @@ onUnmounted(() => {
     box-shadow 0.18s ease;
 }
 
-.table-card-pile--deck:hover:not(:disabled) {
-  filter:
-    brightness(1.06)
-    drop-shadow(0 4px 4px rgba(0, 19, 50, 0.34))
+.table-card-pile--deck:hover:not(:disabled):not([aria-disabled="true"]) {
+  filter: brightness(1.06) drop-shadow(0 4px 4px rgba(0, 19, 50, 0.34))
     drop-shadow(0 12px 12px rgba(0, 19, 50, 0.26));
 }
 
@@ -441,8 +489,9 @@ onUnmounted(() => {
   box-shadow: 0 0 0 5px var(--brand-focus);
 }
 
-.table-card-pile--deck:disabled {
-  cursor: not-allowed;
+.table-card-pile--deck:disabled,
+.table-card-pile--deck[aria-disabled="true"] {
+  cursor: default;
 }
 
 .table-card-pile--hidden {
@@ -454,8 +503,7 @@ onUnmounted(() => {
 }
 
 .table-card-pile--active {
-  filter:
-    drop-shadow(0 0 18px rgba(107, 184, 212, 0.88))
+  filter: drop-shadow(0 0 18px rgba(107, 184, 212, 0.88))
     drop-shadow(0 0 42px rgba(200, 168, 75, 0.38))
     drop-shadow(0 3px 3px rgba(0, 19, 50, 0.34))
     drop-shadow(0 9px 10px rgba(0, 19, 50, 0.24));

@@ -13,7 +13,8 @@ import {
 } from "@/services/friendApi.js";
 import { searchPlayers as searchPlayersApi } from "@/services/playerService.js";
 import { useAuthStore } from "@/stores/authStore.js";
-import { usePlayerStore } from "@/stores/playerStore.js";
+
+const FRIEND_LOGIN_REQUIRED_MESSAGE = "登入後才能使用好友功能";
 
 function normalizeKeyword(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ");
@@ -47,19 +48,6 @@ function formatRecordTime(value) {
     minute: "2-digit",
     hour12: false,
   }).format(date);
-}
-
-function readSavedGuestPlayer() {
-  if (typeof localStorage === "undefined") {
-    return null;
-  }
-
-  try {
-    return JSON.parse(localStorage.getItem("guestPlayer") || "null");
-  } catch {
-    localStorage.removeItem("guestPlayer");
-    return null;
-  }
 }
 
 function mapFriend(friend) {
@@ -145,6 +133,16 @@ function mapBlockedPlayer(player) {
   };
 }
 
+function getAuthenticatedPlayerId() {
+  const authStore = useAuthStore();
+
+  if (!authStore.isLoggedIn || !authStore.token) {
+    return null;
+  }
+
+  return toPositiveInteger(authStore.currentPlayer?.id);
+}
+
 export const useFriendStore = defineStore("friend", {
   state: () => ({
     currentPlayerId: null,
@@ -187,25 +185,47 @@ export const useFriendStore = defineStore("friend", {
       state.processingPlayerIds.includes(Number(playerId)),
     isBlockProcessing: (state) => (blockId) =>
       state.processingBlockIds.includes(Number(blockId)),
+    canUseFriendSystem: () => Boolean(getAuthenticatedPlayerId()),
+    friendLoginRequiredMessage: () => FRIEND_LOGIN_REQUIRED_MESSAGE,
   },
 
   actions: {
-    getCurrentPlayerId() {
-      const authStore = useAuthStore();
-      const playerStore = usePlayerStore();
-      const savedGuestPlayer = readSavedGuestPlayer();
+    clearFriendData() {
+      this.currentPlayerId = null;
+      this.friends = [];
+      this.requests = [];
+      this.sentInvites = [];
+      this.blockedPlayers = [];
+      this.searchResults = [];
+      this.selectedFriendId = null;
+      this.lastSearchKeyword = "";
+      this.noticeMessage = "";
+      this.errorMessage = "";
+      this.searchErrorMessage = "";
+      this.isLoading = false;
+      this.isSearching = false;
+      this.isSending = false;
+      this.processingRequestIds = [];
+      this.processingFriendshipIds = [];
+      this.processingPlayerIds = [];
+      this.processingBlockIds = [];
+    },
 
-      if (!playerStore.currentPlayer && savedGuestPlayer?.id) {
-        playerStore.setCurrentPlayer(savedGuestPlayer);
+    markLoginRequired({ search = false } = {}) {
+      this.clearFriendData();
+      this.errorMessage = FRIEND_LOGIN_REQUIRED_MESSAGE;
+
+      if (search) {
+        this.searchErrorMessage = FRIEND_LOGIN_REQUIRED_MESSAGE;
       }
+    },
 
-      const playerId =
-        toPositiveInteger(authStore.currentPlayer?.id) ??
-        toPositiveInteger(playerStore.currentPlayerId) ??
-        toPositiveInteger(savedGuestPlayer?.id);
+    getCurrentPlayerId() {
+      const playerId = getAuthenticatedPlayerId();
 
       if (!playerId) {
-        throw new Error("請先登入或建立訪客玩家資料");
+        this.currentPlayerId = null;
+        throw new Error(FRIEND_LOGIN_REQUIRED_MESSAGE);
       }
 
       this.currentPlayerId = playerId;
@@ -219,6 +239,11 @@ export const useFriendStore = defineStore("friend", {
     },
 
     async loadFriendData() {
+      if (!this.canUseFriendSystem) {
+        this.markLoginRequired();
+        return;
+      }
+
       this.isLoading = true;
       this.errorMessage = "";
 
@@ -259,6 +284,11 @@ export const useFriendStore = defineStore("friend", {
     async searchPlayers(keyword) {
       const normalizedKeyword = normalizeKeyword(keyword);
 
+      if (!this.canUseFriendSystem) {
+        this.markLoginRequired({ search: true });
+        return;
+      }
+
       if (!normalizedKeyword) {
         this.searchErrorMessage = "請輸入玩家暱稱或玩家 ID";
         this.searchResults = [];
@@ -291,6 +321,11 @@ export const useFriendStore = defineStore("friend", {
     },
 
     async sendFriendRequest(targetPlayerId) {
+      if (!this.canUseFriendSystem) {
+        this.markLoginRequired({ search: true });
+        return;
+      }
+
       const numericTargetPlayerId = toPositiveInteger(targetPlayerId);
 
       if (!numericTargetPlayerId) {
@@ -331,6 +366,11 @@ export const useFriendStore = defineStore("friend", {
     },
 
     async removeFriend(friendshipId) {
+      if (!this.canUseFriendSystem) {
+        this.markLoginRequired();
+        return;
+      }
+
       const numericFriendshipId = toPositiveInteger(friendshipId);
 
       if (!numericFriendshipId) {
@@ -370,6 +410,11 @@ export const useFriendStore = defineStore("friend", {
     },
 
     async blockPlayer(targetPlayerId) {
+      if (!this.canUseFriendSystem) {
+        this.markLoginRequired({ search: true });
+        return;
+      }
+
       const numericTargetPlayerId = toPositiveInteger(targetPlayerId);
 
       if (!numericTargetPlayerId) {
@@ -423,6 +468,11 @@ export const useFriendStore = defineStore("friend", {
     },
 
     async unblockPlayer(blockId) {
+      if (!this.canUseFriendSystem) {
+        this.markLoginRequired();
+        return;
+      }
+
       const numericBlockId = toPositiveInteger(blockId);
 
       if (!numericBlockId) {
@@ -467,6 +517,11 @@ export const useFriendStore = defineStore("friend", {
     },
 
     async acceptRequest(requestId) {
+      if (!this.canUseFriendSystem) {
+        this.markLoginRequired();
+        return;
+      }
+
       if (this.processingRequestIds.includes(requestId)) {
         return;
       }
@@ -501,6 +556,11 @@ export const useFriendStore = defineStore("friend", {
     },
 
     async rejectRequest(requestId) {
+      if (!this.canUseFriendSystem) {
+        this.markLoginRequired();
+        return;
+      }
+
       if (this.processingRequestIds.includes(requestId)) {
         return;
       }

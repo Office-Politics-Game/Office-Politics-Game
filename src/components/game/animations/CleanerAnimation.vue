@@ -74,11 +74,11 @@ async function play(result) {
     : null
   const hiddenFromViewer = result.revealCard === false
   const startsFaceUp =
-    hiddenFromViewer && props.isSelfPlayer?.(result.targetPlayerId)
+    hiddenFromViewer && result.targetCard && props.isSelfPlayer?.(result.targetPlayerId)
 
   if (
     !originRect ||
-    !result.targetCard ||
+    (!hiddenFromViewer && !result.targetCard) ||
     (hiddenFromViewer && !viewerRect)
   ) {
     finishAnimation(result)

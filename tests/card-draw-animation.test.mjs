@@ -6,23 +6,29 @@ const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'u
 
 test('card draw animation renders card back and front faces', async () => {
   const componentUrl = new URL(
-    '../src/components/game/CardDrawAnimation.vue',
+    '../src/components/game/animations/CardDrawAnimation.vue',
     import.meta.url,
   )
 
   await access(componentUrl)
   const source = await readFile(componentUrl, 'utf8')
+  const layerSource = await readSource('src/components/game/animations/EffectCardLayer.vue')
 
-  assert.match(source, /card-bg-back\.webp/)
-  assert.match(source, /card-draw__face--back/)
-  assert.match(source, /card-draw__face--front/)
-  assert.match(source, /<GameCard/)
+  assert.match(source, /import EffectCardLayer from '\.\/EffectCardLayer\.vue'/)
+  assert.match(source, /<EffectCardLayer/)
+  assert.match(source, /:card="card"/)
+  assert.match(source, /:show-front="revealFront"/)
+  assert.match(source, /front-flipped/)
+  assert.match(layerSource, /card-bg-back\.webp/)
+  assert.match(layerSource, /effect-card-layer__face--back/)
+  assert.match(layerSource, /effect-card-layer__face--front/)
+  assert.match(layerSource, /<GameCard/)
   assert.match(source, /rotationY/)
-  assert.match(source, /backface-visibility:\s*hidden/)
+  assert.match(layerSource, /backface-visibility:\s*hidden/)
 })
 
 test('card draw animation uses a scoped GSAP timeline with cleanup and reduced motion', async () => {
-  const source = await readSource('src/components/game/CardDrawAnimation.vue')
+  const source = await readSource('src/components/game/animations/CardDrawAnimation.vue')
 
   assert.match(source, /import \{ gsap \} from 'gsap'/)
   assert.match(source, /gsap\.timeline\(/)
@@ -36,7 +42,7 @@ test('card draw animation uses a scoped GSAP timeline with cleanup and reduced m
 })
 
 test('self draw stays face down while flying and flips only after reaching the hand', async () => {
-  const source = await readSource('src/components/game/CardDrawAnimation.vue')
+  const source = await readSource('src/components/game/animations/CardDrawAnimation.vue')
   const fullMotionSource = source.slice(source.indexOf('function playFullMotion'))
 
   assert.match(source, /function selfDraw\(options\)[\s\S]*revealFront:\s*true/)
@@ -47,24 +53,25 @@ test('self draw stays face down while flying and flips only after reaching the h
 })
 
 test('opponent draw keeps the card back visible for the whole flight', async () => {
-  const source = await readSource('src/components/game/CardDrawAnimation.vue')
+  const source = await readSource('src/components/game/animations/CardDrawAnimation.vue')
+  const layerSource = await readSource('src/components/game/animations/EffectCardLayer.vue')
 
   assert.match(source, /function othersDraw\(options\)[\s\S]*revealFront:\s*false/)
-  assert.match(source, /card-bg-back\.webp/)
-  assert.match(source, /v-show="revealFront"/)
+  assert.match(layerSource, /card-bg-back\.webp/)
+  assert.match(layerSource, /v-show="showFront"/)
 })
 
 test('legacy play defaults to the self draw reveal behavior', async () => {
-  const source = await readSource('src/components/game/CardDrawAnimation.vue')
+  const source = await readSource('src/components/game/animations/CardDrawAnimation.vue')
 
   assert.match(source, /const drawOptions = \{[\s\S]*revealFront: options\.revealFront \?\? true/)
   assert.match(source, /playReducedMotion\(drawOptions\) : playFullMotion\(drawOptions\)/)
 })
 
 test('game stage requests a draw and animates the real card supplied by its parent', async () => {
-  const source = await readSource('src/components/game/GameStage.vue')
+  const source = await readSource('src/components/game/ui/GameStage.vue')
 
-  assert.match(source, /import CardDrawAnimation from '\.\/CardDrawAnimation\.vue'/)
+  assert.match(source, /import CardDrawAnimation from ["']\.\.\/animations\/CardDrawAnimation\.vue["']/)
   assert.match(source, /const isDrawAnimating = ref\(false\)/)
   assert.match(source, /drawPlayerId:/)
   assert.match(source, /currentPlayerId:/)
@@ -72,26 +79,26 @@ test('game stage requests a draw and animates the real card supplied by its pare
   assert.match(source, /const resolvedCurrentPlayerId = computed\(/)
   assert.match(source, /canDraw:/)
   assert.match(source, /function requestDraw\(\)/)
-  assert.match(source, /emit\('draw-request'\)/)
+  assert.match(source, /emit\(["']draw-request["']\)/)
   assert.match(source, /async function playDrawAnimation\(card, playerId = null\)/)
-  assert.match(source, /getDrawRect\('source'\)/)
+  assert.match(source, /getDrawRect\(["']source["']\)/)
   assert.match(source, /prepareDrawTarget\(\)/)
-  assert.match(source, /animationRects\.getDrawRect\('target'\)/)
-  assert.match(source, /animationRects\.getDrawRect\('target', activeDrawPlayerId\)/)
+  assert.match(source, /animationRects\.getDrawRect\(["']target["']\)/)
+  assert.match(source, /animationRects\.getDrawRect\(["']target["'], activeDrawPlayerId\)/)
   assert.match(source, /selfDraw\(\{/)
   assert.match(source, /othersDraw\(\{/)
-  assert.match(source, /activeDrawCard\.value = \{ \.\.\.card \}/)
+  assert.match(source, /if \(shouldDrawSelf && !card\)/)
+  assert.match(source, /activeDrawCard\.value = card \? \{ \.\.\.card \} : null/)
   assert.doesNotMatch(source, /props\.drawCard/)
   assert.doesNotMatch(source, /emit\('draw-complete'/)
-  assert.match(source, /emit\('opponent-draw-complete', \{[\s\S]*playerId: activeDrawPlayerId[\s\S]*card: activeDrawCard\.value/)
   assert.match(source, /finishDraw\(\)/)
-  assert.match(source, /:is-draw-disabled="isPlayInteractionLocked \|\| !canDraw"/)
+  assert.match(source, /:is-draw-disabled="isDeckDrawDisabled"/)
   assert.match(source, /@draw="requestDraw"/)
   assert.match(source, /<PlayerSeats[\s\S]*ref="playerSeats"/)
   assert.match(source, /<CardDrawAnimation[\s\S]*:card="activeDrawCard"/)
 })
 
-test('game view draws from the API before playing the reveal animation', async () => {
+test('game view sends draws through socket actions and keeps REST fallback', async () => {
   const source = await readSource('src/views/GameView.vue')
   const handlerSource = source.slice(
     source.indexOf('async function handleDrawRequest'),
@@ -103,20 +110,22 @@ test('game view draws from the API before playing the reveal animation', async (
   assert.match(source, /const canDraw = computed\(/)
   assert.match(handlerSource, /if \([\s\S]*isDrawing\.value[\s\S]*!canDraw\.value/)
   assert.match(handlerSource, /isDrawing\.value = true/)
+  assert.match(handlerSource, /await emitWithAck\('game:draw-card'/)
   assert.match(handlerSource, /await drawGameCard\(/)
   assert.match(handlerSource, /data\?\.drawnCard \?\? data\?\.card/)
   assert.match(handlerSource, /normalizeCard\(rawDrawnCard\)/)
   assert.match(handlerSource, /await gameStage\.value\.playDrawAnimation\(/)
-  assert.match(handlerSource, /await refreshRoomState\(\)/)
+  assert.match(handlerSource, /pendingSocketGameState\.value = data\.state/)
+  assert.match(handlerSource, /flushPendingSocketGameState\(\)/)
   assert.match(handlerSource, /catch \(error\)[\s\S]*await refreshRoomState\(\)/)
   assert.match(handlerSource, /finally \{[\s\S]*isDrawing\.value = false/)
   assert.ok(
-    handlerSource.indexOf('await drawGameCard(') <
-      handlerSource.indexOf('await gameStage.value.playDrawAnimation('),
+    handlerSource.indexOf("await emitWithAck('game:draw-card'") <
+      handlerSource.indexOf('await drawGameCard('),
   )
   assert.ok(
-    handlerSource.indexOf('await gameStage.value.playDrawAnimation(') <
-      handlerSource.indexOf('await refreshRoomState()'),
+    handlerSource.indexOf('await drawGameCard(') <
+      handlerSource.indexOf('await gameStage.value.playDrawAnimation('),
   )
   assert.doesNotMatch(source, /id:\s*'draw-preview'/)
   assert.doesNotMatch(source, /backgroundUrlKey:\s*'intern'/)
@@ -126,7 +135,7 @@ test('game view draws from the API before playing the reveal animation', async (
 })
 
 test('table card piles expose the current deck rectangle', async () => {
-  const source = await readSource('src/components/game/TableCardPiles.vue')
+  const source = await readSource('src/components/game/ui/TableCardPiles.vue')
 
   assert.match(source, /function getDeckRect\(\)/)
   assert.match(source, /deckPile\.value\?\.getBoundingClientRect\(\)/)
