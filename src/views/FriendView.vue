@@ -18,8 +18,9 @@
           <button
             type="button"
             class="tab"
-            :class="{ active: activeTab === 'friends' }"
-            @click="activeTab = 'friends'"
+            :class="{ active: friendStore.canUseFriendSystem && activeTab === 'friends' }"
+            :disabled="!friendStore.canUseFriendSystem"
+            @click="setActiveTab('friends')"
           >
             好友列表
           </button>
@@ -27,8 +28,9 @@
           <button
             type="button"
             class="tab"
-            :class="{ active: activeTab === 'requests' }"
-            @click="activeTab = 'requests'"
+            :class="{ active: friendStore.canUseFriendSystem && activeTab === 'requests' }"
+            :disabled="!friendStore.canUseFriendSystem"
+            @click="setActiveTab('requests')"
           >
             好友邀請 {{ friendStore.pendingRequestCount }}
           </button>
@@ -36,8 +38,9 @@
           <button
             type="button"
             class="tab"
-            :class="{ active: activeTab === 'add' }"
-            @click="activeTab = 'add'"
+            :class="{ active: friendStore.canUseFriendSystem && activeTab === 'add' }"
+            :disabled="!friendStore.canUseFriendSystem"
+            @click="setActiveTab('add')"
           >
             加入好友
           </button>
@@ -45,15 +48,20 @@
           <button
             type="button"
             class="tab"
-            :class="{ active: activeTab === 'blocks' }"
-            @click="activeTab = 'blocks'"
+            :class="{ active: friendStore.canUseFriendSystem && activeTab === 'blocks' }"
+            :disabled="!friendStore.canUseFriendSystem"
+            @click="setActiveTab('blocks')"
           >
             封鎖 {{ friendStore.blockedPlayerCount }}
           </button>
         </div>
 
+        <div v-if="!friendStore.canUseFriendSystem" class="min-h-0 flex-1 overflow-y-auto p-5">
+          <FriendAuthRequiredState compact @login="goLogin" />
+        </div>
+
         <FriendList
-          v-if="activeTab === 'friends'"
+          v-else-if="activeTab === 'friends'"
           :friends="friendStore.friends"
           :selected-friend-id="friendStore.selectedFriendId"
           :is-loading="friendStore.isLoading"
@@ -115,7 +123,7 @@
             <div class="min-w-0">
               <div class="flex items-center gap-2 text-sm font-bold text-[var(--brand-active)]">
                 <span class="truncate">
-                  {{ friendStore.selectedFriend?.name || "尚未選擇好友" }}
+                  {{ selectedFriendName }}
                 </span>
 
                 <span
@@ -143,7 +151,12 @@
         </header>
 
         <section class="min-h-0 flex-1 overflow-y-auto bg-[rgba(244,247,251,0.74)] px-6 py-5">
-          <article v-if="friendStore.selectedFriend" class="friend-detail">
+          <FriendAuthRequiredState
+            v-if="!friendStore.canUseFriendSystem"
+            @login="goLogin"
+          />
+
+          <article v-else-if="friendStore.selectedFriend" class="friend-detail">
             <div class="flex items-center gap-4 border-b border-[var(--gray-100)] pb-5">
               <img
                 src="@/assets/images/player-1.png"
@@ -192,9 +205,10 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import AddFriendForm from "@/components/friend/AddFriendForm.vue";
+import FriendAuthRequiredState from "@/components/friend/FriendAuthRequiredState.vue";
 import BlockedPlayerList from "@/components/friend/BlockedPlayerList.vue";
 import FriendList from "@/components/friend/FriendList.vue";
 import FriendRequestList from "@/components/friend/FriendRequestList.vue";
@@ -208,7 +222,19 @@ const activeTab = ref("friends");
 const isReturningToLobby = ref(false);
 const RETURN_ANIMATION_DURATION = 520;
 
+const selectedFriendName = computed(() => {
+  if (!friendStore.canUseFriendSystem) {
+    return "好友功能已鎖定";
+  }
+
+  return friendStore.selectedFriend?.name || "尚未選擇好友";
+});
+
 const selectedFriendStatus = computed(() => {
+  if (!friendStore.canUseFriendSystem) {
+    return friendStore.friendLoginRequiredMessage;
+  }
+
   const friend = friendStore.selectedFriend;
 
   if (!friend) {
@@ -255,7 +281,35 @@ function formatDetailDate(value) {
   }).format(date);
 }
 
+function setActiveTab(tab) {
+  if (!friendStore.canUseFriendSystem) {
+    return;
+  }
+
+  activeTab.value = tab;
+}
+
+function goLogin() {
+  router.push({
+    name: "Entry",
+    query: { auth: "login" },
+  });
+}
+
+function loadFriendDataIfAllowed() {
+  if (friendStore.canUseFriendSystem) {
+    friendStore.loadFriendData();
+    return;
+  }
+
+  friendStore.clearFriendData();
+}
+
 function confirmRemoveFriend(friend) {
+  if (!friendStore.canUseFriendSystem) {
+    return;
+  }
+
   if (!friend?.friendshipId) {
     return;
   }
@@ -270,6 +324,10 @@ function confirmRemoveFriend(friend) {
 }
 
 function confirmBlockPlayer(player) {
+  if (!friendStore.canUseFriendSystem) {
+    return;
+  }
+
   if (!player?.playerId) {
     return;
   }
@@ -284,6 +342,10 @@ function confirmBlockPlayer(player) {
 }
 
 function confirmUnblockPlayer(player) {
+  if (!friendStore.canUseFriendSystem) {
+    return;
+  }
+
   if (!player?.blockId) {
     return;
   }
@@ -313,8 +375,15 @@ function returnToLobby() {
 }
 
 onMounted(() => {
-  friendStore.loadFriendData();
+  loadFriendDataIfAllowed();
 });
+
+watch(
+  () => friendStore.canUseFriendSystem,
+  () => {
+    loadFriendDataIfAllowed();
+  },
+);
 </script>
 
 <style scoped>
@@ -326,6 +395,17 @@ onMounted(() => {
 
 .tab.active {
   @apply border-[var(--brand-active)] text-[var(--brand-navy)];
+}
+
+.tab:disabled {
+  cursor: not-allowed;
+  border-color: transparent;
+  color: var(--brand-disabled);
+  opacity: 0.68;
+}
+
+.tab:disabled:hover {
+  color: var(--brand-disabled);
 }
 
 .friend-page-shell {

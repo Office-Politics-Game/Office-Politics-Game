@@ -16,18 +16,58 @@
     </div>
 
     <div class="overlay fixed inset-0 z-20 flex items-center justify-center p-5">
-      <RegisterPage v-if="isRegisterPage" />
-      <LoginContent v-else />
+      <GuestLoginModal
+        v-if="showGuestLoginModal"
+        @close="showGuestLoginModal = false"
+        @success="handleGuestCreated"
+      />
+      <RegisterPage
+        v-else-if="isRegisterPage"
+        @close="goEntryPage"
+        @back-login="goLoginPage"
+        @register-success="goLoginPage"
+      />
+      <LoginContent
+        v-else
+        @close="goEntryPage"
+        @open-guest="showGuestLoginModal = true"
+        @open-register="goRegisterPage"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from "vue"
-import { useRoute } from "vue-router"
+import { computed, ref } from "vue"
+import { useRoute, useRouter } from "vue-router"
 import LoginContent from "@/components/login/LoginContent.vue"
+import GuestLoginModal from "@/components/login/GuestLoginModal.vue"
 import RegisterPage from "@/components/register/RegisterPage.vue"
+import { usePlayerStore } from "@/stores/playerStore.js"
 
 const route = useRoute()
+const router = useRouter()
+const playerStore = usePlayerStore()
+
+const showGuestLoginModal = ref(false)
 const isRegisterPage = computed(() => route.path === "/register")
+
+function goEntryPage() {
+  router.push("/")
+}
+
+function handleGuestCreated(player) {
+  localStorage.setItem("guestPlayer", JSON.stringify(player))
+  playerStore.setCurrentPlayer(player)
+  showGuestLoginModal.value = false
+  router.push("/lobby")
+}
+
+function goLoginPage() {
+  router.push("/login")
+}
+
+function goRegisterPage() {
+  router.push("/register")
+}
 </script>

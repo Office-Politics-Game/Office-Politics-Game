@@ -8,6 +8,11 @@
         class="social-flip-face social-flip-front relative h-full w-full bg-[length:100%_100%] bg-center shadow-2xl"
         :style="{ backgroundImage: `url(${menuBg})` }"
       >
+        <CurrencyBar
+          class="absolute bottom-4 right-8.5 lg:bottom-9 lg:right-14.5"
+          :items="['coins', 'gems']"
+        />
+        <!-- 開始遊玩 -->
         <button
           class="menu-btn left-[35px] top-[32px] h-[244px] w-[170px] gap-6 lg:left-[58px] lg:top-[53px] lg:h-[407px] lg:w-[283px]"
           @click="$router.push({ name: 'LobbyGameMenu' })"
@@ -93,7 +98,7 @@
 
         <button
           class="menu-btn right-[40px] bottom-[47px] h-[74px] w-[130px] lg:right-[67px] lg:bottom-[79px] lg:h-[124px] lg:w-[217px]"
-          @click="$router.push('/')"
+          @click="leaveLobby"
         >
           <div class="btn-content">
             <img
@@ -121,15 +126,38 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import friendBg from "@/assets/images/bg-friend-view.webp";
 import menuBg from "@/assets/images/menu.webp";
+import CurrencyBar from "@/components/common/CurrencyBar.vue";
+import { useAuthStore } from "@/stores/authStore.js";
+import { useCurrencyStore } from "@/stores/currencyStore.js";
+import { usePlayerStore } from "@/stores/playerStore.js";
 
 const router = useRouter();
+const authStore = useAuthStore();
+const currencyStore = useCurrencyStore();
+const playerStore = usePlayerStore();
 const isSocialTransitioning = ref(false);
 const isMallTransitioning = ref(false);
 const SOCIAL_FLIP_DURATION = 700;
+
+function getCurrentPlayerId() {
+  return authStore.currentPlayer?.id ?? playerStore.currentPlayerId;
+}
+
+watch(
+  getCurrentPlayerId,
+  (playerId) => {
+    if (!playerId) {
+      return;
+    }
+
+    currencyStore.fetchPlayerCurrency(playerId).catch(() => {});
+  },
+  { immediate: true }
+);
 
 function openFriendPage() {
   if (isSocialTransitioning.value || isMallTransitioning.value) {
@@ -146,6 +174,13 @@ function openFriendPage() {
   window.setTimeout(() => {
     router.push("/friend");
   }, SOCIAL_FLIP_DURATION);
+}
+
+function leaveLobby() {
+  authStore.logout();
+  playerStore.resetPlayer();
+  currencyStore.resetCurrency();
+  router.push("/");
 }
 
 function openMallPage() {
