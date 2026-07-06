@@ -9,7 +9,7 @@ defineProps({
   },
 });
 
-defineEmits(["add-computer", "remove-player", "toggle-ready"]);
+defineEmits(["add-computer", "invite-friend", "remove-player", "toggle-ready"]);
 </script>
 
 <template>
@@ -109,7 +109,8 @@ defineEmits(["add-computer", "remove-player", "toggle-ready"]);
               v-if="slot.option2"
               class="room-player-option-button m-0 w-full whitespace-nowrap border-0 bg-transparent text-center text-[14px] font-black leading-[1.12] lg:text-[28px]"
               type="button"
-              :disabled="slot.isActionDisabled"
+              :disabled="!slot.canInviteFriend"
+              @click="$emit('invite-friend', index)"
             >
               {{ slot.option2 }}
             </button>
@@ -169,23 +170,17 @@ defineEmits(["add-computer", "remove-player", "toggle-ready"]);
 }
 
 .room-player-option-button:disabled {
-  cursor: default;
-  opacity: 0.72;
+  cursor: not-allowed;
+  opacity: 0.46;
 }
 
-.room-player-option-button:hover {
+.room-player-option-button:hover:not(:disabled) {
   color: var(--brand-hover, #0046f4);
   opacity: 0.92;
   transform: translateY(-1px);
 }
 
-.room-player-option-button:disabled:hover,
-.room-player-option-button:disabled:active {
-  color: var(--brand-active, #465563);
-  transform: none;
-}
-
-.room-player-option-button:active {
+.room-player-option-button:active:not(:disabled) {
   color: var(--brand-active, #465563);
   transform: translateY(1px);
 }

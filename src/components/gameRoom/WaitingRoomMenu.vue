@@ -48,7 +48,7 @@ const matchTimerId = ref(null);
 const { isLoading, errorMessage } = storeToRefs(roomStore);
 
 const currentPlayerId = computed(
-  () => authStore.currentPlayer?.id ?? playerStore.currentPlayerId ?? null,
+  () => playerStore.currentPlayerId ?? authStore.currentPlayer?.id ?? null,
 );
 
 const Matching = computed(() => {

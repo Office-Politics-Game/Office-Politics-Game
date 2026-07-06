@@ -7,6 +7,7 @@ import { router as gameStateRouter } from "./routes/gameSessionRoutes.js";
 import { router as playerRouter } from "./routes/playerRoutes.js";
 import { router as actionRouter, roomActionRouter } from "./routes/actionRoutes.js";
 import { router as friendRouter } from "./routes/friendRoutes.js";
+import { router as roomInvitationRouter } from "./routes/roomInvitationRoutes.js";
 import { initializeSocket } from "./socket/index.js";
 import { router as authRouter } from "./routes/authRoutes.js";
 import { router as shopRouter } from "./routes/shopRoutes.js";
@@ -32,6 +33,7 @@ app.use("/api/game-states", gameStateRouter)
 app.use("/api/players", playerRouter)
 app.use("/api/actions", actionRouter)
 app.use("/api/friends", friendRouter)
+app.use("/api", roomInvitationRouter)
 app.use("/api/shop", shopRouter)
 
 app.get("/", (req, res) => {

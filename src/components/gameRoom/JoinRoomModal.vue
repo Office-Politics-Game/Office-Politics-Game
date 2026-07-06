@@ -18,7 +18,7 @@ const { isLoading, errorMessage } = storeToRefs(roomStore);
 
 const normalizedRoomId = computed(() => roomId.value.trim().toUpperCase());
 const currentPlayerId = computed(
-  () => authStore.currentPlayer?.id ?? playerStore.currentPlayerId ?? null,
+  () => playerStore.currentPlayerId ?? authStore.currentPlayer?.id ?? null,
 );
 
 async function handleJoinRoom() {

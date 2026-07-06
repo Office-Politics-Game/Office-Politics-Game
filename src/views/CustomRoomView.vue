@@ -3,15 +3,20 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { Copy, Play } from "@lucide/vue";
 import { useRouter } from "vue-router";
+import InviteFriendModal from "@/components/gameRoom/InviteFriendModal.vue";
 import PlayerList from "@/components/gameRoom/CustomRoomPlayerList.vue";
 import { getRankingList } from "@/services/rankingService.js";
 import BG from "@/assets/images/bg-dashboard.webp";
 import { useAuthStore } from "@/stores/authStore.js";
+import { useFriendStore } from "@/stores/friendStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
+import { useRoomInvitationStore } from "@/stores/roomInvitationStore.js";
 import { useRoomStore } from "@/stores/roomStore.js";
 
 const router = useRouter();
 const authStore = useAuthStore();
+const friendStore = useFriendStore();
+const roomInvitationStore = useRoomInvitationStore();
 const roomStore = useRoomStore();
 const playerStore = usePlayerStore();
 
@@ -20,9 +25,11 @@ const { roomCode, players, errorMessage, isLoading, isRoomReadyToStart } =
 
 const availablePlayers = ref([]);
 const localPlayerSlots = ref([]);
+const showInviteFriendModal = ref(false);
+const invitingSlotIndex = ref(null);
 
 const currentPlayerId = computed(
-  () => authStore.currentPlayer?.id ?? playerStore.currentPlayerId ?? null,
+  () => playerStore.currentPlayerId ?? authStore.currentPlayer?.id ?? null,
 );
 
 const emptyPlayerSlots = [
@@ -73,9 +80,6 @@ function createRoomPlayerSlot(player) {
     avatar: null,
     canToggleReady:
       player.playerId === currentPlayerId.value && player.role !== "host",
-    showActionButton:
-      player.playerId === currentPlayerId.value && player.role !== "host",
-    actionLabel: Boolean(player.isReady) ? "取消準備" : "準備",
   };
 }
 
@@ -89,18 +93,24 @@ const playerSlots = computed(() =>
 
     if (roomCode.value) {
       return {
-        isHost: false,
+        ...slot,
         option1: "等待玩家",
+        option2: "邀請好友",
         showActionButton: false,
-        isActionDisabled: true,
-      };
+        isActionDisabled: !isHostPlayer.value,
+        canInviteFriend: isHostPlayer.value,
+      }
     }
 
     if (localPlayerSlots.value[index]) {
       return localPlayerSlots.value[index];
     }
 
-    return { ...slot };
+    return {
+      ...slot,
+      canInviteFriend:
+        Boolean(slot.option2) && Boolean(roomCode.value) && isHostPlayer.value,
+    };
   }),
 );
 
@@ -122,6 +132,16 @@ const readySlotCount = computed(
 
 const hasLocalComputerPlayers = computed(() =>
   localPlayerSlots.value.some((slot) => slot?.isComputer),
+);
+
+const inviteePlayerIds = computed(() =>
+  new Set(players.value.map((player) => Number(player.playerId))),
+);
+
+const availableInviteFriends = computed(() =>
+  friendStore.friends.filter(
+    (friend) => !inviteePlayerIds.value.has(Number(friend.playerId)),
+  ),
 );
 
 const isRoomReadyToStartWithLocalPlayers = computed(
@@ -191,6 +211,45 @@ async function handleStartRoom() {
   });
 
   navigateToLoading();
+}
+
+async function openInviteFriendModal(index) {
+  if (!isHostPlayer.value) {
+    roomInvitationStore.sendErrorMessage = "只有房主可以邀請好友。";
+    return;
+  }
+
+  if (!roomCode.value) {
+    roomInvitationStore.sendErrorMessage = "目前沒有房間可以邀請好友。";
+    return;
+  }
+
+  invitingSlotIndex.value = index;
+  showInviteFriendModal.value = true;
+  roomInvitationStore.clearMessages();
+
+  if (friendStore.canUseFriendSystem) {
+    await friendStore.loadFriendData();
+    return;
+  }
+
+  friendStore.markLoginRequired();
+}
+
+function closeInviteFriendModal() {
+  showInviteFriendModal.value = false;
+  invitingSlotIndex.value = null;
+}
+
+async function sendRoomInvitation(friend) {
+  const invitation = await roomInvitationStore.sendInvitation({
+    roomCode: roomCode.value,
+    inviteePlayerId: friend?.playerId,
+  });
+
+  if (invitation) {
+    window.setTimeout(closeInviteFriendModal, 450);
+  }
 }
 
 async function copyRoomCode() {
@@ -291,9 +350,23 @@ watch(
       <PlayerList
         :slots="playerSlots"
         @add-computer="handleAddComputer"
+        @invite-friend="openInviteFriendModal"
         @remove-player="handleRemovePlayer"
         @toggle-ready="toggleReady"
         class="mt-3 lg:mt-5"
+      />
+
+      <InviteFriendModal
+        v-if="showInviteFriendModal"
+        :friends="availableInviteFriends"
+        :is-loading="friendStore.isLoading"
+        :is-sending="roomInvitationStore.isSending"
+        :error-message="
+          roomInvitationStore.sendErrorMessage || friendStore.errorMessage
+        "
+        :notice="roomInvitationStore.noticeMessage"
+        @close="closeInviteFriendModal"
+        @send="sendRoomInvitation"
       />
 
       <div class="mt-4 text-sm font-bold text-white">
