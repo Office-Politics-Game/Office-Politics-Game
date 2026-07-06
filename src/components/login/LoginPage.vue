@@ -22,16 +22,29 @@
         @success="handleGuestCreated"
       />
       <RegisterPage
-        v-else-if="isRegisterPage"
+        v-else-if="authPageMode === 'register'"
         @close="goEntryPage"
         @back-login="goLoginPage"
         @register-success="goLoginPage"
+      />
+      <ForgotPasswordContent
+        v-else-if="authPageMode === 'forgot-password'"
+        @close="goEntryPage"
+        @back-login="goLoginPage"
+      />
+      <ResetPasswordContent
+        v-else-if="authPageMode === 'reset-password'"
+        :reset-token="resetPasswordToken"
+        @close="goEntryPage"
+        @back-login="goLoginPage"
+        @reset-success="goLoginPage"
       />
       <LoginContent
         v-else
         @close="goEntryPage"
         @open-guest="showGuestLoginModal = true"
         @open-register="goRegisterPage"
+        @open-forgot-password="goForgotPasswordPage"
       />
     </div>
   </div>
@@ -44,12 +57,16 @@ import LoginContent from "@/components/login/LoginContent.vue"
 import GuestLoginModal from "@/components/login/GuestLoginModal.vue"
 import RegisterPage from "@/components/register/RegisterPage.vue"
 import { usePlayerStore } from "@/stores/playerStore.js"
+import ForgotPasswordContent from "@/components/login/ForgotPasswordContent.vue"
+import ResetPasswordContent from "@/components/login/ResetPasswordContent.vue"
 
 const route = useRoute()
 const router = useRouter()
 const playerStore = usePlayerStore()
 
 const showGuestLoginModal = ref(false)
+const authPageMode = ref(route.path === "/register" ? "register" : "login")
+const resetPasswordToken = ref("")
 const isRegisterPage = computed(() => route.path === "/register")
 
 function goEntryPage() {
@@ -64,10 +81,16 @@ function handleGuestCreated(player) {
 }
 
 function goLoginPage() {
+  authPageMode.value = "login"
   router.push("/login")
 }
 
 function goRegisterPage() {
+  authPageMode.value = "register"
   router.push("/register")
+}
+
+function goForgotPasswordPage() {
+  authPageMode.value = "forgot-password"
 }
 </script>

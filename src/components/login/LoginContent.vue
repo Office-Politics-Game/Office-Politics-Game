@@ -106,9 +106,10 @@
         訪客遊玩 <span aria-hidden="true">›</span>
       </button>
       <button
-        class="login-link inline-flex items-center gap-1 border-0 bg-transparent p-0"
+        class="login-link inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0"
         type="button"
-        disabled
+        :disabled="authStore.isLoading"
+        @click="goForgotPassword"
       >
         忘記密碼 <span aria-hidden="true">›</span>
       </button>
@@ -171,7 +172,7 @@ import { useAuthStore } from "../../stores/authStore.js"
 import { Eye, EyeOff } from "lucide-vue-next"
 import { usePlayerStore } from "@/stores/playerStore.js"
 
-const emit = defineEmits(["close", "open-guest", "open-register"])
+const emit = defineEmits(["close", "open-guest", "open-register", "open-forgot-password"])
 const authStore = useAuthStore()
 const playerStore = usePlayerStore()
 const router = useRouter()
@@ -243,6 +244,11 @@ async function handleLogin() {
 function goRegister() {
   authStore.clearError()
   emit("open-register")
+}
+
+function goForgotPassword() {
+  authStore.clearError()
+  emit("open-forgot-password")
 }
 </script>
 
