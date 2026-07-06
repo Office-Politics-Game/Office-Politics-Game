@@ -12,7 +12,7 @@
           </p>
           <div class="mt-0.5 flex items-center gap-2">
             <h1 class="font-display text-2xl font-black tracking-[0.05em] text-slate-900">
-              ???
+              商城
             </h1>
             <span class="border border-slate-300 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-700">
               {{ activeCategoryMeta.name }}
@@ -24,7 +24,7 @@
           type="button"
           class="mobile-menu-button"
           :aria-expanded="isMenuOpen"
-          aria-label="?????????"
+          aria-label="開啟選單"
           @click="isMenuOpen = true"
         >
           <span></span>
@@ -39,27 +39,27 @@
           class="mobile-menu-layer xl:hidden"
           @click.self="isMenuOpen = false"
         >
-          <aside class="mobile-menu-panel" aria-label="?????????">
+          <aside class="mobile-menu-panel" aria-label="商城選單">
             <div class="flex items-start justify-between gap-3 border-b border-slate-300/80 pb-3">
               <div>
                 <p class="m-0 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
                   OFFICE POLITICS
                 </p>
                 <h2 class="mt-1 font-display text-xl font-black tracking-[0.06em] text-slate-900">
-                  ???
+                  商城
                 </h2>
                 <p class="mt-1 text-xs font-semibold text-slate-600">
-                  ??????????????????????????
+                  選擇你的辦公室風格與專屬造型。
                 </p>
               </div>
 
               <button
                 type="button"
                 class="close-button mobile-menu-close"
-                aria-label="?????????"
+                aria-label="關閉選單"
                 @click="isMenuOpen = false"
               >
-                ?
+                ×
               </button>
             </div>
 
@@ -68,24 +68,9 @@
               :items="['coins', 'gems', 'tickets']"
             />
 
-            <div class="mt-3 grid grid-cols-3 gap-2">
-              <div
-                v-for="metric in headerMetrics"
-                :key="metric.label"
-                class="border border-slate-300/70 bg-white/75 px-2 py-1.5 text-right"
-              >
-                <div class="text-[9px] font-bold tracking-[0.08em] text-slate-500">
-                  {{ metric.label }}
-                </div>
-                <div class="mt-0.5 text-sm font-black text-slate-900">
-                  {{ metric.value }}
-                </div>
-              </div>
-            </div>
-
             <div class="mt-3 border border-slate-300 bg-[linear-gradient(180deg,#f9fbfd,#eef4f9)] p-3">
               <div class="text-[10px] font-bold tracking-[0.12em] text-slate-500">
-                ??????????????
+                目前分類
               </div>
               <div class="mt-1 text-base font-black text-slate-900">
                 {{ activeCategoryMeta.name }}
@@ -97,7 +82,7 @@
               class="btn-dark mt-3 h-9 w-full text-xs font-bold"
               @click="goLobby"
             >
-              ???????????????????????
+              返回大廳
             </button>
           </aside>
         </div>
@@ -109,10 +94,10 @@
             OFFICE POLITICS
           </p>
           <h1 class="font-display text-xl font-black tracking-[0.06em] text-slate-900 xl:mt-1 xl:text-5xl xl:tracking-[0.08em]">
-            ???
+            商城
           </h1>
           <p class="hidden mt-1 text-xs font-semibold tracking-[0.04em] text-slate-600 xl:mt-2 xl:block xl:text-base xl:tracking-[0.06em]">
-            ??????????????????????????
+            選擇你的辦公室風格與專屬造型。
           </p>
         </div>
 
@@ -122,18 +107,6 @@
             :items="['coins', 'gems', 'tickets']"
           />
 
-          <div
-            v-for="metric in headerMetrics"
-            :key="metric.label"
-            class="border border-slate-300/70 bg-white/70 px-1.5 py-1 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] xl:px-3 xl:py-2"
-          >
-            <div class="text-[9px] font-bold tracking-[0.06em] text-slate-500 xl:text-[11px] xl:tracking-[0.14em]">
-              {{ metric.label }}
-            </div>
-            <div class="text-sm font-black text-slate-900 xl:mt-1 xl:text-xl">
-              {{ metric.value }}
-            </div>
-          </div>
         </div>
 
         <button
@@ -141,7 +114,7 @@
           class="btn-dark order-2 h-8 whitespace-nowrap px-2.5 py-1 text-xs font-bold xl:order-none xl:h-11 xl:px-4 xl:py-2 xl:text-sm"
           @click="router.push('/lobby')"
         >
-          ???????????????????????
+          返回大廳
         </button>
       </header>
 
@@ -149,10 +122,10 @@
         <aside class="scroll-area min-h-0 overflow-y-auto border-b border-slate-300/80 bg-[linear-gradient(180deg,rgba(238,244,251,0.96),rgba(221,230,241,0.9))] xl:border-b-0 xl:border-r">
           <div class="hidden border-b border-slate-300/80 px-3 py-3 xl:block xl:px-5 xl:py-4">
             <div class="text-[11px] font-bold tracking-[0.16em] text-slate-500 xl:text-xs xl:tracking-[0.2em]">
-              ????????
+              分類導覽
             </div>
             <div class="mt-1 text-base font-black text-slate-900 xl:mt-2 xl:text-lg">
-              ??????
+              商品分類
             </div>
           </div>
 
@@ -188,7 +161,7 @@
               <div class="grid gap-2 p-2.5 xl:grid-cols-[minmax(0,1fr)_150px] xl:gap-2.5 xl:p-3">
                 <div>
                   <div class="inline-flex border border-white/25 bg-white/10 px-2 py-0.5 text-[9px] font-bold tracking-[0.1em] text-slate-100 md:text-[9px] md:tracking-[0.14em]">
-                    ?????????????
+                    精選推薦
                   </div>
                   <h2 class="mt-1 font-display text-base font-black tracking-[0.04em] md:mt-1.5 md:text-xl md:tracking-[0.05em]">
                     {{ featuredItem.name }}
@@ -201,7 +174,7 @@
                 <div class="hidden content-between gap-1.5 border border-white/16 bg-white/10 p-2.5 backdrop-blur-sm xl:grid">
                   <div>
                     <div class="text-[9px] font-bold tracking-[0.1em] text-slate-200">
-                      ????????????
+                      可用代幣
                     </div>
                     <div class="mt-0.5 text-xl font-black text-white">
                       {{ budgetDisplay }}
@@ -209,7 +182,7 @@
                   </div>
                   <div>
                     <div class="text-[9px] font-bold tracking-[0.1em] text-slate-300">
-                      ??????????????
+                      目前分類
                     </div>
                     <div class="mt-0.5 inline-flex border border-white/25 bg-white/10 px-2 py-0.5 text-[11px] font-bold text-white">
                       {{ activeCategoryMeta.name }}
@@ -232,10 +205,10 @@
               class="empty-state border border-dashed border-slate-300 bg-white/70 px-4 py-8 text-center md:px-6 md:py-12"
             >
               <div class="text-lg font-black tracking-[0.06em] text-slate-900 md:text-xl md:tracking-[0.08em]">
-                ????????????????????????
+                商城資料載入中
               </div>
               <p class="mt-2 text-xs leading-5 text-slate-500 md:mt-3 md:text-sm md:leading-6">
-                ???????????????????????????
+                正在整理最新商品與持有狀態，請稍候。
               </p>
             </div>
 
@@ -244,10 +217,10 @@
               class="empty-state border border-dashed border-slate-300 bg-white/70 px-4 py-8 text-center md:px-6 md:py-12"
             >
               <div class="text-lg font-black tracking-[0.06em] text-slate-900 md:text-xl md:tracking-[0.08em]">
-                ?????????????????????????
+                這個分類目前沒有商品
               </div>
               <p class="mt-2 text-xs leading-5 text-slate-500 md:mt-3 md:text-sm md:leading-6">
-                ??????????????????????????????
+                可以切換其他分類，看看更多可用造型與道具。
               </p>
             </div>
 
@@ -276,7 +249,7 @@
           <header class="flex items-start justify-between gap-2 border-b border-slate-200 px-2.5 py-2 md:gap-4 md:px-6 md:py-4">
             <div>
               <div class="text-[9px] font-bold tracking-[0.1em] text-slate-500 md:text-[11px] md:tracking-[0.16em]">
-                ??????????????
+                商品明細
               </div>
               <div class="mt-1 flex flex-wrap items-center gap-1.5 md:mt-2 md:gap-2">
                 <h3 class="font-display text-xl font-black tracking-[0.03em] text-slate-900 md:text-3xl md:tracking-[0.05em]">
@@ -294,10 +267,10 @@
             <button
               type="button"
               class="close-button"
-              aria-label="??????????????"
+              aria-label="關閉商品明細"
               @click="closeItemDetail"
             >
-              ?
+              ×
             </button>
           </header>
 
@@ -307,7 +280,7 @@
                 <button
                   type="button"
                   class="modal-preview"
-                  aria-label="???????????????????????"
+                  aria-label="檢視商品大圖"
                   @click="openImagePreview"
                 >
                   <img
@@ -321,15 +294,15 @@
               <div class="modal-detail-card__info">
                 <div class="modal-detail-card__rows">
                   <div class="detail-row">
-                    <span>Category</span>
+                    <span>分類</span>
                     <strong>{{ selectedItem.categoryLabel }}</strong>
                   </div>
                   <div class="detail-row">
-                    <span>Price</span>
+                    <span>價格</span>
                     <strong>{{ selectedItem.price }}</strong>
                   </div>
                   <div class="detail-row">
-                    <span>Status</span>
+                    <span>狀態</span>
                     <strong>{{ selectedItem.actionLabel }}</strong>
                   </div>
                 </div>
@@ -337,7 +310,7 @@
                 <aside class="modal-detail-card__purchase">
                   <div class="border border-slate-300 bg-[linear-gradient(180deg,#f9fbfd,#eef4f9)] p-2.5 md:p-4">
                     <div class="text-[9px] font-bold tracking-[0.1em] text-slate-500 md:text-[11px] md:tracking-[0.16em]">
-                      Balance
+                      可用代幣
                     </div>
                     <div class="mt-0.5 text-lg font-black text-slate-900 md:mt-1 md:text-3xl">
                       {{ budgetDisplay }}
@@ -351,7 +324,7 @@
                     :disabled="selectedItem.actionState !== 'buy' || isPurchasing"
                     @click="purchaseSelectedItem"
                   >
-                    {{ isPurchasing ? 'Processing' : selectedItem.actionLabel }}
+                    {{ isPurchasing ? '購買中...' : selectedItem.actionLabel }}
                   </button>
                 </aside>
               </div>
@@ -369,10 +342,10 @@
         <button
           type="button"
           class="close-button image-preview-close"
-          aria-label="???????????????????????"
+          aria-label="關閉商品大圖"
           @click="closeImagePreview"
         >
-          ?
+          ×
         </button>
         <img
           :src="selectedItem.previewImage"
@@ -515,16 +488,6 @@ const budgetDisplay = computed(() =>
   ),
 );
 
-const headerMetrics = computed(() => [
-  { label: "Balance", value: formatNumber(currencyStore.coins) },
-  { label: "Owned", value: String(playerItems.value.length).padStart(2, "0") },
-  {
-    label: "Coming Soon",
-    value: String(
-      normalizedItems.value.filter((item) => item.actionState === "coming").length,
-    ).padStart(2, "0"),
-  },
-]);
 function getErrorMessage(error, fallbackMessage) {
   return error?.data?.message || error?.message || fallbackMessage;
 }
@@ -546,10 +509,10 @@ async function loadShopData() {
     playerItems.value = ownedData.items ?? [];
 
     if (!playerId) {
-      statusMessage.value = "Player ID is unavailable. You can browse items but cannot purchase yet.";
+      statusMessage.value = "尚未取得玩家 ID，商品可瀏覽但無法購買。";
     }
   } catch (error) {
-    statusMessage.value = getErrorMessage(error, "Failed to load shop data. Please try again later.");
+    statusMessage.value = getErrorMessage(error, "商城資料載入失敗，請稍後再試。");
     shopItems.value = [];
     playerItems.value = [];
   } finally {
@@ -582,7 +545,7 @@ function goLobby() {
 
 async function purchaseItem(item) {
   if (!currentPlayerId.value) {
-    statusMessage.value = "Player ID is unavailable. Please sign in again before purchasing.";
+    statusMessage.value = "尚未取得玩家 ID，請重新登入後再購買商品。";
     return;
   }
 
@@ -615,9 +578,9 @@ async function purchaseItem(item) {
       }),
     ]);
 
-    statusMessage.value = "Purchase successful. Ownership and currency have been updated.";
+    statusMessage.value = "購買成功，已更新持有狀態與貨幣餘額。";
   } catch (error) {
-    statusMessage.value = getErrorMessage(error, "Purchase failed. Please check balance or try again later.");
+    statusMessage.value = getErrorMessage(error, "購買失敗，請檢查餘額或稍後再試。");
   } finally {
     isPurchasing.value = false;
   }
