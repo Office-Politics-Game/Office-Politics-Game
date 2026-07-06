@@ -115,7 +115,7 @@ const profileStore = useProfileStore();
 const { initializeProfile: initializeProfileData } = useProfileInitializer();
 const activeTab = ref("profile");
 const isReturningToLobby = ref(false);
-const RETURN_ANIMATION_DURATION = 520;
+const RETURN_ANIMATION_DURATION = 700;
 
 const tabs = [
   {
@@ -352,7 +352,7 @@ watch(
 }
 
 .profile-page-state.is-returning .profile-state-exit-layer {
-  animation: dashboardReveal 520ms ease both;
+  animation: dashboardReveal 700ms ease both;
 }
 
 @keyframes dashboardReveal {

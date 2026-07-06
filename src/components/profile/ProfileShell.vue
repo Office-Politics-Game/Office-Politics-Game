@@ -10,6 +10,24 @@
       aria-hidden="true"
     ></div>
 
+    <div
+      v-if="isReturning"
+      class="profile-return-scene h-81 w-144 lg:h-135 lg:w-240"
+      aria-hidden="true"
+    >
+      <div class="profile-return-card">
+        <section class="profile-return-face profile-return-front">
+          <LobbyMenu />
+        </section>
+        <section
+          class="profile-return-face profile-return-back"
+          :style="{ backgroundImage: `url(${exitBackgroundImage})` }"
+        >
+          <div class="social-flip-backdrop"></div>
+        </section>
+      </div>
+    </div>
+
     <section
       class="profile-paper"
       :style="{ '--paper-image': `url(${paperImage})` }"
@@ -44,6 +62,7 @@
 
 <script setup>
 import { X } from "lucide-vue-next";
+import LobbyMenu from "@/components/menu/LobbyMenu.vue";
 import ProfileSidebar from "@/components/profile/ProfileSidebar.vue";
 import ProfileTabs from "@/components/profile/ProfileTabs.vue";
 
@@ -118,13 +137,59 @@ defineEmits(["close", "update:activeTab"]);
 }
 
 .profile-page.is-returning .profile-exit-layer {
-  animation: dashboardReveal 520ms ease both;
+  animation: dashboardReveal 700ms ease both;
 }
 
 .profile-page.is-returning .profile-paper {
   opacity: 0;
   pointer-events: none;
   animation: none;
+}
+
+.profile-return-scene {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  perspective: 1600px;
+  transform: translate(-50%, -50%);
+}
+
+.profile-return-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  animation: profileReturnFlip 700ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  will-change: transform;
+}
+
+.profile-return-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background-position: center;
+  background-size: 100% 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.profile-return-front {
+  transform: rotateY(0deg);
+  pointer-events: none;
+}
+
+.profile-return-back {
+  transform: rotateY(180deg);
+}
+
+.social-flip-backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(0, 19, 50, 0.18), rgba(70, 85, 99, 0.36)),
+    rgba(0, 19, 50, 0.08);
 }
 
 .profile-paper__close {
@@ -179,8 +244,19 @@ defineEmits(["close", "update:activeTab"]);
   }
 }
 
+@keyframes profileReturnFlip {
+  from {
+    transform: rotateY(180deg);
+  }
+
+  to {
+    transform: rotateY(0deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .profile-page.is-returning .profile-exit-layer,
+  .profile-page.is-returning .profile-return-card,
   .profile-page.is-returning .profile-paper,
   .profile-paper {
     animation: none;
