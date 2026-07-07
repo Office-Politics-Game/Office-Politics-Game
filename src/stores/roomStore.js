@@ -9,6 +9,7 @@ import {
 } from "@/services/roomApi.js";
 import { connectSocket, emitWithAck } from "@/services/socketClient.js";
 
+const ROOM_CODE_STORAGE_KEY = "activeRoomCode";
 let activeRoomStore = null;
 let subscribedRoomCode = "";
 let subscribedPlayerId = null;
@@ -34,10 +35,31 @@ function getErrorMessage(error, fallbackMessage) {
   return error?.data?.message || error?.message || fallbackMessage;
 }
 
+function getStoredRoomCode() {
+  if (typeof sessionStorage === "undefined") {
+    return "";
+  }
+
+  return sessionStorage.getItem(ROOM_CODE_STORAGE_KEY) || "";
+}
+
+function saveRoomCode(roomCode) {
+  if (typeof sessionStorage === "undefined") {
+    return;
+  }
+
+  if (roomCode) {
+    sessionStorage.setItem(ROOM_CODE_STORAGE_KEY, roomCode);
+    return;
+  }
+
+  sessionStorage.removeItem(ROOM_CODE_STORAGE_KEY);
+}
+
 export const useRoomStore = defineStore("room", {
   state: () => ({
     room: null,
-    roomCode: "",
+    roomCode: getStoredRoomCode(),
     players: [],
     gameState: null,
     isLoading: false,
@@ -57,6 +79,7 @@ export const useRoomStore = defineStore("room", {
       if (payload?.room) {
         this.room = payload.room;
         this.roomCode = payload.room.roomCode || payload.room.room_code || "";
+        saveRoomCode(this.roomCode);
       }
 
       if (Array.isArray(payload?.players)) {
@@ -75,6 +98,9 @@ export const useRoomStore = defineStore("room", {
       this.gameState = null;
       this.isLoading = false;
       this.errorMessage = "";
+      subscribedRoomCode = "";
+      subscribedPlayerId = null;
+      saveRoomCode("");
     },
 
     async subscribeToRoom({
@@ -155,6 +181,7 @@ export const useRoomStore = defineStore("room", {
         const response = await createRoomRequest(payload);
         this.room = response?.room ?? null;
         this.roomCode = response?.room?.roomCode || response?.room?.room_code || "";
+        saveRoomCode(this.roomCode);
         this.gameState = null;
 
         if (this.roomCode) {
@@ -182,6 +209,7 @@ export const useRoomStore = defineStore("room", {
       try {
         const response = await joinRoomRequest(roomCode, payload);
         this.roomCode = roomCode;
+        saveRoomCode(this.roomCode);
         this.gameState = null;
         await this.fetchRoomState(roomCode);
         await this.subscribeToRoom({
@@ -211,12 +239,11 @@ export const useRoomStore = defineStore("room", {
           await this.fetchRoomState(roomCode);
           return fallbackResponse;
         });
-
         this.roomCode = roomCode;
+        saveRoomCode(this.roomCode);
         if (response?.room) {
           this.applyRoomState(response);
         }
-
         return response;
       } catch (error) {
         this.errorMessage = getErrorMessage(error, "更新房間狀態失敗。");
@@ -239,12 +266,11 @@ export const useRoomStore = defineStore("room", {
           await this.fetchRoomState(roomCode);
           return fallbackResponse;
         });
-
         this.roomCode = roomCode;
+        saveRoomCode(this.roomCode);
         if (response?.room) {
           this.applyRoomState(response);
         }
-
         this.gameState = await getRoomGameStateRequest(
           roomCode,
           payload?.playerId,

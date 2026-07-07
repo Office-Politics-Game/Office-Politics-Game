@@ -4,6 +4,8 @@ import {
   rejectRoomInvitation,
   sendRoomInvitation,
 } from "../services/roomInvitationService.js"
+import { getRoomState } from "../services/roomService.js"
+import { getSocketServer } from "../socket/index.js"
 
 function getErrorStatus(error){
   return error.statusCode || 500
@@ -75,6 +77,13 @@ async function handleAcceptRoomInvitation(req, res){
     }
 
     const result = await acceptRoomInvitation({ invitationId, playerId })
+
+    if (result.room?.roomCode){
+      const roomState = await getRoomState({ roomCode: result.room.roomCode })
+      const io = getSocketServer()
+
+      io?.to(result.room.roomCode).emit("room:state", roomState)
+    }
 
     return res.status(200).json({
       message: "已接受房間邀請",

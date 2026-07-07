@@ -82,7 +82,10 @@ async function handleCreateRoom() {
     hostPlayerId: currentPlayerId.value,
   });
 
-  router.push("/custom-room");
+  router.push({
+    name: "CustomRoom",
+    query: { roomCode: roomStore.roomCode },
+  });
 }
 
 async function handleJoinRoom() {
@@ -97,7 +100,10 @@ async function handleJoinRoom() {
     playerId: currentPlayerId.value,
   });
 
-  router.push("/custom-room");
+  router.push({
+    name: "CustomRoom",
+    query: { roomCode: normalizedRoomId },
+  });
 }
 
 async function handleActionClick(action) {
