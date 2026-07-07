@@ -222,7 +222,13 @@ async function handleStartRoom() {
       return;
     }
 
-    router.push("/loading");
+    router.push({
+      name: "Loading",
+      query: {
+        roomCode: roomCode.value,
+        playerId: String(currentPlayerId.value ?? ""),
+      },
+    });
     return;
   }
 
@@ -235,7 +241,13 @@ async function handleStartRoom() {
     playerId: currentPlayerId.value,
   });
 
-  router.push("/loading");
+  router.push({
+    name: "Loading",
+    query: {
+      roomCode: roomCode.value,
+      playerId: String(currentPlayerId.value ?? ""),
+    },
+  });
 }
 
 async function openInviteFriendModal(index) {
@@ -351,7 +363,13 @@ watch(
       return;
     }
 
-    router.push("/loading");
+    router.push({
+      name: "Loading",
+      query: {
+        roomCode: roomCode.value,
+        playerId: String(currentPlayerId.value ?? ""),
+      },
+    });
   },
 );
 </script>
