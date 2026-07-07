@@ -2,6 +2,7 @@ import {
   getTopUpPackages,
   createTopUpOrder,
   mockPayTopUpOrder,
+  createEcpayCheckout
 } from "../services/topUpService.js"
 
 function handleTopUpError(res, error) {
@@ -52,8 +53,23 @@ async function handleMockPayTopUpOrder(req, res) {
   }
 }
 
+async function handleCreateEcpayCheckout(req, res) {
+  try {
+    const { orderId } = req.params
+
+    const checkout = await createEcpayCheckout(orderId)
+
+    return res.status(200).json({
+      checkout,
+    })
+  } catch (error) {
+    return handleTopUpError(res, error)
+  }
+}
+
 export {
   handleGetTopUpPackages,
   handleCreateTopUpOrder,
   handleMockPayTopUpOrder,
+  handleCreateEcpayCheckout
 }
