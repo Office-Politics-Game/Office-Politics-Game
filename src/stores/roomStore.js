@@ -8,14 +8,37 @@ import {
   startRoom as startRoomRequest,
 } from "@/services/roomApi.js";
 
+const ROOM_CODE_STORAGE_KEY = "activeRoomCode";
+
 function getErrorMessage(error, fallbackMessage) {
   return error?.data?.message || error?.message || fallbackMessage;
+}
+
+function getStoredRoomCode() {
+  if (typeof sessionStorage === "undefined") {
+    return "";
+  }
+
+  return sessionStorage.getItem(ROOM_CODE_STORAGE_KEY) || "";
+}
+
+function saveRoomCode(roomCode) {
+  if (typeof sessionStorage === "undefined") {
+    return;
+  }
+
+  if (roomCode) {
+    sessionStorage.setItem(ROOM_CODE_STORAGE_KEY, roomCode);
+    return;
+  }
+
+  sessionStorage.removeItem(ROOM_CODE_STORAGE_KEY);
 }
 
 export const useRoomStore = defineStore("room", {
   state: () => ({
     room: null,
-    roomCode: "",
+    roomCode: getStoredRoomCode(),
     players: [],
     gameState: null,
     isLoading: false,
@@ -35,6 +58,7 @@ export const useRoomStore = defineStore("room", {
       if (payload?.room) {
         this.room = payload.room;
         this.roomCode = payload.room.roomCode || payload.room.room_code || "";
+        saveRoomCode(this.roomCode);
       }
 
       if (Array.isArray(payload?.players)) {
@@ -53,6 +77,7 @@ export const useRoomStore = defineStore("room", {
       this.gameState = null;
       this.isLoading = false;
       this.errorMessage = "";
+      saveRoomCode("");
     },
 
     async fetchRoomState(roomCode = this.roomCode) {
@@ -78,6 +103,7 @@ export const useRoomStore = defineStore("room", {
         const response = await createRoomRequest(payload);
         this.room = response?.room ?? null;
         this.roomCode = response?.room?.roomCode || response?.room?.room_code || "";
+        saveRoomCode(this.roomCode);
         this.gameState = null;
 
         if (this.roomCode) {
@@ -100,6 +126,7 @@ export const useRoomStore = defineStore("room", {
       try {
         const response = await joinRoomRequest(roomCode, payload);
         this.roomCode = roomCode;
+        saveRoomCode(this.roomCode);
         this.gameState = null;
         await this.fetchRoomState(roomCode);
         return response;
@@ -118,6 +145,7 @@ export const useRoomStore = defineStore("room", {
       try {
         const response = await updateRoomStateRequest(roomCode, payload);
         this.roomCode = roomCode;
+        saveRoomCode(this.roomCode);
         await this.fetchRoomState(roomCode);
         return response;
       } catch (error) {
@@ -135,6 +163,7 @@ export const useRoomStore = defineStore("room", {
       try {
         const response = await startRoomRequest(roomCode, payload);
         this.roomCode = roomCode;
+        saveRoomCode(this.roomCode);
         await this.fetchRoomState(roomCode);
         this.gameState = await getRoomGameStateRequest(
           roomCode,

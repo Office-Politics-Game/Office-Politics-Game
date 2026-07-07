@@ -7,6 +7,10 @@ defineProps({
     type: Array,
     required: true,
   },
+  isRestoring: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 defineEmits(["add-computer", "invite-friend", "remove-player", "toggle-ready"]);
@@ -35,6 +39,7 @@ defineEmits(["add-computer", "invite-friend", "remove-player", "toggle-ready"]);
 
         <div
           class="room-player-safe-zone col-start-1 row-start-1 mx-auto mt-[20%] flex h-[70%] w-[80%] flex-col items-center justify-center text-center"
+          :class="{ 'room-player-safe-zone--restoring': slot.isPlaceholder }"
         >
           <img
             v-if="slot.avatar"
@@ -45,6 +50,7 @@ defineEmits(["add-computer", "invite-friend", "remove-player", "toggle-ready"]);
           <UserPlus
             v-else
             class="room-player-avatar h-[34px] w-[34px] mt-10 flex-none lg:h-[68px] lg:w-[68px] lg:mt-20"
+            :class="{ 'room-player-avatar--restoring': slot.isPlaceholder }"
             :stroke-width="1.9"
           />
 
@@ -59,6 +65,7 @@ defineEmits(["add-computer", "invite-friend", "remove-player", "toggle-ready"]);
             </p>
             <p
               class="room-player-title m-0 w-full whitespace-nowrap text-center text-[14px] font-black leading-[1.12] lg:text-[28px]"
+              :class="{ 'room-player-title--restoring': slot.isPlaceholder }"
             >
               {{ slot.name ?? slot.option1 }}
             </p>
@@ -76,6 +83,7 @@ defineEmits(["add-computer", "invite-friend", "remove-player", "toggle-ready"]);
           >
             <p
               class="room-player-title m-0 w-full whitespace-nowrap text-center text-[14px] font-black leading-[1.12] lg:text-[28px]"
+              :class="{ 'room-player-title--restoring': slot.isPlaceholder }"
             >
               {{ slot.name }}
             </p>
@@ -88,8 +96,9 @@ defineEmits(["add-computer", "invite-friend", "remove-player", "toggle-ready"]);
             <p
               v-else
               class="room-player-level m-0 text-[10px] font-extrabold leading-none lg:text-[14px]"
+              :class="{ 'room-player-level--restoring': slot.isPlaceholder }"
             >
-              {{ slot.isReady ? "Ready" : "Not Ready" }}
+              {{ slot.placeholderLabel || (slot.isReady ? "Ready" : "Not Ready") }}
             </p>
           </div>
 
@@ -116,7 +125,7 @@ defineEmits(["add-computer", "invite-friend", "remove-player", "toggle-ready"]);
           </div>
 
           <button
-            v-if="!slot.isHost && slot.name"
+            v-if="!slot.isHost && slot.name && !slot.isPlaceholder"
             class="btn-dark tap-pop room-ready-button relative z-[1] mt-3 self-center rounded px-3 py-[5px] text-[11px] font-black leading-none lg:mt-[30px] lg:px-5 lg:py-2 lg:text-[15px]"
             type="button"
             @click="
@@ -144,6 +153,13 @@ defineEmits(["add-computer", "invite-friend", "remove-player", "toggle-ready"]);
 
 .room-player-avatar {
   color: var(--brand-active, #465563);
+}
+
+.room-player-avatar--restoring,
+.room-player-title--restoring,
+.room-player-level--restoring,
+.room-player-safe-zone--restoring .room-host-label {
+  animation: room-slot-breathe 1.2s ease-in-out infinite;
 }
 
 .room-player-avatar-image {
@@ -198,8 +214,23 @@ defineEmits(["add-computer", "invite-friend", "remove-player", "toggle-ready"]);
   color: var(--brand-active, #465563);
 }
 
+.room-player-level--restoring {
+  color: rgba(70, 85, 99, 0.72);
+}
+
 .room-ready-button:focus-visible {
   outline: 0;
   box-shadow: 0 0 0 4px var(--brand-focus, rgba(0, 70, 244, 0.24));
+}
+
+@keyframes room-slot-breathe {
+  0%,
+  100% {
+    opacity: 0.52;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 </style>

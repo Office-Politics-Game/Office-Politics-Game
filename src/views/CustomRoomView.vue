@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from "vue";
 import { storeToRefs } from "pinia";
 import { Copy, Play } from "@lucide/vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import InviteFriendModal from "@/components/gameRoom/InviteFriendModal.vue";
 import PlayerList from "@/components/gameRoom/CustomRoomPlayerList.vue";
 import { getRankingList } from "@/services/rankingService.js";
@@ -14,6 +14,7 @@ import { useRoomInvitationStore } from "@/stores/roomInvitationStore.js";
 import { useRoomStore } from "@/stores/roomStore.js";
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 const friendStore = useFriendStore();
 const roomInvitationStore = useRoomInvitationStore();
@@ -27,9 +28,13 @@ const availablePlayers = ref([]);
 const localPlayerSlots = ref([]);
 const showInviteFriendModal = ref(false);
 const invitingSlotIndex = ref(null);
+const isRestoringRoomState = ref(false);
 
 const currentPlayerId = computed(
   () => playerStore.currentPlayerId ?? authStore.currentPlayer?.id ?? null,
+);
+const requestedRoomCode = computed(() =>
+  typeof route.query.roomCode === "string" ? route.query.roomCode.trim().toUpperCase() : "",
 );
 
 const emptyPlayerSlots = [
@@ -83,6 +88,20 @@ function createRoomPlayerSlot(player) {
   };
 }
 
+function createRestoringSlot(slot, index) {
+  return {
+    id: `restoring-${index}`,
+    isHost: index === 0,
+    name: index === 0 ? "房主連線中" : `等待玩家 ${index + 1}`,
+    level: null,
+    avatar: null,
+    isReady: index === 0,
+    isPlaceholder: true,
+    placeholderLabel: index === 0 ? "正在同步房間資訊" : "同步玩家席位中",
+    ...slot,
+  };
+}
+
 const playerSlots = computed(() =>
   emptyPlayerSlots.map((slot, index) => {
     const roomPlayer = players.value[index];
@@ -103,6 +122,18 @@ const playerSlots = computed(() =>
   }),
 );
 
+const displayRoomCode = computed(
+  () => roomCode.value || requestedRoomCode.value || "------",
+);
+
+const displayPlayerSlots = computed(() => {
+  if (isRestoringRoomState.value) {
+    return emptyPlayerSlots.map((slot, index) => createRestoringSlot(slot, index));
+  }
+
+  return playerSlots.value;
+});
+
 const currentPlayerEntry = computed(() =>
   players.value.find((player) => player.playerId === currentPlayerId.value),
 );
@@ -112,11 +143,14 @@ const isHostPlayer = computed(
 );
 
 const occupiedSlotCount = computed(
-  () => playerSlots.value.filter((slot) => slot.name).length,
+  () => displayPlayerSlots.value.filter((slot) => slot.name && !slot.isPlaceholder).length,
 );
 
 const readySlotCount = computed(
-  () => playerSlots.value.filter((slot) => slot.name && slot.isReady).length,
+  () =>
+    displayPlayerSlots.value.filter(
+      (slot) => slot.name && slot.isReady && !slot.isPlaceholder,
+    ).length,
 );
 
 const hasLocalComputerPlayers = computed(() =>
@@ -253,11 +287,25 @@ onMounted(async () => {
   const rankingPlayers = await getRankingList();
   availablePlayers.value = rankingPlayers;
 
-  if (roomCode.value && !players.value.length) {
-    await roomStore.fetchRoomState();
+  let hasRestoredRoomState = false;
+  const roomCodeToRestore = requestedRoomCode.value || roomCode.value;
+
+  if (roomCodeToRestore && !players.value.length) {
+    isRestoringRoomState.value = true;
+
+    try {
+      await roomStore.fetchRoomState(roomCodeToRestore);
+      hasRestoredRoomState = roomStore.players.length > 0;
+    } catch {
+      hasRestoredRoomState = false;
+    } finally {
+      window.setTimeout(() => {
+        isRestoringRoomState.value = false;
+      }, 220);
+    }
   }
 
-  if (!players.value.length) {
+  if (!players.value.length && !hasRestoredRoomState) {
     const occupiedSlots = rankingPlayers
       .slice(0, 3)
       .map((player, index) => createPlayerSlot(player, index));
@@ -266,6 +314,10 @@ onMounted(async () => {
       ...slot,
       ...occupiedSlots[index],
     }));
+  }
+
+  if (!roomCodeToRestore) {
+    isRestoringRoomState.value = false;
   }
 });
 </script>
@@ -286,7 +338,7 @@ onMounted(async () => {
         class="flex w-52 items-center justify-center gap-2 text-sm font-bold leading-none text-white lg:w-80 lg:text-2xl"
       >
         <span>房間ID：</span>
-        <span class="tracking-[0.08em]">{{ roomCode || "------" }}</span>
+        <span class="tracking-[0.08em]">{{ displayRoomCode }}</span>
         <button
           class="pointer-events-auto cursor-pointer border-0 bg-transparent p-0 text-white"
           type="button"
@@ -304,7 +356,8 @@ onMounted(async () => {
       </p>
 
       <PlayerList
-        :slots="playerSlots"
+        :slots="displayPlayerSlots"
+        :is-restoring="isRestoringRoomState"
         @add-computer="handleAddComputer"
         @invite-friend="openInviteFriendModal"
         @remove-player="handleRemovePlayer"
@@ -326,8 +379,13 @@ onMounted(async () => {
       />
 
       <div class="mt-4 text-sm font-bold text-white">
-        {{ occupiedSlotCount }}/4 players
-        <span class="ml-3">{{ readySlotCount }} ready</span>
+        <template v-if="isRestoringRoomState">
+          正在同步房間玩家狀態
+        </template>
+        <template v-else>
+          {{ occupiedSlotCount }}/4 players
+          <span class="ml-3">{{ readySlotCount }} ready</span>
+        </template>
       </div>
 
       <div
@@ -344,6 +402,7 @@ onMounted(async () => {
           class="btn-dark tap-pop pointer-events-auto flex h-9 cursor-pointer items-center justify-center gap-2 overflow-hidden text-sm font-bold lg:h-12 lg:text-base"
           type="button"
           :disabled="
+            isRestoringRoomState ||
             isLoading ||
             (!hasLocalComputerPlayers && (!isHostPlayer || !isRoomReadyToStart))
           "
