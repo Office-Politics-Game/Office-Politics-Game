@@ -362,13 +362,13 @@ watch(
         @send="sendRoomInvitation"
       />
 
-      <div class="mt-4 text-sm font-bold text-white">
+      <div class="custom-room-status mt-4 text-sm font-bold text-white">
         {{ occupiedSlotCount }}/4 players
         <span class="ml-3">{{ readySlotCount }} ready</span>
       </div>
 
       <div
-        class="pointer-events-auto mt-5 grid w-72 grid-cols-2 gap-3 lg:mt-10 lg:w-[416px] lg:gap-8"
+        class="custom-room-actions pointer-events-auto mt-5 grid w-72 grid-cols-2 gap-3 lg:mt-10 lg:w-[416px] lg:gap-8"
       >
         <button
           class="btn-glass tap-pop pointer-events-auto flex h-9 cursor-pointer items-center justify-center overflow-hidden text-sm lg:h-12 lg:text-base"
@@ -396,3 +396,17 @@ watch(
     </section>
   </main>
 </template>
+
+<style scoped>
+@media (max-width: 900px) and (max-height: 520px) and (orientation: landscape) {
+  .custom-room-status {
+    position: relative;
+    top: -12px;
+  }
+
+  .custom-room-actions {
+    position: relative;
+    top: -16px;
+  }
+}
+</style>

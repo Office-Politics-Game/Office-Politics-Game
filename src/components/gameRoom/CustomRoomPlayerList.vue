@@ -203,4 +203,5 @@ defineEmits(["add-computer", "invite-friend", "remove-player", "toggle-ready"]);
   outline: 0;
   box-shadow: 0 0 0 4px var(--brand-focus, rgba(0, 70, 244, 0.24));
 }
+
 </style>
