@@ -55,6 +55,21 @@ CREATE TABLE player_currency_logs (
   CHECK (amount <> 0)
 );
 
+CREATE TABLE top_up_orders (
+  id SERIAL PRIMARY KEY,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  package_id VARCHAR(50) NOT NULL,
+  currency VARCHAR(20) NOT NULL DEFAULT 'diamond',
+  amount INTEGER NOT NULL CHECK (amount > 0),
+  price INTEGER NOT NULL CHECK (price >= 0),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  paid_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CHECK (currency IN ('diamond')),
+  CHECK (status IN ('pending', 'paid'))
+);
+
 CREATE TABLE shop_items (
   id SERIAL PRIMARY KEY,
   name VARCHAR(50) NOT NULL,
