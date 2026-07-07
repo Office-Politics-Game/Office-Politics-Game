@@ -77,6 +77,7 @@
         <button
           class="menu-btn left-[212px] bottom-[47px] h-[90px] w-[95px] lg:left-[353px] lg:bottom-[79px] lg:h-[150px] lg:w-[158px]"
           :disabled="isAnyPageTransitioning"
+          @click="openGachaPage"
         >
           <div class="btn-content">
             <img
@@ -250,6 +251,14 @@ function openMallPage() {
   window.setTimeout(() => {
     router.push("/mall");
   }, 180);
+}
+
+function openGachaPage() {
+  if (isAnyPageTransitioning.value) {
+    return;
+  }
+
+  router.push("/gacha");
 }
 </script>
 
