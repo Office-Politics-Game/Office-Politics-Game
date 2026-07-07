@@ -382,7 +382,7 @@ onMounted(async () => {
         @send="sendRoomInvitation"
       />
 
-      <div class="mt-4 text-sm font-bold text-white">
+      <div class="custom-room-status mt-4 text-sm font-bold text-white">
         <template v-if="isRestoringRoomState">
           正在同步房間玩家狀態
         </template>
@@ -391,11 +391,6 @@ onMounted(async () => {
           <span class="ml-3">{{ readySlotCount }} ready</span>
         </template>
       </div>
-      <div class="custom-room-status mt-4 text-sm font-bold text-white">
-        {{ occupiedSlotCount }}/4 players
-        <span class="ml-3">{{ readySlotCount }} ready</span>
-      </div>
-
       <div
         class="custom-room-actions pointer-events-auto mt-5 grid w-72 grid-cols-2 gap-3 lg:mt-10 lg:w-[416px] lg:gap-8"
       >
