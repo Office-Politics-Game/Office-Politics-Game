@@ -12,6 +12,7 @@ node_modules
 dist
 dist-ssr
 coverage
+server/.jest-cache/
 *.local
 
 # Editor directories and files

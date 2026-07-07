@@ -8,6 +8,8 @@
         class="social-flip-face social-flip-front relative h-full w-full bg-[length:100%_100%] bg-center shadow-2xl"
         :style="{ backgroundImage: `url(${menuBg})` }"
       >
+        <RoomInvitationNotice />
+
         <CurrencyBar
           class="absolute bottom-4 right-8.5 lg:bottom-9 lg:right-14.5"
           :items="['coins', 'gems']"
@@ -128,6 +130,7 @@
 <script setup>
 import { ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import RoomInvitationNotice from "@/components/gameRoom/RoomInvitationNotice.vue";
 import friendBg from "@/assets/images/bg-friend-view.webp";
 import menuBg from "@/assets/images/menu.webp";
 import CurrencyBar from "@/components/common/CurrencyBar.vue";

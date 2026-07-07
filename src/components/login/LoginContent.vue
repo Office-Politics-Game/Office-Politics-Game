@@ -169,9 +169,11 @@ import { ref } from "vue"
 import { useRouter } from "vue-router"
 import { useAuthStore } from "../../stores/authStore.js"
 import { Eye, EyeOff } from "lucide-vue-next"
+import { usePlayerStore } from "@/stores/playerStore.js"
 
 const emit = defineEmits(["close", "open-guest", "open-register"])
 const authStore = useAuthStore()
+const playerStore = usePlayerStore()
 const router = useRouter()
 
 const account = ref("")
@@ -226,6 +228,10 @@ async function handleLogin() {
       account: account.value.trim().toLowerCase(),
       password: password.value,
     })
+
+    if (authStore.currentPlayer) {
+      playerStore.setCurrentPlayer(authStore.currentPlayer)
+    }
 
     emit("close")
     await router.push("/lobby")
