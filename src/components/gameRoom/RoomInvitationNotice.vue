@@ -40,7 +40,12 @@ async function acceptInvitation(invitation) {
   if (result?.room?.roomCode) {
     router.push({
       name: "CustomRoom",
-      query: { roomCode: result.room.roomCode },
+      query: {
+        roomCode: result.room.roomCode,
+        playerId: String(
+          result.invitation?.inviteePlayerId ?? invitation.inviteePlayerId ?? "",
+        ),
+      },
     });
   }
 }

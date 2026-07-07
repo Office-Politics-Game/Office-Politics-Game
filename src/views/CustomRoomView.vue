@@ -36,6 +36,14 @@ const currentPlayerId = computed(
 const requestedRoomCode = computed(() =>
   typeof route.query.roomCode === "string" ? route.query.roomCode.trim().toUpperCase() : "",
 );
+const requestedPlayerId = computed(() =>
+  typeof route.query.playerId === "string" && route.query.playerId
+    ? route.query.playerId
+    : null,
+);
+const resolvedPlayerId = computed(
+  () => currentPlayerId.value ?? requestedPlayerId.value ?? null,
+);
 
 const emptyPlayerSlots = [
   {
@@ -84,9 +92,9 @@ function createRoomPlayerSlot(player) {
     name: player.username,
     avatar: null,
     canToggleReady:
-      player.playerId === currentPlayerId.value && player.role !== "host",
+      String(player.playerId) === String(resolvedPlayerId.value) && player.role !== "host",
     canRemovePlayer:
-      isHostPlayer.value && player.playerId !== currentPlayerId.value,
+      isHostPlayer.value && String(player.playerId) !== String(resolvedPlayerId.value),
   };
 }
 
@@ -137,7 +145,9 @@ const displayPlayerSlots = computed(() => {
 });
 
 const currentPlayerEntry = computed(() =>
-  players.value.find((player) => player.playerId === currentPlayerId.value),
+  players.value.find(
+    (player) => String(player.playerId) === String(resolvedPlayerId.value),
+  ),
 );
 
 const isHostPlayer = computed(
@@ -226,7 +236,7 @@ async function handleStartRoom() {
       name: "Loading",
       query: {
         roomCode: roomCode.value,
-        playerId: String(currentPlayerId.value ?? ""),
+        playerId: String(resolvedPlayerId.value ?? ""),
       },
     });
     return;
@@ -238,14 +248,14 @@ async function handleStartRoom() {
   }
 
   await roomStore.startRoom(roomCode.value, {
-    playerId: currentPlayerId.value,
+    playerId: resolvedPlayerId.value,
   });
 
   router.push({
     name: "Loading",
     query: {
       roomCode: roomCode.value,
-      playerId: String(currentPlayerId.value ?? ""),
+      playerId: String(resolvedPlayerId.value ?? ""),
     },
   });
 }
@@ -308,10 +318,10 @@ onMounted(async () => {
     isRestoringRoomState.value = true;
 
     try {
-      if (currentPlayerId.value) {
+      if (resolvedPlayerId.value) {
         await roomStore.subscribeToRoom({
           roomCode: roomCodeToRestore,
-          playerId: currentPlayerId.value,
+          playerId: resolvedPlayerId.value,
           force: true,
         });
       } else {
@@ -367,7 +377,7 @@ watch(
       name: "Loading",
       query: {
         roomCode: roomCode.value,
-        playerId: String(currentPlayerId.value ?? ""),
+        playerId: String(resolvedPlayerId.value ?? ""),
       },
     });
   },
