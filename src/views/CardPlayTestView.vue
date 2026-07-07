@@ -2,7 +2,10 @@
 import { computed, nextTick, onUnmounted, ref } from 'vue'
 import gameTableBackgroundUrl from '@/assets/images/bg-game-table.webp'
 import { cardAssetsByKey } from '@/constants/cardAssets'
-import { guestAvatars, guestNicknames } from '@/constants/guestOptions'
+import {
+  createGuestNickname,
+  guestAvatars,
+} from '@/constants/guestOptions'
 import { fallbackAvatars } from '@/constants/playerAssets'
 import CardDealAnimation from '@/components/game/animations/CardDealAnimation.vue'
 import CardDrawAnimation from '@/components/game/animations/CardDrawAnimation.vue'
@@ -60,7 +63,7 @@ const rawPlayers = [
 
 const players = rawPlayers.map((player, index) => ({
   ...player,
-  name: guestNicknames[index] ?? guestAvatars[index]?.name ?? player.name,
+  name: createGuestNickname() ?? guestAvatars[index]?.name ?? player.name,
   avatarUrl: player.avatarUrl ?? guestAvatars[index]?.image,
 }))
 
