@@ -1,10 +1,9 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRouter } from "vue-router";
 import loadingBackground from "@/assets/images/bg-loading.webp";
 
 const router = useRouter();
-const route = useRoute();
 
 const loadingMessages = [
   "辦公室開啟中...",
@@ -66,10 +65,7 @@ onMounted(() => {
   }, 4600);
 
   loadingTimer = window.setTimeout(() => {
-    router.replace({
-      name: "Game",
-      query: route.query,
-    });
+    router.replace("/game");
   }, 5200);
 });
 
