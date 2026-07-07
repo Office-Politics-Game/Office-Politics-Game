@@ -91,18 +91,7 @@ const playerSlots = computed(() =>
       return createRoomPlayerSlot(roomPlayer);
     }
 
-    if (roomCode.value) {
-      return {
-        ...slot,
-        option1: "等待玩家",
-        option2: "邀請好友",
-        showActionButton: false,
-        isActionDisabled: !isHostPlayer.value,
-        canInviteFriend: isHostPlayer.value,
-      }
-    }
-
-    if (localPlayerSlots.value[index]) {
+    if (localPlayerSlots.value[index]?.name) {
       return localPlayerSlots.value[index];
     }
 
@@ -162,7 +151,7 @@ async function toggleReady(slot) {
 }
 
 function handleAddComputer(index) {
-  if (roomCode.value || index === 0 || players.value[index]) {
+  if (index === 0 || players.value[index]) {
     return;
   }
 
@@ -179,7 +168,7 @@ function handleAddComputer(index) {
 }
 
 function handleRemovePlayer(index) {
-  if (roomCode.value || index === 0) {
+  if (index === 0) {
     return;
   }
 
@@ -188,7 +177,7 @@ function handleRemovePlayer(index) {
     return;
   }
 
-  localPlayerSlots.value[index] = createEmptySlot(index);
+  localPlayerSlots.value[index] = null;
 }
 
 async function handleStartRoom() {
@@ -289,10 +278,14 @@ onMounted(async () => {
       .slice(0, 3)
       .map((player, index) => createPlayerSlot(player, index));
 
-    localPlayerSlots.value = emptyPlayerSlots.map((slot, index) => ({
-      ...slot,
-      ...occupiedSlots[index],
-    }));
+    localPlayerSlots.value = emptyPlayerSlots.map((slot, index) =>
+      occupiedSlots[index]
+        ? {
+            ...slot,
+            ...occupiedSlots[index],
+          }
+        : null,
+    );
   }
 });
 
