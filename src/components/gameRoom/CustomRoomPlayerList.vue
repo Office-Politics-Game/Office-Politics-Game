@@ -19,7 +19,7 @@ defineEmits(["add-computer", "invite-friend", "remove-player", "toggle-ready"]);
 <template>
   <section
     class="pointer-events-none flex justify-center"
-    aria-label="玩家席位"
+    aria-label="玩家列表"
   >
     <div
       class="flex h-[232px] w-[572px] items-center justify-center gap-5 lg:h-[420px] lg:w-[1034px] lg:gap-4"

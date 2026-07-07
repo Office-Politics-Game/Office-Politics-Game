@@ -1,7 +1,6 @@
 <script setup>
 import { computed, ref, watch } from "vue";
-import { Crown, UserRound } from "@lucide/vue";
-import inviteFriendModal from "@/assets/images/modal-invite-friend.png";
+import { Crown, UserRound, X } from "@lucide/vue";
 
 const props = defineProps({
   friends: {
@@ -29,9 +28,9 @@ const props = defineProps({
 const emit = defineEmits(["close", "send"]);
 const selectedFriendId = ref("");
 
-const selectedFriend = computed(() => {
-  return props.friends.find((friend) => friend.id === selectedFriendId.value) ?? null;
-});
+const selectedFriend = computed(
+  () => props.friends.find((friend) => friend.id === selectedFriendId.value) ?? null,
+);
 
 watch(
   () => props.friends,
@@ -44,6 +43,10 @@ watch(
 );
 
 function selectFriend(friendId) {
+  if (props.isSending) {
+    return;
+  }
+
   selectedFriendId.value = friendId;
 }
 
@@ -57,594 +60,284 @@ function sendInvitation() {
 </script>
 
 <template>
-  <div class="invite-modal-backdrop" aria-label="邀請好友彈窗">
-    <div class="invite-modal-panel">
-      <img class="invite-modal-paper" :src="inviteFriendModal" alt="" aria-hidden="true" />
-      <header class="invite-modal-header">
-        <div class="invite-brand">
-          <span class="invite-star">★</span>
-          <span class="invite-star">★</span>
-          <Crown class="invite-crown" :stroke-width="1.4" />
-          <span class="invite-star">★</span>
-          <span class="invite-star">★</span>
-        </div>
-        <h2 class="invite-title">
-          邀請好友
-        </h2>
-        <div class="invite-rule">
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
-      </header>
+  <div class="invite-modal-backdrop" @click.self="emit('close')">
+    <section
+      class="invite-modal-card relative w-[min(90vw,720px)] max-h-[min(78vh,680px)] overflow-y-auto overflow-x-hidden px-6 py-7 sm:px-8 sm:py-8"
+      aria-labelledby="invite-friend-title"
+    >
+      <div
+        class="absolute inset-x-8 top-0 h-px invite-modal-rule"
+        aria-hidden="true"
+      ></div>
 
-      <section class="friend-row" aria-label="好友清單">
-        <div v-if="isLoading" class="friend-empty-state">
-          好友清單載入中...
+      <button
+        type="button"
+        class="btn-dark tap-pop absolute right-4 top-4 grid h-11 w-11 place-items-center"
+        aria-label="關閉邀請好友彈窗"
+        @click="emit('close')"
+      >
+        <X class="h-5 w-5" :stroke-width="2.2" />
+      </button>
+
+      <div class="mb-6 flex items-center justify-center gap-2 invite-modal-mark">
+        <Crown class="h-5 w-5" :stroke-width="1.9" />
+        <span class="text-[11px] font-black uppercase tracking-[0.24em]">Room Invite</span>
+      </div>
+
+      <h2
+        id="invite-friend-title"
+        class="mb-2 text-center font-black invite-modal-title"
+      >
+        邀請好友
+      </h2>
+
+      <p class="mb-5 text-center invite-modal-subtitle">
+        選擇一位好友加入目前房間
+      </p>
+
+      <section
+        class="invite-list-panel"
+        aria-label="好友列表"
+      >
+        <div v-if="isLoading" class="invite-state">
+          好友列表載入中...
         </div>
-        <div v-else-if="errorMessage" class="friend-empty-state is-error">
+        <div v-else-if="errorMessage" class="invite-state is-error">
           {{ errorMessage }}
         </div>
-        <div v-else-if="!friends.length" class="friend-empty-state">
+        <div v-else-if="!friends.length" class="invite-state">
           目前沒有可邀請的好友
         </div>
-        <div v-else class="friend-list">
+        <div v-else class="invite-list">
           <button
             v-for="friend in friends"
             :key="friend.id"
-            class="friend-option"
-            :class="{ 'is-selected': selectedFriendId === friend.id }"
             type="button"
+            class="invite-friend-row"
+            :class="{ 'is-selected': selectedFriendId === friend.id }"
             @click="selectFriend(friend.id)"
           >
-            <input
-              class="friend-checkbox"
-              type="checkbox"
-              :checked="selectedFriendId === friend.id"
-              tabindex="-1"
-              aria-hidden="true"
-              @click.prevent
-            />
-            <span class="friend-avatar" aria-hidden="true">
-              <UserRound :stroke-width="2.2" />
+            <span class="invite-friend-radio" aria-hidden="true">
+              <span v-if="selectedFriendId === friend.id"></span>
             </span>
-            <span class="friend-meta">
-              <span class="friend-id">{{ friend.name }}</span>
-              <span class="friend-status">
-                {{ friend.playerId }}｜{{ friend.status }}
+            <span class="invite-friend-avatar" aria-hidden="true">
+              <UserRound class="h-4 w-4" :stroke-width="2.1" />
+            </span>
+            <span class="invite-friend-copy">
+              <span class="invite-friend-name">{{ friend.name }}</span>
+              <span class="invite-friend-meta">
+                {{ friend.playerId }} · {{ friend.status }}
               </span>
             </span>
           </button>
         </div>
       </section>
 
-      <p v-if="notice" class="invite-notice">{{ notice }}</p>
+      <p v-if="notice" class="mt-4 invite-notice" role="status">
+        {{ notice }}
+      </p>
 
-      <footer class="invite-actions">
+      <div class="mt-5 grid grid-cols-2 gap-3 max-lg:landscape:mt-4 max-lg:landscape:gap-2">
         <button
-          class="invite-action-button invite-action-button-light"
+          class="invite-action-button is-secondary tap-pop flex cursor-pointer items-center justify-center"
           type="button"
+          :disabled="isSending"
           @click="emit('close')"
         >
-          <span>取消</span>
+          取消
         </button>
         <button
-          class="invite-action-button invite-action-button-primary"
+          class="invite-action-button is-primary tap-pop flex cursor-pointer items-center justify-center"
           type="button"
           :disabled="isLoading || isSending || !selectedFriend"
           @click="sendInvitation"
         >
-          <span>{{ isSending ? "發送中" : "發送邀請" }}</span>
+          {{ isSending ? "邀請中..." : "送出邀請" }}
         </button>
-      </footer>
-    </div>
+      </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
-@reference "../../assets/styles/main.css";
+@reference "tailwindcss";
 
 .invite-modal-backdrop {
-  @apply absolute inset-0 z-[8] grid place-items-center;
-  background: radial-gradient(circle at center, rgba(255, 244, 218, 0.16), rgba(0, 0, 0, 0.34) 68%);
-  padding: 8px;
+  @apply fixed inset-0 z-[60] grid place-items-center p-4;
+  background: rgba(0, 0, 0, 0.56);
 }
 
-.invite-modal-panel {
-  @apply relative overflow-visible;
-  width: 70%;
-  max-width: 520px;
-  aspect-ratio: 1419 / 1108;
+.invite-modal-card {
+  @apply rounded-[var(--radius-lg)]
+    border border-[rgba(134,179,224,0.38)]
+    bg-[rgba(255,255,255,0.92)]
+    [font-family:var(--font-sans)]
+    text-[var(--brand-active)]
+    shadow-[var(--shadow)]
+    animate-[popIn_0.42s_cubic-bezier(0.18,1.35,0.25,1)_both];
 }
 
-.invite-modal-paper {
-  @apply pointer-events-none absolute inset-0 z-0 h-full w-full select-none object-contain;
+.invite-modal-rule {
+  @apply bg-[linear-gradient(90deg,transparent,var(--brand-primary),transparent)];
 }
 
-.invite-modal-header {
-  @apply absolute left-1/2 z-[1] text-center;
-  top: 18%;
-  width: 54%;
-  transform: translateX(-50%);
+.invite-modal-mark {
+  color: var(--brand-active);
 }
 
-.invite-brand {
-  @apply mx-auto flex items-center justify-center gap-2;
-  color: var(--brand-active, #465563);
-  width: clamp(72px, 13vw, 92px);
+.invite-modal-title {
+  @apply text-[var(--brand-navy)] text-xl tracking-normal;
 }
 
-.invite-crown {
-  @apply shrink-0 fill-current stroke-current;
-  width: clamp(12px, 2.7vw, 16px);
-  height: clamp(12px, 2.7vw, 16px);
+.invite-modal-subtitle {
+  @apply m-0 text-sm font-semibold text-[var(--gray-400)];
 }
 
-.invite-star {
-  @apply shrink-0;
-  font-size: clamp(6px, 1.3vw, 8px);
+.invite-list-panel {
+  @apply rounded-[var(--radius-md)]
+    border border-[var(--brand-primary)]
+    bg-[rgba(255,255,255,0.58)]
+    p-2;
+  min-height: 260px;
+  max-height: 420px;
 }
 
-.invite-title {
-  @apply font-black leading-none tracking-normal;
-  margin-top: clamp(1px, 0.5vw, 3px);
-  color: var(--brand-navy, #001332);
-  font-family: var(--font-sans, Inter, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
-  font-size: clamp(16px, 3.8vw, 21px);
-}
-
-.invite-rule {
-  @apply mx-auto flex items-center justify-center gap-2;
-  color: var(--brand-primary, #86b3e0);
-  width: 54%;
-  margin-top: clamp(3px, 0.7vw, 4px);
-}
-
-.invite-rule span:first-child,
-.invite-rule span:last-child {
-  @apply h-px flex-1 bg-current;
-}
-
-.invite-rule span:nth-child(2) {
-  @apply rotate-45 border border-current;
-  width: clamp(3px, 0.7vw, 4px);
-  height: clamp(3px, 0.7vw, 4px);
-}
-
-.friend-row {
-  @apply absolute left-1/2 z-[1];
-  top: 39%;
-  width: 56%;
-  height: 28%;
-  transform: translateX(-50%);
-  border: 1px solid var(--brand-primary, #86b3e0);
-  border-radius: var(--radius-md, 0);
-  background: var(--surface-glass, rgba(255, 255, 255, 0.3));
-  padding: 4px;
-  box-shadow: 0 5px 10px rgba(0, 19, 50, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.58);
-}
-
-.friend-list {
-  @apply h-full overflow-y-auto;
-  display: grid;
-  gap: 4px;
+.invite-list {
+  @apply grid gap-2 overflow-y-auto;
+  max-height: 404px;
   padding-right: 2px;
 }
 
-.friend-option {
-  @apply grid w-full cursor-pointer items-center border bg-transparent text-left;
+.invite-friend-row {
+  @apply grid w-full items-center rounded-[var(--radius-md)] border border-[rgba(134,179,224,0.52)] bg-[rgba(255,255,255,0.64)] px-3 py-2 text-left transition-[border-color,background-color,box-shadow] duration-[180ms];
   grid-template-columns: auto auto minmax(0, 1fr);
-  gap: 6px;
-  min-height: 24px;
-  border-color: rgba(134, 179, 224, 0.62);
-  border-radius: var(--radius-md, 0);
-  color: var(--brand-active, #465563);
-  padding: 2px 6px;
-  transition:
-    border-color 180ms ease,
-    background-color 180ms ease,
-    box-shadow 180ms ease;
+  gap: 10px;
 }
 
-.friend-option.is-selected {
-  border-color: var(--brand-hover, #0046f4);
-  background: rgba(134, 179, 224, 0.32);
+.invite-friend-row:hover {
+  @apply border-[var(--brand-hover)] bg-[var(--surface-glass-hover)];
 }
 
-.friend-option:hover {
-  border-color: var(--brand-hover, #0046f4);
-  background: var(--surface-glass-hover, rgba(255, 255, 255, 0.72));
+.invite-friend-row.is-selected {
+  @apply border-[var(--brand-hover)] bg-[rgba(134,179,224,0.26)] shadow-[0_0_0_2px_rgba(0,70,244,0.08)];
 }
 
-.friend-option:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 4px var(--brand-focus, rgba(0, 70, 244, 0.24));
+.invite-friend-row:focus-visible {
+  @apply outline-0 shadow-[0_0_0_4px_var(--brand-focus)];
 }
 
-.friend-checkbox {
-  width: 10px;
-  aspect-ratio: 1;
-  border: 2px solid var(--brand-primary, #86b3e0);
-  border-radius: var(--radius-md, 0);
-  background: rgba(255, 255, 255, 0.58);
-  box-shadow: inset 0 1px 2px rgba(0, 19, 50, 0.12);
-  accent-color: var(--brand-hover, #0046f4);
+.invite-friend-radio {
+  @apply grid h-4 w-4 place-items-center rounded-full border border-[var(--brand-primary)] bg-white;
 }
 
-.friend-avatar {
-  @apply grid place-items-center;
-  width: 16px;
-  aspect-ratio: 1;
-  border: 1px solid rgba(70, 85, 99, 0.34);
-  background: rgba(134, 179, 224, 0.36);
-  color: var(--brand-active, #465563);
+.invite-friend-radio > span {
+  @apply h-2 w-2 rounded-full bg-[var(--brand-hover)];
 }
 
-.friend-avatar svg {
-  @apply h-[58%] w-[58%];
+.invite-friend-avatar {
+  @apply grid h-9 w-9 place-items-center rounded-full border border-[rgba(70,85,99,0.24)] bg-[rgba(134,179,224,0.2)] text-[var(--brand-active)];
 }
 
-.friend-meta {
+.invite-friend-copy {
   @apply grid min-w-0 gap-0.5;
 }
 
-.friend-id {
-  @apply overflow-hidden whitespace-nowrap text-ellipsis;
-  color: var(--brand-active, #465563);
-  font-family: var(--font-sans, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
-  font-size: 11px;
-  font-weight: 900;
-  line-height: 1;
+.invite-friend-name {
+  @apply overflow-hidden text-ellipsis whitespace-nowrap text-sm font-black text-[var(--brand-active)];
 }
 
-.friend-status {
-  @apply overflow-hidden whitespace-nowrap text-ellipsis;
-  color: var(--gray-400, #6f7b8a);
-  font-family: var(--font-sans, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 1;
+.invite-friend-meta {
+  @apply overflow-hidden text-ellipsis whitespace-nowrap text-xs font-bold text-[var(--gray-400)];
 }
 
-.friend-empty-state {
-  @apply grid h-full place-items-center text-center;
-  color: var(--brand-active, #465563);
-  font-family: var(--font-sans, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
-  font-size: 11px;
-  font-weight: 800;
+.invite-state {
+  @apply grid min-h-[204px] place-items-center px-4 text-center text-sm font-bold text-[var(--brand-active)];
 }
 
-.friend-empty-state.is-error {
-  color: var(--brand-hover, #0046f4);
+.invite-state.is-error,
+.invite-notice {
+  @apply text-[var(--brand-hover)];
 }
 
 .invite-notice {
-  @apply absolute left-1/2 z-[1] m-0 text-center;
-  bottom: 25%;
-  width: 56%;
-  transform: translateX(-50%);
-  color: var(--brand-hover, #0046f4);
-  font-family: var(--font-sans, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
-  font-size: 10px;
-  font-weight: 900;
-  line-height: 1.2;
-}
-
-.invite-actions {
-  @apply absolute left-1/2 z-[1] grid;
-  bottom: 16.5%;
-  width: 48%;
-  transform: translateX(-50%);
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  @apply m-0 text-center text-sm font-bold;
 }
 
 .invite-action-button {
-  @apply relative flex cursor-pointer items-center justify-center;
-  min-height: clamp(22px, 3.5vw, 32px);
-  border: 1px solid var(--brand-primary, #86b3e0);
-  border-radius: var(--radius-md, 0);
-  background: var(--surface-glass, rgba(255, 255, 255, 0.3));
-  color: var(--brand-active, #465563);
-  font-family: var(--font-sans, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif);
-  font-size: clamp(var(--text-sm, 14px), 2vw, 15px);
-  font-weight: 700;
-  line-height: 1;
-  text-shadow: none;
-  transition:
-    transform 180ms ease,
-    border-color 180ms ease,
-    background-color 180ms ease,
-    box-shadow 180ms ease,
-    color 180ms ease;
+  @apply min-h-[46px]
+    rounded-[var(--radius-md)]
+    border
+    text-[var(--text-sm)]
+    font-extrabold
+    transition-[border-color,background-color,box-shadow,color]
+    duration-[180ms]
+    disabled:cursor-not-allowed
+    disabled:opacity-60;
 }
 
-.invite-action-button span {
-  @apply relative z-[1];
+.invite-action-button.is-secondary {
+  @apply border-[var(--brand-primary)] bg-[var(--surface-glass)] text-[var(--brand-active)];
 }
 
-.invite-action-button-light {
-  background: var(--surface-glass, rgba(255, 255, 255, 0.3));
-}
-
-.invite-action-button-primary {
-  background: rgba(134, 179, 224, 0.34);
+.invite-action-button.is-primary {
+  @apply border-[var(--brand-active)] bg-[var(--brand-active)] text-white shadow-[0_10px_24px_rgba(70,85,99,0.24)];
 }
 
 .invite-action-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  border-color: var(--brand-hover, #0046f4);
-  background: var(--brand-hover, #0046f4);
-  color: #ffffff;
-  box-shadow: 0 10px 24px rgba(0, 70, 244, 0.24);
-}
-
-.invite-action-button:active:not(:disabled) {
-  transform: translateY(1px);
-  border-color: var(--brand-active, #465563);
-  background: var(--brand-active, #465563);
-  color: #ffffff;
-  box-shadow: 0 6px 14px rgba(70, 85, 99, 0.24);
+  @apply border-[var(--brand-hover)] bg-[var(--brand-hover)] text-white shadow-[0_10px_24px_rgba(0,70,244,0.24)];
 }
 
 .invite-action-button:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 4px var(--brand-focus, rgba(0, 70, 244, 0.24));
+  @apply outline-0 shadow-[0_0_0_4px_var(--brand-focus)];
 }
 
-.invite-action-button:disabled {
-  cursor: not-allowed;
-  border-color: transparent;
-  background: rgba(160, 166, 179, 0.62);
-  color: #ffffff;
-  box-shadow: none;
-}
-
-@media (min-width: 768px) {
-  .invite-modal-panel {
-    width: 72%;
-    max-width: 740px;
-  }
-
-  .invite-modal-header {
-    top: 18%;
-    width: 56%;
-  }
-
-  .invite-brand {
-    width: clamp(86px, 12vw, 112px);
-  }
-
-  .invite-crown {
-    width: clamp(16px, 2.7vw, 22px);
-    height: clamp(16px, 2.7vw, 22px);
-  }
-
-  .invite-star {
-    font-size: clamp(8px, 1.2vw, 10px);
-  }
-
-  .invite-title {
-    margin-top: clamp(2px, 0.6vw, 4px);
-    font-size: clamp(22px, 3.6vw, 30px);
-  }
-
-  .invite-rule {
-    width: 56%;
-    margin-top: clamp(4px, 0.8vw, 6px);
-  }
-
-  .invite-rule span:nth-child(2) {
-    width: clamp(4px, 0.7vw, 5px);
-    height: clamp(4px, 0.7vw, 5px);
-  }
-
-  .friend-row {
-    width: 56%;
-    height: 28%;
-    padding: 6px;
-  }
-
-  .friend-list {
-    gap: 6px;
-  }
-
-  .friend-option {
-    min-height: 32px;
-    gap: 8px;
-    padding: 3px 10px;
-  }
-
-  .friend-checkbox {
-    width: 14px;
-  }
-
-  .friend-avatar {
-    width: 22px;
-  }
-
-  .friend-id {
-    font-size: 16px;
-  }
-
-  .friend-status {
-    font-size: 11px;
-  }
-
-  .friend-empty-state {
-    font-size: 14px;
-  }
-
-  .invite-notice {
-    font-size: 12px;
-  }
-
-  .invite-actions {
-    bottom: 16.5%;
-    gap: 24px;
-    width: 50%;
-  }
-
-  .invite-action-button {
-    min-height: 32px;
-    font-size: 13px;
-  }
-}
-
-@media (min-width: 1024px) {
-  .invite-modal-panel {
-    width: 74%;
-    max-width: 860px;
-  }
-
-  .invite-modal-header {
-    top: 18.2%;
-    width: 56%;
-  }
-
-  .invite-brand {
-    width: clamp(96px, 9vw, 118px);
-  }
-
-  .invite-crown {
-    width: clamp(20px, 2vw, 24px);
-    height: clamp(20px, 2vw, 24px);
-  }
-
-  .invite-star {
-    font-size: clamp(9px, 1vw, 11px);
-  }
-
-  .invite-title {
-    margin-top: clamp(3px, 0.5vw, 5px);
-    font-size: clamp(28px, 3vw, 38px);
-  }
-
-  .invite-rule {
-    width: 58%;
-    margin-top: clamp(5px, 0.7vw, 7px);
-  }
-
-  .invite-rule span:nth-child(2) {
-    width: 6px;
-    height: 6px;
-  }
-
-  .friend-row {
-    width: 54%;
-    height: 28%;
-    padding: 8px;
-  }
-
-  .friend-option {
-    min-height: 40px;
-    gap: 10px;
-    padding: 4px 12px;
-  }
-
-  .friend-checkbox {
-    width: 16px;
-  }
-
-  .friend-avatar {
-    width: 28px;
-  }
-
-  .friend-id {
-    font-size: 20px;
-  }
-
-  .friend-status {
-    font-size: 12px;
-  }
-
-  .invite-actions {
-    bottom: 16.5%;
-    gap: 44px;
-    width: 48%;
-  }
-
-  .invite-action-button {
-    min-height: 38px;
-    font-size: 14px;
-  }
-}
-
-@media (orientation: landscape) and (max-height: 500px) {
+@media (max-width: 420px) {
   .invite-modal-backdrop {
-    padding: 4px;
+    padding: 12px;
   }
 
-  .invite-modal-panel {
-    width: min(calc(100vw - 8px), calc((100svh - 8px) * 1419 / 1108), 560px);
-  }
-
-  .invite-modal-header {
-    top: 17.2%;
-    width: 54%;
-  }
-
-  .invite-brand {
-    width: clamp(72px, 12vw, 90px);
-  }
-
-  .invite-crown {
-    width: clamp(11px, 2vw, 15px);
-    height: clamp(11px, 2vw, 15px);
-  }
-
-  .invite-title {
-    margin-top: 1px;
-    font-size: clamp(15px, 3vw, 20px);
-  }
-
-  .invite-rule {
-    margin-top: 3px;
-  }
-
-  .friend-row {
-    top: 39%;
-    width: 56%;
-    height: 28%;
-    padding: 3px;
-  }
-
-  .friend-list {
-    gap: 3px;
-  }
-
-  .friend-option {
-    min-height: clamp(16px, 4vh, 22px);
-    gap: 5px;
-    padding: 2px 6px;
-  }
-
-  .friend-checkbox {
-    width: clamp(9px, 1.8vw, 12px);
-  }
-
-  .friend-avatar {
-    width: clamp(15px, 3vw, 19px);
-  }
-
-  .friend-id {
-    font-size: clamp(10px, 2.2vw, 13px);
-  }
-
-  .friend-status,
-  .invite-notice {
-    font-size: 9px;
-  }
-
-  .invite-actions {
-    bottom: 15.8%;
-    gap: 12px;
-    width: 50%;
+  .invite-list-panel {
+    min-height: 220px;
   }
 
   .invite-action-button {
-    min-height: clamp(20px, 5vh, 26px);
-    font-size: 12px;
+    @apply min-h-11;
+  }
+}
+
+@media (max-width: 1024px) and (max-height: 560px) and (orientation: landscape) {
+  .invite-modal-card {
+    width: min(88vw, 640px);
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 20px 24px;
+  }
+
+  .invite-modal-title {
+    margin-bottom: 6px;
+    font-size: 28px;
+    line-height: 1.15;
+  }
+
+  .invite-list-panel {
+    min-height: 180px;
+    max-height: 220px;
+  }
+
+  .invite-friend-row {
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .invite-friend-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .invite-action-button {
+    min-height: 40px;
+    font-size: 14px;
   }
 }
 </style>
