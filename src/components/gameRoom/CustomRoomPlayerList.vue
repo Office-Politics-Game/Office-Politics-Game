@@ -125,9 +125,15 @@ defineEmits(["add-computer", "invite-friend", "remove-player", "toggle-ready"]);
           </div>
 
           <button
-            v-if="!slot.isHost && slot.name && !slot.isPlaceholder"
+            v-if="slot.name && !slot.isPlaceholder"
             class="btn-dark tap-pop room-ready-button relative z-[1] mt-3 self-center rounded px-3 py-[5px] text-[11px] font-black leading-none lg:mt-[30px] lg:px-5 lg:py-2 lg:text-[15px]"
+            :class="{
+              invisible: !slot.canToggleReady && !slot.canRemovePlayer,
+            }"
             type="button"
+            :disabled="!slot.canToggleReady && !slot.canRemovePlayer"
+            :tabindex="!slot.canToggleReady && !slot.canRemovePlayer ? -1 : 0"
+            :aria-hidden="!slot.canToggleReady && !slot.canRemovePlayer"
             @click="
               slot.canToggleReady
                 ? $emit('toggle-ready', slot)

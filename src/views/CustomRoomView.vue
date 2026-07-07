@@ -85,6 +85,8 @@ function createRoomPlayerSlot(player) {
     avatar: null,
     canToggleReady:
       player.playerId === currentPlayerId.value && player.role !== "host",
+    canRemovePlayer:
+      isHostPlayer.value && player.playerId !== currentPlayerId.value,
   };
 }
 
@@ -202,7 +204,7 @@ function handleAddComputer(index) {
 }
 
 function handleRemovePlayer(index) {
-  if (index === 0) {
+  if (index === 0 || !isHostPlayer.value) {
     return;
   }
 
