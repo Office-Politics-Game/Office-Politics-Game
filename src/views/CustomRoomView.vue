@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { Copy, Play } from "@lucide/vue";
 import { useRouter } from "vue-router";
@@ -91,6 +91,17 @@ const playerSlots = computed(() =>
       return createRoomPlayerSlot(roomPlayer);
     }
 
+    if (roomCode.value) {
+      return {
+        ...slot,
+        option1: "等待玩家",
+        option2: "邀請好友",
+        showActionButton: false,
+        isActionDisabled: !isHostPlayer.value,
+        canInviteFriend: isHostPlayer.value,
+      }
+    }
+
     if (localPlayerSlots.value[index]) {
       return localPlayerSlots.value[index];
     }
@@ -151,7 +162,7 @@ async function toggleReady(slot) {
 }
 
 function handleAddComputer(index) {
-  if (index === 0 || players.value[index]) {
+  if (roomCode.value || index === 0 || players.value[index]) {
     return;
   }
 
@@ -168,7 +179,7 @@ function handleAddComputer(index) {
 }
 
 function handleRemovePlayer(index) {
-  if (index === 0) {
+  if (roomCode.value || index === 0) {
     return;
   }
 
@@ -199,7 +210,7 @@ async function handleStartRoom() {
     playerId: currentPlayerId.value,
   });
 
-  router.push("/loading");
+  navigateToLoading();
 }
 
 async function openInviteFriendModal(index) {
@@ -249,11 +260,27 @@ async function copyRoomCode() {
   await navigator.clipboard.writeText(roomCode.value);
 }
 
+function navigateToLoading() {
+  router.push({
+    name: "Loading",
+    query: {
+      roomCode: roomCode.value,
+      playerId: currentPlayerId.value,
+    },
+  });
+}
+
 onMounted(async () => {
   const rankingPlayers = await getRankingList();
   availablePlayers.value = rankingPlayers;
 
-  if (roomCode.value && !players.value.length) {
+  if (roomCode.value && currentPlayerId.value) {
+    await roomStore.subscribeToRoom({
+      roomCode: roomCode.value,
+      playerId: currentPlayerId.value,
+      force: true,
+    }).catch(() => roomStore.fetchRoomState());
+  } else if (roomCode.value && !players.value.length) {
     await roomStore.fetchRoomState();
   }
 
@@ -268,6 +295,23 @@ onMounted(async () => {
     }));
   }
 });
+
+onBeforeUnmount(() => {
+  if (roomCode.value) {
+    roomStore.unsubscribeFromRoom(roomCode.value);
+  }
+});
+
+watch(
+  () => roomStore.room?.status,
+  (status, previousStatus) => {
+    if (status !== "playing" || status === previousStatus || !roomCode.value) {
+      return;
+    }
+
+    navigateToLoading();
+  },
+);
 </script>
 
 <template>
