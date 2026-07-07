@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { Copy, Play } from "@lucide/vue";
 import { useRoute, useRouter } from "vue-router";
@@ -296,10 +296,19 @@ onMounted(async () => {
     isRestoringRoomState.value = true;
 
     try {
-      await roomStore.fetchRoomState(roomCodeToRestore);
+      if (currentPlayerId.value) {
+        await roomStore.subscribeToRoom({
+          roomCode: roomCodeToRestore,
+          playerId: currentPlayerId.value,
+          force: true,
+        });
+      } else {
+        await roomStore.fetchRoomState(roomCodeToRestore);
+      }
       hasRestoredRoomState = roomStore.players.length > 0;
     } catch {
       hasRestoredRoomState = false;
+      await roomStore.fetchRoomState(roomCodeToRestore).catch(() => null);
     } finally {
       window.setTimeout(() => {
         isRestoringRoomState.value = false;
@@ -326,6 +335,25 @@ onMounted(async () => {
     isRestoringRoomState.value = false;
   }
 });
+
+onBeforeUnmount(() => {
+  const subscribedRoom = roomCode.value || requestedRoomCode.value;
+
+  if (subscribedRoom) {
+    roomStore.unsubscribeFromRoom(subscribedRoom);
+  }
+});
+
+watch(
+  () => roomStore.room?.status,
+  (status, previousStatus) => {
+    if (status !== "playing" || status === previousStatus || !roomCode.value) {
+      return;
+    }
+
+    router.push("/loading");
+  },
+);
 </script>
 
 <template>
