@@ -12,6 +12,7 @@ import { useFriendStore } from "@/stores/friendStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
 import { useRoomInvitationStore } from "@/stores/roomInvitationStore.js";
 import { useRoomStore } from "@/stores/roomStore.js";
+import { resolveAvatarUrl } from "@/utils/playerUtils.js";
 
 const router = useRouter();
 const route = useRoute();
@@ -77,6 +78,7 @@ function createPlayerSlot(player, index) {
     stars: player.stars,
     avatar: player.avatar,
     isComputer: true,
+    canRemovePlayer: index !== 0,
   };
 }
 
@@ -84,13 +86,15 @@ function createEmptySlot(index) {
   return { ...emptyPlayerSlots[index] };
 }
 
-function createRoomPlayerSlot(player) {
+function createRoomPlayerSlot(player, index) {
   return {
     id: player.playerId,
     isHost: player.role === "host",
     isReady: Boolean(player.isReady),
     name: player.username,
-    avatar: null,
+    avatar: player.avatarUrl
+      ? player.avatarUrl
+      : resolveAvatarUrl(player.avatarId ?? player.avatar_id, index),
     canToggleReady:
       String(player.playerId) === String(resolvedPlayerId.value) && player.role !== "host",
     canRemovePlayer:
@@ -117,7 +121,7 @@ const playerSlots = computed(() =>
     const roomPlayer = players.value[index];
 
     if (roomPlayer) {
-      return createRoomPlayerSlot(roomPlayer);
+      return createRoomPlayerSlot(roomPlayer, index);
     }
 
     if (localPlayerSlots.value[index]?.name) {
