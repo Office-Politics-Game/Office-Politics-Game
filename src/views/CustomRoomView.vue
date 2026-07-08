@@ -7,20 +7,18 @@ import InviteFriendModal from "@/components/gameRoom/InviteFriendModal.vue";
 import PlayerList from "@/components/gameRoom/CustomRoomPlayerList.vue";
 import { getRankingList } from "@/services/rankingService.js";
 import BG from "@/assets/images/bg-dashboard.webp";
-import { useAuthStore } from "@/stores/authStore.js";
+import { useCurrentPlayerId } from "@/composables/useCurrentPlayerId.js";
 import { useFriendStore } from "@/stores/friendStore.js";
-import { usePlayerStore } from "@/stores/playerStore.js";
 import { useRoomInvitationStore } from "@/stores/roomInvitationStore.js";
 import { useRoomStore } from "@/stores/roomStore.js";
 import { resolveAvatarUrl } from "@/utils/playerUtils.js";
 
 const router = useRouter();
 const route = useRoute();
-const authStore = useAuthStore();
 const friendStore = useFriendStore();
 const roomInvitationStore = useRoomInvitationStore();
 const roomStore = useRoomStore();
-const playerStore = usePlayerStore();
+const { currentPlayerId } = useCurrentPlayerId();
 
 const { roomCode, players, errorMessage, isLoading, isRoomReadyToStart } =
   storeToRefs(roomStore);
@@ -31,9 +29,6 @@ const showInviteFriendModal = ref(false);
 const invitingSlotIndex = ref(null);
 const isRestoringRoomState = ref(false);
 
-const currentPlayerId = computed(
-  () => playerStore.currentPlayerId ?? authStore.currentPlayer?.id ?? null,
-);
 const requestedRoomCode = computed(() =>
   typeof route.query.roomCode === "string" ? route.query.roomCode.trim().toUpperCase() : "",
 );

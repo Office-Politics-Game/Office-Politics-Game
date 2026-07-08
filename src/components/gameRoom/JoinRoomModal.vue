@@ -4,22 +4,17 @@ import { storeToRefs } from "pinia";
 import { useRouter } from "vue-router";
 import { DoorOpen } from "@lucide/vue";
 import joinRoomBackground from "@/assets/images/waiting-room.webp";
-import { useAuthStore } from "@/stores/authStore.js";
-import { usePlayerStore } from "@/stores/playerStore.js";
+import { useCurrentPlayerId } from "@/composables/useCurrentPlayerId.js";
 import { useRoomStore } from "@/stores/roomStore.js";
 
 const router = useRouter();
-const authStore = useAuthStore();
 const roomStore = useRoomStore();
-const playerStore = usePlayerStore();
+const { currentPlayerId } = useCurrentPlayerId();
 
 const roomId = ref("");
 const { isLoading, errorMessage } = storeToRefs(roomStore);
 
 const normalizedRoomId = computed(() => roomId.value.trim().toUpperCase());
-const currentPlayerId = computed(
-  () => playerStore.currentPlayerId ?? authStore.currentPlayer?.id ?? null,
-);
 
 async function handleJoinRoom() {
   if (!normalizedRoomId.value) {
@@ -27,14 +22,23 @@ async function handleJoinRoom() {
     return;
   }
 
-  await roomStore.joinRoom(normalizedRoomId.value, {
-    playerId: currentPlayerId.value,
-  });
+  if (!currentPlayerId.value) {
+    roomStore.errorMessage = "請先登入或建立訪客玩家。";
+    return;
+  }
 
-  router.push({
-    name: "CustomRoom",
-    query: { roomCode: normalizedRoomId.value },
-  });
+  try {
+    await roomStore.joinRoom(normalizedRoomId.value, {
+      playerId: currentPlayerId.value,
+    });
+
+    router.push({
+      name: "CustomRoom",
+      query: { roomCode: normalizedRoomId.value },
+    });
+  } catch {
+    return;
+  }
 }
 </script>
 
