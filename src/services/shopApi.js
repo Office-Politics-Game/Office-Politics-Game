@@ -10,6 +10,10 @@ function getPlayerShopItems(playerId) {
   return apiClient.get(`${SHOP_API_PATH}/players/${playerId}/items`);
 }
 
+function getPlayerEquippedItems(playerId) {
+  return apiClient.get(`${SHOP_API_PATH}/players/${playerId}/equipped`);
+}
+
 function purchaseShopItem({ playerId, shopItemId, quantity = 1 }) {
   return apiClient.post(`${SHOP_API_PATH}/purchase`, {
     playerId,
@@ -18,4 +22,17 @@ function purchaseShopItem({ playerId, shopItemId, quantity = 1 }) {
   });
 }
 
-export { getPlayerShopItems, getShopItems, purchaseShopItem };
+function equipShopItem({ playerId, shopItemId }) {
+  return apiClient.post(`${SHOP_API_PATH}/equip`, {
+    playerId,
+    shopItemId,
+  });
+}
+
+export {
+  equipShopItem,
+  getPlayerEquippedItems,
+  getPlayerShopItems,
+  getShopItems,
+  purchaseShopItem,
+};
