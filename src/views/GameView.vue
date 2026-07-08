@@ -8,6 +8,7 @@ import {
   cardAssetKeyByRank,
   cardAssetsByKey,
 } from '@/constants/cardAssets'
+import { getCardSkinThemeSlotImage } from '@/constants/cardSkinThemes'
 import {
   drawCard as drawGameCard,
   getRoomGameState,
@@ -233,7 +234,19 @@ function getPlayerCardSkinUrl(playerId, cardKey = "") {
       : ''
 
   if (typeof overrideUrl === 'string' && overrideUrl) {
+    const overrideThemeSlotUrl = getCardSkinThemeSlotImage(overrideUrl, cardKey)
+
+    if (overrideThemeSlotUrl) {
+      return overrideThemeSlotUrl
+    }
+
     return overrideUrl
+  }
+
+  const themeSlotUrl = getCardSkinThemeSlotImage(player?.cardSkinUrl, cardKey)
+
+  if (themeSlotUrl) {
+    return themeSlotUrl
   }
 
   return typeof player?.cardSkinUrl === 'string' ? player.cardSkinUrl : ''

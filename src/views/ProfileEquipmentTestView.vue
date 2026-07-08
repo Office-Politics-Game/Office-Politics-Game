@@ -69,6 +69,7 @@ import CardSkinLoadoutEditor from "@/components/profile/CardSkinLoadoutEditor.vu
 import ProfileEquipmentSwitcher from "@/components/profile/ProfileEquipmentSwitcher.vue";
 import { cardAssetsByKey } from "@/constants/cardAssets.js";
 import { CARD_SKIN_SLOT_LABELS, CARD_SKIN_SLOT_ORDER } from "@/constants/cardSkinSlots.js";
+import { getCardSkinThemeLogo, getCardSkinThemeSlotImage } from "@/constants/cardSkinThemes.js";
 import { guestAvatars } from "@/constants/guestOptions.js";
 import {
   buildEquipmentSections,
@@ -200,7 +201,10 @@ const cardSkinInventoryItems = computed(() => {
 
 const cardSkinPreviewByItemId = computed(() =>
   Object.fromEntries(
-    cardSkinInventoryItems.value.map((item) => [Number(item.shopItemId), item.previewImage || ""]),
+    cardSkinInventoryItems.value.map((item) => [
+      Number(item.shopItemId),
+      getCardSkinThemeLogo(item.shopItem || item) || item.previewImage || "",
+    ]),
   ),
 );
 
@@ -211,16 +215,27 @@ const cardSkinSlotRows = computed(() => {
 
   return CARD_SKIN_SLOT_ORDER.map((slotKey) => {
     const overrideItemId = Number(overrides[slotKey]);
+    const overrideSourceItem = cardSkinInventoryItems.value.find(
+      (item) => Number(item.shopItemId) === overrideItemId,
+    );
     const overridePreviewImage =
-      cardSkinPreviewByItemId.value[overrideItemId] || "";
+      getCardSkinThemeSlotImage(overrideSourceItem?.shopItem || overrideSourceItem, slotKey) ||
+      cardSkinPreviewByItemId.value[overrideItemId] ||
+      "";
     const defaultPreviewImage =
       cardAssetsByKey[slotKey]?.backgroundUrl || cardAssetsByKey.intern.backgroundUrl;
+    const baseSourceItem = cardSkinInventoryItems.value.find(
+      (item) => Number(item.shopItemId) === Number(equippedItems.value.cardSkinItemId),
+    );
+    const baseSlotPreviewImage =
+      getCardSkinThemeSlotImage(baseSourceItem?.shopItem || baseSourceItem, slotKey) ||
+      basePreviewImage;
 
     return {
       key: slotKey,
       label: CARD_SKIN_SLOT_LABELS[slotKey] || slotKey,
       isOverridden: Number.isInteger(overrideItemId) && overrideItemId > 0,
-      previewImage: overridePreviewImage || basePreviewImage || defaultPreviewImage,
+      previewImage: overridePreviewImage || baseSlotPreviewImage || defaultPreviewImage,
       overrideItemId: Number.isInteger(overrideItemId) && overrideItemId > 0 ? overrideItemId : null,
     };
   });
