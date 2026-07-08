@@ -1,5 +1,6 @@
 import { getPlayerEquippedItems, getPlayerShopItems } from "@/services/shopApi.js";
 import { normalizePlayerAvatar } from "@/utils/playerUtils.js";
+import { sanitizeCardSkinOverrides } from "@/constants/cardSkinSlots.js";
 
 function getPreviewImageByItemId(playerItems = [], itemId, type) {
   return (
@@ -11,6 +12,19 @@ function getPreviewImageByItemId(playerItems = [], itemId, type) {
   );
 }
 
+function mapCardSkinOverridesToUrls(playerItems = [], overrides = {}) {
+  const normalizedOverrides = sanitizeCardSkinOverrides(overrides);
+
+  return Object.fromEntries(
+    Object.entries(normalizedOverrides)
+      .map(([slotKey, itemId]) => [
+        slotKey,
+        getPreviewImageByItemId(playerItems, itemId, "card_skin"),
+      ])
+      .filter(([, imageUrl]) => Boolean(imageUrl)),
+  );
+}
+
 async function getEquippedAppearance(playerId) {
   const numericPlayerId = Number(playerId);
 
@@ -18,6 +32,7 @@ async function getEquippedAppearance(playerId) {
     return {
       avatarUrl: "",
       cardSkinUrl: "",
+      cardSkinOverrides: {},
       cardBackUrl: "",
       boardSkinUrl: "",
     };
@@ -34,6 +49,7 @@ async function getEquippedAppearance(playerId) {
   return {
     avatarUrl: getPreviewImageByItemId(playerItems, equipped.avatarItemId, "avatar"),
     cardSkinUrl: getPreviewImageByItemId(playerItems, equipped.cardSkinItemId, "card_skin"),
+    cardSkinOverrides: mapCardSkinOverridesToUrls(playerItems, equipped.cardSkinOverrides),
     cardBackUrl: getPreviewImageByItemId(playerItems, equipped.cardBackItemId, "card_back"),
     boardSkinUrl: getPreviewImageByItemId(playerItems, equipped.boardSkinItemId, "board_skin"),
   };
@@ -46,6 +62,7 @@ async function hydratePlayerAppearanceBundle(player, index = 0) {
       appearance: {
         avatarUrl: "",
         cardSkinUrl: "",
+        cardSkinOverrides: {},
         cardBackUrl: "",
         boardSkinUrl: "",
       },
@@ -71,6 +88,7 @@ async function hydratePlayerAppearanceBundle(player, index = 0) {
       appearance: {
         avatarUrl: "",
         cardSkinUrl: "",
+        cardSkinOverrides: {},
         cardBackUrl: "",
         boardSkinUrl: "",
       },

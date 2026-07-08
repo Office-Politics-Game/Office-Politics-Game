@@ -210,12 +210,13 @@ function rememberRoomPlayerMetadata(players = []) {
         avatarId: player.avatarId ?? player.avatar_id,
         avatarUrl: player.avatarUrl,
         cardSkinUrl: player.cardSkinUrl,
+        cardSkinOverrides: player.cardSkinOverrides,
       },
     ]),
   )
 }
 
-function getPlayerCardSkinUrl(playerId) {
+function getPlayerCardSkinUrl(playerId, cardKey = "") {
   if (playerId === null || playerId === undefined) {
     return ''
   }
@@ -224,25 +225,23 @@ function getPlayerCardSkinUrl(playerId) {
     (candidate) => String(getPlayerId(candidate)) === String(playerId),
   )
 
+  const overrideUrl =
+    cardKey &&
+    player?.cardSkinOverrides &&
+    typeof player.cardSkinOverrides === 'object'
+      ? player.cardSkinOverrides[cardKey]
+      : ''
+
+  if (typeof overrideUrl === 'string' && overrideUrl) {
+    return overrideUrl
+  }
+
   return typeof player?.cardSkinUrl === 'string' ? player.cardSkinUrl : ''
-}
-
-function normalizeCardWithAppearance(rawCard = {}, fallbackIndex = 0) {
-  const normalizedCard = normalizeCard(rawCard, fallbackIndex)
-
-  if (!cardSkinUrl.value) {
-    return normalizedCard
-  }
-
-  return {
-    ...normalizedCard,
-    backgroundUrl: cardSkinUrl.value,
-  }
 }
 
 function normalizeCardForPlayer(rawCard = {}, ownerPlayerId = null, fallbackIndex = 0) {
   const normalizedCard = normalizeCard(rawCard, fallbackIndex)
-  const playerCardSkinUrl = getPlayerCardSkinUrl(ownerPlayerId)
+  const playerCardSkinUrl = getPlayerCardSkinUrl(ownerPlayerId, normalizedCard.assetKey)
 
   if (!playerCardSkinUrl) {
     return normalizedCard

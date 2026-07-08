@@ -1,4 +1,5 @@
 import pool from "../db/index.js"
+import { sanitizeCardSkinOverrideIds } from "../constants/cardSkinSlots.js"
 
 const currencyColumnMap = {
   coin: "coins",
@@ -104,9 +105,33 @@ function mapEquippedItems(row) {
     playerId: row.player_id,
     avatarItemId: row.avatar_item_id,
     cardSkinItemId: row.card_skin_item_id,
+    cardSkinOverrides: row.card_skin_overrides ?? {},
     cardBackItemId: row.card_back_item_id,
     boardSkinItemId: row.board_skin_item_id,
     updatedAt: row.updated_at,
+  }
+}
+
+async function validateOwnedCardSkinItems(client, playerId, itemIds = []) {
+  if (itemIds.length === 0) {
+    return
+  }
+
+  const result = await client.query(
+    `SELECT pi.shop_item_id
+     FROM player_items pi
+     JOIN shop_items si ON si.id = pi.shop_item_id
+     WHERE pi.player_id = $1
+       AND pi.shop_item_id = ANY($2::int[])
+       AND si.type = 'card_skin'`,
+    [playerId, itemIds]
+  )
+
+  const ownedItemIdSet = new Set(result.rows.map((row) => Number(row.shop_item_id)))
+  const missingItemId = itemIds.find((itemId) => !ownedItemIdSet.has(Number(itemId)))
+
+  if (missingItemId) {
+    throw createServiceError("Player does not own the selected card skin", 404)
   }
 }
 
@@ -325,20 +350,32 @@ async function purchaseShopItem({ playerId, shopItemId, quantity = 1 }) {
 
 async function getPlayerEquippedItems(playerId) {
   const numericPlayerId = parsePositiveInteger(playerId, "playerId")
+  let result
 
-  const result = await pool.query(
-    `SELECT player_id, avatar_item_id, card_skin_item_id,
-            card_back_item_id, board_skin_item_id, updated_at
-     FROM player_equipped_items
-     WHERE player_id = $1`,
-    [numericPlayerId]
-  )
+  try {
+    result = await pool.query(
+      `SELECT player_id, avatar_item_id, card_skin_item_id, card_skin_overrides,
+              card_back_item_id, board_skin_item_id, updated_at
+       FROM player_equipped_items
+       WHERE player_id = $1`,
+      [numericPlayerId]
+    )
+  } catch {
+    result = await pool.query(
+      `SELECT player_id, avatar_item_id, card_skin_item_id,
+              card_back_item_id, board_skin_item_id, updated_at
+       FROM player_equipped_items
+       WHERE player_id = $1`,
+      [numericPlayerId]
+    )
+  }
 
   if (result.rows.length === 0) {
     return {
       playerId: numericPlayerId,
       avatarItemId: null,
       cardSkinItemId: null,
+      cardSkinOverrides: {},
       cardBackItemId: null,
       boardSkinItemId: null,
       updatedAt: null,
@@ -376,15 +413,85 @@ async function equipShopItem({ playerId, shopItemId }) {
       throw createServiceError("此商品類型不可裝備")
     }
 
+    let equippedResult
+
+    try {
+      equippedResult = await client.query(
+        `INSERT INTO player_equipped_items (player_id, ${equipColumn}, updated_at)
+         VALUES ($1, $2, CURRENT_TIMESTAMP)
+         ON CONFLICT (player_id)
+         DO UPDATE SET ${equipColumn} = EXCLUDED.${equipColumn},
+                       updated_at = CURRENT_TIMESTAMP
+         RETURNING player_id, avatar_item_id, card_skin_item_id, card_skin_overrides,
+                   card_back_item_id, board_skin_item_id, updated_at`,
+        [numericPlayerId, numericShopItemId]
+      )
+    } catch {
+      equippedResult = await client.query(
+        `INSERT INTO player_equipped_items (player_id, ${equipColumn}, updated_at)
+         VALUES ($1, $2, CURRENT_TIMESTAMP)
+         ON CONFLICT (player_id)
+         DO UPDATE SET ${equipColumn} = EXCLUDED.${equipColumn},
+                       updated_at = CURRENT_TIMESTAMP
+         RETURNING player_id, avatar_item_id, card_skin_item_id,
+                   card_back_item_id, board_skin_item_id, updated_at`,
+        [numericPlayerId, numericShopItemId]
+      )
+    }
+
+    await client.query("COMMIT")
+
+    return mapEquippedItems(equippedResult.rows[0])
+  } catch (error) {
+    await client.query("ROLLBACK")
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+async function updateCardSkinLoadout({
+  playerId,
+  cardSkinItemId = null,
+  cardSkinOverrides = {},
+}) {
+  const numericPlayerId = parsePositiveInteger(playerId, "playerId")
+  const numericCardSkinItemId =
+    cardSkinItemId === null || cardSkinItemId === undefined || cardSkinItemId === ""
+      ? null
+      : parsePositiveInteger(cardSkinItemId, "cardSkinItemId")
+  const normalizedOverrides = sanitizeCardSkinOverrideIds(cardSkinOverrides)
+  const overrideItemIds = Object.values(normalizedOverrides)
+  const client = await pool.connect()
+
+  try {
+    await client.query("BEGIN")
+
+    if (numericCardSkinItemId !== null) {
+      await validateOwnedCardSkinItems(client, numericPlayerId, [numericCardSkinItemId])
+    }
+
+    await validateOwnedCardSkinItems(client, numericPlayerId, overrideItemIds)
+
     const equippedResult = await client.query(
-      `INSERT INTO player_equipped_items (player_id, ${equipColumn}, updated_at)
-       VALUES ($1, $2, CURRENT_TIMESTAMP)
+      `INSERT INTO player_equipped_items (
+          player_id,
+          card_skin_item_id,
+          card_skin_overrides,
+          updated_at
+        )
+       VALUES ($1, $2, $3::jsonb, CURRENT_TIMESTAMP)
        ON CONFLICT (player_id)
-       DO UPDATE SET ${equipColumn} = EXCLUDED.${equipColumn},
+       DO UPDATE SET card_skin_item_id = EXCLUDED.card_skin_item_id,
+                     card_skin_overrides = EXCLUDED.card_skin_overrides,
                      updated_at = CURRENT_TIMESTAMP
-       RETURNING player_id, avatar_item_id, card_skin_item_id,
+       RETURNING player_id, avatar_item_id, card_skin_item_id, card_skin_overrides,
                  card_back_item_id, board_skin_item_id, updated_at`,
-      [numericPlayerId, numericShopItemId]
+      [
+        numericPlayerId,
+        numericCardSkinItemId,
+        JSON.stringify(normalizedOverrides),
+      ]
     )
 
     await client.query("COMMIT")
@@ -404,4 +511,5 @@ export {
   purchaseShopItem,
   getPlayerEquippedItems,
   equipShopItem,
+  updateCardSkinLoadout,
 }

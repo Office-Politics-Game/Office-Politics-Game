@@ -38,6 +38,7 @@ function createDefaultEquippedState(playerId = null) {
     avatarId: null,
     avatarItemId: null,
     cardSkinItemId: null,
+    cardSkinOverrides: {},
     cardBackItemId: null,
     boardSkinItemId: null,
     updatedAt: null,
@@ -52,6 +53,10 @@ function normalizeEquippedItems(equipped, playerId = null) {
   return {
     ...createDefaultEquippedState(playerId),
     ...equipped,
+    cardSkinOverrides:
+      equipped?.cardSkinOverrides && typeof equipped.cardSkinOverrides === "object"
+        ? equipped.cardSkinOverrides
+        : {},
   };
 }
 

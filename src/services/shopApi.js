@@ -29,10 +29,19 @@ function equipShopItem({ playerId, shopItemId }) {
   });
 }
 
+function updateCardSkinLoadout({ playerId, cardSkinItemId = null, cardSkinOverrides = {} }) {
+  return apiClient.post(`${SHOP_API_PATH}/equip-card-skins`, {
+    playerId,
+    cardSkinItemId,
+    cardSkinOverrides,
+  });
+}
+
 export {
   equipShopItem,
   getPlayerEquippedItems,
   getPlayerShopItems,
   getShopItems,
   purchaseShopItem,
+  updateCardSkinLoadout,
 };

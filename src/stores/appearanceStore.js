@@ -6,6 +6,7 @@ function createDefaultAppearanceState() {
     playerId: null,
     avatarUrl: "",
     cardSkinUrl: "",
+    cardSkinOverrides: {},
     cardBackUrl: "",
     boardSkinUrl: "",
     isHydrated: false,
@@ -20,6 +21,7 @@ export const useAppearanceStore = defineStore("appearance", {
       this.playerId = appearance.playerId ?? this.playerId ?? null;
       this.avatarUrl = appearance.avatarUrl || "";
       this.cardSkinUrl = appearance.cardSkinUrl || "";
+      this.cardSkinOverrides = appearance.cardSkinOverrides || {};
       this.cardBackUrl = appearance.cardBackUrl || "";
       this.boardSkinUrl = appearance.boardSkinUrl || "";
       this.isHydrated = true;
@@ -51,6 +53,7 @@ export const useAppearanceStore = defineStore("appearance", {
 
       if (categoryId === "card_skin") {
         this.cardSkinUrl = nextUrl;
+        this.cardSkinOverrides = {};
       }
 
       if (categoryId === "card_back") {
@@ -66,6 +69,12 @@ export const useAppearanceStore = defineStore("appearance", {
 
     resetAppearance() {
       Object.assign(this, createDefaultAppearanceState());
+    },
+
+    setCardSkinLoadout({ baseUrl = "", overrides = {} } = {}) {
+      this.cardSkinUrl = baseUrl || "";
+      this.cardSkinOverrides = overrides || {};
+      this.isHydrated = true;
     },
   },
 });

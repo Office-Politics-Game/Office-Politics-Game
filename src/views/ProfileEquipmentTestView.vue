@@ -16,9 +16,7 @@
             PROFILE LOADOUT
           </p>
           <h1 class="mt-1 text-3xl font-black text-slate-900">配件切換測試頁</h1>
-          <p class="mt-1 text-sm text-slate-600">
-            玩家 ID : {{ resolvedPlayerId ?? "未登入" }}
-          </p>
+          <p class="mt-1 text-sm text-slate-600">玩家 ID : {{ resolvedPlayerId ?? "未登入" }}</p>
         </div>
 
         <div class="flex items-center gap-3 max-sm:w-full max-sm:flex-col">
@@ -49,6 +47,16 @@
         @select="handleSelectItem"
         @equip="handleEquipItem"
       />
+
+      <CardSkinLoadoutEditor
+        v-if="activeCategory === 'card_skin'"
+        :slots="cardSkinSlotRows"
+        :selected-skin-item="selectedCardSkinItem"
+        :is-saving="Boolean(equippingItemId)"
+        @apply-theme="handleApplyCardSkinTheme"
+        @assign-slot="handleAssignCardSkinSlot"
+        @clear-slot="handleClearCardSkinSlot"
+      />
     </section>
   </main>
 </template>
@@ -56,23 +64,27 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import bgPersonal from "@/assets/images/bg-personal.webp";
+import CardSkinLoadoutEditor from "@/components/profile/CardSkinLoadoutEditor.vue";
 import ProfileEquipmentSwitcher from "@/components/profile/ProfileEquipmentSwitcher.vue";
+import { cardAssetsByKey } from "@/constants/cardAssets.js";
+import { CARD_SKIN_SLOT_LABELS, CARD_SKIN_SLOT_ORDER } from "@/constants/cardSkinSlots.js";
+import { guestAvatars } from "@/constants/guestOptions.js";
 import {
   buildEquipmentSections,
   normalizeEquippedItems,
   patchEquippedState,
 } from "@/models/equipmentModel.js";
-import bgPersonal from "@/assets/images/bg-personal.webp";
-import { guestAvatars } from "@/constants/guestOptions.js";
-import { useAppearanceStore } from "@/stores/appearanceStore.js";
-import { useAuthStore } from "@/stores/authStore.js";
-import { usePlayerStore } from "@/stores/playerStore.js";
+import { updatePlayerAvatar } from "@/services/playerApi.js";
 import {
   equipShopItem,
   getPlayerEquippedItems,
   getPlayerShopItems,
+  updateCardSkinLoadout,
 } from "@/services/shopApi.js";
-import { updatePlayerAvatar } from "@/services/playerApi.js";
+import { useAppearanceStore } from "@/stores/appearanceStore.js";
+import { useAuthStore } from "@/stores/authStore.js";
+import { usePlayerStore } from "@/stores/playerStore.js";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -173,6 +185,47 @@ const selectedItem = computed(() => {
   );
 });
 
+const selectedCardSkinItem = computed(() => {
+  if (activeCategory.value !== "card_skin") {
+    return null;
+  }
+
+  return selectedItem.value?.categoryId === "card_skin" ? selectedItem.value : null;
+});
+
+const cardSkinInventoryItems = computed(() => {
+  const cardSkinSection = equipmentSections.value.find((section) => section.id === "card_skin");
+  return cardSkinSection?.items ?? [];
+});
+
+const cardSkinPreviewByItemId = computed(() =>
+  Object.fromEntries(
+    cardSkinInventoryItems.value.map((item) => [Number(item.shopItemId), item.previewImage || ""]),
+  ),
+);
+
+const cardSkinSlotRows = computed(() => {
+  const overrides = equippedItems.value.cardSkinOverrides || {};
+  const basePreviewImage =
+    cardSkinPreviewByItemId.value[Number(equippedItems.value.cardSkinItemId)] || "";
+
+  return CARD_SKIN_SLOT_ORDER.map((slotKey) => {
+    const overrideItemId = Number(overrides[slotKey]);
+    const overridePreviewImage =
+      cardSkinPreviewByItemId.value[overrideItemId] || "";
+    const defaultPreviewImage =
+      cardAssetsByKey[slotKey]?.backgroundUrl || cardAssetsByKey.intern.backgroundUrl;
+
+    return {
+      key: slotKey,
+      label: CARD_SKIN_SLOT_LABELS[slotKey] || slotKey,
+      isOverridden: Number.isInteger(overrideItemId) && overrideItemId > 0,
+      previewImage: overridePreviewImage || basePreviewImage || defaultPreviewImage,
+      overrideItemId: Number.isInteger(overrideItemId) && overrideItemId > 0 ? overrideItemId : null,
+    };
+  });
+});
+
 watch(
   equipmentSections,
   (sections) => {
@@ -201,6 +254,54 @@ watch(
   },
   { immediate: true },
 );
+
+function applyCardSkinAppearance(baseItemId, overrides = {}) {
+  const baseUrl = cardSkinPreviewByItemId.value[Number(baseItemId)] || "";
+  const overrideUrls = Object.fromEntries(
+    Object.entries(overrides)
+      .map(([slotKey, itemId]) => [slotKey, cardSkinPreviewByItemId.value[Number(itemId)] || ""])
+      .filter(([, imageUrl]) => Boolean(imageUrl)),
+  );
+
+  appearanceStore.setCardSkinLoadout({
+    baseUrl,
+    overrides: overrideUrls,
+  });
+}
+
+async function persistCardSkinLoadout(baseItemId, overrides = {}) {
+  if (!resolvedPlayerId.value) {
+    return;
+  }
+
+  equippingItemId.value = `card-skin-loadout-${Date.now()}`;
+  errorMessage.value = "";
+
+  try {
+    const response = await updateCardSkinLoadout({
+      playerId: resolvedPlayerId.value,
+      cardSkinItemId: baseItemId,
+      cardSkinOverrides: overrides,
+    });
+
+    equippedItems.value = normalizeEquippedItems(
+      {
+        ...(response?.equipped || {}),
+        avatarId: resolvedAvatarId.value,
+      },
+      resolvedPlayerId.value,
+    );
+
+    applyCardSkinAppearance(
+      response?.equipped?.cardSkinItemId ?? baseItemId,
+      response?.equipped?.cardSkinOverrides ?? overrides,
+    );
+  } catch (error) {
+    errorMessage.value = error?.message || "儲存卡面配置失敗。";
+  } finally {
+    equippingItemId.value = null;
+  }
+}
 
 async function reloadEquipment() {
   if (!resolvedPlayerId.value) {
@@ -243,6 +344,11 @@ function handleSelectItem(item) {
 
 async function handleEquipItem(item) {
   if (!resolvedPlayerId.value || !item || equippingItemId.value) {
+    return;
+  }
+
+  if (item.categoryId === "card_skin") {
+    await persistCardSkinLoadout(item.shopItemId, equippedItems.value.cardSkinOverrides || {});
     return;
   }
 
@@ -293,6 +399,35 @@ async function handleEquipItem(item) {
   } finally {
     equippingItemId.value = null;
   }
+}
+
+async function handleApplyCardSkinTheme(item) {
+  if (!item?.shopItemId) {
+    return;
+  }
+
+  await persistCardSkinLoadout(item.shopItemId, {});
+}
+
+async function handleAssignCardSkinSlot({ slotKey, item }) {
+  if (!slotKey || !item?.shopItemId) {
+    return;
+  }
+
+  await persistCardSkinLoadout(
+    equippedItems.value.cardSkinItemId ?? item.shopItemId,
+    {
+      ...(equippedItems.value.cardSkinOverrides || {}),
+      [slotKey]: item.shopItemId,
+    },
+  );
+}
+
+async function handleClearCardSkinSlot(slotKey) {
+  const nextOverrides = { ...(equippedItems.value.cardSkinOverrides || {}) };
+  delete nextOverrides[slotKey];
+
+  await persistCardSkinLoadout(equippedItems.value.cardSkinItemId, nextOverrides);
 }
 
 onMounted(() => {

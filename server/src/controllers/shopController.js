@@ -4,6 +4,7 @@ import {
   getPlayerItems,
   getShopItems,
   purchaseShopItem,
+  updateCardSkinLoadout,
 } from "../services/shopService.js"
 
 function getErrorStatus(error) {
@@ -115,10 +116,28 @@ async function handleEquipShopItem(req, res) {
   }
 }
 
+async function handleUpdateCardSkinLoadout(req, res) {
+  try {
+    const equipped = await updateCardSkinLoadout({
+      playerId: req.body.playerId,
+      cardSkinItemId: req.body.cardSkinItemId ?? null,
+      cardSkinOverrides: req.body.cardSkinOverrides ?? {},
+    })
+
+    return res.status(200).json({ equipped })
+  } catch (error) {
+    return res.status(getErrorStatus(error)).json({
+      message: error.statusCode ? error.message : "Update card skin loadout failed",
+      error: error.message,
+    })
+  }
+}
+
 export {
   handleEquipShopItem,
   handleGetPlayerEquippedItems,
   handleGetPlayerItems,
   handleGetShopItems,
   handlePurchaseShopItem,
+  handleUpdateCardSkinLoadout,
 }

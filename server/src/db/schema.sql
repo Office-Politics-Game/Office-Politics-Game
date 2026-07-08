@@ -137,6 +137,7 @@ CREATE TABLE player_equipped_items (
   player_id INTEGER PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
   avatar_item_id INTEGER REFERENCES shop_items(id) ON DELETE SET NULL,
   card_skin_item_id INTEGER REFERENCES shop_items(id) ON DELETE SET NULL,
+  card_skin_overrides JSONB NOT NULL DEFAULT '{}'::jsonb,
   card_back_item_id INTEGER REFERENCES shop_items(id) ON DELETE SET NULL,
   board_skin_item_id INTEGER REFERENCES shop_items(id) ON DELETE SET NULL,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

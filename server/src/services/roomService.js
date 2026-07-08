@@ -11,6 +11,51 @@ function generateRoomCode(){
   return Math.random().toString(36).substring(2, 8).toUpperCase()
 }
 
+function normalizeCardSkinOverrides(overrides) {
+  if (!overrides || typeof overrides !== "object" || Array.isArray(overrides)) {
+    return {}
+  }
+
+  return overrides
+}
+
+async function attachCardSkinOverrideUrls(rows = [], db = pool) {
+  const allOverrideIds = Array.from(
+    new Set(
+      rows.flatMap((row) =>
+        Object.values(normalizeCardSkinOverrides(row.card_skin_overrides)).map((itemId) => Number(itemId)),
+      ).filter((itemId) => Number.isInteger(itemId) && itemId > 0),
+    ),
+  )
+
+  if (allOverrideIds.length === 0) {
+    return rows.map((row) => ({
+      ...row,
+      card_skin_override_urls: {},
+    }))
+  }
+
+  const overrideItemResult = await db.query(
+    `SELECT id, image_url
+     FROM shop_items
+     WHERE id = ANY($1::int[])`,
+    [allOverrideIds]
+  )
+
+  const overrideImageById = Object.fromEntries(
+    overrideItemResult.rows.map((row) => [Number(row.id), row.image_url || ""]),
+  )
+
+  return rows.map((row) => ({
+    ...row,
+    card_skin_override_urls: Object.fromEntries(
+      Object.entries(normalizeCardSkinOverrides(row.card_skin_overrides))
+        .map(([slotKey, itemId]) => [slotKey, overrideImageById[Number(itemId)] || ""])
+        .filter(([, imageUrl]) => Boolean(imageUrl)),
+    ),
+  }))
+}
+
 async function createRoom({ hostPlayerId }){
   const client = await pool.connect()
 
@@ -131,30 +176,62 @@ async function getRoomState({ roomCode }){
   }
 
   const room = roomResult.rows[0]
-  const playerResult = await pool.query(
-     `SELECT
-       grp.player_id,
-       p.username,
-       p.avatar_id,
-       avatar_item.image_url AS avatar_url,
-       card_skin_item.image_url AS card_skin_url,
-       grp.role,
-       grp.seat_order,
-       grp.is_ready,
-       grp.is_alive
-     FROM game_room_players grp
-     JOIN players p ON p.id = grp.player_id
-     LEFT JOIN player_equipped_items pei ON pei.player_id = p.id
-     LEFT JOIN shop_items avatar_item
-       ON avatar_item.id = pei.avatar_item_id
-      AND avatar_item.type = 'avatar'
-     LEFT JOIN shop_items card_skin_item
-       ON card_skin_item.id = pei.card_skin_item_id
-      AND card_skin_item.type = 'card_skin'
-     WHERE grp.room_id = $1
-     ORDER BY grp.seat_order ASC`,
-    [room.id]
-  )
+  let playerResult
+
+  try {
+    playerResult = await pool.query(
+      `SELECT
+         grp.player_id,
+         p.username,
+         p.avatar_id,
+         avatar_item.image_url AS avatar_url,
+         card_skin_item.image_url AS card_skin_url,
+         pei.card_skin_overrides,
+         grp.role,
+         grp.seat_order,
+         grp.is_ready,
+         grp.is_alive
+       FROM game_room_players grp
+       JOIN players p ON p.id = grp.player_id
+       LEFT JOIN player_equipped_items pei ON pei.player_id = p.id
+       LEFT JOIN shop_items avatar_item
+         ON avatar_item.id = pei.avatar_item_id
+        AND avatar_item.type = 'avatar'
+       LEFT JOIN shop_items card_skin_item
+         ON card_skin_item.id = pei.card_skin_item_id
+        AND card_skin_item.type = 'card_skin'
+       WHERE grp.room_id = $1
+       ORDER BY grp.seat_order ASC`,
+      [room.id]
+    )
+  } catch {
+    playerResult = await pool.query(
+      `SELECT
+         grp.player_id,
+         p.username,
+         p.avatar_id,
+         avatar_item.image_url AS avatar_url,
+         card_skin_item.image_url AS card_skin_url,
+         grp.role,
+         grp.seat_order,
+         grp.is_ready,
+         grp.is_alive
+       FROM game_room_players grp
+       JOIN players p ON p.id = grp.player_id
+       LEFT JOIN player_equipped_items pei ON pei.player_id = p.id
+       LEFT JOIN shop_items avatar_item
+         ON avatar_item.id = pei.avatar_item_id
+        AND avatar_item.type = 'avatar'
+       LEFT JOIN shop_items card_skin_item
+         ON card_skin_item.id = pei.card_skin_item_id
+        AND card_skin_item.type = 'card_skin'
+       WHERE grp.room_id = $1
+       ORDER BY grp.seat_order ASC`,
+      [room.id]
+    )
+  }
+
+  const playerRows = await attachCardSkinOverrideUrls(playerResult.rows)
 
   return {
     room: {
@@ -163,13 +240,14 @@ async function getRoomState({ roomCode }){
       hostPlayerId: room.host_player_id,
       status: room.status,
     },
-    players: playerResult.rows.map((player)=>{
+    players: playerRows.map((player)=>{
       return {
         playerId: player.player_id,
         username: player.username,
         avatarId: player.avatar_id,
         avatarUrl: player.avatar_url,
         cardSkinUrl: player.card_skin_url,
+        cardSkinOverrides: player.card_skin_override_urls ?? {},
         role: player.role,
         seatOrder: player.seat_order,
         isReady: player.is_ready,
@@ -204,30 +282,58 @@ async function startGame({ roomCode, playerId }){
       throw createServiceError("遊戲已開始")
     }
 
-    const playerResult = await client.query(
-      `SELECT
-         grp.player_id,
-         grp.seat_order,
-         grp.is_ready,
-         p.username,
-         p.avatar_id,
-         avatar_item.image_url AS avatar_url,
-         card_skin_item.image_url AS card_skin_url
-       FROM game_room_players grp
-       JOIN players p ON p.id = grp.player_id
-       LEFT JOIN player_equipped_items pei ON pei.player_id = p.id
-       LEFT JOIN shop_items avatar_item
-         ON avatar_item.id = pei.avatar_item_id
-        AND avatar_item.type = 'avatar'
-       LEFT JOIN shop_items card_skin_item
-         ON card_skin_item.id = pei.card_skin_item_id
-        AND card_skin_item.type = 'card_skin'
-       WHERE grp.room_id = $1
-       ORDER BY grp.seat_order ASC`,
-      [room.id]
-    )
+    let playerResult
 
-    const players = playerResult.rows
+    try {
+      playerResult = await client.query(
+        `SELECT
+           grp.player_id,
+           grp.seat_order,
+           grp.is_ready,
+           p.username,
+           p.avatar_id,
+           avatar_item.image_url AS avatar_url,
+           card_skin_item.image_url AS card_skin_url,
+           pei.card_skin_overrides
+         FROM game_room_players grp
+         JOIN players p ON p.id = grp.player_id
+         LEFT JOIN player_equipped_items pei ON pei.player_id = p.id
+         LEFT JOIN shop_items avatar_item
+           ON avatar_item.id = pei.avatar_item_id
+          AND avatar_item.type = 'avatar'
+         LEFT JOIN shop_items card_skin_item
+           ON card_skin_item.id = pei.card_skin_item_id
+          AND card_skin_item.type = 'card_skin'
+         WHERE grp.room_id = $1
+         ORDER BY grp.seat_order ASC`,
+        [room.id]
+      )
+    } catch {
+      playerResult = await client.query(
+        `SELECT
+           grp.player_id,
+           grp.seat_order,
+           grp.is_ready,
+           p.username,
+           p.avatar_id,
+           avatar_item.image_url AS avatar_url,
+           card_skin_item.image_url AS card_skin_url
+         FROM game_room_players grp
+         JOIN players p ON p.id = grp.player_id
+         LEFT JOIN player_equipped_items pei ON pei.player_id = p.id
+         LEFT JOIN shop_items avatar_item
+           ON avatar_item.id = pei.avatar_item_id
+          AND avatar_item.type = 'avatar'
+         LEFT JOIN shop_items card_skin_item
+           ON card_skin_item.id = pei.card_skin_item_id
+          AND card_skin_item.type = 'card_skin'
+         WHERE grp.room_id = $1
+         ORDER BY grp.seat_order ASC`,
+        [room.id]
+      )
+    }
+
+    const players = await attachCardSkinOverrideUrls(playerResult.rows, client)
 
     if (players.length !== 4){
       throw createServiceError("玩家人數不足4位")

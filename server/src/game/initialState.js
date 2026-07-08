@@ -17,6 +17,7 @@ function createInitialState (players){
             avatarId: player.avatar_id,
             avatarUrl: player.avatar_url,
             cardSkinUrl: player.card_skin_url,
+            cardSkinOverrides: player.card_skin_override_urls ?? {},
             seatOrder: player.seat_order,
             hand: card
                 ? [{ ...card, ownerPlayerId: player.player_id }]
