@@ -46,7 +46,6 @@
           <EyeOff v-if="showPassword" class="password-toggle__icon" />
           <Eye v-else class="password-toggle__icon" />
         </button>
-        <PasswordRuleList :password="password" />
         <p v-if="passwordError" class="login-error" role="alert">
           {{ passwordError }}
         </p>
@@ -76,12 +75,50 @@
           {{ confirmPasswordError }}
         </p>
       </label>
-      <p v-if="successMessage" class="login-success" role="status">
-        {{ successMessage }}
-      </p>
-      <p v-if="authStore.errorMessage" class="login-error" role="alert">
-        {{ authStore.errorMessage }}
-      </p>
+      <PasswordRuleList :password="password" />
+      <div
+        v-if="apiStatusMessage"
+        class="auth-alert"
+        :class="[
+          apiStatusType === 'success' ? 'is-success' : 'is-error',
+          isAlertLeaving ? 'is-leaving' : '',
+        ]"
+        :role="apiStatusType === 'success' ? 'status' : 'alert'"
+      >
+        <div class="auth-alert__icon" aria-hidden="true">
+          <svg
+            v-if="apiStatusType === 'success'"
+            class="auth-alert__svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              class="auth-alert__mark auth-alert__check"
+              clip-rule="evenodd"
+              d="m12 1c-6.075 0-11 4.925-11 11s4.925 11 11 11 11-4.925 11-11-4.925-11-11-11zm4.768 9.14c.0878-.1004.1546-.21726.1966-.34383.0419-.12657.0581-.26026.0477-.39319-.0105-.13293-.0475-.26242-.1087-.38085-.0613-.11844-.1456-.22342-.2481-.30879-.1024-.08536-.2209-.14938-.3484-.18828s-.2616-.0519-.3942-.03823c-.1327.01366-.2612.05372-.3782.1178-.1169.06409-.2198.15091-.3027.25537l-4.3 5.159-2.225-2.226c-.1886-.1822-.4412-.283-.7034-.2807s-.51301.1075-.69842.2929-.29058.4362-.29285.6984c-.00228.2622.09851.5148.28067.7034l3 3c.0983.0982.2159.1748.3454.2251.1295.0502.2681.0729.4069.0665.1387-.0063.2747-.0414.3991-.1032.1244-.0617.2347-.1487.3236-.2554z"
+              fill-rule="evenodd"
+            />
+          </svg>
+          <svg
+            v-else
+            class="auth-alert__svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              class="auth-alert__mark"
+              clip-rule="evenodd"
+              d="M12 1C5.925 1 1 5.925 1 12s4.925 11 11 11 11-4.925 11-11S18.075 1 12 1Zm3.7 7.3a1 1 0 0 0-1.4 0L12 10.6 9.7 8.3a1 1 0 1 0-1.4 1.4l2.3 2.3-2.3 2.3a1 1 0 1 0 1.4 1.4l2.3-2.3 2.3 2.3a1 1 0 0 0 1.4-1.4L13.4 12l2.3-2.3a1 1 0 0 0 0-1.4Z"
+              fill-rule="evenodd"
+            />
+          </svg>
+        </div>
+        <div class="auth-alert__title">
+          {{ apiStatusMessage }}
+        </div>
+      </div>
       <div
         class="mt-1.5 grid grid-cols-2 gap-3 max-lg:landscape:mt-1 max-lg:landscape:gap-2"
       >
@@ -106,7 +143,7 @@
 </template>
 
 <script setup>
-import { ref } from "vue"
+import { ref, onBeforeUnmount } from "vue"
 import { Eye, EyeOff } from "lucide-vue-next"
 import { useAuthStore } from "@/stores/authStore.js"
 import PasswordRuleList from "@/components/login/PasswordRuleList.vue"
@@ -126,23 +163,74 @@ const password = ref("")
 const confirmPassword = ref("")
 const passwordError = ref("")
 const confirmPasswordError = ref("")
-const successMessage = ref("")
+const apiStatusMessage = ref("")
+const apiStatusType = ref("")
+const isAlertLeaving = ref(false)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 
+const ALERT_VISIBLE_MS = 2000
+const ALERT_FADE_MS = 420
+
+let alertTimer = null
+let fadeTimer = null
+
+function clearAlertTimers() {
+  if (alertTimer) {
+    clearTimeout(alertTimer)
+    alertTimer = null
+  }
+
+  if (fadeTimer) {
+    clearTimeout(fadeTimer)
+    fadeTimer = null
+  }
+}
+
+function clearApiStatus() {
+  clearAlertTimers()
+  apiStatusType.value = ""
+  apiStatusMessage.value = ""
+  isAlertLeaving.value = false
+}
+
 function clearPasswordError() {
   passwordError.value = ""
+  confirmPasswordError.value = ""
+  clearApiStatus()
   authStore.clearError()
 
-  if (confirmPasswordError.value === "密碼不一致，請重新輸入") {
+  if (confirmPassword.value) {
     confirmPassword.value = ""
-    confirmPasswordError.value = ""
   }
 }
 
 function clearConfirmPasswordError() {
   confirmPasswordError.value = ""
+  clearApiStatus()
   authStore.clearError()
+}
+
+function showApiStatus(type, message, onFinished) {
+  const statusType = type === "success" ? "success" : "error"
+
+  clearAlertTimers()
+
+  apiStatusType.value = statusType
+  apiStatusMessage.value = message
+  isAlertLeaving.value = false
+
+  alertTimer = setTimeout(() => {
+    isAlertLeaving.value = true
+
+    fadeTimer = setTimeout(() => {
+      clearApiStatus()
+
+      if (onFinished) {
+        onFinished()
+      }
+    }, ALERT_FADE_MS)
+  }, ALERT_VISIBLE_MS)
 }
 
 function validateResetPasswordForm() {
@@ -159,7 +247,7 @@ function validateResetPasswordForm() {
   }
 
   if (!props.resetToken) {
-    authStore.errorMessage = "重設密碼連結已失效，請重新申請"
+    showApiStatus("error", "重設密碼連結已失效，請重新申請")
     return false
   }
 
@@ -181,15 +269,21 @@ async function handleResetPassword() {
       password: password.value
     })
 
-    successMessage.value = data?.message || "密碼已重設完成，請重新登入"
-
-    window.setTimeout(() => {
-      emit("reset-success")
-    }, 1000)
+    showApiStatus(
+      "success",
+      data?.message || "密碼已重設完成，請重新登入",
+      () => {
+        emit("reset-success")
+      }
+    )
   } catch {
-    return
+    showApiStatus("error", authStore.errorMessage || "密碼重設失敗，請稍後再試")
   }
 }
+
+onBeforeUnmount(() => {
+  clearAlertTimers()
+})
 </script>
 
 <style scoped>
@@ -212,9 +306,9 @@ async function handleResetPassword() {
 
 .login-title {
   color: var(--brand-navy);
-  font-size: clamp(32px, 5vw, 48px);
+  font-size: clamp(24px, 2.5vw, 32px);
   letter-spacing: 0;
-  line-height: 1.05;
+  line-height: 1.15;
 }
 
 .login-input {
@@ -238,27 +332,101 @@ async function handleResetPassword() {
 
 .login-error {
   margin-top: 6px;
-  color: #b3261e;
+  color: var(--brand-hover);
   font-size: var(--text-sm);
   font-weight: 700;
 }
 
-.login-success {
-  color: #2f8f46;
+.auth-alert {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  border: 1px solid;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 12px;
   font-size: var(--text-sm);
-  font-weight: 800;
-  line-height: 1.5;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(70, 85, 99, 0.18);
+  animation: auth-alert-in 220ms ease-out both;
+}
+
+.auth-alert.is-leaving {
+  animation: auth-alert-out 420ms ease-in forwards;
+}
+
+.auth-alert.is-success {
+  border-color: #84D65A;
+  background: #EDFBD8;
+  color: #2B641E;
+}
+
+.auth-alert.is-error {
+  border-color: #EF4444;
+  background: #FEE2E2;
+  color: #991B1B;
+  animation: auth-alert-in 220ms ease-out both, auth-alert-shake 260ms ease-out 80ms both;
+}
+
+.auth-alert.is-error.is-leaving {
+  animation: auth-alert-out 420ms ease-in forwards;
+}
+
+.auth-alert__icon {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  place-items: center;
+}
+
+.auth-alert__svg {
+  width: 24px;
+  height: 24px;
+}
+
+.auth-alert__mark {
+  fill: currentColor;
+}
+
+.auth-alert__check {
+  transform-origin: center;
+  animation: auth-check-pop 420ms cubic-bezier(0.18, 1.35, 0.25, 1) both;
+}
+
+.auth-alert__title {
+  min-width: 0;
+  flex: 1;
+  line-height: 1.35;
 }
 
 .password-toggle {
   position: absolute;
-  right: 12px;
+  right: 8px;
   top: 11px;
+  z-index: 10;
   display: grid;
-  width: 32px;
+  width: 40px;
   height: 32px;
   place-items: center;
+  border: 0;
+  background: transparent;
   color: var(--brand-active);
+}
+
+.login-input[type="password"]::-ms-reveal,
+.login-input[type="password"]::-ms-clear {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.login-input::-webkit-credentials-auto-fill-button,
+.login-input::-webkit-contacts-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
 }
 
 .password-toggle:hover:not(:disabled) {
@@ -320,7 +488,7 @@ async function handleResetPassword() {
   }
 
   .login-title {
-    font-size: 28px;
+    font-size: 22px;
   }
 
   .login-input {
@@ -330,6 +498,8 @@ async function handleResetPassword() {
 
   .password-toggle {
     top: 4px;
+    right: 6px;
+    width: 40px;
   }
 
   .password-toggle__icon {

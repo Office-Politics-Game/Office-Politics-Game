@@ -144,9 +144,9 @@ async function handleForgotPassword() {
 
 .login-title {
   color: var(--brand-navy);
-  font-size: clamp(32px, 5vw, 48px);
+  font-size: clamp(24px, 2.5vw, 32px);
   letter-spacing: 0;
-  line-height: 1.05;
+  line-height: 1.15;
 }
 
 .login-input {
@@ -170,13 +170,13 @@ async function handleForgotPassword() {
 
 .login-error {
   margin-top: 6px;
-  color: #b3261e;
+  color: var(--brand-hover);
   font-size: var(--text-sm);
   font-weight: 700;
 }
 
 .login-success {
-  color: #2f8f46;
+  color: var(--brand-hover);
   font-size: var(--text-sm);
   font-weight: 800;
   line-height: 1.5;
@@ -231,7 +231,7 @@ async function handleForgotPassword() {
   }
 
   .login-title {
-    font-size: 28px;
+    font-size: 22px;
   }
 
   .login-input {

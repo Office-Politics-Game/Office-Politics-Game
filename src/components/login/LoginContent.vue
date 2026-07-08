@@ -186,15 +186,9 @@ const showPassword = ref(false)
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function clearLoginError() {
+  accountError.value = ""
+  passwordError.value = ""
   authStore.clearError()
-
-  if (account.value.trim()) {
-    accountError.value = ""
-  }
-
-  if (password.value.trim()) {
-    passwordError.value = ""
-  }
 }
 
 function validateLoginForm() {
@@ -293,6 +287,20 @@ function goForgotPassword() {
   @apply m-0 text-sm font-bold text-[var(--brand-hover)];
 }
 
+.login-input[type="password"]::-ms-reveal,
+.login-input[type="password"]::-ms-clear {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.login-input::-webkit-credentials-auto-fill-button,
+.login-input::-webkit-contacts-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
+}
+
 .login-input::placeholder {
   @apply font-semibold text-[var(--brand-disabled)];
 }
@@ -304,7 +312,7 @@ function goForgotPassword() {
 }
 
 .password-toggle {
-  @apply absolute right-3 top-6 grid h-8 w-8 -translate-y-1/2 place-items-center border-0 bg-transparent text-[var(--brand-active)] transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+  @apply absolute right-2 top-6 z-10 grid h-8 w-10 -translate-y-1/2 place-items-center border-0 bg-transparent text-[var(--brand-active)] transition-colors disabled:cursor-not-allowed disabled:opacity-60;
 }
 
 .password-toggle:hover:not(:disabled) {
@@ -420,8 +428,8 @@ function goForgotPassword() {
 
   .password-toggle {
     top: 20px;
-    right: 8px;
-    width: 32px;
+    right: 6px;
+    width: 40px;
     height: 32px;
   }
 
