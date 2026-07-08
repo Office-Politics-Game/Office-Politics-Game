@@ -51,7 +51,7 @@
 </template>
 
 <script setup>
-import { ref } from "vue"
+import { ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import LoginContent from "@/components/login/LoginContent.vue"
 import GuestLoginModal from "@/components/login/GuestLoginModal.vue"
@@ -65,8 +65,39 @@ const router = useRouter()
 const playerStore = usePlayerStore()
 
 const showGuestLoginModal = ref(false)
-const authPageMode = ref(route.path === "/register" ? "register" : "login")
+const authPageMode = ref("login")
 const resetPasswordToken = ref("")
+
+function getResetPasswordTokenFromUrl() {
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""))
+  const queryToken = route.query.access_token
+  const hashToken = hashParams.get("access_token")
+
+  return typeof queryToken === "string" ? queryToken : hashToken || ""
+}
+
+function syncAuthPageModeFromRoute() {
+  if (route.query.auth === "reset-password") {
+    resetPasswordToken.value = getResetPasswordTokenFromUrl()
+    authPageMode.value = "reset-password"
+    return
+  }
+
+  if (route.query.auth === "forgot-password") {
+    resetPasswordToken.value = ""
+    authPageMode.value = "forgot-password"
+    return
+  }
+
+  if (route.path === "/register") {
+    resetPasswordToken.value = ""
+    authPageMode.value = "register"
+    return
+  }
+
+  resetPasswordToken.value = ""
+  authPageMode.value = "login"
+}
 
 function goEntryPage() {
   router.push("/")
@@ -80,6 +111,7 @@ function handleGuestCreated(player) {
 }
 
 function goLoginPage() {
+  resetPasswordToken.value = ""
   authPageMode.value = "login"
   router.push("/login")
 }
@@ -90,6 +122,15 @@ function goRegisterPage() {
 }
 
 function goForgotPasswordPage() {
+  resetPasswordToken.value = ""
   authPageMode.value = "forgot-password"
 }
+
+watch(
+  () => route.fullPath,
+  () => {
+    syncAuthPageModeFromRoute()
+  },
+  { immediate: true }
+)
 </script>
