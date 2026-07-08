@@ -4,7 +4,7 @@ import { supabaseAdmin } from "../db/supabaseClient.js"
 const DEFAULT_AVATAR_ID = 1
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PASSWORD_RULE_ERROR_MESSAGE = "密碼格式不符合規則"
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]{8,16}$/
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=[\]{};':"|,.<>/?`~])[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"|,.<>/?`~]{8,16}$/
 const PLAYER_SELECT_SQL = `id, auth_user_id, username, account, avatar_id,
     level, exp, coins, gems, tickets,
     win_count, lose_count, total_games,

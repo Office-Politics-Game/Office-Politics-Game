@@ -173,6 +173,7 @@ function clearAuthQuery() {
   router.replace({
     name: "Entry",
     query: nextQuery,
+    hash: "",
   });
 }
 

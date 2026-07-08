@@ -1,7 +1,8 @@
 const PASSWORD_RULE_ERROR_MESSAGE = "密碼格式不符合規則"
 
-const PASSWORD_ALLOWED_CHARS_REGEX =
-  /^[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]+$/
+const PASSWORD_ALLOWED_CHARS_REGEX = /^[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"|,.<>/?`~]+$/
+
+const PASSWORD_SPECIAL_CHAR_REGEX = /[!@#$%^&*()_+\-=[\]{};':"|,.<>/?`~]/
 
 const PASSWORD_RULES = [
   {
@@ -18,6 +19,16 @@ const PASSWORD_RULES = [
     key: "uppercase",
     label: "至少一個大寫英文",
     test: (password) => /[A-Z]/.test(password)
+  },
+  {
+    key: "number",
+    label: "至少一個數字",
+    test: (password) => /[0-9]/.test(password)
+  },
+  {
+    key: "specialChar",
+    label: "至少一個特殊符號",
+    test: (password) => PASSWORD_SPECIAL_CHAR_REGEX.test(password)
   },
   {
     key: "allowedChars",

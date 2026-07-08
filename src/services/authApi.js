@@ -26,4 +26,4 @@ function resetPassword(payload) {
   return apiClient.post(`${AUTH_API_PATH}/reset-password`, payload);
 }
 
-export { register, login, verifyToken, forgotPassword, resetPassword  };
+export { register, login, verifyToken, forgotPassword, resetPassword };

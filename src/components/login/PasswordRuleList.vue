@@ -1,5 +1,9 @@
 <template>
-  <ul class="password-rules" aria-label="密碼格式條件">
+  <ul
+    class="password-rules"
+    :class="{ 'has-input': hasInput }"
+    aria-label="密碼格式條件"
+  >
     <li
       v-for="rule in passwordRuleChecks"
       :key="rule.key"
@@ -7,7 +11,8 @@
       :class="{ 'is-valid': rule.isValid }"
     >
       <Check v-if="rule.isValid" class="password-rule__icon" />
-      <X v-else class="password-rule__icon" />
+      <X v-else-if="hasInput" class="password-rule__icon" />
+      <span v-else class="password-rule__placeholder-icon" />
       <span>{{ rule.label }}</span>
     </li>
   </ul>
@@ -25,6 +30,8 @@ const props = defineProps({
   }
 })
 
+const hasInput = computed(() => props.password.trim().length > 0)
+
 const passwordRuleChecks = computed(() =>
   getPasswordRuleChecks(props.password)
 )
@@ -35,8 +42,8 @@ const passwordRuleChecks = computed(() =>
   margin-top: 8px;
   display: grid;
   gap: 4px;
-  color: #b3261e;
-  font-size: 13px;
+  color: var(--gray-300);
+  font-size: 15px;
   font-weight: 700;
 }
 
@@ -44,17 +51,27 @@ const passwordRuleChecks = computed(() =>
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #b3261e;
+  color: var(--gray-300);
   transition: color 0.18s ease;
 }
 
-.password-rule.is-valid {
+.password-rules.has-input .password-rule {
+  color: #b3261e;
+}
+
+.password-rules.has-input .password-rule.is-valid {
   color: #2f8f46;
 }
 
 .password-rule__icon {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   stroke-width: 3;
+}
+
+.password-rule__placeholder-icon {
+  width: 15px;
+  height: 15px;
+  display: inline-block;
 }
 </style>

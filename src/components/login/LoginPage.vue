@@ -117,6 +117,7 @@ function goLoginPage() {
 }
 
 function goRegisterPage() {
+  resetPasswordToken.value = ""
   authPageMode.value = "register"
   router.push("/register")
 }

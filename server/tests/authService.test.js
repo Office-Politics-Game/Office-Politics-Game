@@ -8,7 +8,7 @@ const mockGetUser = jest.fn()
 const mockResetPasswordForEmail = jest.fn()
 const mockUpdateUserById = jest.fn()
 
-const VALID_PASSWORD = "Aa123456"
+const VALID_PASSWORD = "Aa123456!"
 
 jest.unstable_mockModule("../src/db/index.js", () => ({
     default: {
@@ -799,6 +799,30 @@ describe("重設密碼服務", () => {
             resetPlayerPassword({
                 token: "valid-reset-token",
                 password: "123456"
+            })
+        ).rejects.toThrow("密碼格式不符合規則")
+
+        expect(mockGetUser).not.toHaveBeenCalled()
+        expect(mockUpdateUserById).not.toHaveBeenCalled()
+    })
+
+    test("密碼缺少數字時，丟出錯誤", async () => {
+        await expect(
+            resetPlayerPassword({
+                token: "valid-reset-token",
+                password: "Aaaaaaaa!"
+            })
+        ).rejects.toThrow("密碼格式不符合規則")
+
+        expect(mockGetUser).not.toHaveBeenCalled()
+        expect(mockUpdateUserById).not.toHaveBeenCalled()
+    })
+
+    test("密碼缺少特殊符號時，丟出錯誤", async () => {
+        await expect(
+            resetPlayerPassword({
+                token: "valid-reset-token",
+                password: "Aa123456"
             })
         ).rejects.toThrow("密碼格式不符合規則")
 
