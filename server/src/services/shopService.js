@@ -473,26 +473,45 @@ async function updateCardSkinLoadout({
 
     await validateOwnedCardSkinItems(client, numericPlayerId, overrideItemIds)
 
-    const equippedResult = await client.query(
-      `INSERT INTO player_equipped_items (
-          player_id,
-          card_skin_item_id,
-          card_skin_overrides,
-          updated_at
-        )
-       VALUES ($1, $2, $3::jsonb, CURRENT_TIMESTAMP)
-       ON CONFLICT (player_id)
-       DO UPDATE SET card_skin_item_id = EXCLUDED.card_skin_item_id,
-                     card_skin_overrides = EXCLUDED.card_skin_overrides,
-                     updated_at = CURRENT_TIMESTAMP
-       RETURNING player_id, avatar_item_id, card_skin_item_id, card_skin_overrides,
-                 card_back_item_id, board_skin_item_id, updated_at`,
-      [
-        numericPlayerId,
-        numericCardSkinItemId,
-        JSON.stringify(normalizedOverrides),
-      ]
-    )
+    let equippedResult
+
+    try {
+      equippedResult = await client.query(
+        `INSERT INTO player_equipped_items (
+            player_id,
+            card_skin_item_id,
+            card_skin_overrides,
+            updated_at
+          )
+         VALUES ($1, $2, $3::jsonb, CURRENT_TIMESTAMP)
+         ON CONFLICT (player_id)
+         DO UPDATE SET card_skin_item_id = EXCLUDED.card_skin_item_id,
+                       card_skin_overrides = EXCLUDED.card_skin_overrides,
+                       updated_at = CURRENT_TIMESTAMP
+         RETURNING player_id, avatar_item_id, card_skin_item_id, card_skin_overrides,
+                   card_back_item_id, board_skin_item_id, updated_at`,
+        [
+          numericPlayerId,
+          numericCardSkinItemId,
+          JSON.stringify(normalizedOverrides),
+        ]
+      )
+    } catch {
+      equippedResult = await client.query(
+        `INSERT INTO player_equipped_items (
+            player_id,
+            card_skin_item_id,
+            updated_at
+          )
+         VALUES ($1, $2, CURRENT_TIMESTAMP)
+         ON CONFLICT (player_id)
+         DO UPDATE SET card_skin_item_id = EXCLUDED.card_skin_item_id,
+                       updated_at = CURRENT_TIMESTAMP
+         RETURNING player_id, avatar_item_id, card_skin_item_id,
+                   card_back_item_id, board_skin_item_id, updated_at`,
+        [numericPlayerId, numericCardSkinItemId]
+      )
+    }
 
     await client.query("COMMIT")
 

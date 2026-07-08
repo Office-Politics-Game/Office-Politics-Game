@@ -1,4 +1,4 @@
-const neonHustleBasePath = "/images/shop/heon-hustle-style";
+const neonHustleBasePath = "/images/shop/neon-hustle-style";
 
 const CARD_SKIN_THEMES = {
   "neon-hustle": {
@@ -29,18 +29,27 @@ function resolveCardSkinThemeKey(source) {
     source?.themeKey,
     source?.key,
     source?.name,
+    source?.previewImage,
     source?.imageUrl,
     source?.image_url,
     source,
   ];
 
-  return (
-    candidates
-      .map((candidate) => normalizeThemeKey(candidate))
-      .find((candidate) =>
-        candidate && Object.keys(CARD_SKIN_THEMES).some((themeKey) => candidate.includes(themeKey)),
-      ) ?? ""
-  );
+  for (const candidate of candidates.map((value) => normalizeThemeKey(value))) {
+    if (!candidate) {
+      continue;
+    }
+
+    const matchedThemeKey = Object.keys(CARD_SKIN_THEMES).find((themeKey) =>
+      candidate.includes(themeKey),
+    );
+
+    if (matchedThemeKey) {
+      return matchedThemeKey;
+    }
+  }
+
+  return "";
 }
 
 function getCardSkinTheme(themeSource) {

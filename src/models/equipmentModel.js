@@ -1,3 +1,5 @@
+import { getCardSkinThemeLogo } from "@/constants/cardSkinThemes.js";
+
 const EQUIPMENT_CATEGORY_ORDER = [
   "avatar",
   "card_skin",
@@ -78,6 +80,7 @@ function normalizeEquipmentInventory(items = [], equipped = createDefaultEquippe
         selectionId: String(item.id),
         inventoryId: entry.id,
         shopItemId: item.id,
+        shopItem: item,
         playerId: entry.playerId,
         quantity: Number(entry.quantity) || 0,
         type: item.type,
@@ -85,7 +88,10 @@ function normalizeEquipmentInventory(items = [], equipped = createDefaultEquippe
         categoryLabel: categoryMeta.label,
         name: item.name,
         description: item.description || "",
-        previewImage: item.imageUrl || "",
+        previewImage:
+          (item.type === "card_skin" ? getCardSkinThemeLogo(item) : "") ||
+          item.imageUrl ||
+          "",
         price: item.price,
         currency: item.currency,
         isOwned: (Number(entry.quantity) || 0) > 0,
