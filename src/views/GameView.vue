@@ -121,7 +121,15 @@ const players = computed(() => {
 const handCards = computed(() => {
   const hand = selfPlayer.value?.hand
 
-  return Array.isArray(hand) ? hand.map((card, index) => normalizeCardWithAppearance(card, index)) : []
+  return Array.isArray(hand)
+    ? hand.map((card, index) =>
+        normalizeCardForPlayer(
+          card,
+          resolveCardOwnerPlayerId(card, resolvedCurrentPlayerId.value),
+          index,
+        ),
+      )
+    : []
 })
 
 const discardCards = computed(() => {
@@ -702,7 +710,10 @@ async function handleDrawRequest() {
         throw new Error('Draw card response did not include a card')
       }
 
-      const drawnCard = normalizeCardWithAppearance(rawDrawnCard)
+      const drawnCard = normalizeCardForPlayer(
+        rawDrawnCard,
+        resolveCardOwnerPlayerId(rawDrawnCard, resolvedCurrentPlayerId.value),
+      )
 
       await nextTick()
 

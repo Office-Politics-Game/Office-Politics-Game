@@ -153,13 +153,14 @@ export const useAuthStore = defineStore("auth", {
       this.errorMessage = "";
     },
 
-    setCurrentPlayerAvatar(avatarUrl) {
+    setCurrentPlayerAvatar(avatarUrl, avatarId = null) {
       if (!this.currentPlayer) {
         return;
       }
 
       this.currentPlayer = {
         ...this.currentPlayer,
+        ...(avatarId !== null && avatarId !== undefined ? { avatarId } : {}),
         avatarUrl: avatarUrl || this.currentPlayer.avatarUrl || "",
       };
     },

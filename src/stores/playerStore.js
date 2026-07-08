@@ -15,13 +15,14 @@ export const usePlayerStore = defineStore("player", {
       this.currentPlayer = normalizePlayerAvatar(player);
     },
 
-    setCurrentPlayerAvatar(avatarUrl) {
+    setCurrentPlayerAvatar(avatarUrl, avatarId = null) {
       if (!this.currentPlayer) {
         return;
       }
 
       this.currentPlayer = {
         ...this.currentPlayer,
+        ...(avatarId !== null && avatarId !== undefined ? { avatarId } : {}),
         avatarUrl: avatarUrl || this.currentPlayer.avatarUrl || "",
       };
     },

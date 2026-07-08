@@ -66,12 +66,12 @@
             :disabled="
               !selectedItem ||
               selectedItem.isEquipped ||
-              equippingItemId === selectedItem?.shopItemId
+              equippingItemId === (selectedItem?.selectionId ?? selectedItem?.shopItemId)
             "
             @click="$emit('equip', selectedItem)"
           >
             {{
-              equippingItemId === selectedItem?.shopItemId
+              equippingItemId === (selectedItem?.selectionId ?? selectedItem?.shopItemId)
                 ? "套用中..."
                 : selectedItem?.isEquipped
                   ? "目前使用中"
@@ -84,11 +84,13 @@
       <div v-if="activeItems.length" class="equipment-switcher__grid">
         <button
           v-for="item in activeItems"
-          :key="item.shopItemId"
+          :key="item.selectionId ?? item.shopItemId"
           type="button"
           class="equipment-switcher__card"
           :class="{
-            'is-selected': item.shopItemId === selectedItem?.shopItemId,
+            'is-selected':
+              (item.selectionId ?? item.shopItemId) ===
+              (selectedItem?.selectionId ?? selectedItem?.shopItemId),
             'is-equipped': item.isEquipped,
           }"
           @click="$emit('select', item)"

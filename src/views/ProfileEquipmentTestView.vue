@@ -17,7 +17,7 @@
           </p>
           <h1 class="mt-1 text-3xl font-black text-slate-900">配件切換測試頁</h1>
           <p class="mt-1 text-sm text-slate-600">
-            玩家 ID：{{ resolvedPlayerId ?? "未取得" }}
+            玩家 ID : {{ resolvedPlayerId ?? "未登入" }}
           </p>
         </div>
 
@@ -63,6 +63,7 @@ import {
   patchEquippedState,
 } from "@/models/equipmentModel.js";
 import bgPersonal from "@/assets/images/bg-personal.webp";
+import { guestAvatars } from "@/constants/guestOptions.js";
 import { useAppearanceStore } from "@/stores/appearanceStore.js";
 import { useAuthStore } from "@/stores/authStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
@@ -71,6 +72,7 @@ import {
   getPlayerEquippedItems,
   getPlayerShopItems,
 } from "@/services/shopApi.js";
+import { updatePlayerAvatar } from "@/services/playerApi.js";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -95,20 +97,60 @@ const storedGuestPlayer = computed(() => {
   }
 });
 
-const resolvedPlayerId = computed(() => {
-  const player =
+const sourcePlayer = computed(
+  () =>
     authStore.currentPlayer ||
     playerStore.currentPlayer ||
     storedGuestPlayer.value ||
-    null;
+    null,
+);
 
-  const playerId = Number(player?.id);
+const resolvedPlayerId = computed(() => {
+  const playerId = Number(sourcePlayer.value?.id);
   return Number.isInteger(playerId) && playerId > 0 ? playerId : null;
 });
 
-const equipmentSections = computed(() =>
-  buildEquipmentSections(inventoryItems.value, equippedItems.value),
-);
+const resolvedAvatarId = computed(() => {
+  const avatarId = Number(sourcePlayer.value?.avatarId ?? sourcePlayer.value?.avatar_id);
+  return Number.isInteger(avatarId) && avatarId > 0 ? avatarId : 1;
+});
+
+const equipmentSections = computed(() => {
+  const baseSections = buildEquipmentSections(inventoryItems.value, equippedItems.value);
+
+  return baseSections.map((section) => {
+    if (section.id !== "avatar") {
+      return section;
+    }
+
+    const presetAvatarItems = guestAvatars.map((avatar) => ({
+      selectionId: `default-avatar-${avatar.id}`,
+      inventoryId: `default-avatar-${avatar.id}`,
+      shopItemId: null,
+      avatarPresetId: avatar.id,
+      playerId: resolvedPlayerId.value,
+      quantity: 1,
+      type: "avatar",
+      categoryId: "avatar",
+      categoryLabel: section.label,
+      name: avatar.name,
+      description: "預設頭像，可直接切換使用。",
+      previewImage: avatar.image,
+      price: 0,
+      currency: "default",
+      isOwned: true,
+      isEquipped:
+        !equippedItems.value.avatarItemId &&
+        Number(equippedItems.value.avatarId ?? resolvedAvatarId.value) === Number(avatar.id),
+    }));
+
+    return {
+      ...section,
+      count: section.items.length + presetAvatarItems.length,
+      items: [...presetAvatarItems, ...section.items],
+    };
+  });
+});
 
 const selectedItem = computed(() => {
   const activeSection = equipmentSections.value.find(
@@ -122,7 +164,9 @@ const selectedItem = computed(() => {
   const selectedId = selectedItemIdByCategory.value[activeCategory.value];
 
   return (
-    activeSection.items.find((item) => item.shopItemId === selectedId) ||
+    activeSection.items.find(
+      (item) => (item.selectionId ?? item.shopItemId) === selectedId,
+    ) ||
     activeSection.items.find((item) => item.isEquipped) ||
     activeSection.items[0] ||
     null
@@ -141,11 +185,13 @@ watch(
       }
 
       const hasSelectedItem = section.items.some(
-        (item) => item.shopItemId === nextSelection[section.id],
+        (item) => (item.selectionId ?? item.shopItemId) === nextSelection[section.id],
       );
 
       if (!hasSelectedItem) {
         nextSelection[section.id] =
+          section.items.find((item) => item.isEquipped)?.selectionId ??
+          section.items[0].selectionId ??
           section.items.find((item) => item.isEquipped)?.shopItemId ??
           section.items[0].shopItemId;
       }
@@ -158,7 +204,7 @@ watch(
 
 async function reloadEquipment() {
   if (!resolvedPlayerId.value) {
-    errorMessage.value = "目前找不到玩家 ID，請先登入後再測試。";
+    errorMessage.value = "找不到玩家 ID，請先登入再測試。";
     inventoryItems.value = [];
     equippedItems.value = normalizeEquippedItems(null);
     return;
@@ -175,7 +221,10 @@ async function reloadEquipment() {
 
     inventoryItems.value = playerItemsResponse.items || [];
     equippedItems.value = normalizeEquippedItems(
-      equippedResponse.equipped,
+      {
+        ...(equippedResponse?.equipped || {}),
+        avatarId: resolvedAvatarId.value,
+      },
       resolvedPlayerId.value,
     );
   } catch (error) {
@@ -188,7 +237,7 @@ async function reloadEquipment() {
 function handleSelectItem(item) {
   selectedItemIdByCategory.value = {
     ...selectedItemIdByCategory.value,
-    [item.categoryId]: item.shopItemId,
+    [item.categoryId]: item.selectionId ?? item.shopItemId,
   };
 }
 
@@ -197,24 +246,45 @@ async function handleEquipItem(item) {
     return;
   }
 
-  equippingItemId.value = item.shopItemId;
+  equippingItemId.value = item.selectionId ?? item.shopItemId;
   errorMessage.value = "";
 
   try {
+    if (item.categoryId === "avatar" && item.avatarPresetId) {
+      await updatePlayerAvatar(resolvedPlayerId.value, item.avatarPresetId);
+
+      equippedItems.value = normalizeEquippedItems(
+        {
+          ...equippedItems.value,
+          avatarId: item.avatarPresetId,
+          avatarItemId: null,
+        },
+        resolvedPlayerId.value,
+      );
+
+      authStore.setCurrentPlayerAvatar(item.previewImage || "", item.avatarPresetId);
+      playerStore.setCurrentPlayerAvatar(item.previewImage || "", item.avatarPresetId);
+      appearanceStore.setAppearanceByCategory("avatar", item.previewImage || "");
+      return;
+    }
+
     const response = await equipShopItem({
       playerId: resolvedPlayerId.value,
       shopItemId: item.shopItemId,
     });
 
     equippedItems.value = normalizeEquippedItems(
-      response.equipped ||
-        patchEquippedState(equippedItems.value, item.categoryId, item.shopItemId),
+      {
+        ...(response.equipped ||
+          patchEquippedState(equippedItems.value, item.categoryId, item.shopItemId)),
+        avatarId: resolvedAvatarId.value,
+      },
       resolvedPlayerId.value,
     );
 
     if (item.categoryId === "avatar") {
-      authStore.setCurrentPlayerAvatar(item.previewImage || "");
-      playerStore.setCurrentPlayerAvatar(item.previewImage || "");
+      authStore.setCurrentPlayerAvatar(item.previewImage || "", resolvedAvatarId.value);
+      playerStore.setCurrentPlayerAvatar(item.previewImage || "", resolvedAvatarId.value);
     }
 
     appearanceStore.setAppearanceByCategory(item.categoryId, item.previewImage || "");

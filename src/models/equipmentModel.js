@@ -35,6 +35,7 @@ const EQUIPMENT_CATEGORY_META = {
 function createDefaultEquippedState(playerId = null) {
   return {
     playerId,
+    avatarId: null,
     avatarItemId: null,
     cardSkinItemId: null,
     cardBackItemId: null,
@@ -69,6 +70,7 @@ function normalizeEquipmentInventory(items = [], equipped = createDefaultEquippe
       const equippedItemId = equippedState[categoryMeta.equippedKey];
 
       return {
+        selectionId: String(item.id),
         inventoryId: entry.id,
         shopItemId: item.id,
         playerId: entry.playerId,
