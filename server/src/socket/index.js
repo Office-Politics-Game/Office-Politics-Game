@@ -2,12 +2,16 @@ import { Server } from "socket.io"
 import { registerRoomHandlers } from "./roomHandlers.js"
 import { registerGameHandlers } from "./gameHandlers.js"
 
+let activeSocketServer = null
+
 function initializeSocket(httpServer) {
   const io = new Server(httpServer, {
     cors: {
       origin: process.env.CORS_ORIGIN,
     },
   })
+
+  activeSocketServer = io
 
   io.on("connection", (socket) => {
     console.log("socket connected", socket.id)
@@ -35,4 +39,8 @@ function initializeSocket(httpServer) {
   return io
 }
 
-export { initializeSocket }
+function getSocketServer() {
+  return activeSocketServer
+}
+
+export { getSocketServer, initializeSocket }

@@ -31,6 +31,19 @@
           <span></span>
           <span></span>
         </button>
+        <div class="tablet-storebar-actions">
+          <CurrencyBar
+            class="tablet-storebar-currency"
+            :items="['coins', 'gems', 'tickets']"
+          />
+          <button
+            type="button"
+            class="btn-dark tablet-storebar-return h-11 whitespace-nowrap px-4 py-2 text-sm font-bold"
+            @click="goLobby"
+          >
+            返回大廳
+          </button>
+        </div>
       </header>
 
       <Transition name="drawer-fade">
@@ -49,7 +62,7 @@
                   商城
                 </h2>
                 <p class="mt-1 text-xs font-semibold text-slate-600">
-                  選擇你的辦公室風格
+                  選擇你的辦公室風格與專屬造型。
                 </p>
               </div>
 
@@ -64,24 +77,9 @@
             </div>
 
             <CurrencyBar
-              class="mt-3"
+              class="mobile-menu-currencybar mt-3"
               :items="['coins', 'gems', 'tickets']"
             />
-
-            <div class="mt-3 grid grid-cols-3 gap-2">
-              <div
-                v-for="metric in headerMetrics"
-                :key="metric.label"
-                class="border border-slate-300/70 bg-white/75 px-2 py-1.5 text-right"
-              >
-                <div class="text-[9px] font-bold tracking-[0.08em] text-slate-500">
-                  {{ metric.label }}
-                </div>
-                <div class="mt-0.5 text-sm font-black text-slate-900">
-                  {{ metric.value }}
-                </div>
-              </div>
-            </div>
 
             <div class="mt-3 border border-slate-300 bg-[linear-gradient(180deg,#f9fbfd,#eef4f9)] p-3">
               <div class="text-[10px] font-bold tracking-[0.12em] text-slate-500">
@@ -112,28 +110,16 @@
             商城
           </h1>
           <p class="hidden mt-1 text-xs font-semibold tracking-[0.04em] text-slate-600 xl:mt-2 xl:block xl:text-base xl:tracking-[0.06em]">
-            選擇你的辦公室風格
+            選擇你的辦公室風格與專屬造型。
           </p>
         </div>
 
-        <div class="order-3 col-span-2 grid grid-cols-3 gap-1 xl:order-none xl:col-span-1 xl:gap-2">
+        <div class="order-3 col-span-2 grid grid-cols-3 gap-1 self-center xl:order-none xl:col-span-1 xl:gap-2 xl:self-start xl:pt-2">
           <CurrencyBar
-            class="col-span-3 -translate-x-2 justify-self-end xl:-translate-x-3"
+            class="col-span-3 justify-self-end"
             :items="['coins', 'gems', 'tickets']"
           />
 
-          <div
-            v-for="metric in headerMetrics"
-            :key="metric.label"
-            class="border border-slate-300/70 bg-white/70 px-1.5 py-1 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] xl:px-3 xl:py-2"
-          >
-            <div class="text-[9px] font-bold tracking-[0.06em] text-slate-500 xl:text-[11px] xl:tracking-[0.14em]">
-              {{ metric.label }}
-            </div>
-            <div class="text-sm font-black text-slate-900 xl:mt-1 xl:text-xl">
-              {{ metric.value }}
-            </div>
-          </div>
         </div>
 
         <button
@@ -201,7 +187,7 @@
                 <div class="hidden content-between gap-1.5 border border-white/16 bg-white/10 p-2.5 backdrop-blur-sm xl:grid">
                   <div>
                     <div class="text-[9px] font-bold tracking-[0.1em] text-slate-200">
-                      預算餘額
+                      可用代幣
                     </div>
                     <div class="mt-0.5 text-xl font-black text-white">
                       {{ budgetDisplay }}
@@ -220,14 +206,34 @@
             </article>
 
             <div
-              v-if="filteredItems.length === 0"
+              v-if="statusMessage"
+              class="status-state border border-slate-600/70 bg-slate-950/80 px-4 py-3 text-sm font-bold text-slate-100"
+              role="status"
+            >
+              {{ statusMessage }}
+            </div>
+
+            <div
+              v-if="isShopLoading"
               class="empty-state border border-dashed border-slate-300 bg-white/70 px-4 py-8 text-center md:px-6 md:py-12"
             >
               <div class="text-lg font-black tracking-[0.06em] text-slate-900 md:text-xl md:tracking-[0.08em]">
-                目前沒有可顯示商品
+                商城資料載入中
               </div>
               <p class="mt-2 text-xs leading-5 text-slate-500 md:mt-3 md:text-sm md:leading-6">
-                更多內容準備中，敬請期待
+                正在整理最新商品與持有狀態，請稍候。
+              </p>
+            </div>
+
+            <div
+              v-else-if="filteredItems.length === 0"
+              class="empty-state border border-dashed border-slate-300 bg-white/70 px-4 py-8 text-center md:px-6 md:py-12"
+            >
+              <div class="text-lg font-black tracking-[0.06em] text-slate-900 md:text-xl md:tracking-[0.08em]">
+                這個分類目前沒有商品
+              </div>
+              <p class="mt-2 text-xs leading-5 text-slate-500 md:mt-3 md:text-sm md:leading-6">
+                可以切換其他分類，看看更多可用造型與道具。
               </p>
             </div>
 
@@ -237,6 +243,7 @@
                 :key="item.id"
                 :item="item"
                 :active="selectedItem?.id === item.id && isDetailModalOpen"
+                @purchase="purchaseItem"
                 @select="openItemDetail"
               />
             </div>
@@ -273,7 +280,7 @@
             <button
               type="button"
               class="close-button"
-              aria-label="關閉明細"
+              aria-label="關閉商品明細"
               @click="closeItemDetail"
             >
               ×
@@ -291,13 +298,12 @@
                 >
                   <img
                     :src="selectedItem.previewImage"
-                    :alt="`${selectedItem.name} 預覽圖`"
+                    :alt="selectedItem.name + ' preview'"
                     class="modal-preview__image"
                   />
                   <div class="modal-preview__overlay"></div>
                 </button>
               </div>
-
               <div class="modal-detail-card__info">
                 <div class="modal-detail-card__rows">
                   <div class="detail-row">
@@ -314,25 +320,26 @@
                   </div>
                 </div>
 
-              <aside class="modal-detail-card__purchase">
-                <div class="border border-slate-300 bg-[linear-gradient(180deg,#f9fbfd,#eef4f9)] p-2.5 md:p-4">
-                  <div class="text-[9px] font-bold tracking-[0.1em] text-slate-500 md:text-[11px] md:tracking-[0.16em]">
-                    可用代幣
+                <aside class="modal-detail-card__purchase">
+                  <div class="border border-slate-300 bg-[linear-gradient(180deg,#f9fbfd,#eef4f9)] p-2.5 md:p-4">
+                    <div class="text-[9px] font-bold tracking-[0.1em] text-slate-500 md:text-[11px] md:tracking-[0.16em]">
+                      可用代幣
+                    </div>
+                    <div class="mt-0.5 text-lg font-black text-slate-900 md:mt-1 md:text-3xl">
+                      {{ budgetDisplay }}
+                    </div>
                   </div>
-                  <div class="mt-0.5 text-lg font-black text-slate-900 md:mt-1 md:text-3xl">
-                    {{ budgetDisplay }}
-                  </div>
-                </div>
 
-                <button
-                  type="button"
-                  class="item-action item-action--modal"
-                  :class="`item-action--${selectedItem.actionState}`"
-                  :disabled="selectedItem.actionState !== 'buy'"
-                >
-                  {{ selectedItem.actionLabel }}
-                </button>
-              </aside>
+                  <button
+                    type="button"
+                    class="item-action item-action--modal"
+                    :class="`item-action--${selectedItem.actionState}`"
+                    :disabled="selectedItem.actionState !== 'buy' || isPurchasing"
+                    @click="purchaseSelectedItem"
+                  >
+                    {{ isPurchasing ? '購買中...' : selectedItem.actionLabel }}
+                  </button>
+                </aside>
               </div>
             </div>
           </div>
@@ -365,43 +372,113 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import CurrencyBar from "@/components/common/CurrencyBar.vue";
 import MallProductCard from "@/components/mall/MallProductCard.vue";
 import bgDashboard from "@/assets/images/bg-dashboard.webp";
 import {
   mallCategories,
-  mallHeaderMetrics,
   mallItems,
 } from "@/mocks/mallMockData.js";
+import {
+  getPlayerShopItems,
+  getShopItems,
+  purchaseShopItem,
+} from "@/services/shopApi.js";
+import {
+  formatNumber,
+  getCurrencyBalance,
+  getOwnedShopItemIdSet,
+  normalizeShopItem,
+  shopTypeCategoryMap,
+} from "@/services/shopItemMapper.js";
 import { useAuthStore } from "@/stores/authStore.js";
 import { useCurrencyStore } from "@/stores/currencyStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
 
+const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const currencyStore = useCurrencyStore();
 const playerStore = usePlayerStore();
 
 const categories = mallCategories;
-const mockItems = mallItems;
-const headerMetrics = mallHeaderMetrics;
+const fallbackItems = mallItems;
+const shopItems = ref([]);
+const playerItems = ref([]);
+const isShopLoading = ref(false);
+const isPurchasing = ref(false);
+const statusMessage = ref("");
 
 const activeCategory = ref(categories[0].id);
-const selectedItem = ref(mockItems[0]);
+const selectedItem = ref(null);
 const isDetailModalOpen = ref(false);
 const isMenuOpen = ref(false);
 const isImagePreviewOpen = ref(false);
 
+function getStoredGuestPlayer() {
+  if (typeof localStorage === "undefined") {
+    return null;
+  }
+
+  try {
+    return JSON.parse(localStorage.getItem("guestPlayer") || "null");
+  } catch {
+    return null;
+  }
+}
+
+const currentPlayerId = computed(() => {
+  const routePlayerId = Number(route.query.playerId);
+
+  if (Number.isInteger(routePlayerId) && routePlayerId > 0) {
+    return routePlayerId;
+  }
+
+  const storedGuestPlayer = getStoredGuestPlayer();
+
+  return (
+    authStore.currentPlayer?.id ??
+    playerStore.currentPlayerId ??
+    storedGuestPlayer?.id ??
+    null
+  );
+});
+
+const fallbackImageByCategory = computed(() =>
+  fallbackItems.reduce((accumulator, item) => {
+    if (!accumulator[item.category]) {
+      accumulator[item.category] = item.previewImage;
+    }
+
+    return accumulator;
+  }, {}),
+);
+
+const ownedShopItemIds = computed(() => getOwnedShopItemIdSet(playerItems.value));
+
+const normalizedItems = computed(() =>
+  shopItems.value.map((item) => {
+    const category = shopTypeCategoryMap[item.type];
+
+    return normalizeShopItem(item, {
+      categories,
+      fallbackImage:
+        fallbackImageByCategory.value[category] ?? fallbackItems[0]?.previewImage,
+      ownedShopItemIds: ownedShopItemIds.value,
+    });
+  }),
+);
+
 const categoriesWithCount = computed(() =>
   categories.map((category) => ({
     ...category,
-    count: mockItems.filter((item) => item.category === category.id).length,
+    count: normalizedItems.value.filter((item) => item.category === category.id).length,
   })),
 );
 
 const filteredItems = computed(() =>
-  mockItems.filter((item) => item.category === activeCategory.value),
+  normalizedItems.value.filter((item) => item.category === activeCategory.value),
 );
 
 const activeCategoryMeta = computed(
@@ -411,11 +488,49 @@ const activeCategoryMeta = computed(
     ) ?? categoriesWithCount.value[0],
 );
 
-const featuredItem = computed(() => filteredItems.value[0] ?? mockItems[0]);
-const budgetDisplay = computed(() => "2,400");
+const featuredItem = computed(
+  () => filteredItems.value[0] ?? normalizedItems.value[0] ?? fallbackItems[0],
+);
+const budgetDisplay = computed(() =>
+  formatNumber(
+    getCurrencyBalance(selectedItem.value?.currency ?? "coin", {
+      coins: currencyStore.coins,
+      gems: currencyStore.gems,
+      tickets: currencyStore.tickets,
+    }),
+  ),
+);
 
-function getCurrentPlayerId() {
-  return authStore.currentPlayer?.id ?? playerStore.currentPlayerId;
+function getErrorMessage(error, fallbackMessage) {
+  return error?.data?.message || error?.message || fallbackMessage;
+}
+
+async function loadShopData() {
+  const playerId = currentPlayerId.value;
+
+  isShopLoading.value = true;
+  statusMessage.value = "";
+
+  try {
+    const [shopData, ownedData] = await Promise.all([
+      getShopItems({ activeOnly: true }),
+      playerId ? getPlayerShopItems(playerId) : Promise.resolve({ items: [] }),
+      playerId ? currencyStore.fetchPlayerCurrency(playerId) : Promise.resolve(null),
+    ]);
+
+    shopItems.value = shopData.items ?? [];
+    playerItems.value = ownedData.items ?? [];
+
+    if (!playerId) {
+      statusMessage.value = "尚未取得玩家 ID，商品可瀏覽但無法購買。";
+    }
+  } catch (error) {
+    statusMessage.value = getErrorMessage(error, "商城資料載入失敗，請稍後再試。");
+    shopItems.value = [];
+    playerItems.value = [];
+  } finally {
+    isShopLoading.value = false;
+  }
 }
 
 function openItemDetail(item) {
@@ -439,6 +554,55 @@ function closeImagePreview() {
 function goLobby() {
   isMenuOpen.value = false;
   router.push("/lobby");
+}
+
+async function purchaseItem(item) {
+  if (!currentPlayerId.value) {
+    statusMessage.value = "尚未取得玩家 ID，請重新登入後再購買商品。";
+    return;
+  }
+
+  if (item.actionState !== "buy" || isPurchasing.value) {
+    return;
+  }
+
+  isPurchasing.value = true;
+  statusMessage.value = "";
+
+  try {
+    const result = await purchaseShopItem({
+      playerId: currentPlayerId.value,
+      shopItemId: item.id,
+      quantity: 1,
+    });
+
+    if (result.currency) {
+      currencyStore.coins = result.currency.coins ?? currencyStore.coins;
+      currencyStore.gems = result.currency.gems ?? currencyStore.gems;
+      currencyStore.tickets = result.currency.tickets ?? currencyStore.tickets;
+    }
+
+    await Promise.all([
+      getPlayerShopItems(currentPlayerId.value).then((data) => {
+        playerItems.value = data.items ?? [];
+      }),
+      getShopItems({ activeOnly: true }).then((data) => {
+        shopItems.value = data.items ?? [];
+      }),
+    ]);
+
+    statusMessage.value = "購買成功，已更新持有狀態與貨幣餘額。";
+  } catch (error) {
+    statusMessage.value = getErrorMessage(error, "購買失敗，請檢查餘額或稍後再試。");
+  } finally {
+    isPurchasing.value = false;
+  }
+}
+
+function purchaseSelectedItem() {
+  if (selectedItem.value) {
+    purchaseItem(selectedItem.value);
+  }
 }
 
 function handleEscape(event) {
@@ -469,21 +633,24 @@ watch(
       return;
     }
 
-    if (!nextItems.some((item) => item.id === selectedItem.value?.id)) {
-      selectedItem.value = nextItems[0];
+    const nextSelectedItem = nextItems.find(
+      (item) => item.id === selectedItem.value?.id,
+    );
+
+    if (nextSelectedItem) {
+      selectedItem.value = nextSelectedItem;
+      return;
     }
+
+    selectedItem.value = nextItems[0];
   },
   { immediate: true },
 );
 
 watch(
-  getCurrentPlayerId,
-  (playerId) => {
-    if (!playerId) {
-      return;
-    }
-
-    currencyStore.fetchPlayerCurrency(playerId).catch(() => {});
+  currentPlayerId,
+  () => {
+    loadShopData();
   },
   { immediate: true },
 );
@@ -571,6 +738,7 @@ onBeforeUnmount(() => {
 }
 
 .mall-topbar .btn-dark,
+.tablet-storebar-actions .btn-dark,
 .mobile-menu-panel .btn-dark {
   border-color: rgba(0, 70, 244, 0.7);
   background: linear-gradient(180deg, rgba(0, 70, 244, 0.95), rgba(70, 85, 99, 0.95));
@@ -701,6 +869,10 @@ onBeforeUnmount(() => {
   color: rgb(134, 179, 224);
 }
 
+.tablet-storebar-actions {
+  display: none;
+}
+
 .mobile-menu-button {
   position: relative;
   z-index: 20;
@@ -756,6 +928,39 @@ onBeforeUnmount(() => {
 
 .mobile-menu-close {
   flex: 0 0 auto;
+}
+
+.mobile-menu-currencybar {
+  width: 100%;
+  margin-inline: auto;
+}
+
+.mobile-menu-currencybar:deep(section) {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+}
+
+.mobile-menu-currencybar:deep(section > div) {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.mobile-menu-currencybar:deep(section > div > div) {
+  min-width: 0;
+  justify-content: center;
+}
+
+.mobile-menu-currencybar:deep(section > div > div > span:first-child) {
+  flex-shrink: 0;
+}
+
+.mobile-menu-currencybar:deep(section > div > div > span:last-child) {
+  min-width: 0 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 8px !important;
 }
 
 .modal-detail-card {
@@ -1114,12 +1319,95 @@ onBeforeUnmount(() => {
   }
 
   .mobile-storebar {
-    min-height: 56px;
-    padding: 6px 10px 6px 14px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 64px;
+    align-items: center;
+    padding: 8px 14px;
   }
 
   .mobile-storebar h1 {
     font-size: 24px;
+  }
+
+  .mobile-storebar .mobile-menu-button {
+    display: none;
+  }
+
+  .mobile-menu-layer {
+    display: none !important;
+  }
+
+  .tablet-storebar-actions {
+    display: flex;
+    align-items: center;
+    justify-self: end;
+    gap: 10px;
+  }
+
+  .tablet-storebar-currency {
+    width: min(35vw, 300px);
+  }
+
+  .tablet-storebar-currency:deep(section) {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    gap: 6px;
+  }
+
+  .tablet-storebar-currency:deep(section > div) {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 24px !important;
+    padding: 0 5px !important;
+  }
+
+  .tablet-storebar-currency:deep(section > div > div) {
+    min-width: 0;
+    justify-content: center;
+    gap: 4px !important;
+  }
+
+  .tablet-storebar-currency:deep(section > div > div > span:first-child) {
+    width: 15px !important;
+    height: 15px !important;
+    flex: 0 0 15px !important;
+  }
+
+  .tablet-storebar-currency:deep(section > div > div > span:last-child) {
+    min-width: 0 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px !important;
+  }
+
+  .mobile-menu-currencybar {
+    width: 94%;
+  }
+
+  .mobile-menu-currencybar:deep(section) {
+    gap: 5px;
+  }
+
+  .mobile-menu-currencybar:deep(section > div) {
+    height: 22px !important;
+    padding: 0 3px !important;
+  }
+
+  .mobile-menu-currencybar:deep(section > div > div) {
+    gap: 3px !important;
+  }
+
+  .mobile-menu-currencybar:deep(section > div > div > span:first-child) {
+    width: 13px !important;
+    height: 13px !important;
+    flex-basis: 13px !important;
+  }
+
+  .mobile-menu-currencybar:deep(section > div > div > span:last-child) {
+    font-size: 9px !important;
   }
 
   .mall-shell > .grid {
@@ -1165,6 +1453,33 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 767px) {
+  .mobile-menu-currencybar {
+    width: 92%;
+  }
+
+  .mobile-menu-currencybar:deep(section) {
+    gap: 4px;
+  }
+
+  .mobile-menu-currencybar:deep(section > div) {
+    height: 20px !important;
+    padding: 0 2px !important;
+  }
+
+  .mobile-menu-currencybar:deep(section > div > div) {
+    gap: 2px !important;
+  }
+
+  .mobile-menu-currencybar:deep(section > div > div > span:first-child) {
+    width: 12px !important;
+    height: 12px !important;
+    flex-basis: 12px !important;
+  }
+
+  .mobile-menu-currencybar:deep(section > div > div > span:last-child) {
+    font-size: 8px !important;
+  }
+
   .mall-topbar {
     align-items: start;
   }
@@ -1258,3 +1573,4 @@ onBeforeUnmount(() => {
   }
 }
 </style>
+

@@ -115,6 +115,7 @@ function handlePrimaryAction() {
 function handleSecondaryAction() {
   if (isMemberLoggedIn.value) {
     authStore.logout();
+    playerStore.resetPlayer();
     showLoginModal.value = false;
     showGuestLoginModal.value = false;
     router.push("/");
@@ -171,10 +172,6 @@ function handleRegisterSuccess() {
 }
 
 onMounted(async () => {
-  if (authStore.token && !authStore.hasVerifiedToken) {
-    await authStore.verifyToken();
-  }
-
   if (playerStore.currentPlayer) {
     return;
   }

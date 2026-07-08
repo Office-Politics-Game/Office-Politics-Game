@@ -35,7 +35,7 @@
         class="item-action"
         :class="`item-action--${item.actionState}`"
         :disabled="item.actionState !== 'buy'"
-        @click.stop="$emit('select', item)"
+        @click.stop="$emit('purchase', item)"
       >
         {{ item.actionLabel }}
       </button>
@@ -55,7 +55,7 @@ defineProps({
   },
 });
 
-defineEmits(["select"]);
+defineEmits(["purchase", "select"]);
 </script>
 
 <style scoped>
