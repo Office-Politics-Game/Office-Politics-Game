@@ -19,7 +19,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import ProfileEmptyPanel from "@/components/profile/ProfileEmptyPanel.vue";
 import ProfileInfoPanel from "@/components/profile/ProfileInfoPanel.vue";
@@ -28,6 +28,10 @@ import bgPersonal from "@/assets/images/bg-personal.webp";
 import bgDashboard from "@/assets/images/bg-dashboard.webp";
 import paperBackground from "@/assets/images/waiting-room.webp";
 import { guestAvatars } from "@/constants/guestOptions.js";
+import {
+  getPlayerEquippedItems,
+  getPlayerShopItems,
+} from "@/services/shopApi.js";
 import { useAuthStore } from "@/stores/authStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
 
@@ -36,6 +40,8 @@ const authStore = useAuthStore();
 const playerStore = usePlayerStore();
 const activeTab = ref("profile");
 const isReturningToLobby = ref(false);
+const equippedAvatarUrl = ref("");
+const hasResolvedEquippedAvatar = ref(false);
 const RETURN_ANIMATION_DURATION = 520;
 
 const tabs = [
@@ -91,12 +97,17 @@ const profilePlayer = computed(() => {
   const totalGames = toNumber(player.totalGames ?? player.total_games, winCount + loseCount);
   const avatar = guestAvatars.find((item) => item.id === toNumber(player.avatarId ?? player.avatar_id, 1));
   const playerId = toNumber(player.id, 1);
+  const fallbackAvatarUrl = avatar?.image ?? guestAvatars[0].image;
+  const shouldWaitForEquippedAvatar =
+    playerId > 0 && !player.avatarUrl && !hasResolvedEquippedAvatar.value;
 
   return {
     id: playerId,
     username: player.username || "CEO小陳",
     title: player.title || "職場操盤手",
-    avatarUrl: avatar?.image ?? guestAvatars[0].image,
+    avatarUrl: shouldWaitForEquippedAvatar
+      ? ""
+      : equippedAvatarUrl.value || player.avatarUrl || fallbackAvatarUrl,
     level,
     exp,
     nextExp,
@@ -113,6 +124,42 @@ const profilePlayer = computed(() => {
     bio: player.bio || "在辦公室，我就是規則。",
   };
 });
+
+watch(
+  () => sourcePlayer.value?.id,
+  async (playerId) => {
+    equippedAvatarUrl.value = "";
+    hasResolvedEquippedAvatar.value = false;
+
+    const numericPlayerId = Number(playerId);
+
+    if (!Number.isInteger(numericPlayerId) || numericPlayerId <= 0) {
+      hasResolvedEquippedAvatar.value = true;
+      return;
+    }
+
+    try {
+      const [playerItemsResponse, equippedResponse] = await Promise.all([
+        getPlayerShopItems(numericPlayerId),
+        getPlayerEquippedItems(numericPlayerId),
+      ]);
+
+      const avatarItemId = equippedResponse?.equipped?.avatarItemId;
+      const avatarInventoryEntry = (playerItemsResponse?.items || []).find(
+        (entry) =>
+          entry?.item?.type === "avatar" &&
+          Number(entry?.item?.id) === Number(avatarItemId),
+      );
+
+      equippedAvatarUrl.value = avatarInventoryEntry?.item?.imageUrl || "";
+    } catch {
+      equippedAvatarUrl.value = "";
+    } finally {
+      hasResolvedEquippedAvatar.value = true;
+    }
+  },
+  { immediate: true },
+);
 
 function toNumber(value, fallback) {
   const number = Number(value);

@@ -136,12 +136,17 @@ async function getRoomState({ roomCode }){
        grp.player_id,
        p.username,
        p.avatar_id,
+       avatar_item.image_url AS avatar_url,
        grp.role,
        grp.seat_order,
        grp.is_ready,
        grp.is_alive
      FROM game_room_players grp
      JOIN players p ON p.id = grp.player_id
+     LEFT JOIN player_equipped_items pei ON pei.player_id = p.id
+     LEFT JOIN shop_items avatar_item
+       ON avatar_item.id = pei.avatar_item_id
+      AND avatar_item.type = 'avatar'
      WHERE grp.room_id = $1
      ORDER BY grp.seat_order ASC`,
     [room.id]
@@ -159,6 +164,7 @@ async function getRoomState({ roomCode }){
         playerId: player.player_id,
         username: player.username,
         avatarId: player.avatar_id,
+        avatarUrl: player.avatar_url,
         role: player.role,
         seatOrder: player.seat_order,
         isReady: player.is_ready,
@@ -194,9 +200,19 @@ async function startGame({ roomCode, playerId }){
     }
 
     const playerResult = await client.query(
-      `SELECT grp.player_id, grp.seat_order, grp.is_ready, p.username
+      `SELECT
+         grp.player_id,
+         grp.seat_order,
+         grp.is_ready,
+         p.username,
+         p.avatar_id,
+         avatar_item.image_url AS avatar_url
        FROM game_room_players grp
        JOIN players p ON p.id = grp.player_id
+       LEFT JOIN player_equipped_items pei ON pei.player_id = p.id
+       LEFT JOIN shop_items avatar_item
+         ON avatar_item.id = pei.avatar_item_id
+        AND avatar_item.type = 'avatar'
        WHERE grp.room_id = $1
        ORDER BY grp.seat_order ASC`,
       [room.id]

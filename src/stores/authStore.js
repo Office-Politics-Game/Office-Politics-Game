@@ -4,6 +4,7 @@ import {
   login as loginApi,
   verifyToken as verifyTokenApi,
 } from "../services/authApi.js"
+import { hydratePlayerAppearance } from "@/services/playerAppearanceService.js"
 
 const AUTH_TOKEN_STORAGE_KEY = "gameAuthToken"
 
@@ -53,8 +54,9 @@ export const useAuthStore = defineStore("auth", {
       try {
         const data = await loginApi(payload)
         const token = data.token || ""
+        const hydratedPlayer = await hydratePlayerAppearance(data.player || null)
 
-        this.currentPlayer = data.player || null
+        this.currentPlayer = hydratedPlayer
         this.token = token
         this.isLoggedIn = Boolean(token)
         this.hasVerifiedToken = Boolean(token)
@@ -99,8 +101,9 @@ export const useAuthStore = defineStore("auth", {
 
       try {
         const data = await verifyTokenApi(this.token)
+        const hydratedPlayer = await hydratePlayerAppearance(data.player || null)
 
-        this.currentPlayer = data.player || null
+        this.currentPlayer = hydratedPlayer
         this.isLoggedIn = true
         this.hasVerifiedToken = true
 
@@ -130,6 +133,17 @@ export const useAuthStore = defineStore("auth", {
 
     clearError() {
       this.errorMessage = ""
+    },
+
+    setCurrentPlayerAvatar(avatarUrl) {
+      if (!this.currentPlayer) {
+        return
+      }
+
+      this.currentPlayer = {
+        ...this.currentPlayer,
+        avatarUrl: avatarUrl || this.currentPlayer.avatarUrl || "",
+      }
     }
   }
 })

@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import { normalizePlayerAvatar } from "@/utils/playerUtils.js";
 
 export const usePlayerStore = defineStore("player", {
   state: () => ({
@@ -11,7 +12,18 @@ export const usePlayerStore = defineStore("player", {
 
   actions: {
     setCurrentPlayer(player) {
-      this.currentPlayer = player;
+      this.currentPlayer = normalizePlayerAvatar(player);
+    },
+
+    setCurrentPlayerAvatar(avatarUrl) {
+      if (!this.currentPlayer) {
+        return;
+      }
+
+      this.currentPlayer = {
+        ...this.currentPlayer,
+        avatarUrl: avatarUrl || this.currentPlayer.avatarUrl || "",
+      };
     },
 
     resetPlayer() {

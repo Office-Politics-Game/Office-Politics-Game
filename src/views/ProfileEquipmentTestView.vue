@@ -209,6 +209,11 @@ async function handleEquipItem(item) {
         patchEquippedState(equippedItems.value, item.categoryId, item.shopItemId),
       resolvedPlayerId.value,
     );
+
+    if (item.categoryId === "avatar") {
+      authStore.setCurrentPlayerAvatar(item.previewImage || "");
+      playerStore.setCurrentPlayerAvatar(item.previewImage || "");
+    }
   } catch (error) {
     errorMessage.value = error?.message || "套用配件失敗。";
   } finally {

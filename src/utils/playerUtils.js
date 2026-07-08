@@ -13,4 +13,17 @@ function resolveAvatarUrl(value, index) {
   )
 }
 
-export { resolveAvatarUrl }
+function normalizePlayerAvatar(player, index = 0) {
+  if (!player || typeof player !== "object") {
+    return player
+  }
+
+  return {
+    ...player,
+    avatarUrl:
+      player.avatarUrl ||
+      resolveAvatarUrl(player.avatarId ?? player.avatar_id, index),
+  }
+}
+
+export { normalizePlayerAvatar, resolveAvatarUrl }
