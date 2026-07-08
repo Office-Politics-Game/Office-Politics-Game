@@ -35,10 +35,11 @@
           <CurrencyBar
             class="tablet-storebar-currency"
             :items="['coins', 'gems', 'tickets']"
+            tooltip-size="small"
           />
           <button
             type="button"
-            class="btn-dark tablet-storebar-return h-11 whitespace-nowrap px-4 py-2 text-sm font-bold"
+            class="btn-dark tablet-storebar-return h-11 translate-y-1 whitespace-nowrap px-4 py-2 text-sm font-bold"
             @click="goLobby"
           >
             返回大廳
@@ -79,6 +80,7 @@
             <CurrencyBar
               class="mobile-menu-currencybar mt-3"
               :items="['coins', 'gems', 'tickets']"
+              tooltip-size="small"
             />
 
             <div class="mt-3 border border-slate-300 bg-[linear-gradient(180deg,#f9fbfd,#eef4f9)] p-3">
@@ -116,15 +118,16 @@
 
         <div class="order-3 col-span-2 grid grid-cols-3 gap-1 self-center xl:order-none xl:col-span-1 xl:gap-2 xl:self-start xl:pt-2">
           <CurrencyBar
-            class="col-span-3 justify-self-end"
+            class="mall-topbar-currency col-span-3 mt-2 justify-self-end"
             :items="['coins', 'gems', 'tickets']"
+            tooltip-size="small"
           />
 
         </div>
 
         <button
           type="button"
-          class="btn-dark order-2 h-8 whitespace-nowrap px-2.5 py-1 text-xs font-bold xl:order-none xl:h-11 xl:px-4 xl:py-2 xl:text-sm"
+          class="btn-dark order-2 h-8 translate-y-1 whitespace-nowrap px-2.5 py-1 text-xs font-bold xl:order-none xl:h-11 xl:px-4 xl:py-2 xl:text-sm"
           @click="router.push('/lobby')"
         >
           返回大廳
@@ -961,6 +964,52 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 8px !important;
+}
+
+.mobile-menu-currencybar:deep(section > div > div:last-child),
+.tablet-storebar-currency:deep(section > div > div:last-child),
+.mall-topbar-currency:deep(section > div > div:last-child) {
+  top: 100% !important;
+  bottom: auto !important;
+  margin-top: 8px !important;
+  margin-bottom: 0 !important;
+}
+
+.mall-topbar-currency {
+  width: min(100%, 300px);
+}
+
+.mall-topbar-currency:deep(section) {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  gap: 6px;
+}
+
+.mall-topbar-currency:deep(section > div) {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 24px !important;
+  padding: 0 5px !important;
+}
+
+.mall-topbar-currency:deep(section > div > div:first-child) {
+  min-width: 0;
+  gap: 4px !important;
+}
+
+.mall-topbar-currency:deep(section > div > div:first-child > span:first-child) {
+  width: 15px !important;
+  height: 15px !important;
+  flex: 0 0 15px !important;
+}
+
+.mall-topbar-currency:deep(section > div > div:first-child > span:last-child) {
+  min-width: 0 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px !important;
 }
 
 .modal-detail-card {
