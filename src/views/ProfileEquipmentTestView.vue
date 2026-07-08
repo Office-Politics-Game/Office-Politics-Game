@@ -63,6 +63,7 @@ import {
   patchEquippedState,
 } from "@/models/equipmentModel.js";
 import bgPersonal from "@/assets/images/bg-personal.webp";
+import { useAppearanceStore } from "@/stores/appearanceStore.js";
 import { useAuthStore } from "@/stores/authStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
 import {
@@ -73,6 +74,7 @@ import {
 
 const router = useRouter();
 const authStore = useAuthStore();
+const appearanceStore = useAppearanceStore();
 const playerStore = usePlayerStore();
 
 const activeCategory = ref("avatar");
@@ -214,6 +216,8 @@ async function handleEquipItem(item) {
       authStore.setCurrentPlayerAvatar(item.previewImage || "");
       playerStore.setCurrentPlayerAvatar(item.previewImage || "");
     }
+
+    appearanceStore.setAppearanceByCategory(item.categoryId, item.previewImage || "");
   } catch (error) {
     errorMessage.value = error?.message || "套用配件失敗。";
   } finally {

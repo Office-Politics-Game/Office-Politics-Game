@@ -28,6 +28,7 @@ function getPublicState(state, viewerPlayerId){
         username: player.username,
         avatarId: player.avatarId,
         avatarUrl: player.avatarUrl,
+        cardSkinUrl: player.cardSkinUrl ?? null,
         seatOrder: player.seatOrder,
         hand: isSelf ? hand : undefined,
         handCount: hand.length,

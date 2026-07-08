@@ -1,11 +1,26 @@
 import { getPlayerEquippedItems, getPlayerShopItems } from "@/services/shopApi.js";
 import { normalizePlayerAvatar } from "@/utils/playerUtils.js";
 
-async function getEquippedAvatarUrl(playerId) {
+function getPreviewImageByItemId(playerItems = [], itemId, type) {
+  return (
+    (playerItems || []).find(
+      (entry) =>
+        entry?.item?.type === type &&
+        Number(entry?.item?.id) === Number(itemId),
+    )?.item?.imageUrl || ""
+  );
+}
+
+async function getEquippedAppearance(playerId) {
   const numericPlayerId = Number(playerId);
 
   if (!Number.isInteger(numericPlayerId) || numericPlayerId <= 0) {
-    return "";
+    return {
+      avatarUrl: "",
+      cardSkinUrl: "",
+      cardBackUrl: "",
+      boardSkinUrl: "",
+    };
   }
 
   const [playerItemsResponse, equippedResponse] = await Promise.all([
@@ -13,34 +28,69 @@ async function getEquippedAvatarUrl(playerId) {
     getPlayerEquippedItems(numericPlayerId),
   ]);
 
-  const avatarItemId = equippedResponse?.equipped?.avatarItemId;
-  const avatarInventoryEntry = (playerItemsResponse?.items || []).find(
-    (entry) =>
-      entry?.item?.type === "avatar" &&
-      Number(entry?.item?.id) === Number(avatarItemId),
-  );
+  const playerItems = playerItemsResponse?.items || [];
+  const equipped = equippedResponse?.equipped || {};
 
-  return avatarInventoryEntry?.item?.imageUrl || "";
+  return {
+    avatarUrl: getPreviewImageByItemId(playerItems, equipped.avatarItemId, "avatar"),
+    cardSkinUrl: getPreviewImageByItemId(playerItems, equipped.cardSkinItemId, "card_skin"),
+    cardBackUrl: getPreviewImageByItemId(playerItems, equipped.cardBackItemId, "card_back"),
+    boardSkinUrl: getPreviewImageByItemId(playerItems, equipped.boardSkinItemId, "board_skin"),
+  };
 }
 
-async function hydratePlayerAppearance(player, index = 0) {
+async function hydratePlayerAppearanceBundle(player, index = 0) {
   if (!player || typeof player !== "object") {
-    return player;
+    return {
+      player,
+      appearance: {
+        avatarUrl: "",
+        cardSkinUrl: "",
+        cardBackUrl: "",
+        boardSkinUrl: "",
+      },
+    };
   }
 
   try {
-    const equippedAvatarUrl = await getEquippedAvatarUrl(player.id);
+    const appearance = await getEquippedAppearance(player.id);
 
-    return normalizePlayerAvatar(
-      {
-        ...player,
-        avatarUrl: equippedAvatarUrl || player.avatarUrl,
-      },
-      index,
-    );
+    return {
+      player: normalizePlayerAvatar(
+        {
+          ...player,
+          avatarUrl: appearance.avatarUrl || player.avatarUrl,
+        },
+        index,
+      ),
+      appearance,
+    };
   } catch {
-    return normalizePlayerAvatar(player, index);
+    return {
+      player: normalizePlayerAvatar(player, index),
+      appearance: {
+        avatarUrl: "",
+        cardSkinUrl: "",
+        cardBackUrl: "",
+        boardSkinUrl: "",
+      },
+    };
   }
 }
 
-export { getEquippedAvatarUrl, hydratePlayerAppearance };
+async function hydratePlayerAppearance(player, index = 0) {
+  const bundle = await hydratePlayerAppearanceBundle(player, index);
+  return bundle.player;
+}
+
+async function getEquippedAvatarUrl(playerId) {
+  const appearance = await getEquippedAppearance(playerId);
+  return appearance.avatarUrl;
+}
+
+export {
+  getEquippedAppearance,
+  getEquippedAvatarUrl,
+  hydratePlayerAppearance,
+  hydratePlayerAppearanceBundle,
+};

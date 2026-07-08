@@ -16,6 +16,7 @@ function createInitialState (players){
             username: player.username,
             avatarId: player.avatar_id,
             avatarUrl: player.avatar_url,
+            cardSkinUrl: player.card_skin_url,
             seatOrder: player.seat_order,
             hand: [card],
             isProtected: false,

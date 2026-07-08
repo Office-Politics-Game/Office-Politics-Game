@@ -14,11 +14,13 @@ import {
   playCard as playGameCard,
 } from '@/services/gameActionApi'
 import { connectSocket, emitWithAck } from '@/services/socketClient'
+import { useAppearanceStore } from '@/stores/appearanceStore'
 import { useGameStateStore } from '@/stores/gameStateStore'
 import { normalizeCard } from '@/utils/cardUtils'
 import { resolveAvatarUrl } from '@/utils/playerUtils'
 
 const route = useRoute()
+const appearanceStore = useAppearanceStore()
 const gameStateStore = useGameStateStore()
 const {
   gameState,
@@ -27,6 +29,7 @@ const {
   currentTurnPlayerId,
   isLoading,
 } = storeToRefs(gameStateStore)
+const { cardSkinUrl } = storeToRefs(appearanceStore)
 
 const seatPositions = ['top', 'left', 'right', 'bottom']
 const LOADING_PROGRESS_TRANSITION_MS = 240
@@ -118,14 +121,16 @@ const players = computed(() => {
 const handCards = computed(() => {
   const hand = selfPlayer.value?.hand
 
-  return Array.isArray(hand) ? hand.map((card, index) => normalizeCard(card, index)) : []
+  return Array.isArray(hand) ? hand.map((card, index) => normalizeCardWithAppearance(card, index)) : []
 })
 
 const discardCards = computed(() => {
   const discardPile = gameState.value?.discardPile
 
   return Array.isArray(discardPile)
-    ? discardPile.map((card, index) => normalizeCard(card, index))
+    ? discardPile.map((card, index) =>
+        normalizeCardForPlayer(card, resolveCardOwnerPlayerId(card), index),
+      )
     : []
 })
 
@@ -196,8 +201,58 @@ function rememberRoomPlayerMetadata(players = []) {
         name: player.name,
         avatarId: player.avatarId ?? player.avatar_id,
         avatarUrl: player.avatarUrl,
+        cardSkinUrl: player.cardSkinUrl,
       },
     ]),
+  )
+}
+
+function getPlayerCardSkinUrl(playerId) {
+  if (playerId === null || playerId === undefined) {
+    return ''
+  }
+
+  const player = publicPlayersWithMetadata.value.find(
+    (candidate) => String(getPlayerId(candidate)) === String(playerId),
+  )
+
+  return typeof player?.cardSkinUrl === 'string' ? player.cardSkinUrl : ''
+}
+
+function normalizeCardWithAppearance(rawCard = {}, fallbackIndex = 0) {
+  const normalizedCard = normalizeCard(rawCard, fallbackIndex)
+
+  if (!cardSkinUrl.value) {
+    return normalizedCard
+  }
+
+  return {
+    ...normalizedCard,
+    backgroundUrl: cardSkinUrl.value,
+  }
+}
+
+function normalizeCardForPlayer(rawCard = {}, ownerPlayerId = null, fallbackIndex = 0) {
+  const normalizedCard = normalizeCard(rawCard, fallbackIndex)
+  const playerCardSkinUrl = getPlayerCardSkinUrl(ownerPlayerId)
+
+  if (!playerCardSkinUrl) {
+    return normalizedCard
+  }
+
+  return {
+    ...normalizedCard,
+    backgroundUrl: playerCardSkinUrl,
+  }
+}
+
+function resolveCardOwnerPlayerId(rawCard = {}, fallbackPlayerId = null) {
+  return (
+    rawCard?.ownerPlayerId ??
+    rawCard?.sourcePlayerId ??
+    rawCard?.playerId ??
+    fallbackPlayerId ??
+    null
   )
 }
 
@@ -234,7 +289,9 @@ function normalizeEffectAnimationResult(result) {
   switch (result.type) {
     case 'cleaner': {
       const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
-      const targetCard = result.targetCard ? normalizeCard(result.targetCard) : null
+      const targetCard = result.targetCard
+        ? normalizeCardForPlayer(result.targetCard, targetPlayerId)
+        : null
       const revealCard = result.revealCard !== false
 
       return targetPlayerId && (targetCard || !revealCard)
@@ -253,7 +310,9 @@ function normalizeEffectAnimationResult(result) {
 
     case 'intern': {
       const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
-      const targetCard = result.targetCard ? normalizeCard(result.targetCard) : null
+      const targetCard = result.targetCard
+        ? normalizeCardForPlayer(result.targetCard, targetPlayerId)
+        : null
 
       return (
         targetPlayerId &&
@@ -284,8 +343,12 @@ function normalizeEffectAnimationResult(result) {
     case 'manager': {
       const sourcePlayerId = normalizeAnimationPlayerId(result.sourcePlayerId)
       const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
-      const sourceCard = result.sourceCard ? normalizeCard(result.sourceCard) : null
-      const targetCard = result.targetCard ? normalizeCard(result.targetCard) : null
+      const sourceCard = result.sourceCard
+        ? normalizeCardForPlayer(result.sourceCard, sourcePlayerId)
+        : null
+      const targetCard = result.targetCard
+        ? normalizeCardForPlayer(result.targetCard, targetPlayerId)
+        : null
 
       return (
         sourcePlayerId &&
@@ -309,7 +372,10 @@ function normalizeEffectAnimationResult(result) {
     case 'pm': {
       const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
       const discardedCard = result.discardedCard
-        ? normalizeCard(result.discardedCard)
+        ? normalizeCardForPlayer(
+            result.discardedCard,
+            resolveCardOwnerPlayerId(result.discardedCard, targetPlayerId),
+          )
         : null
 
       return targetPlayerId && discardedCard
@@ -318,7 +384,12 @@ function normalizeEffectAnimationResult(result) {
             id,
             targetPlayerId,
             discardedCard,
-            newCard: result.newCard ? normalizeCard(result.newCard) : null,
+            newCard: result.newCard
+              ? normalizeCardForPlayer(
+                  result.newCard,
+                  resolveCardOwnerPlayerId(result.newCard, targetPlayerId),
+                )
+              : null,
           }
         : null
     }
@@ -326,8 +397,12 @@ function normalizeEffectAnimationResult(result) {
     case 'swap': {
       const sourcePlayerId = normalizeAnimationPlayerId(result.sourcePlayerId)
       const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
-      const sourceCard = result.sourceCard ? normalizeCard(result.sourceCard) : null
-      const targetCard = result.targetCard ? normalizeCard(result.targetCard) : null
+      const sourceCard = result.sourceCard
+        ? normalizeCardForPlayer(result.sourceCard, sourcePlayerId)
+        : null
+      const targetCard = result.targetCard
+        ? normalizeCardForPlayer(result.targetCard, targetPlayerId)
+        : null
 
       return sourcePlayerId && targetPlayerId && sourceCard && targetCard
         ? {
@@ -357,6 +432,8 @@ function applyGameStatePayload(data) {
   if (nextPlayers.length === 0) {
     return false
   }
+
+  rememberRoomPlayerMetadata(nextPlayers)
 
   const nextCurrentPlayerId =
     requestedPlayerId.value ?? currentPlayerId.value ?? resolvedCurrentPlayerId.value
@@ -427,7 +504,12 @@ async function playSocketGameAction(event) {
 
   if (event.type === 'draw-card') {
     const playerId = normalizeAnimationPlayerId(event.playerId)
-    const drawnCard = event.drawnCard ? normalizeCard(event.drawnCard) : null
+    const drawnCard = event.drawnCard
+      ? normalizeCardForPlayer(
+          event.drawnCard,
+          resolveCardOwnerPlayerId(event.drawnCard, playerId),
+        )
+      : null
 
     if (animationRectsSelfPlayer(playerId) && !drawnCard) {
       return
@@ -440,7 +522,10 @@ async function playSocketGameAction(event) {
   if (event.type === 'play-card') {
     const animationResult = normalizeEffectAnimationResult(event.animationResult)
     const discardedCard = event.discardedCard
-      ? normalizeCard(event.discardedCard)
+      ? normalizeCardForPlayer(
+          event.discardedCard,
+          resolveCardOwnerPlayerId(event.discardedCard, event.playerId),
+        )
       : null
 
     await gameStage.value?.playRemoteCardPlayAnimation?.({
@@ -617,7 +702,7 @@ async function handleDrawRequest() {
         throw new Error('Draw card response did not include a card')
       }
 
-      const drawnCard = normalizeCard(rawDrawnCard)
+      const drawnCard = normalizeCardWithAppearance(rawDrawnCard)
 
       await nextTick()
 

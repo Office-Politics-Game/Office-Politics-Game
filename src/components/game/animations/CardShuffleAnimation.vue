@@ -1,12 +1,16 @@
 <script setup>
 import { nextTick, onUnmounted, ref } from 'vue'
 import { gsap } from 'gsap'
-import cardBackUrl from '@/assets/images/card-bg-back.webp'
+import { storeToRefs } from 'pinia'
+import defaultCardBackUrl from '@/assets/images/card-bg-back.webp'
 import { deckPoseToFixedStyle } from '@/composables/useGameAnimationRects'
+import { useAppearanceStore } from '@/stores/appearanceStore.js'
 
 const shuffleCardElements = ref([])
 const shuffleDeckStyle = ref({ display: 'none' })
 const visibleCardCount = ref(0)
+const appearanceStore = useAppearanceStore()
+const { cardBackUrl } = storeToRefs(appearanceStore)
 let timeline = null
 
 function setShuffleCardElement(index, element) {
@@ -148,7 +152,7 @@ defineExpose({
       v-for="index in visibleCardCount"
       :key="`shuffle-card-${index}`"
       :ref="(element) => setShuffleCardElement(index - 1, element)"
-      :src="cardBackUrl"
+      :src="cardBackUrl || defaultCardBackUrl"
       alt=""
       class="card-shuffle__card"
       draggable="false"

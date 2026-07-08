@@ -1,11 +1,15 @@
 <script setup>
 import { nextTick, onUnmounted, ref } from 'vue'
 import { gsap } from 'gsap'
-import cardBackUrl from '@/assets/images/card-bg-back.webp'
+import { storeToRefs } from 'pinia'
+import defaultCardBackUrl from '@/assets/images/card-bg-back.webp'
 import { getCardFlightGeometry } from '@/composables/useGameAnimationRects'
+import { useAppearanceStore } from '@/stores/appearanceStore.js'
 
 const DEAL_STAGGER = 0.25
 const DEAL_DURATION = 0.55
+const appearanceStore = useAppearanceStore()
+const { cardBackUrl } = storeToRefs(appearanceStore)
 
 const dealCards = ref([])
 const dealElements = new Map()
@@ -232,7 +236,7 @@ defineExpose({
       v-for="deal in dealCards"
       :key="deal.playerId"
       :ref="(element) => setDealElement(deal.playerId, element)"
-      :src="cardBackUrl"
+      :src="cardBackUrl || defaultCardBackUrl"
       alt=""
       class="card-deal pointer-events-none fixed top-0 left-0 invisible block select-none object-contain"
       aria-hidden="true"

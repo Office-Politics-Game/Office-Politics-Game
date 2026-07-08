@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { storeToRefs } from "pinia";
 import gameTableBackgroundUrl from "@/assets/images/bg-game-table.webp";
 import gameLogoUrl from "@/assets/images/logo-en-white.png";
 import { useAudioSettings } from "@/composables/UseAudioSettings";
@@ -23,6 +24,7 @@ import ProtectionAura from "../animations/ProtectionAura.vue";
 import RotateDeviceNotice from "./RotateDeviceNotice.vue";
 import TableCardPiles from "./TableCardPiles.vue";
 import TurnStatus from "./TurnStatus.vue";
+import { useAppearanceStore } from "@/stores/appearanceStore.js";
 
 const props = defineProps({
   roundNumber: {
@@ -93,6 +95,8 @@ const emit = defineEmits([
   "draw-request",
   "play-card",
 ]);
+const appearanceStore = useAppearanceStore();
+const { boardSkinUrl } = storeToRefs(appearanceStore);
 const isSettingsOpen = ref(false);
 const isDrawAnimating = ref(false);
 const activeDrawCard = ref(null);
@@ -246,6 +250,9 @@ const visibleHandCards = computed(() => {
 
   return cards.filter((card) => !hiddenCardIds.has(card.id));
 });
+const resolvedTableBackgroundUrl = computed(
+  () => boardSkinUrl.value || gameTableBackgroundUrl,
+);
 const advisorRuleDisabledCardIds = computed(() => {
   const hasAdvisor = visibleHandCards.value.some(isAdvisorCard);
   const hasPmOrHr = visibleHandCards.value.some(isPmOrHrCard);
@@ -1105,7 +1112,7 @@ defineExpose({
   >
     <section
       class="game-stage relative hidden h-[100dvh] w-[100dvw] overflow-hidden bg-cover bg-center bg-no-repeat"
-      :style="{ backgroundImage: `url(${gameTableBackgroundUrl})` }"
+      :style="{ backgroundImage: `url(${resolvedTableBackgroundUrl})` }"
       aria-label="Office Politics 遊戲舞台"
     >
       <div
