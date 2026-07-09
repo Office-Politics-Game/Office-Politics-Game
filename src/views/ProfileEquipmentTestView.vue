@@ -319,8 +319,12 @@ const cardSkinPreviewByItemId = computed(() =>
 
 const cardSkinSlotRows = computed(() => {
   const overrides = equippedItems.value.cardSkinOverrides || {};
-  const basePreviewImage =
-    cardSkinPreviewByItemId.value[Number(equippedItems.value.cardSkinItemId)] || "";
+  const previewBaseItemId =
+    Number(selectedCardSkinItem.value?.shopItemId) || Number(equippedItems.value.cardSkinItemId);
+  const basePreviewImage = cardSkinPreviewByItemId.value[previewBaseItemId] || "";
+  const baseSourceItem = cardSkinInventoryItems.value.find(
+    (item) => Number(item.shopItemId) === previewBaseItemId,
+  );
 
   return CARD_SKIN_SLOT_ORDER.map((slotKey) => {
     const overrideItemId = Number(overrides[slotKey]);
@@ -333,9 +337,6 @@ const cardSkinSlotRows = computed(() => {
       "";
     const defaultPreviewImage =
       cardAssetsByKey[slotKey]?.backgroundUrl || cardAssetsByKey.intern.backgroundUrl;
-    const baseSourceItem = cardSkinInventoryItems.value.find(
-      (item) => Number(item.shopItemId) === Number(equippedItems.value.cardSkinItemId),
-    );
     const baseSlotPreviewImage =
       getCardSkinThemeSlotImage(baseSourceItem?.shopItem || baseSourceItem, slotKey) ||
       basePreviewImage;
