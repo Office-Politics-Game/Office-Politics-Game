@@ -17,6 +17,7 @@ const {
     getTopUpPackages,
     createTopUpOrder,
     mockPayTopUpOrder,
+    createEcpayCheckout,
 } = await import("../src/services/topUpService.js")
 
 beforeEach(() => {
@@ -144,5 +145,55 @@ describe("topUpService", () => {
         })
 
         expect(addCurrencyMock).not.toHaveBeenCalled()
+    })
+
+    test("createEcpayCheckout() returns checkout data for pending order", async () => {
+        queryMock.mockResolvedValueOnce({
+            rows: [
+                {
+                    id: 10,
+                    package_id: "gems_60",
+                    price: 30,
+                    status: "pending",
+                },
+            ],
+        })
+
+        const checkout = await createEcpayCheckout(10)
+
+        expect(checkout).toMatchObject({
+            orderId: 10,
+            actionUrl: "https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5",
+            params: {
+                MerchantID: "3002607",
+                MerchantTradeNo: "TOPUP10",
+                PaymentType: "aio",
+                TotalAmount: 30,
+                TradeDesc: "Office Politics Game top up",
+                ItemName: "gems_60",
+                ReturnURL: "https://example.com/ecpay/return",
+                ChoosePayment: "ALL",
+                EncryptType: 1,
+            },
+        })
+        expect(checkout.params.MerchantTradeDate).toMatch(
+            /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/
+        )
+        expect(checkout.params.CheckMacValue).toMatch(/^[A-F0-9]{64}$/)
+    })
+
+    test("createEcpayCheckout() rejects non-pending order", async () => {
+        queryMock.mockResolvedValueOnce({
+            rows: [
+                {
+                    id: 10,
+                    status: "paid",
+                },
+            ],
+        })
+
+        await expect(createEcpayCheckout(10)).rejects.toMatchObject({
+            statusCode: 409,
+        })
     })
 })
