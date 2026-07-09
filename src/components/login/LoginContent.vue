@@ -101,7 +101,7 @@
         class="login-link inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0"
         type="button"
         :disabled="authStore.isLoading"
-        @click="emit('open-guest')"
+        @click="openGuest"
       >
         訪客遊玩 <span aria-hidden="true">›</span>
       </button>
@@ -170,11 +170,13 @@ import { useRouter } from "vue-router"
 import { useAuthStore } from "../../stores/authStore.js"
 import { Eye, EyeOff } from "lucide-vue-next"
 import { usePlayerStore } from "@/stores/playerStore.js"
+import { usePreGameAudio } from "@/composables/UsePreGameAudio"
 
 const emit = defineEmits(["close", "open-guest", "open-register"])
 const authStore = useAuthStore()
 const playerStore = usePlayerStore()
 const router = useRouter()
+const { playPreGameSound } = usePreGameAudio()
 
 const account = ref("")
 const password = ref("")
@@ -219,6 +221,8 @@ async function handleLogin() {
     return
   }
 
+  playPreGameSound("login-button-click")
+
   if (!validateLoginForm()) {
     return
   }
@@ -241,8 +245,14 @@ async function handleLogin() {
 }
 
 function goRegister() {
+  playPreGameSound("login-button-click")
   authStore.clearError()
   emit("open-register")
+}
+
+function openGuest() {
+  playPreGameSound("login-button-click")
+  emit("open-guest")
 }
 </script>
 

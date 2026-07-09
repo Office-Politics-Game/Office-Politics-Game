@@ -18,7 +18,7 @@
         <button
           class="menu-btn left-[35px] top-[32px] h-[244px] w-[170px] gap-6 lg:left-[58px] lg:top-[53px] lg:h-[407px] lg:w-[283px]"
           :disabled="isAnyPageTransitioning"
-          @click="$router.push({ name: 'LobbyGameMenu' })"
+          @click="openGameMenu"
         >
           <div class="btn-content">
             <img
@@ -144,11 +144,13 @@ import CurrencyBar from "@/components/common/CurrencyBar.vue";
 import { useAuthStore } from "@/stores/authStore.js";
 import { useCurrencyStore } from "@/stores/currencyStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
+import { usePreGameAudio } from "@/composables/UsePreGameAudio";
 
 const router = useRouter();
 const authStore = useAuthStore();
 const currencyStore = useCurrencyStore();
 const playerStore = usePlayerStore();
+const { playPreGameSound } = usePreGameAudio();
 const isSocialTransitioning = ref(false);
 const isProfileTransitioning = ref(false);
 const isMallTransitioning = ref(false);
@@ -178,6 +180,10 @@ function getCurrentPlayerId() {
   return authStore.currentPlayer?.id ?? playerStore.currentPlayerId;
 }
 
+function playLobbyNavigationSound() {
+  playPreGameSound("lobby-navigation-whoosh");
+}
+
 watch(
   getCurrentPlayerId,
   (playerId) => {
@@ -195,6 +201,7 @@ function openFriendPage() {
     return;
   }
 
+  playLobbyNavigationSound();
   isSocialTransitioning.value = true;
 
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -212,6 +219,7 @@ function openProfilePage() {
     return;
   }
 
+  playLobbyNavigationSound();
   isProfileTransitioning.value = true;
 
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -240,6 +248,7 @@ function openMallPage() {
     return;
   }
 
+  playLobbyNavigationSound();
   isMallTransitioning.value = true;
 
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -250,6 +259,15 @@ function openMallPage() {
   window.setTimeout(() => {
     router.push("/mall");
   }, 180);
+}
+
+function openGameMenu() {
+  if (isAnyPageTransitioning.value) {
+    return;
+  }
+
+  playLobbyNavigationSound();
+  router.push({ name: "LobbyGameMenu" });
 }
 </script>
 

@@ -90,11 +90,13 @@ import RegisterPage from "@/components/register/RegisterPage.vue";
 import { usePlayerStore } from "@/stores/playerStore.js";
 import { useAuthStore } from "@/stores/authStore.js";
 import bgEntryVideo from "@/assets/videos/EntryPage_BgVideo.mp4";
+import { usePreGameAudio } from "@/composables/UsePreGameAudio";
 
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const playerStore = usePlayerStore();
+const { playPreGameSound } = usePreGameAudio();
 const showLoginModal = ref(false);
 const showGuestLoginModal = ref(false);
 const authModalMode = ref("login");
@@ -104,6 +106,8 @@ const isMemberLoggedIn = computed(
 );
 
 function handlePrimaryAction() {
+  playPreGameSound("login-button-click");
+
   if (isMemberLoggedIn.value) {
     router.push("/lobby");
     return;
@@ -113,6 +117,8 @@ function handlePrimaryAction() {
 }
 
 function handleSecondaryAction() {
+  playPreGameSound("login-button-click");
+
   if (isMemberLoggedIn.value) {
     authStore.logout();
     playerStore.resetPlayer();
