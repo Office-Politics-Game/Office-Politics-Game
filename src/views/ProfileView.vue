@@ -186,7 +186,22 @@ const showGuestAction = computed(
 
 async function initializeProfile() {
   try {
-    await initializeProfileData();
+    const result = await initializeProfileData();
+
+    if (result?.status === "auth_failed") {
+      router.replace({
+        name: "Entry",
+        query: { auth: "login" },
+      });
+      return;
+    }
+
+    if (result?.status === "anonymous") {
+      router.replace({
+        name: "Entry",
+      });
+      return;
+    }
   } catch {
     activeTab.value = "profile";
   }
