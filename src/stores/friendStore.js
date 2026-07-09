@@ -136,7 +136,7 @@ function mapBlockedPlayer(player) {
 function getAuthenticatedPlayerId() {
   const authStore = useAuthStore();
 
-  if (!authStore.isLoggedIn || !authStore.token) {
+  if (!authStore.isLoggedIn || !authStore.currentPlayer?.id) {
     return null;
   }
 

@@ -30,14 +30,12 @@ async function bootstrapApplication() {
   const authStore = useAuthStore(pinia);
   const playerStore = usePlayerStore(pinia);
 
-  if (authStore.token) {
-    const isVerified = await authStore.verifyToken();
+  localStorage.removeItem("gameAuthToken");
+  
+  const isVerified = await authStore.verifyToken();
 
-    if (isVerified && authStore.currentPlayer) {
-      playerStore.setCurrentPlayer(authStore.currentPlayer);
-    } else {
-      playerStore.resetPlayer();
-    }
+  if (isVerified && authStore.currentPlayer) {
+    playerStore.setCurrentPlayer(authStore.currentPlayer);
   } else {
     restoreGuestPlayer(playerStore);
   }
