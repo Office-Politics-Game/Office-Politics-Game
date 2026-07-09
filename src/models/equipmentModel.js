@@ -1,4 +1,5 @@
 import { getCardSkinThemeLogo } from "@/constants/cardSkinThemes.js";
+import { resolveImageAssetUrl } from "@/utils/assetUrlResolver.js";
 
 const EQUIPMENT_CATEGORY_ORDER = [
   "avatar",
@@ -90,7 +91,7 @@ function normalizeEquipmentInventory(items = [], equipped = createDefaultEquippe
         description: item.description || "",
         previewImage:
           (item.type === "card_skin" ? getCardSkinThemeLogo(item) : "") ||
-          item.imageUrl ||
+          resolveImageAssetUrl(item.imageUrl || item.image_url) ||
           "",
         price: item.price,
         currency: item.currency,

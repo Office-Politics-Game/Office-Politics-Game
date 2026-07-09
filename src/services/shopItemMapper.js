@@ -1,4 +1,5 @@
 import { getCardSkinThemeLogo } from "@/constants/cardSkinThemes.js";
+import { resolveImageAssetUrl } from "@/utils/assetUrlResolver.js";
 
 const shopTypeCategoryMap = {
   avatar: "avatar",
@@ -58,8 +59,7 @@ function normalizeShopItem(item, options = {}) {
     actionState: isOwned ? "owned" : isAvailable ? "buy" : "coming",
     previewImage:
       (item.type === "card_skin" ? getCardSkinThemeLogo(item) : "") ||
-      item.imageUrl ||
-      item.image_url ||
+      resolveImageAssetUrl(item.imageUrl || item.image_url) ||
       fallbackImage,
     shopItem: item,
   };

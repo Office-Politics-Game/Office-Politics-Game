@@ -6,6 +6,10 @@ import {
   purchaseShopItem,
   updateCardSkinLoadout,
 } from "../services/shopService.js"
+import {
+  createCloudinaryUploadSignature,
+  getCloudinaryUploadConfig,
+} from "../services/cloudinaryService.js"
 
 function getErrorStatus(error) {
   return error.statusCode || 500
@@ -133,9 +137,42 @@ async function handleUpdateCardSkinLoadout(req, res) {
   }
 }
 
+async function handleGetCloudinaryUploadConfig(req, res) {
+  try {
+    const config = getCloudinaryUploadConfig()
+
+    return res.status(200).json(config)
+  } catch (error) {
+    return res.status(getErrorStatus(error)).json({
+      message: error.statusCode ? error.message : "Get Cloudinary config failed",
+      error: error.message,
+    })
+  }
+}
+
+async function handleCreateCloudinaryUploadSignature(req, res) {
+  try {
+    const signedPayload = createCloudinaryUploadSignature({
+      folder: req.body?.folder,
+      publicId: req.body?.publicId,
+      tags: req.body?.tags,
+      context: req.body?.context,
+    })
+
+    return res.status(200).json(signedPayload)
+  } catch (error) {
+    return res.status(getErrorStatus(error)).json({
+      message: error.statusCode ? error.message : "Create Cloudinary signature failed",
+      error: error.message,
+    })
+  }
+}
+
 export {
   handleEquipShopItem,
+  handleCreateCloudinaryUploadSignature,
   handleGetPlayerEquippedItems,
+  handleGetCloudinaryUploadConfig,
   handleGetPlayerItems,
   handleGetShopItems,
   handlePurchaseShopItem,

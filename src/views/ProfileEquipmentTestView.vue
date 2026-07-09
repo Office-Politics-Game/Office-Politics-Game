@@ -37,6 +37,106 @@
         </div>
       </header>
 
+      <section class="border-b border-slate-300/80 bg-slate-50/90 px-6 py-4">
+        <div class="flex items-start justify-between gap-4 max-lg:flex-col">
+          <div>
+            <p class="m-0 text-[11px] font-black tracking-[0.28em] text-slate-500">
+              CLOUDINARY LAB
+            </p>
+            <h2 class="mt-1 text-xl font-black text-slate-900">Cloudinary 上傳測試</h2>
+            <p class="mt-1 text-sm text-slate-600">
+              選圖上傳到 Cloudinary，拿到 `public_id` 和 `secure_url` 後就能寫進 shop。
+            </p>
+          </div>
+
+          <div class="grid gap-2 text-sm text-slate-600">
+            <span>目前 folder：{{ cloudinaryFolder }}</span>
+            <span v-if="selectedUploadFile">已選檔案：{{ selectedUploadFile.name }}</span>
+          </div>
+        </div>
+
+        <div class="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]">
+          <label class="grid gap-1 text-sm font-bold text-slate-700">
+            Folder
+            <input
+              v-model="cloudinaryFolder"
+              type="text"
+              class="border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800"
+              placeholder="shop/neon-hustle-style"
+            >
+          </label>
+
+          <label class="grid gap-1 text-sm font-bold text-slate-700">
+            Public ID
+            <input
+              v-model="cloudinaryPublicId"
+              type="text"
+              class="border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800"
+              placeholder="neon-hustle-ceo-avatar"
+            >
+          </label>
+
+          <button
+            type="button"
+            class="border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 lg:self-end"
+            :disabled="isUploadingToCloudinary"
+            @click="openCloudinaryFilePicker"
+          >
+            {{ selectedUploadFile ? "重新選圖" : "選擇圖片" }}
+          </button>
+
+          <button
+            type="button"
+            class="border border-sky-700 bg-sky-700 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50 lg:self-end"
+            :disabled="!selectedUploadFile || isUploadingToCloudinary"
+            @click="uploadSelectedFileToCloudinary"
+          >
+            {{ isUploadingToCloudinary ? "上傳中..." : "上傳到 Cloudinary" }}
+          </button>
+        </div>
+
+        <input
+          ref="cloudinaryFileInput"
+          type="file"
+          accept="image/*"
+          class="hidden"
+          @change="handleCloudinaryFileChange"
+        >
+
+        <p
+          v-if="cloudinaryUploadError"
+          class="mt-3 text-sm font-bold text-rose-600"
+        >
+          {{ cloudinaryUploadError }}
+        </p>
+
+        <div
+          v-if="cloudinaryUploadResult"
+          class="mt-4 grid gap-4 rounded border border-slate-200 bg-white p-4 lg:grid-cols-[220px_minmax(0,1fr)]"
+        >
+          <img
+            :src="cloudinaryUploadResult.secureUrl"
+            alt="Cloudinary upload preview"
+            class="aspect-[3/4] w-full border border-slate-200 object-cover"
+          >
+
+          <div class="grid gap-2 text-sm text-slate-700">
+            <div>
+              <strong class="mr-2 text-slate-900">public_id</strong>
+              <span class="break-all">{{ cloudinaryUploadResult.publicId }}</span>
+            </div>
+            <div>
+              <strong class="mr-2 text-slate-900">secure_url</strong>
+              <span class="break-all">{{ cloudinaryUploadResult.secureUrl }}</span>
+            </div>
+            <div>
+              <strong class="mr-2 text-slate-900">shop image_url 建議值</strong>
+              <span class="break-all">{{ cloudinaryUploadResult.publicId }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <ProfileEquipmentSwitcher
         v-model:active-category="activeCategory"
         :categories="equipmentSections"
@@ -78,7 +178,9 @@ import {
 } from "@/models/equipmentModel.js";
 import { updatePlayerAvatar } from "@/services/playerApi.js";
 import {
+  createCloudinaryUploadSignature,
   equipShopItem,
+  getCloudinaryUploadConfig,
   getPlayerEquippedItems,
   getPlayerShopItems,
   updateCardSkinLoadout,
@@ -99,6 +201,13 @@ const selectedItemIdByCategory = ref({});
 const isLoading = ref(false);
 const equippingItemId = ref(null);
 const errorMessage = ref("");
+const cloudinaryFileInput = ref(null);
+const selectedUploadFile = ref(null);
+const isUploadingToCloudinary = ref(false);
+const cloudinaryUploadError = ref("");
+const cloudinaryUploadResult = ref(null);
+const cloudinaryFolder = ref("shop/neon-hustle-style");
+const cloudinaryPublicId = ref("");
 let restoreBodyOverflow = "";
 let restoreHtmlOverflow = "";
 
@@ -240,6 +349,97 @@ const cardSkinSlotRows = computed(() => {
     };
   });
 });
+
+function openCloudinaryFilePicker() {
+  cloudinaryFileInput.value?.click();
+}
+
+function normalizePublicIdFromFileName(fileName = "") {
+  return String(fileName || "")
+    .trim()
+    .replace(/\.[^.]+$/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function handleCloudinaryFileChange(event) {
+  const file = event?.target?.files?.[0] || null;
+
+  selectedUploadFile.value = file;
+  cloudinaryUploadError.value = "";
+
+  if (!file) {
+    return;
+  }
+
+  if (!cloudinaryPublicId.value.trim()) {
+    cloudinaryPublicId.value = normalizePublicIdFromFileName(file.name);
+  }
+}
+
+async function uploadSelectedFileToCloudinary() {
+  if (!selectedUploadFile.value) {
+    cloudinaryUploadError.value = "請先選擇圖片。";
+    return;
+  }
+
+  isUploadingToCloudinary.value = true;
+  cloudinaryUploadError.value = "";
+
+  try {
+    const [configResponse, signatureResponse] = await Promise.all([
+      getCloudinaryUploadConfig(),
+      createCloudinaryUploadSignature({
+        folder: cloudinaryFolder.value,
+        publicId: cloudinaryPublicId.value,
+        tags: ["shop", "test-upload"],
+      }),
+    ]);
+
+    const uploadUrl = configResponse?.uploadUrl || signatureResponse?.uploadUrl;
+
+    if (!uploadUrl) {
+      throw new Error("找不到 Cloudinary upload URL");
+    }
+
+    const formData = new FormData();
+    formData.append("file", selectedUploadFile.value);
+    formData.append("api_key", signatureResponse.apiKey);
+    formData.append("timestamp", String(signatureResponse.timestamp));
+    formData.append("signature", signatureResponse.signature);
+    formData.append("folder", signatureResponse.folder);
+
+    if (signatureResponse.publicId) {
+      formData.append("public_id", signatureResponse.publicId);
+    }
+
+    if (Array.isArray(signatureResponse.tags) && signatureResponse.tags.length > 0) {
+      formData.append("tags", signatureResponse.tags.join(","));
+    }
+
+    const uploadResponse = await fetch(uploadUrl, {
+      method: "POST",
+      body: formData,
+    });
+
+    const uploadResult = await uploadResponse.json();
+
+    if (!uploadResponse.ok) {
+      throw new Error(uploadResult?.error?.message || "Cloudinary 上傳失敗");
+    }
+
+    cloudinaryUploadResult.value = {
+      publicId: uploadResult.public_id || "",
+      secureUrl: uploadResult.secure_url || "",
+    };
+  } catch (error) {
+    cloudinaryUploadError.value = error?.message || "Cloudinary 上傳失敗";
+  } finally {
+    isUploadingToCloudinary.value = false;
+  }
+}
 
 watch(
   equipmentSections,

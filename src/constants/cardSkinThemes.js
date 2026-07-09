@@ -1,18 +1,29 @@
+import {
+  buildCloudinaryImageUrl,
+  getCloudinaryAssetPublicId,
+} from "@/utils/assetUrlResolver.js";
+
 const neonHustleBasePath = "/images/shop/neon-hustle-style";
+
+function themeAssetUrl(fileName) {
+  const cloudinaryPublicId = getCloudinaryAssetPublicId(`shop/neon-hustle-style/${fileName}`);
+
+  return buildCloudinaryImageUrl(cloudinaryPublicId) || `${neonHustleBasePath}/${fileName}`;
+}
 
 const CARD_SKIN_THEMES = {
   "neon-hustle": {
     key: "neon-hustle",
-    logoUrl: `${neonHustleBasePath}/neon-hustle-logo.webp`,
+    logoUrl: themeAssetUrl("neon-hustle-logo.webp"),
     slotImages: {
-      intern: `${neonHustleBasePath}/neon-hustle-intern-card-skin.webp`,
-      cleaner: `${neonHustleBasePath}/neon-hustle-cleaner-card-skin.webp`,
-      manager: `${neonHustleBasePath}/neon-hustle-manager-card-skin.webp`,
-      senior: `${neonHustleBasePath}/neon-hustle-senior-card-skin.webp`,
-      pm: `${neonHustleBasePath}/neon-hustle-pm-card-skin.webp`,
-      hr: `${neonHustleBasePath}/neon-hustle-hr-card-skin.webp`,
-      advisor: `${neonHustleBasePath}/neon-hustle-advisor-card-skin.webp`,
-      ceo: `${neonHustleBasePath}/neon-hustle-ceo-card-skin.webp`,
+      intern: themeAssetUrl("neon-hustle-intern-card-skin.webp"),
+      cleaner: themeAssetUrl("neon-hustle-cleaner-card-skin.webp"),
+      manager: themeAssetUrl("neon-hustle-manager-card-skin.webp"),
+      senior: themeAssetUrl("neon-hustle-senior-card-skin.webp"),
+      pm: themeAssetUrl("neon-hustle-pm-card-skin.webp"),
+      hr: themeAssetUrl("neon-hustle-hr-card-skin.webp"),
+      advisor: themeAssetUrl("neon-hustle-advisor-card-skin.webp"),
+      ceo: themeAssetUrl("neon-hustle-ceo-card-skin.webp"),
     },
   },
 };

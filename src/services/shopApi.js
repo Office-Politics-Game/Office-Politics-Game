@@ -37,8 +37,18 @@ function updateCardSkinLoadout({ playerId, cardSkinItemId = null, cardSkinOverri
   });
 }
 
+function getCloudinaryUploadConfig() {
+  return apiClient.get(`${SHOP_API_PATH}/cloudinary/config`);
+}
+
+function createCloudinaryUploadSignature(payload = {}) {
+  return apiClient.post(`${SHOP_API_PATH}/cloudinary/sign-upload`, payload);
+}
+
 export {
+  createCloudinaryUploadSignature,
   equipShopItem,
+  getCloudinaryUploadConfig,
   getPlayerEquippedItems,
   getPlayerShopItems,
   getShopItems,

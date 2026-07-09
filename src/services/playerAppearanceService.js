@@ -1,15 +1,16 @@
 import { getPlayerEquippedItems, getPlayerShopItems } from "@/services/shopApi.js";
 import { normalizePlayerAvatar } from "@/utils/playerUtils.js";
 import { sanitizeCardSkinOverrides } from "@/constants/cardSkinSlots.js";
+import { resolveImageAssetUrl } from "@/utils/assetUrlResolver.js";
 
 function getPreviewImageByItemId(playerItems = [], itemId, type) {
-  return (
-    (playerItems || []).find(
-      (entry) =>
-        entry?.item?.type === type &&
-        Number(entry?.item?.id) === Number(itemId),
-    )?.item?.imageUrl || ""
-  );
+  const imageSource = (playerItems || []).find(
+    (entry) =>
+      entry?.item?.type === type &&
+      Number(entry?.item?.id) === Number(itemId),
+  )?.item;
+
+  return resolveImageAssetUrl(imageSource?.imageUrl || imageSource?.image_url);
 }
 
 function mapCardSkinOverridesToUrls(playerItems = [], overrides = {}) {
