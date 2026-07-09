@@ -379,6 +379,9 @@ import { useRoute, useRouter } from "vue-router";
 import CurrencyBar from "@/components/common/CurrencyBar.vue";
 import MallProductCard from "@/components/mall/MallProductCard.vue";
 import bgDashboard from "@/assets/images/bg-dashboard.webp";
+import stockToken from "@/assets/images/stock-token.webp";
+import stockTokenBundle from "@/assets/images/stock-token-bundle.webp";
+import stockTokenStack from "@/assets/images/stock-token-stack.webp";
 import {
   mallCategories,
   mallItems,
@@ -418,6 +421,54 @@ const selectedItem = ref(null);
 const isDetailModalOpen = ref(false);
 const isMenuOpen = ref(false);
 const isImagePreviewOpen = ref(false);
+
+const topUpItems = [
+  {
+    id: "gems_60",
+    category: "top-up",
+    categoryLabel: "購買股份",
+    name: "60 股份",
+    description: "小額股份方案，適合先試用儲值流程。",
+    summary: "取得 60 股份。",
+    price: "NT$ 30",
+    rawPrice: 30,
+    currency: "diamond",
+    actionLabel: "前往儲值",
+    actionState: "buy",
+    previewImage: stockToken,
+    previewImageClass: "item-card__preview-image--stock-single",
+  },
+  {
+    id: "gems_300",
+    category: "top-up",
+    categoryLabel: "購買股份",
+    name: "300 股份",
+    description: "標準股份方案，取得更多商城可用股份。",
+    summary: "取得 300 股份。",
+    price: "NT$ 150",
+    rawPrice: 150,
+    currency: "diamond",
+    actionLabel: "前往儲值",
+    actionState: "buy",
+    previewImage: stockTokenStack,
+    previewImageClass: "item-card__preview-image--stock-stack",
+  },
+  {
+    id: "gems_680",
+    category: "top-up",
+    categoryLabel: "購買股份",
+    name: "680 股份",
+    description: "大量股份方案，適合一次補足商城購買額度。",
+    summary: "取得 680 股份。",
+    price: "NT$ 330",
+    rawPrice: 330,
+    currency: "diamond",
+    actionLabel: "前往儲值",
+    actionState: "buy",
+    previewImage: stockTokenBundle,
+    previewImageClass: "item-card__preview-image--stock-bundle",
+  },
+];
 
 function getStoredGuestPlayer() {
   if (typeof localStorage === "undefined") {
@@ -460,8 +511,8 @@ const fallbackImageByCategory = computed(() =>
 
 const ownedShopItemIds = computed(() => getOwnedShopItemIdSet(playerItems.value));
 
-const normalizedItems = computed(() =>
-  shopItems.value.map((item) => {
+const normalizedItems = computed(() => [
+  ...shopItems.value.map((item) => {
     const category = shopTypeCategoryMap[item.type];
 
     return normalizeShopItem(item, {
@@ -471,7 +522,8 @@ const normalizedItems = computed(() =>
       ownedShopItemIds: ownedShopItemIds.value,
     });
   }),
-);
+  ...topUpItems,
+]);
 
 const categoriesWithCount = computed(() =>
   categories.map((category) => ({
@@ -560,6 +612,11 @@ function goLobby() {
 }
 
 async function purchaseItem(item) {
+  if (item.category === "top-up") {
+    statusMessage.value = "儲值付款流程下一步接上。";
+    return;
+  }
+
   if (!currentPlayerId.value) {
     statusMessage.value = "尚未取得玩家 ID，請重新登入後再購買商品。";
     return;

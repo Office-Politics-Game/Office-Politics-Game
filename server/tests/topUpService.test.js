@@ -196,4 +196,14 @@ describe("topUpService", () => {
             statusCode: 409,
         })
     })
+
+    test("createEcpayCheckout() rejects missing order", async () => {
+        queryMock.mockResolvedValueOnce({
+            rows: [],
+        })
+
+        await expect(createEcpayCheckout(999)).rejects.toMatchObject({
+            statusCode: 404,
+        })
+    })
 })

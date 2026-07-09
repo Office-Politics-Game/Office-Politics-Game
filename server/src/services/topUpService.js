@@ -176,6 +176,10 @@ async function createEcpayCheckout(orderId) {
 
   const order = orderResult.rows[0]
 
+  if (!order) {
+    throw createServiceError("找不到儲值訂單", 404)
+  }
+
   const params = {
     MerchantID: "3002607",
     MerchantTradeNo: `TOPUP${order.id}`,
