@@ -30,7 +30,11 @@ const {
   currentTurnPlayerId,
   isLoading,
 } = storeToRefs(gameStateStore)
-const { cardSkinUrl } = storeToRefs(appearanceStore)
+const {
+  cardSkinUrl,
+  cardSkinOverrides,
+  isHydrated: isAppearanceHydrated,
+} = storeToRefs(appearanceStore)
 
 const seatPositions = ['top', 'left', 'right', 'bottom']
 const LOADING_PROGRESS_TRANSITION_MS = 240
@@ -123,13 +127,7 @@ const handCards = computed(() => {
   const hand = selfPlayer.value?.hand
 
   return Array.isArray(hand)
-    ? hand.map((card, index) =>
-        normalizeCardForPlayer(
-          card,
-          resolveCardOwnerPlayerId(card, resolvedCurrentPlayerId.value),
-          index,
-        ),
-      )
+    ? hand.map((card, index) => normalizeCardForPlayer(card, index))
     : []
 })
 
@@ -137,9 +135,7 @@ const discardCards = computed(() => {
   const discardPile = gameState.value?.discardPile
 
   return Array.isArray(discardPile)
-    ? discardPile.map((card, index) =>
-        normalizeCardForPlayer(card, resolveCardOwnerPlayerId(card), index),
-      )
+    ? discardPile.map((card, index) => normalizeCardForPlayer(card, index))
     : []
 })
 
@@ -210,27 +206,17 @@ function rememberRoomPlayerMetadata(players = []) {
         name: player.name,
         avatarId: player.avatarId ?? player.avatar_id,
         avatarUrl: player.avatarUrl,
-        cardSkinUrl: player.cardSkinUrl,
-        cardSkinOverrides: player.cardSkinOverrides,
       },
     ]),
   )
 }
 
-function getPlayerCardSkinUrl(playerId, cardKey = "") {
-  if (playerId === null || playerId === undefined) {
-    return ''
-  }
-
-  const player = publicPlayersWithMetadata.value.find(
-    (candidate) => String(getPlayerId(candidate)) === String(playerId),
-  )
-
+function getViewerCardSkinUrl(cardKey = "") {
   const overrideUrl =
     cardKey &&
-    player?.cardSkinOverrides &&
-    typeof player.cardSkinOverrides === 'object'
-      ? player.cardSkinOverrides[cardKey]
+    cardSkinOverrides.value &&
+    typeof cardSkinOverrides.value === 'object'
+      ? cardSkinOverrides.value[cardKey]
       : ''
 
   if (typeof overrideUrl === 'string' && overrideUrl) {
@@ -243,18 +229,18 @@ function getPlayerCardSkinUrl(playerId, cardKey = "") {
     return overrideUrl
   }
 
-  const themeSlotUrl = getCardSkinThemeSlotImage(player?.cardSkinUrl, cardKey)
+  const themeSlotUrl = getCardSkinThemeSlotImage(cardSkinUrl.value, cardKey)
 
   if (themeSlotUrl) {
     return themeSlotUrl
   }
 
-  return typeof player?.cardSkinUrl === 'string' ? player.cardSkinUrl : ''
+  return typeof cardSkinUrl.value === 'string' ? cardSkinUrl.value : ''
 }
 
-function normalizeCardForPlayer(rawCard = {}, ownerPlayerId = null, fallbackIndex = 0) {
+function normalizeCardForPlayer(rawCard = {}, fallbackIndex = 0) {
   const normalizedCard = normalizeCard(rawCard, fallbackIndex)
-  const playerCardSkinUrl = getPlayerCardSkinUrl(ownerPlayerId, normalizedCard.assetKey)
+  const playerCardSkinUrl = getViewerCardSkinUrl(normalizedCard.assetKey)
 
   if (!playerCardSkinUrl) {
     return normalizedCard
@@ -264,16 +250,6 @@ function normalizeCardForPlayer(rawCard = {}, ownerPlayerId = null, fallbackInde
     ...normalizedCard,
     backgroundUrl: playerCardSkinUrl,
   }
-}
-
-function resolveCardOwnerPlayerId(rawCard = {}, fallbackPlayerId = null) {
-  return (
-    rawCard?.ownerPlayerId ??
-    rawCard?.sourcePlayerId ??
-    rawCard?.playerId ??
-    fallbackPlayerId ??
-    null
-  )
 }
 
 function getGuessedCardName(rank) {
@@ -310,7 +286,7 @@ function normalizeEffectAnimationResult(result) {
     case 'cleaner': {
       const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
       const targetCard = result.targetCard
-        ? normalizeCardForPlayer(result.targetCard, targetPlayerId)
+        ? normalizeCardForPlayer(result.targetCard)
         : null
       const revealCard = result.revealCard !== false
 
@@ -331,7 +307,7 @@ function normalizeEffectAnimationResult(result) {
     case 'intern': {
       const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
       const targetCard = result.targetCard
-        ? normalizeCardForPlayer(result.targetCard, targetPlayerId)
+        ? normalizeCardForPlayer(result.targetCard)
         : null
 
       return (
@@ -364,10 +340,10 @@ function normalizeEffectAnimationResult(result) {
       const sourcePlayerId = normalizeAnimationPlayerId(result.sourcePlayerId)
       const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
       const sourceCard = result.sourceCard
-        ? normalizeCardForPlayer(result.sourceCard, sourcePlayerId)
+        ? normalizeCardForPlayer(result.sourceCard)
         : null
       const targetCard = result.targetCard
-        ? normalizeCardForPlayer(result.targetCard, targetPlayerId)
+        ? normalizeCardForPlayer(result.targetCard)
         : null
 
       return (
@@ -392,10 +368,7 @@ function normalizeEffectAnimationResult(result) {
     case 'pm': {
       const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
       const discardedCard = result.discardedCard
-        ? normalizeCardForPlayer(
-            result.discardedCard,
-            resolveCardOwnerPlayerId(result.discardedCard, targetPlayerId),
-          )
+        ? normalizeCardForPlayer(result.discardedCard)
         : null
 
       return targetPlayerId && discardedCard
@@ -405,10 +378,7 @@ function normalizeEffectAnimationResult(result) {
             targetPlayerId,
             discardedCard,
             newCard: result.newCard
-              ? normalizeCardForPlayer(
-                  result.newCard,
-                  resolveCardOwnerPlayerId(result.newCard, targetPlayerId),
-                )
+              ? normalizeCardForPlayer(result.newCard)
               : null,
           }
         : null
@@ -418,10 +388,10 @@ function normalizeEffectAnimationResult(result) {
       const sourcePlayerId = normalizeAnimationPlayerId(result.sourcePlayerId)
       const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
       const sourceCard = result.sourceCard
-        ? normalizeCardForPlayer(result.sourceCard, sourcePlayerId)
+        ? normalizeCardForPlayer(result.sourceCard)
         : null
       const targetCard = result.targetCard
-        ? normalizeCardForPlayer(result.targetCard, targetPlayerId)
+        ? normalizeCardForPlayer(result.targetCard)
         : null
 
       return sourcePlayerId && targetPlayerId && sourceCard && targetCard
@@ -525,10 +495,7 @@ async function playSocketGameAction(event) {
   if (event.type === 'draw-card') {
     const playerId = normalizeAnimationPlayerId(event.playerId)
     const drawnCard = event.drawnCard
-      ? normalizeCardForPlayer(
-          event.drawnCard,
-          resolveCardOwnerPlayerId(event.drawnCard, playerId),
-        )
+      ? normalizeCardForPlayer(event.drawnCard)
       : null
 
     if (animationRectsSelfPlayer(playerId) && !drawnCard) {
@@ -542,10 +509,7 @@ async function playSocketGameAction(event) {
   if (event.type === 'play-card') {
     const animationResult = normalizeEffectAnimationResult(event.animationResult)
     const discardedCard = event.discardedCard
-      ? normalizeCardForPlayer(
-          event.discardedCard,
-          resolveCardOwnerPlayerId(event.discardedCard, event.playerId),
-        )
+      ? normalizeCardForPlayer(event.discardedCard)
       : null
 
     await gameStage.value?.playRemoteCardPlayAnimation?.({
@@ -660,12 +624,37 @@ async function refreshRoomState({ onProgress } = {}) {
   onProgress?.(100)
 }
 
+async function ensureViewerAppearanceHydrated() {
+  const numericPlayerId = Number(requestedPlayerId.value ?? currentPlayerId.value)
+
+  if (!Number.isInteger(numericPlayerId) || numericPlayerId <= 0) {
+    return
+  }
+
+  if (
+    isAppearanceHydrated.value &&
+    String(appearanceStore.playerId ?? '') === String(numericPlayerId)
+  ) {
+    return
+  }
+
+  try {
+    await appearanceStore.hydrateForPlayer(numericPlayerId)
+  } catch (error) {
+    console.warn('[game:view] hydrate-viewer-appearance:failed', {
+      playerId: numericPlayerId,
+      error,
+    })
+  }
+}
+
 async function loadInitialRoomState() {
   hasLoadedInitialState.value = false
   initialLoadError.value = ''
   loadingProgress.value = 0
 
   try {
+    await ensureViewerAppearanceHydrated()
     await refreshRoomState({
       onProgress: (progress) => {
         loadingProgress.value = progress
@@ -722,10 +711,7 @@ async function handleDrawRequest() {
         throw new Error('Draw card response did not include a card')
       }
 
-      const drawnCard = normalizeCardForPlayer(
-        rawDrawnCard,
-        resolveCardOwnerPlayerId(rawDrawnCard, resolvedCurrentPlayerId.value),
-      )
+      const drawnCard = normalizeCardForPlayer(rawDrawnCard)
 
       await nextTick()
 
