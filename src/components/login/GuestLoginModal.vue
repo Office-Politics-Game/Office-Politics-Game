@@ -116,13 +116,13 @@
 <script setup>
 import { computed, ref } from "vue";
 import { ChevronLeft, ChevronRight, Dice5 } from "lucide-vue-next";
-import { guestAvatars, guestNicknames } from "@/constants/guestOptions";
+import { createGuestNickname, guestAvatars } from "@/constants/guestOptions";
 import { createGuestPlayer } from "@/services/playerService";
 
 const emit = defineEmits(["close", "success"]);
 
 const selectedAvatarIndex = ref(0);
-const nickname = ref(guestNicknames[0]);
+const nickname = ref(createGuestNickname());
 const errorMessage = ref("");
 const isSubmitting = ref(false);
 
@@ -139,8 +139,7 @@ function selectNextAvatar() {
 }
 
 function rollNickname() {
-  const randomIndex = Math.floor(Math.random() * guestNicknames.length);
-  nickname.value = guestNicknames[randomIndex];
+  nickname.value = createGuestNickname();
   errorMessage.value = "";
 }
 

@@ -12,6 +12,8 @@ import { initializeSocket } from "./socket/index.js";
 import { router as authRouter } from "./routes/authRoutes.js";
 import { router as shopRouter } from "./routes/shopRoutes.js";
 import { router as profileRouter } from "./routes/profileRoutes.js";
+import { router as chatRouter } from "./routes/chatRoutes.js";
+import topUpRoutes from "./routes/topUpRoutes.js";
 
 dotenv.config();
 
@@ -35,8 +37,10 @@ app.use("/api/game-states", gameStateRouter)
 app.use("/api/players", playerRouter)
 app.use("/api/actions", actionRouter)
 app.use("/api/friends", friendRouter)
+app.use("/api/chats", chatRouter)
 app.use("/api", roomInvitationRouter)
 app.use("/api/shop", shopRouter)
+app.use("/api/top-ups", topUpRoutes)
 
 app.get("/", (req, res) => {
     res.send("server is running")

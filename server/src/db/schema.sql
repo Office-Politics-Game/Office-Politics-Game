@@ -42,6 +42,28 @@ BEGIN
   END IF;
 END $$;
 
+CREATE TABLE friends (
+  id SERIAL PRIMARY KEY,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  friend_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CHECK (player_id <> friend_id),
+  CHECK (status IN ('pending', 'accepted', 'blocked'))
+);
+
+CREATE UNIQUE INDEX unique_friend_pair
+ON friends(
+  LEAST(player_id, friend_id),
+  GREATEST(player_id, friend_id)
+);
+
+CREATE INDEX friends_player_status_idx
+ON friends(player_id, status);
+
+CREATE INDEX friends_friend_status_idx
+ON friends(friend_id, status);
+
 CREATE TABLE player_currency_logs (
   id SERIAL PRIMARY KEY,
   player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
@@ -53,6 +75,21 @@ CREATE TABLE player_currency_logs (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CHECK (currency IN ('coin', 'diamond', 'ticket')),
   CHECK (amount <> 0)
+);
+
+CREATE TABLE top_up_orders (
+  id SERIAL PRIMARY KEY,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  package_id VARCHAR(50) NOT NULL,
+  currency VARCHAR(20) NOT NULL DEFAULT 'diamond',
+  amount INTEGER NOT NULL CHECK (amount > 0),
+  price INTEGER NOT NULL CHECK (price >= 0),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  paid_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CHECK (currency IN ('diamond')),
+  CHECK (status IN ('pending', 'paid'))
 );
 
 CREATE TABLE shop_items (
@@ -143,6 +180,23 @@ CREATE TABLE room_invitations (
 CREATE UNIQUE INDEX unique_pending_room_invitation
 ON room_invitations(room_id, invitee_player_id)
 WHERE status = 'pending';
+
+CREATE TABLE direct_messages (
+  id SERIAL PRIMARY KEY,
+  sender_player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  receiver_player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  content TEXT NOT NULL CHECK (LENGTH(BTRIM(content)) > 0),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CHECK (sender_player_id <> receiver_player_id)
+);
+
+CREATE INDEX direct_messages_conversation_idx
+ON direct_messages(
+  LEAST(sender_player_id, receiver_player_id),
+  GREATEST(sender_player_id, receiver_player_id),
+  created_at,
+  id
+);
 
 CREATE TABLE matches (
   id SERIAL PRIMARY KEY,

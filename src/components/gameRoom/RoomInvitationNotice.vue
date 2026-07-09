@@ -38,7 +38,15 @@ async function acceptInvitation(invitation) {
   const result = await roomInvitationStore.acceptInvitation(invitation.id);
 
   if (result?.room?.roomCode) {
-    router.push({ name: "CustomRoom" });
+    router.push({
+      name: "CustomRoom",
+      query: {
+        roomCode: result.room.roomCode,
+        playerId: String(
+          result.invitation?.inviteePlayerId ?? invitation.inviteePlayerId ?? "",
+        ),
+      },
+    });
   }
 }
 
