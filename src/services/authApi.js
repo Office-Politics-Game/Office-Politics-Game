@@ -18,4 +18,12 @@ function verifyToken(token) {
   });
 }
 
-export { register, login, verifyToken };
+function forgotPassword(payload) {
+  return apiClient.post(`${AUTH_API_PATH}/forgot-password`, payload);
+}
+
+function resetPassword(payload) {
+  return apiClient.post(`${AUTH_API_PATH}/reset-password`, payload);
+}
+
+export { register, login, verifyToken, forgotPassword, resetPassword };
