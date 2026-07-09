@@ -150,6 +150,9 @@
 
       <CardSkinLoadoutEditor
         v-if="activeCategory === 'card_skin'"
+        :applied-theme-name="appliedCardSkinThemeName"
+        :applied-override-count="appliedCardSkinOverrideCount"
+        :applied-slots="appliedCardSkinSlotRows"
         :slots="cardSkinSlotRows"
         :selected-skin-item="selectedCardSkinItem"
         :is-saving="Boolean(equippingItemId)"
@@ -317,13 +320,10 @@ const cardSkinPreviewByItemId = computed(() =>
   ),
 );
 
-const cardSkinSlotRows = computed(() => {
-  const overrides = equippedItems.value.cardSkinOverrides || {};
-  const previewBaseItemId =
-    Number(selectedCardSkinItem.value?.shopItemId) || Number(equippedItems.value.cardSkinItemId);
-  const basePreviewImage = cardSkinPreviewByItemId.value[previewBaseItemId] || "";
+function buildCardSkinSlotRows(baseItemId, overrides = {}) {
+  const basePreviewImage = cardSkinPreviewByItemId.value[Number(baseItemId)] || "";
   const baseSourceItem = cardSkinInventoryItems.value.find(
-    (item) => Number(item.shopItemId) === previewBaseItemId,
+    (item) => Number(item.shopItemId) === Number(baseItemId),
   );
 
   return CARD_SKIN_SLOT_ORDER.map((slotKey) => {
@@ -349,7 +349,37 @@ const cardSkinSlotRows = computed(() => {
       overrideItemId: Number.isInteger(overrideItemId) && overrideItemId > 0 ? overrideItemId : null,
     };
   });
+}
+
+const cardSkinSlotRows = computed(() => {
+  const overrides = equippedItems.value.cardSkinOverrides || {};
+  const previewBaseItemId =
+    Number(selectedCardSkinItem.value?.shopItemId) || Number(equippedItems.value.cardSkinItemId);
+
+  return buildCardSkinSlotRows(previewBaseItemId, overrides);
 });
+
+const appliedCardSkinBaseItem = computed(() =>
+  cardSkinInventoryItems.value.find(
+    (item) => Number(item.shopItemId) === Number(equippedItems.value.cardSkinItemId),
+  ) || null,
+);
+
+const appliedCardSkinThemeName = computed(() => appliedCardSkinBaseItem.value?.name || "");
+
+const appliedCardSkinOverrideCount = computed(
+  () =>
+    Object.values(equippedItems.value.cardSkinOverrides || {}).filter(
+      (itemId) => Number.isInteger(Number(itemId)) && Number(itemId) > 0,
+    ).length,
+);
+
+const appliedCardSkinSlotRows = computed(() =>
+  buildCardSkinSlotRows(
+    equippedItems.value.cardSkinItemId,
+    equippedItems.value.cardSkinOverrides || {},
+  ),
+);
 
 function openCloudinaryFilePicker() {
   cloudinaryFileInput.value?.click();

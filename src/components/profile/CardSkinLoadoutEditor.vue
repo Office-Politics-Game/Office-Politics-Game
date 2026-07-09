@@ -1,5 +1,41 @@
 <template>
   <section class="card-skin-loadout">
+    <div
+      v-if="appliedSlots.length"
+      class="card-skin-loadout__applied"
+    >
+      <div class="card-skin-loadout__header">
+        <div>
+          <p class="card-skin-loadout__eyebrow">CURRENT LOADOUT</p>
+          <h3 class="card-skin-loadout__title">目前套用卡面總覽</h3>
+        </div>
+
+        <div class="card-skin-loadout__applied-meta">
+          <strong>{{ appliedThemeName || "未套用卡面主題" }}</strong>
+          <span>{{ appliedOverrideCount }} 張已個別指定</span>
+        </div>
+      </div>
+
+      <div class="card-skin-loadout__grid is-summary">
+        <article
+          v-for="slot in appliedSlots"
+          :key="`applied-${slot.key}`"
+          class="card-skin-loadout__card"
+        >
+          <div class="card-skin-loadout__preview">
+            <img :src="slot.previewImage" :alt="slot.label" />
+          </div>
+
+          <div class="card-skin-loadout__body">
+            <div class="card-skin-loadout__meta">
+              <strong>{{ slot.label }}</strong>
+              <span>{{ slot.isOverridden ? "已個別指定" : "跟隨整套風格" }}</span>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+
     <div class="card-skin-loadout__header">
       <div>
         <p class="card-skin-loadout__eyebrow">CARD STYLE MIXER</p>
@@ -63,6 +99,18 @@
 
 <script setup>
 defineProps({
+  appliedThemeName: {
+    type: String,
+    default: "",
+  },
+  appliedOverrideCount: {
+    type: Number,
+    default: 0,
+  },
+  appliedSlots: {
+    type: Array,
+    default: () => [],
+  },
   slots: {
     type: Array,
     default: () => [],
@@ -86,6 +134,10 @@ defineEmits(["apply-theme", "assign-slot", "clear-slot"]);
   padding: 0 24px 24px;
 }
 
+.card-skin-loadout__applied {
+  padding-top: 8px;
+}
+
 .card-skin-loadout__header {
   display: flex;
   align-items: center;
@@ -107,6 +159,18 @@ defineEmits(["apply-theme", "assign-slot", "clear-slot"]);
   font-size: 24px;
   font-weight: 900;
   color: #0f172a;
+}
+
+.card-skin-loadout__applied-meta {
+  display: grid;
+  gap: 4px;
+  text-align: right;
+  color: #334155;
+}
+
+.card-skin-loadout__applied-meta span {
+  font-size: 13px;
+  color: #64748b;
 }
 
 .card-skin-loadout__hint {
@@ -135,6 +199,10 @@ defineEmits(["apply-theme", "assign-slot", "clear-slot"]);
   gap: 16px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-top: 18px;
+}
+
+.card-skin-loadout__grid.is-summary {
+  margin-bottom: 28px;
 }
 
 .card-skin-loadout__card {
@@ -195,6 +263,10 @@ defineEmits(["apply-theme", "assign-slot", "clear-slot"]);
   .card-skin-loadout__header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .card-skin-loadout__applied-meta {
+    text-align: left;
   }
 
   .card-skin-loadout__grid {
