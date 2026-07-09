@@ -149,6 +149,57 @@ const tabs = [
 
 const memberOnlyTabIds = ["matches", "badges", "collection"];
 
+const sourcePlayer = computed(
+  () =>
+    profileStore.profilePlayer ||
+    authStore.currentPlayer ||
+    playerStore.currentPlayer ||
+    null,
+);
+
+function toNumber(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function formatNumber(value) {
+  return new Intl.NumberFormat("zh-TW").format(toNumber(value, 0));
+}
+
+function formatDate(value) {
+  if (!value) {
+    return "尚未設定";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "尚未設定";
+  }
+
+  return new Intl.DateTimeFormat("zh-TW", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function getNextExp(level) {
+  const safeLevel = Math.max(1, toNumber(level, 1));
+  return safeLevel * 1000;
+}
+
+function getWinRate(winCount, totalGames) {
+  const safeTotalGames = Math.max(0, toNumber(totalGames, 0));
+
+  if (safeTotalGames === 0) {
+    return "0%";
+  }
+
+  const rate = Math.round((toNumber(winCount, 0) / safeTotalGames) * 100);
+  return `${rate}%`;
+}
+
 const activeTabMeta = computed(
   () => tabs.find((tab) => tab.id === activeTab.value) ?? tabs[0],
 );
@@ -235,9 +286,6 @@ watch(
   { immediate: true },
 );
 
-function toNumber(value, fallback) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
 const statePanel = computed(() => {
   if (profileStore.isLoading) {
     return {
