@@ -38,7 +38,9 @@
           v-if="item.editable"
           type="button"
           class="profile-info__edit grid h-7 w-7 place-items-center justify-self-center border-0 bg-transparent text-[var(--brand-navy)] lg:h-9 lg:w-9"
-          :aria-label="`編輯${item.label}`"
+          :aria-label="canEdit ? `編輯${item.label}` : `登入後才能編輯${item.label}`"
+          :disabled="!canEdit"
+          @click="emit('edit', item)"
         >
           <Pencil :size="19" stroke-width="2.4" />
         </button>
@@ -64,7 +66,13 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  canEdit: {
+    type: Boolean,
+    default: false,
+  },
 });
+
+const emit = defineEmits(["edit"]);
 
 const items = computed(() => [
   {
@@ -125,5 +133,16 @@ const items = computed(() => [
 .profile-info__edit:focus-visible {
   outline: none;
   box-shadow: inset 0 0 0 4px var(--brand-focus);
+}
+
+.profile-info__edit:disabled {
+  cursor: not-allowed;
+  background: rgba(160, 166, 179, 0.24);
+  color: var(--brand-disabled);
+}
+
+.profile-info__edit:disabled:hover {
+  background: rgba(160, 166, 179, 0.24);
+  color: var(--brand-disabled);
 }
 </style>
