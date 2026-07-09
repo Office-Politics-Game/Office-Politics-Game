@@ -12,7 +12,7 @@
       type="button"
       class="btn-dark tap-pop absolute right-3 top-3 grid h-9 w-9 place-items-center"
       aria-label="關閉登入視窗"
-      @click="emit('close')"
+      @click="closeLogin"
     >
       <span aria-hidden="true">×</span>
     </button>
@@ -61,7 +61,7 @@
           class="password-toggle"
           :aria-label="showPassword ? '隱藏密碼' : '顯示密碼'"
           :disabled="authStore.isLoading"
-          @click="showPassword = !showPassword"
+          @click="togglePasswordVisibility"
         >
           <EyeOff v-if="showPassword" class="password-toggle__icon" />
           <Eye v-else class="password-toggle__icon" />
@@ -186,6 +186,20 @@ const showPassword = ref(false)
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+function playLoginClick() {
+  playPreGameSound("login-button-click")
+}
+
+function closeLogin() {
+  playLoginClick()
+  emit("close")
+}
+
+function togglePasswordVisibility() {
+  playLoginClick()
+  showPassword.value = !showPassword.value
+}
+
 function clearLoginError() {
   authStore.clearError()
 
@@ -221,7 +235,7 @@ async function handleLogin() {
     return
   }
 
-  playPreGameSound("login-button-click")
+  playLoginClick()
 
   if (!validateLoginForm()) {
     return
@@ -245,13 +259,13 @@ async function handleLogin() {
 }
 
 function goRegister() {
-  playPreGameSound("login-button-click")
+  playLoginClick()
   authStore.clearError()
   emit("open-register")
 }
 
 function openGuest() {
-  playPreGameSound("login-button-click")
+  playLoginClick()
   emit("open-guest")
 }
 </script>

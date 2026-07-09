@@ -51,7 +51,7 @@
       <div
         v-if="showLoginModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-        @click.self="closeAuthModal"
+        @click.self="handleAuthOverlayClose"
       >
         <LoginContent
           v-if="authModalMode === 'login'"
@@ -70,10 +70,10 @@
       <div
         v-if="showGuestLoginModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-        @click.self="showGuestLoginModal = false"
+        @click.self="handleGuestOverlayClose"
       >
         <GuestLoginModal
-          @close="showGuestLoginModal = false"
+          @close="closeGuestLoginModal"
           @success="handleGuestCreated"
         />
       </div>
@@ -105,8 +105,12 @@ const isMemberLoggedIn = computed(
   () => authStore.isLoggedIn && Boolean(authStore.currentPlayer),
 );
 
-function handlePrimaryAction() {
+function playLoginClick() {
   playPreGameSound("login-button-click");
+}
+
+function handlePrimaryAction() {
+  playLoginClick();
 
   if (isMemberLoggedIn.value) {
     router.push("/lobby");
@@ -117,7 +121,7 @@ function handlePrimaryAction() {
 }
 
 function handleSecondaryAction() {
-  playPreGameSound("login-button-click");
+  playLoginClick();
 
   if (isMemberLoggedIn.value) {
     authStore.logout();
@@ -171,6 +175,20 @@ function openRegisterModal() {
 function closeAuthModal() {
   showLoginModal.value = false;
   authModalMode.value = "login";
+}
+
+function handleAuthOverlayClose() {
+  playLoginClick();
+  closeAuthModal();
+}
+
+function closeGuestLoginModal() {
+  showGuestLoginModal.value = false;
+}
+
+function handleGuestOverlayClose() {
+  playLoginClick();
+  closeGuestLoginModal();
 }
 
 function handleRegisterSuccess() {
