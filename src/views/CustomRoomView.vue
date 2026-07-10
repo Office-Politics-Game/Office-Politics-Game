@@ -5,7 +5,6 @@ import { Copy, Play } from "@lucide/vue";
 import { useRoute, useRouter } from "vue-router";
 import InviteFriendModal from "@/components/gameRoom/InviteFriendModal.vue";
 import PlayerList from "@/components/gameRoom/CustomRoomPlayerList.vue";
-import { getRankingList } from "@/services/rankingService.js";
 import BG from "@/assets/images/bg-dashboard.webp";
 import { useCurrentPlayerId } from "@/composables/useCurrentPlayerId.js";
 import { useFriendStore } from "@/stores/friendStore.js";
@@ -22,8 +21,6 @@ const { currentPlayerId } = useCurrentPlayerId();
 const { roomCode, players, errorMessage, isLoading, isRoomReadyToStart } =
   storeToRefs(roomStore);
 
-const availablePlayers = ref([]);
-const localPlayerSlots = ref([]);
 const showInviteFriendModal = ref(false);
 const invitingSlotIndex = ref(null);
 const isRestoringRoomState = ref(false);
@@ -62,19 +59,6 @@ const emptyPlayerSlots = [
   },
 ];
 
-function createPlayerSlot(player, index) {
-  return {
-    id: player.id,
-    isHost: index === 0,
-    isReady: index !== 0,
-    name: player.name,
-    level: player.level,
-    stars: player.stars,
-    avatar: player.avatar,
-    isComputer: true,
-  };
-}
-
 function createEmptySlot(index) {
   return { ...emptyPlayerSlots[index] };
 }
@@ -86,8 +70,11 @@ function createRoomPlayerSlot(player) {
     isReady: Boolean(player.isReady),
     name: player.username,
     avatar: null,
+    isComputer: Boolean(player.isComputer),
     canToggleReady:
-      String(player.playerId) === String(resolvedPlayerId.value) && player.role !== "host",
+      !player.isComputer &&
+      String(player.playerId) === String(resolvedPlayerId.value) &&
+      player.role !== "host",
     canRemovePlayer:
       isHostPlayer.value && String(player.playerId) !== String(resolvedPlayerId.value),
   };
@@ -115,12 +102,9 @@ const playerSlots = computed(() =>
       return createRoomPlayerSlot(roomPlayer);
     }
 
-    if (localPlayerSlots.value[index]?.name) {
-      return localPlayerSlots.value[index];
-    }
-
     return {
       ...slot,
+      canAddComputer: index !== 0 && Boolean(roomCode.value) && isHostPlayer.value,
       canInviteFriend:
         Boolean(slot.option2) && Boolean(roomCode.value) && isHostPlayer.value,
     };
@@ -160,10 +144,6 @@ const readySlotCount = computed(
     ).length,
 );
 
-const hasLocalComputerPlayers = computed(() =>
-  localPlayerSlots.value.some((slot) => slot?.isComputer),
-);
-
 const inviteePlayerIds = computed(() =>
   new Set(players.value.map((player) => Number(player.playerId))),
 );
@@ -174,14 +154,8 @@ const availableInviteFriends = computed(() =>
   ),
 );
 
-const isRoomReadyToStartWithLocalPlayers = computed(
-  () =>
-    occupiedSlotCount.value === 4 &&
-    playerSlots.value.every((slot) => !slot.name || slot.isReady),
-);
-
 async function toggleReady(slot) {
-  if (!roomCode.value || slot.isHost) {
+  if (!roomCode.value || slot.isHost || slot.isComputer) {
     return;
   }
 
@@ -191,21 +165,18 @@ async function toggleReady(slot) {
   });
 }
 
-function handleAddComputer(index) {
+async function handleAddComputer(index) {
   if (index === 0 || players.value[index]) {
     return;
   }
 
-  const player = availablePlayers.value.find(
-    (candidate) =>
-      !playerSlots.value.some((slot) => slot.id === candidate.id),
-  );
-
-  if (!player) {
+  if (!roomCode.value || !resolvedPlayerId.value || !isHostPlayer.value) {
     return;
   }
 
-  localPlayerSlots.value[index] = createPlayerSlot(player, index);
+  await roomStore.addComputerPlayer(roomCode.value, {
+    hostPlayerId: resolvedPlayerId.value,
+  });
 }
 
 function handleRemovePlayer(index) {
@@ -213,30 +184,9 @@ function handleRemovePlayer(index) {
     return;
   }
 
-  if (players.value[index]) {
-    players.value.splice(index, 1);
-    return;
-  }
-
-  localPlayerSlots.value[index] = null;
 }
 
 async function handleStartRoom() {
-  if (hasLocalComputerPlayers.value) {
-    if (!isRoomReadyToStartWithLocalPlayers.value) {
-      return;
-    }
-
-    router.push({
-      name: "Loading",
-      query: {
-        roomCode: roomCode.value,
-        playerId: String(resolvedPlayerId.value ?? ""),
-      },
-    });
-    return;
-  }
-
   if (!roomCode.value) {
     roomStore.errorMessage = "目前沒有房間可以開始。";
     return;
@@ -303,9 +253,6 @@ async function copyRoomCode() {
 }
 
 onMounted(async () => {
-  const rankingPlayers = await getRankingList();
-  availablePlayers.value = rankingPlayers;
-
   let hasRestoredRoomState = false;
   const roomCodeToRestore = requestedRoomCode.value || roomCode.value;
 
@@ -331,21 +278,6 @@ onMounted(async () => {
         isRestoringRoomState.value = false;
       }, 220);
     }
-  }
-
-  if (!players.value.length && !hasRestoredRoomState) {
-    const occupiedSlots = rankingPlayers
-      .slice(0, 3)
-      .map((player, index) => createPlayerSlot(player, index));
-
-    localPlayerSlots.value = emptyPlayerSlots.map((slot, index) =>
-      occupiedSlots[index]
-        ? {
-            ...slot,
-            ...occupiedSlots[index],
-          }
-        : null,
-    );
   }
 
   if (!roomCodeToRestore) {
@@ -460,7 +392,7 @@ watch(
           :disabled="
             isRestoringRoomState ||
             isLoading ||
-            (!hasLocalComputerPlayers && (!isHostPlayer || !isRoomReadyToStart))
+            (!isHostPlayer || !isRoomReadyToStart)
           "
           @click="handleStartRoom"
         >

@@ -38,7 +38,8 @@ const gameStage = ref(null)
 const isDrawing = ref(false)
 const isSocketActionSubmitting = ref(false)
 const isPlayingSocketAction = ref(false)
-const pendingSocketGameState = ref(null)
+const pendingSocketGameStatesByActionId = new Map()
+const completedSocketActionIds = new Set()
 let effectAnimationSequence = 0
 let activeGameSocket = null
 let socketActionQueue = Promise.resolve()
@@ -107,6 +108,7 @@ const players = computed(() => {
       roundWins: normalizeRoundWins(player.roundWins ?? player.score ?? 0),
       level: player.level ?? 1,
       position: seatPositions[index] ?? 'bottom',
+      isComputer: Boolean(player.isComputer),
       isCurrentPlayer: playerId === resolvedCurrentPlayerId.value,
       isTurnPlayer: playerId === String(currentTurnPlayerId.value ?? ''),
       isProtected: Boolean(player.isProtected),
@@ -135,7 +137,10 @@ const canCurrentPlayerAct = computed(() => {
     return true
   }
 
-  return String(currentTurnPlayerId.value) === resolvedCurrentPlayerId.value
+  return (
+    String(currentTurnPlayerId.value) === resolvedCurrentPlayerId.value &&
+    !selfPlayer.value?.isComputer
+  )
 })
 
 const canDraw = computed(() =>
@@ -381,23 +386,89 @@ function shouldDeferSocketState() {
   return isDrawing.value || isPlayingSocketAction.value || isSocketActionSubmitting.value
 }
 
-function handleSocketGameState(data) {
-  if (shouldDeferSocketState()) {
-    pendingSocketGameState.value = data
+async function sendReadyForComputerTurn(reason) {
+  if (!normalizedRoomCode.value || !resolvedCurrentPlayerId.value) {
     return
   }
 
-  applyGameStatePayload(data)
+  try {
+    await emitWithAck('game:ready-for-computer-turn', {
+      roomCode: normalizedRoomCode.value,
+      playerId: resolvedCurrentPlayerId.value,
+      reason,
+    })
+  } catch (error) {
+    console.warn('[game:view] ready-for-computer-turn:failed', {
+      roomCode: normalizedRoomCode.value,
+      playerId: resolvedCurrentPlayerId.value,
+      reason,
+      error,
+    })
+  }
 }
 
-function flushPendingSocketGameState() {
-  if (shouldDeferSocketState() || !pendingSocketGameState.value) {
+async function applySocketGameStateAfterAnimation(data, reason = 'action-complete') {
+  const didApply = applyGameStatePayload(data)
+
+  if (!didApply) {
     return
   }
 
-  const nextState = pendingSocketGameState.value
-  pendingSocketGameState.value = null
-  applyGameStatePayload(nextState)
+  await nextTick()
+  await nextTick()
+  await gameStage.value?.waitForNoticeIdle?.()
+
+  if (data?.readyForComputerTurn === false) {
+    return
+  }
+
+  if (pendingSocketActionCount > 0) {
+    return
+  }
+
+  await sendReadyForComputerTurn(reason)
+}
+
+function pruneCompletedSocketActionIds() {
+  if (completedSocketActionIds.size <= 100) {
+    return
+  }
+
+  completedSocketActionIds.clear()
+}
+
+function handleSocketGameState(data) {
+  const afterActionId = data?.afterActionId
+
+  if (!afterActionId) {
+    applyGameStatePayload(data)
+    return
+  }
+
+  if (completedSocketActionIds.has(afterActionId)) {
+    completedSocketActionIds.delete(afterActionId)
+    applySocketGameStateAfterAnimation(data)
+    return
+  }
+
+  pendingSocketGameStatesByActionId.set(afterActionId, data)
+}
+
+function completeSocketAction(actionId) {
+  if (!actionId) {
+    return
+  }
+
+  const pendingState = pendingSocketGameStatesByActionId.get(actionId)
+
+  if (!pendingState) {
+    completedSocketActionIds.add(actionId)
+    pruneCompletedSocketActionIds()
+    return
+  }
+
+  pendingSocketGameStatesByActionId.delete(actionId)
+  applySocketGameStateAfterAnimation(pendingState)
 }
 
 function rememberSocketAction(actionId) {
@@ -476,10 +547,10 @@ function handleSocketGameAction(event) {
     })
     .finally(() => {
       pendingSocketActionCount = Math.max(0, pendingSocketActionCount - 1)
+      completeSocketAction(event.id)
 
       if (pendingSocketActionCount === 0) {
         isPlayingSocketAction.value = false
-        flushPendingSocketGameState()
       }
     })
 }
@@ -596,9 +667,7 @@ async function handleDrawRequest() {
       playerId: resolvedCurrentPlayerId.value,
     })
 
-    if (data?.state) {
-      pendingSocketGameState.value = data.state
-    }
+    void data
   } catch (error) {
     console.warn('[game:view] draw-card:socket-failed', {
       roomCode: normalizedRoomCode.value,
@@ -641,7 +710,6 @@ async function handleDrawRequest() {
     }
   } finally {
     isDrawing.value = false
-    flushPendingSocketGameState()
   }
 }
 
@@ -665,9 +733,7 @@ async function handlePlayCard(payload) {
       ...playPayload,
     })
 
-    if (data?.state) {
-      pendingSocketGameState.value = data.state
-    }
+    void data
   } catch (error) {
     console.warn('[game:view] play-card:socket-failed', {
       roomCode: normalizedRoomCode.value,
@@ -703,8 +769,11 @@ async function handlePlayCard(payload) {
     }
   } finally {
     isSocketActionSubmitting.value = false
-    flushPendingSocketGameState()
   }
+}
+
+function handleRoundSequenceComplete() {
+  sendReadyForComputerTurn('round-start')
 }
 
 onMounted(() => {
@@ -756,5 +825,6 @@ watch(
     :is-loading="isLoading || isDrawing || isSocketActionSubmitting || isPlayingSocketAction"
     @draw-request="handleDrawRequest"
     @play-card="handlePlayCard"
+    @round-sequence-complete="handleRoundSequenceComplete"
   />
 </template>

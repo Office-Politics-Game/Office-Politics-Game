@@ -1,4 +1,4 @@
-import { getRoomState, updateReady, startGame } from "../services/roomService.js"
+import { addComputerPlayer, getRoomState, updateReady, startGame } from "../services/roomService.js"
 
 function registerRoomHandlers(io, socket) {
     socket.on("room:subscribe", async (payload, callback) => {
@@ -57,6 +57,35 @@ function registerRoomHandlers(io, socket) {
             })
 
             const roomState = await getRoomState({ roomCode })
+
+            io.to(roomCode).emit("room:state", roomState)
+
+            if (typeof callback === "function") {
+                callback({
+                    ok: true,
+                    data: roomState,
+                })
+            }
+        } catch (error) {
+            if (typeof callback === "function") {
+                callback({
+                    ok: false,
+                    error: {
+                        message: error.message,
+                    },
+                })
+            }
+        }
+    })
+
+    socket.on("room:add-computer", async (payload, callback) => {
+        try {
+            const { roomCode, hostPlayerId } = payload
+
+            const roomState = await addComputerPlayer({
+                roomCode,
+                hostPlayerId,
+            })
 
             io.to(roomCode).emit("room:state", roomState)
 

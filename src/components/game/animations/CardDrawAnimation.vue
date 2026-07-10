@@ -30,10 +30,15 @@ function waitForTimeline(buildTimeline) {
   })
 }
 
-function playReducedMotion({ targetRect, onLanded, revealFront }) {
+function playReducedMotion({ targetRect, onLanded = () => {}, revealFront }) {
   return waitForTimeline((resolve) => {
     const cardElement = getCardElement()
     const flipperElement = getFlipperElement()
+    if (!cardElement || !flipperElement || !targetRect) {
+      resolve()
+      return gsap.timeline()
+    }
+
     const nextTimeline = gsap.timeline({
       onComplete: resolve,
     })
@@ -72,7 +77,7 @@ function playReducedMotion({ targetRect, onLanded, revealFront }) {
   })
 }
 
-function playFullMotion({ startRect, targetRect, onLanded, revealFront }) {
+function playFullMotion({ startRect, targetRect, onLanded = () => {}, revealFront }) {
   return waitForTimeline((resolve) => {
     const cardElement = getCardElement()
     const flipperElement = getFlipperElement()

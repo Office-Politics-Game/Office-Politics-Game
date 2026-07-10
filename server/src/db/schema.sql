@@ -157,9 +157,13 @@ CREATE TABLE game_room_players (
   role VARCHAR(20),
   seat_order INTEGER,
   is_ready BOOLEAN DEFAULT false,
+  is_computer BOOLEAN NOT NULL DEFAULT false,
   is_alive BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE game_room_players
+ADD COLUMN IF NOT EXISTS is_computer BOOLEAN NOT NULL DEFAULT false;
 
 CREATE UNIQUE INDEX unique_room_player
 ON game_room_players(room_id, player_id);
