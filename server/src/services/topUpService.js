@@ -188,7 +188,8 @@ async function createEcpayCheckout(orderId) {
     TotalAmount: order.price,
     TradeDesc: "Office Politics Game top up",
     ItemName: order.package_id,
-    ReturnURL: "https://example.com/ecpay/return",
+    ReturnURL: "https://office-politics-game.onrender.com/api/top-ups/ecpay/return",
+    ClientBackURL: "https://office-politics-game.vercel.app/mall",
     ChoosePayment: "ALL",
     EncryptType: 1,
   }
@@ -209,9 +210,31 @@ async function createEcpayCheckout(orderId) {
   }
 }
 
+async function confirmEcpayReturn(payload) {
+  const tradeNo = payload?.MerchantTradeNo
+  const rtnCode = String(payload?.RtnCode || "")
+
+  if (rtnCode !== "1") {
+    throw createServiceError("綠界付款未成功", 400)
+  }
+
+  if (!tradeNo || !tradeNo.startsWith("TOPUP")) {
+    throw createServiceError("綠界訂單編號錯誤", 400)
+  }
+
+  const orderId = Number(tradeNo.replace("TOPUP", ""))
+
+  if (!Number.isInteger(orderId)) {
+    throw createServiceError("綠界訂單編號錯誤", 400)
+  }
+
+  return mockPayTopUpOrder(orderId)
+}
+
 export {
   getTopUpPackages,
   createTopUpOrder,
   mockPayTopUpOrder,
   createEcpayCheckout,
+  confirmEcpayReturn,
 }
