@@ -228,6 +228,11 @@ export const useRoomInvitationStore = defineStore("roomInvitation", {
         if (roomCode) {
           roomStore.roomCode = roomCode;
           await roomStore.fetchRoomState(roomCode);
+          await roomStore.subscribeToRoom({
+            roomCode,
+            playerId,
+            force: true,
+          }).catch(() => null);
         }
 
         this.noticeMessage = "已接受房間邀請";
