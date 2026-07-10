@@ -401,6 +401,10 @@ import {
 import { useAuthStore } from "@/stores/authStore.js";
 import { useCurrencyStore } from "@/stores/currencyStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
+import {
+  createEcpayCheckout,
+  createTopUpOrder,
+} from "@/services/topUpApi.js";
 
 const route = useRoute();
 const router = useRouter();
@@ -611,9 +615,52 @@ function goLobby() {
   router.push("/lobby");
 }
 
+function submitEcpayForm(checkout) {
+  const form = document.createElement("form");
+
+  form.method = "POST";
+  form.action = checkout.actionUrl;
+  form.target = "_blank";
+
+  Object.entries(checkout.params).forEach(([name, value]) => {
+    const input = document.createElement("input");
+
+    input.type = "hidden";
+    input.name = name;
+    input.value = value;
+
+    form.appendChild(input);
+  });
+
+  document.body.appendChild(form);
+  form.submit();
+}
+
 async function purchaseItem(item) {
   if (item.category === "top-up") {
-    statusMessage.value = "儲值付款流程下一步接上。";
+    if (!currentPlayerId.value) {
+      statusMessage.value = "尚未取得玩家 ID，請重新登入後再購買股份。";
+      return;
+    }
+
+    isPurchasing.value = true;
+    statusMessage.value = "";
+
+    try {
+      const orderResult = await createTopUpOrder({
+        playerId: currentPlayerId.value,
+        packageId: item.id,
+      });
+
+      const checkoutResult = await createEcpayCheckout(orderResult.order.id);
+
+      submitEcpayForm(checkoutResult.checkout);
+    } catch (error) {
+      statusMessage.value = getErrorMessage(error, "建立儲值訂單失敗，請稍後再試。");
+    } finally {
+      isPurchasing.value = false;
+    }
+
     return;
   }
 
