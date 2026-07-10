@@ -153,6 +153,11 @@ const routes = [
     name: "NotFound",
     component: NotFoundView,
   },
+  {
+    path: "/auth/callback",
+    name: "AuthCallback",
+    component: AuthCallbackView,
+  },
 ];
 
 const router = createRouter({

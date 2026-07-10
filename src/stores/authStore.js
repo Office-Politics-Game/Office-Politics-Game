@@ -5,7 +5,9 @@ import {
   verifyToken as verifyTokenApi,
   logout as logoutApi,
   forgotPassword as forgotPasswordApi,
-  resetPassword as resetPasswordApi
+  resetPassword as resetPasswordApi,
+  startOAuthLogin as startOAuthLoginApi,
+  completeOAuthLogin as completeOAuthLoginApi
 } from "../services/authApi.js"
 import { hydratePlayerAppearanceBundle } from "@/services/playerAppearanceService.js"
 import { useAppearanceStore } from "@/stores/appearanceStore.js"
