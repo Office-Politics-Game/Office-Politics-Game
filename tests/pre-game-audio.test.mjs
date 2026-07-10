@@ -158,6 +158,23 @@ test('entry, login, and lobby screens are wired to pre-game audio', async () => 
   assert.match(gameMenuSource, /playPreGameSound\(["']lobby-navigation-whoosh["']\)/)
 })
 
+test('starting the game menu uses the shared click sound', async () => {
+  const source = await readSource('src/components/menu/LobbyMenu.vue')
+  const startGameAction = source.slice(source.indexOf('function openGameMenu()'))
+
+  assert.match(startGameAction, /playPreGameSound\("login-button-click"\)/)
+  assert.doesNotMatch(startGameAction, /playLobbyNavigationSound\(\)/)
+})
+
+test('waiting room entry actions use the shared click sound', async () => {
+  const source = await readSource('src/components/gameRoom/WaitingRoomMenu.vue')
+
+  assert.match(source, /usePreGameAudio/)
+  assert.match(source, /function playRoomActionClick/)
+  assert.match(source, /playRoomActionClick\(\)/)
+  assert.match(source, /async function handleJoinRoom\(\)[\s\S]*?playRoomActionClick\(\)/)
+})
+
 test('post-login pages delegate enabled button clicks to the shared click sound', async () => {
   const buttonAudioSource = await readSource('src/composables/UseButtonClickAudio.js')
   const profileSource = await readSource('src/components/profile/ProfileShell.vue')
