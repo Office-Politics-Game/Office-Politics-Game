@@ -95,6 +95,7 @@ import bgEntryVideo from "@/assets/videos/EntryPage_BgVideo.mp4";
 import { usePreGameAudio } from "@/composables/UsePreGameAudio";
 import ForgotPasswordContent from "@/components/login/ForgotPasswordContent.vue";
 import ResetPasswordContent from "@/components/login/ResetPasswordContent.vue";
+import { resolvePasswordResetToken } from "@/services/authApi.js";
 
 const route = useRoute();
 const router = useRouter();
@@ -144,6 +145,7 @@ async function handleSecondaryAction() {
 
     stopPreGameBackground({ fadeOut: false });
     playerStore.resetPlayer();
+    localStorage.removeItem("guestPlayer");
     showLoginModal.value = false;
     showGuestLoginModal.value = false;
     router.push("/");
@@ -187,11 +189,32 @@ function showLoginMode() {
 }
 
 function clearAuthQuery() {
-  if (route.name !== "Entry" || (!route.query.auth && !route.query.notice)) {
+  if (route.name !== "Entry") {
     return;
   }
 
-  const { auth, notice, ...nextQuery } = route.query;
+  const authQueryKeys = new Set([
+    "auth",
+    "notice",
+    "code",
+    "access_token",
+    "refresh_token",
+    "type",
+    "error",
+    "error_description",
+  ]);
+
+  const hasAuthQuery = Object.keys(route.query).some((key) =>
+    authQueryKeys.has(key),
+  );
+
+  if (!hasAuthQuery) {
+    return;
+  }
+
+  const nextQuery = Object.fromEntries(
+    Object.entries(route.query).filter(([key]) => !authQueryKeys.has(key)),
+  );
 
   router.replace({
     name: "Entry",
@@ -210,12 +233,17 @@ function showLoginNotice(message, type = "success") {
   loginNoticeType.value = type;
 }
 
-function getResetPasswordTokenFromUrl() {
-  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  const queryToken = route.query.access_token;
-  const hashToken = hashParams.get("access_token");
+async function openResetPasswordModalFromRoute() {
+  resetPasswordToken.value = "";
+  authModalMode.value = "reset-password";
+  showLoginModal.value = true;
+  clearLoginNotice();
 
-  return typeof queryToken === "string" ? queryToken : hashToken || "";
+  try {
+    resetPasswordToken.value = await resolvePasswordResetToken();
+  } catch {
+    resetPasswordToken.value = "";
+  }
 }
 
 function closeAuthModal() {
@@ -272,10 +300,7 @@ watch(
     }
 
     if (auth === "reset-password") {
-      clearLoginNotice();
-      resetPasswordToken.value = getResetPasswordTokenFromUrl();
-      authModalMode.value = "reset-password";
-      showLoginModal.value = true;
+      void openResetPasswordModalFromRoute();
     }
   },
   { immediate: true },

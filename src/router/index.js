@@ -21,6 +21,8 @@ import CardPlayTestView from "@/views/CardPlayTestView.vue";
 import ProfileEquipmentTestView from "@/views/ProfileEquipmentTestView.vue";
 import NotFoundView from "@/views/NotFoundView.vue";
 import AuthCallbackView from "@/views/AuthCallbackView.vue";
+import PrivacyPolicyView from "@/views/PrivacyPolicyView.vue";
+import DataDeletionView from "@/views/DataDeletionView.vue";
 import { useAuthStore } from "../stores/authStore.js";
 
 const routes = [
@@ -153,6 +155,16 @@ const routes = [
     path: "/cardplay_test",
     name: "cardplay_test",
     component: CardPlayTestView,
+  },
+  {
+    path: "/privacy",
+    name: "PrivacyPolicy",
+    component: PrivacyPolicyView,
+  },
+  {
+    path: "/data-deletion",
+    name: "DataDeletion",
+    component: DataDeletionView,
   },
   {
     path: "/:pathMatch(.*)*",

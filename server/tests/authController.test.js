@@ -6,11 +6,13 @@ const mockVerifyToken = jest.fn()
 const mockRequestPasswordReset = jest.fn()
 const mockResetPlayerPassword = jest.fn()
 const mockSyncOAuthPlayer = jest.fn()
+const mockLogoutPlayer = jest.fn()
 
 jest.unstable_mockModule("../src/services/authService.js", () => ({
     registerPlayer: mockRegisterPlayer,
     loginPlayer: mockLoginPlayer,
     syncOAuthPlayer: mockSyncOAuthPlayer,
+    logoutPlayer: mockLogoutPlayer,
     verifyToken: mockVerifyToken,
     requestPasswordReset: mockRequestPasswordReset,
     resetPlayerPassword: mockResetPlayerPassword
@@ -54,6 +56,7 @@ describe("auth controller cookie login flow", () => {
         mockRegisterPlayer.mockReset()
         mockLoginPlayer.mockReset()
         mockVerifyToken.mockReset()
+        mockLogoutPlayer.mockReset()
         mockRequestPasswordReset.mockReset()
         mockResetPlayerPassword.mockReset()
         mockSyncOAuthPlayer.mockReset()
@@ -209,6 +212,34 @@ describe("auth controller cookie login flow", () => {
         expect(res.status).toHaveBeenCalledWith(401)
         expect(res.json).toHaveBeenCalledWith({
             message: "缺少登入驗證token"
+        })
+    })
+
+    test("登出時同步玩家離線並清除 HttpOnly Cookie", async () => {
+        mockLogoutPlayer.mockResolvedValueOnce(true)
+
+        const req = {
+            cookies: {
+                officePoliticsAuthToken: "cookie-access-token"
+            }
+        }
+        const res = createMockResponse()
+
+        await handleLogoutPlayer(req, res)
+
+        expect(mockLogoutPlayer).toHaveBeenCalledWith("cookie-access-token")
+        expect(res.clearCookie).toHaveBeenCalledWith(
+            "officePoliticsAuthToken",
+            {
+                httpOnly: true,
+                secure: false,
+                sameSite: "lax",
+                path: "/"
+            }
+        )
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({
+            message: "登出成功"
         })
     })
 

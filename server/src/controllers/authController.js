@@ -2,6 +2,7 @@ import {
     registerPlayer,
     loginPlayer,
     syncOAuthPlayer,
+    logoutPlayer,
     verifyToken,
     requestPasswordReset,
     resetPlayerPassword
@@ -103,6 +104,13 @@ async function handleVerifyToken(req, res) {
 }
 
 async function handleLogoutPlayer(req, res) {
+    const token = getCookieToken(req)
+
+    try {
+        await logoutPlayer(token)
+    } catch {
+    }
+    
     clearAuthCookie(res)
 
     res.status(200).json({

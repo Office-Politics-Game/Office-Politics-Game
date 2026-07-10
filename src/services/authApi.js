@@ -63,6 +63,43 @@ async function startOAuthLogin(provider) {
   }
 }
 
+async function resolvePasswordResetToken() {
+  const supabase = getSupabaseClient()
+  const queryParams = new URLSearchParams(window.location.search)
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""))
+
+  const callbackError =
+    queryParams.get("error_description") ||
+    queryParams.get("error") ||
+    hashParams.get("error_description") ||
+    hashParams.get("error")
+
+  if (callbackError) {
+    throw new Error(callbackError)
+  }
+
+  const queryToken = queryParams.get("access_token")
+  const hashToken = hashParams.get("access_token")
+
+  if (queryToken || hashToken) {
+    return queryToken || hashToken
+  }
+
+  const authCode = queryParams.get("code")
+
+  if (!authCode) {
+    return ""
+  }
+
+  const { data, error } = await supabase.auth.exchangeCodeForSession(authCode)
+
+  if (error) {
+    throw new Error(error.message || "重設密碼連結驗證失敗")
+  }
+
+  return data.session?.access_token || ""
+}
+
 async function completeOAuthLogin() {
   const supabase = getSupabaseClient()
   const queryParams = new URLSearchParams(window.location.search)
@@ -119,4 +156,5 @@ export {
   resetPassword,
   startOAuthLogin,
   completeOAuthLogin,
+  resolvePasswordResetToken
 }

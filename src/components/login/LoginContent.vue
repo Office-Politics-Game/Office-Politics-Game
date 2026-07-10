@@ -326,6 +326,7 @@ async function handleLogin() {
     })
 
     if (authStore.currentPlayer) {
+      localStorage.removeItem("guestPlayer")
       playerStore.setCurrentPlayer(authStore.currentPlayer)
     }
 

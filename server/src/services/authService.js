@@ -393,6 +393,34 @@ async function resetPlayerPassword({ token, password } = {}) {
     }
 }
 
+async function logoutPlayer(token) {
+    if (!token) {
+        return false
+    }
+
+    try {
+        const { data, error } = await supabaseAdmin.auth.getUser(token)
+
+        if (error || !data?.user?.id) {
+            return false
+        }
+
+        const email = data.user.email?.trim().toLowerCase() || ""
+
+        await pool.query(
+            `UPDATE players
+             SET is_online = false,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE auth_user_id = $1 OR account = $2`,
+            [data.user.id, email]
+        )
+
+        return true
+    } catch {
+        return false
+    }
+}
+
 async function verifyToken(token) {
     if (!token) {
         throw createAuthError(401, "缺少登入驗證token")
@@ -424,4 +452,4 @@ async function verifyToken(token) {
     return formatPlayer(player)
 }
 
-export { registerPlayer, loginPlayer, syncOAuthPlayer, verifyToken, requestPasswordReset, resetPlayerPassword }
+export { registerPlayer, loginPlayer, syncOAuthPlayer, logoutPlayer, verifyToken, requestPasswordReset, resetPlayerPassword }
