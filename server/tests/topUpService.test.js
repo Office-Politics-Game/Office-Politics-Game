@@ -171,7 +171,7 @@ describe("topUpService", () => {
                 TotalAmount: 30,
                 TradeDesc: "Office Politics Game top up",
                 ItemName: "gems_60",
-                ReturnURL: "https://example.com/ecpay/return",
+                ReturnURL: "https://office-politics-game.onrender.com/api/top-ups/ecpay/return",
                 ChoosePayment: "ALL",
                 EncryptType: 1,
             },
