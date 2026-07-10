@@ -237,6 +237,7 @@ function leaveLobby() {
     return;
   }
 
+  playPreGameSound("login-button-click");
   authStore.logout();
   playerStore.resetPlayer();
   currencyStore.resetCurrency();
@@ -248,7 +249,7 @@ function openMallPage() {
     return;
   }
 
-  playLobbyNavigationSound();
+  playPreGameSound("login-button-click");
   isMallTransitioning.value = true;
 
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {

@@ -2,6 +2,7 @@
   <main
     class="mall-view relative flex min-h-screen w-screen items-center justify-center overflow-hidden bg-[#1e1e1e] px-1 py-1 md:px-5 md:py-4"
     :style="{ backgroundImage: `url(${bgDashboard})` }"
+    @click.capture="handleButtonClick"
   >
     <div class="absolute inset-0 bg-[rgba(0,19,50,0.36)]"></div>
     <section class="mall-shell relative z-10 flex h-[98svh] w-[98vw] max-w-[1360px] flex-col overflow-hidden border border-white/25 bg-white/82 shadow-2xl backdrop-blur-md md:h-[92vh] md:w-[95vw]">
@@ -375,6 +376,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import CurrencyBar from "@/components/common/CurrencyBar.vue";
 import MallProductCard from "@/components/mall/MallProductCard.vue";
+import { useButtonClickAudio } from "@/composables/UseButtonClickAudio";
 import bgDashboard from "@/assets/images/bg-dashboard.webp";
 import {
   mallCategories,
@@ -401,6 +403,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 const currencyStore = useCurrencyStore();
 const playerStore = usePlayerStore();
+const { handleButtonClick } = useButtonClickAudio();
 
 const categories = mallCategories;
 const fallbackItems = mallItems;

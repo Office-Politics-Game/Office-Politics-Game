@@ -10,6 +10,7 @@ test('pre-game audio assets use semantic filenames', async () => {
   assert.equal(audioFiles.includes('lobby-ambience-office-60s.mp3'), false)
   assert.ok(audioFiles.includes('login-button-click.mp3'))
   assert.ok(audioFiles.includes('lobby-navigation-whoosh.mp3'))
+  assert.ok(audioFiles.includes('lobby-money-chant-theme.mp3'))
   assert.ok(audioFiles.includes('lobby-footsteps-heels-01.mp3'))
   assert.ok(audioFiles.includes('lobby-footsteps-heels-02.mp3'))
   assert.ok(audioFiles.includes('lobby-footsteps-heels-03.mp3'))
@@ -22,6 +23,7 @@ test('pre-game audio controller maps detail layers and ui sounds', async () => {
 
   assert.match(source, /loginButtonClickUrl/)
   assert.match(source, /lobbyNavigationWhooshUrl/)
+  assert.match(source, /lobbyMoneyChantThemeUrl/)
   assert.match(source, /lobbyFootstepsHeels01Url/)
   assert.match(source, /lobbyFootstepsHeels02Url/)
   assert.match(source, /lobbyFootstepsHeels03Url/)
@@ -40,6 +42,17 @@ test('pre-game audio controller does not load looping ambience music', async () 
   assert.doesNotMatch(source, /LOBBY_AMBIENCE_GAIN/)
   assert.doesNotMatch(source, /ambienceAudio/)
   assert.doesNotMatch(source, /ensureAmbienceAudio/)
+})
+
+test('pre-game audio controller loops lobby background music', async () => {
+  const source = await readSource('src/composables/UsePreGameAudio.js')
+
+  assert.match(source, /LOBBY_MUSIC_GAIN/)
+  assert.match(source, /lobbyMusicAudio/)
+  assert.match(source, /ensureLobbyMusicAudio/)
+  assert.match(source, /playLobbyMusic/)
+  assert.match(source, /createAudio\(lobbyMoneyChantThemeUrl, \{ loop: true \}\)/)
+  assert.match(source, /pauseAudio\(lobbyMusicAudio, \{ reset: true \}\)/)
 })
 
 test('pre-game background audio only runs on entry and auth screens', async () => {
@@ -83,16 +96,19 @@ test('lobby footstep layer uses all heel sounds with stereo spread', async () =>
   assert.doesNotMatch(source, /Math\.floor\(Math\.random\(\) \* audios\.length\)/)
 })
 
-test('pre-game audio mix keeps footsteps present without ambience music', async () => {
+test('pre-game audio mix keeps footsteps lower than lobby music', async () => {
   const source = await readSource('src/composables/UsePreGameAudio.js')
+  const musicGain = Number(source.match(/LOBBY_MUSIC_GAIN = ([\d.]+)/)?.[1])
   const detailGain = Number(source.match(/LOBBY_DETAIL_GAIN = ([\d.]+)/)?.[1])
   const layerGains = Array.from(source.matchAll(/gain: ([\d.]+)/g)).map(([, gain]) =>
     Number(gain),
   )
+  const footstepVolumes = layerGains.map((gain) => detailGain * gain)
 
-  assert.ok(detailGain >= 0.5)
+  assert.ok(detailGain <= musicGain)
   assert.ok(layerGains.length >= 4)
   assert.ok(layerGains.every((gain) => gain >= 0.9))
+  assert.ok(footstepVolumes.every((volume) => volume <= musicGain))
 })
 
 test('login page actions trigger the shared click sound, including close controls', async () => {
@@ -140,4 +156,35 @@ test('entry, login, and lobby screens are wired to pre-game audio', async () => 
   assert.match(loginSource, /playPreGameSound\(["']login-button-click["']\)/)
   assert.match(lobbyMenuSource, /playPreGameSound\(["']lobby-navigation-whoosh["']\)/)
   assert.match(gameMenuSource, /playPreGameSound\(["']lobby-navigation-whoosh["']\)/)
+})
+
+test('post-login pages delegate enabled button clicks to the shared click sound', async () => {
+  const buttonAudioSource = await readSource('src/composables/UseButtonClickAudio.js')
+  const profileSource = await readSource('src/components/profile/ProfileShell.vue')
+  const friendSource = await readSource('src/views/FriendView.vue')
+  const mallSource = await readSource('src/views/MallView.vue')
+
+  assert.match(buttonAudioSource, /button, \[role="button"\]/)
+  assert.match(buttonAudioSource, /closest\?\.\(BUTTON_CONTROL_SELECTOR\)/)
+  assert.match(buttonAudioSource, /matches\(":disabled"\)/)
+  assert.match(buttonAudioSource, /getAttribute\("aria-disabled"\) === "true"/)
+  assert.match(buttonAudioSource, /playPreGameSound\("login-button-click"\)/)
+
+  for (const source of [profileSource, friendSource, mallSource]) {
+    assert.match(source, /useButtonClickAudio/)
+    assert.match(source, /@click\.capture="handleButtonClick"/)
+  }
+})
+
+test('mall entry and leave lobby actions use the shared click sound', async () => {
+  const source = await readSource('src/components/menu/LobbyMenu.vue')
+  const leaveStart = source.indexOf('function leaveLobby()')
+  const mallStart = source.indexOf('function openMallPage()')
+  const gameMenuStart = source.indexOf('function openGameMenu()')
+  const leaveAction = source.slice(leaveStart, mallStart)
+  const mallAction = source.slice(mallStart, gameMenuStart)
+
+  assert.match(mallAction, /playPreGameSound\("login-button-click"\)/)
+  assert.doesNotMatch(mallAction, /playLobbyNavigationSound\(\)/)
+  assert.match(leaveAction, /playPreGameSound\("login-button-click"\)/)
 })

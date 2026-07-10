@@ -3,6 +3,7 @@
     class="profile-page grid w-screen min-h-[100svh] place-items-center overflow-hidden bg-[var(--brand-navy)] bg-center bg-cover isolate"
     :class="{ 'is-returning': isReturning }"
     :style="{ backgroundImage: `url(${backgroundImage})` }"
+    @click.capture="handleButtonClick"
   >
     <div
       class="profile-exit-layer absolute inset-0 z-0 bg-center bg-cover opacity-0 will-change-[opacity]"
@@ -45,6 +46,9 @@
 import { X } from "lucide-vue-next";
 import ProfileSidebar from "@/components/profile/ProfileSidebar.vue";
 import ProfileTabs from "@/components/profile/ProfileTabs.vue";
+import { useButtonClickAudio } from "@/composables/UseButtonClickAudio";
+
+const { handleButtonClick } = useButtonClickAudio();
 
 defineProps({
   player: {
