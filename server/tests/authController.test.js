@@ -5,10 +5,12 @@ const mockLoginPlayer = jest.fn()
 const mockVerifyToken = jest.fn()
 const mockRequestPasswordReset = jest.fn()
 const mockResetPlayerPassword = jest.fn()
+const mockSyncOAuthPlayer = jest.fn()
 
 jest.unstable_mockModule("../src/services/authService.js", () => ({
     registerPlayer: mockRegisterPlayer,
     loginPlayer: mockLoginPlayer,
+    syncOAuthPlayer: mockSyncOAuthPlayer,
     verifyToken: mockVerifyToken,
     requestPasswordReset: mockRequestPasswordReset,
     resetPlayerPassword: mockResetPlayerPassword
@@ -16,6 +18,7 @@ jest.unstable_mockModule("../src/services/authService.js", () => ({
 
 const {
     handleLoginPlayer,
+    handleOAuthCallback,
     handleVerifyToken,
     handleLogoutPlayer
 } = await import("../src/controllers/authController.js")
@@ -53,6 +56,7 @@ describe("auth controller cookie login flow", () => {
         mockVerifyToken.mockReset()
         mockRequestPasswordReset.mockReset()
         mockResetPlayerPassword.mockReset()
+        mockSyncOAuthPlayer.mockReset()
 
         delete process.env.AUTH_COOKIE_SAME_SITE
         delete process.env.AUTH_COOKIE_SECURE
@@ -128,6 +132,43 @@ describe("auth controller cookie login flow", () => {
                 maxAge: 3600 * 1000
             }
         )
+    })
+
+    test("第三方登入成功時設定 HttpOnly Cookie，且 response 不回傳 token", async () => {
+        const player = createPlayer()
+
+        mockSyncOAuthPlayer.mockResolvedValueOnce({
+            player,
+            token: "oauth-access-token",
+            expiresIn: 3600
+        })
+
+        const req = {
+            body: {
+                accessToken: "oauth-access-token",
+                expiresIn: 3600
+            }
+        }
+        const res = createMockResponse()
+
+        await handleOAuthCallback(req, res)
+
+        expect(mockSyncOAuthPlayer).toHaveBeenCalledWith(req.body)
+        expect(res.cookie).toHaveBeenCalledWith(
+            "officePoliticsAuthToken",
+            "oauth-access-token",
+            {
+                httpOnly: true,
+                secure: false,
+                sameSite: "lax",
+                path: "/",
+                maxAge: 3600 * 1000
+            }
+        )
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({
+            player
+        })
     })
 
     test("驗證登入狀態時，從 Cookie 讀取 token", async () => {
