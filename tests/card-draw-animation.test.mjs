@@ -41,6 +41,13 @@ test('card draw animation uses a scoped GSAP timeline with cleanup and reduced m
   assert.match(source, /autoAlpha/)
 })
 
+test('card draw animation tolerates missing landing callback and targets', async () => {
+  const source = await readSource('src/components/game/animations/CardDrawAnimation.vue')
+
+  assert.match(source, /onLanded = \(\) => \{\}/)
+  assert.match(source, /!cardElement \|\| !flipperElement \|\| !targetRect/)
+})
+
 test('self draw stays face down while flying and flips only after reaching the hand', async () => {
   const source = await readSource('src/components/game/animations/CardDrawAnimation.vue')
   const fullMotionSource = source.slice(source.indexOf('function playFullMotion'))
@@ -115,8 +122,8 @@ test('game view sends draws through socket actions and keeps REST fallback', asy
   assert.match(handlerSource, /data\?\.drawnCard \?\? data\?\.card/)
   assert.match(handlerSource, /normalizeCard\(rawDrawnCard\)/)
   assert.match(handlerSource, /await gameStage\.value\.playDrawAnimation\(/)
-  assert.match(handlerSource, /pendingSocketGameState\.value = data\.state/)
-  assert.match(handlerSource, /flushPendingSocketGameState\(\)/)
+  assert.match(source, /pendingSocketGameStatesByActionId = new Map\(\)/)
+  assert.match(source, /completeSocketAction\(event\.id\)/)
   assert.match(handlerSource, /catch \(error\)[\s\S]*await refreshRoomState\(\)/)
   assert.match(handlerSource, /finally \{[\s\S]*isDrawing\.value = false/)
   assert.ok(

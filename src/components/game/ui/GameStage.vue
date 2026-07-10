@@ -92,6 +92,7 @@ const emit = defineEmits([
   "restart-game",
   "draw-request",
   "play-card",
+  "round-sequence-complete",
 ]);
 const isSettingsOpen = ref(false);
 const isDrawAnimating = ref(false);
@@ -132,6 +133,12 @@ let effectAnimationSequence = 0;
 let pointerMoveHandler = null;
 let pointerUpHandler = null;
 const hiddenPlayedCardTimers = new Map();
+const noticeIdleResolvers = [];
+const pendingNoticeOpenCount = ref(0);
+const noticeAckDelayTimers = new Set();
+const pendingNoticeAckDelayCount = ref(0);
+const NOTICE_CLOSE_ACK_BUFFER_MS = 600;
+const MANAGER_EFFECT_ACK_BUFFER_MS = 900;
 const resolvedCurrentPlayerId = computed(
   () =>
     props.currentPlayerId ??
@@ -462,6 +469,9 @@ async function playInitialRoundDrawSequence(signature) {
     if (isExplicitCurrentPlayerTurn.value) {
       playTurnNotice({ force: true });
     }
+
+    emit("round-sequence-complete");
+    resolveNoticeIdleIfIdle();
   }
 }
 
@@ -545,7 +555,11 @@ function settleEffectAnimation(result, completed = false) {
   const resolve = effectAnimationResolve;
   effectAnimationResolve = null;
   activeEffectResult.value = null;
+  if (completed && result?.type === "manager") {
+    holdNoticeAckAfterClose(MANAGER_EFFECT_ACK_BUFFER_MS);
+  }
   resolve?.(completed);
+  resolveNoticeIdleIfIdle();
 }
 
 function stopEffectAnimation() {
@@ -556,11 +570,100 @@ function settleRoundStartNotice(completed = false) {
   const resolve = roundStartNoticeResolve;
   roundStartNoticeResolve = null;
   resolve?.(completed);
+  resolveNoticeIdleIfIdle();
 }
 
 function closeRoundStartNotice() {
+  if (isRoundStartNoticeOpen.value) {
+    holdNoticeAckAfterClose();
+  }
+
   isRoundStartNoticeOpen.value = false;
   settleRoundStartNotice(true);
+}
+
+function isNoticeIdle() {
+  return (
+    pendingNoticeOpenCount.value === 0 &&
+    pendingNoticeAckDelayCount.value === 0 &&
+    !isTurnNoticeOpen.value &&
+    !isRoundStartNoticeOpen.value &&
+    !isRoundWinnerNoticeOpen.value &&
+    !isPlayerEliminatedNoticeOpen.value &&
+    !isInitialRoundDrawAnimating.value &&
+    !activeEffectResult.value
+  );
+}
+
+function resolveNoticeIdleIfIdle() {
+  if (!isNoticeIdle()) {
+    return;
+  }
+
+  while (noticeIdleResolvers.length > 0) {
+    noticeIdleResolvers.shift()?.(true);
+  }
+}
+
+function waitForNoticeIdle() {
+  if (isNoticeIdle()) {
+    return Promise.resolve(true);
+  }
+
+  return new Promise((resolve) => {
+    noticeIdleResolvers.push(resolve);
+  });
+}
+
+function scheduleNoticeOpen(openNotice) {
+  pendingNoticeOpenCount.value += 1;
+
+  nextTick(() => {
+    pendingNoticeOpenCount.value = Math.max(
+      0,
+      pendingNoticeOpenCount.value - 1,
+    );
+    openNotice();
+    resolveNoticeIdleIfIdle();
+  });
+}
+
+function holdNoticeAckAfterClose(durationMs = NOTICE_CLOSE_ACK_BUFFER_MS) {
+  const timer = window.setTimeout(() => {
+    noticeAckDelayTimers.delete(timer);
+    pendingNoticeAckDelayCount.value = noticeAckDelayTimers.size;
+    resolveNoticeIdleIfIdle();
+  }, durationMs);
+
+  noticeAckDelayTimers.add(timer);
+  pendingNoticeAckDelayCount.value = noticeAckDelayTimers.size;
+}
+
+function closeTurnNotice() {
+  if (isTurnNoticeOpen.value) {
+    holdNoticeAckAfterClose();
+  }
+
+  isTurnNoticeOpen.value = false;
+  resolveNoticeIdleIfIdle();
+}
+
+function closeRoundWinnerNotice() {
+  if (isRoundWinnerNoticeOpen.value) {
+    holdNoticeAckAfterClose();
+  }
+
+  isRoundWinnerNoticeOpen.value = false;
+  resolveNoticeIdleIfIdle();
+}
+
+function closePlayerEliminatedNotice() {
+  if (isPlayerEliminatedNoticeOpen.value) {
+    holdNoticeAckAfterClose();
+  }
+
+  isPlayerEliminatedNoticeOpen.value = false;
+  resolveNoticeIdleIfIdle();
 }
 
 async function playRoundStartNotice(
@@ -607,7 +710,7 @@ function playTurnNotice({ force = false } = {}) {
 
   isTurnNoticeOpen.value = false;
 
-  nextTick(() => {
+  scheduleNoticeOpen(() => {
     isTurnNoticeOpen.value = true;
   });
 }
@@ -627,7 +730,7 @@ function playRoundWinnerNotice(player) {
     avatarUrl: player.avatarUrl,
   };
 
-  nextTick(() => {
+  scheduleNoticeOpen(() => {
     isRoundWinnerNoticeOpen.value = true;
   });
 }
@@ -647,7 +750,7 @@ function playPlayerEliminatedNotice(player) {
     avatarUrl: player.avatarUrl,
   };
 
-  nextTick(() => {
+  scheduleNoticeOpen(() => {
     isPlayerEliminatedNoticeOpen.value = true;
   });
 }
@@ -1001,6 +1104,8 @@ onBeforeUnmount(() => {
   settleRoundStartNotice(false);
   hiddenPlayedCardTimers.forEach((timer) => window.clearTimeout(timer));
   hiddenPlayedCardTimers.clear();
+  noticeAckDelayTimers.forEach((timer) => window.clearTimeout(timer));
+  noticeAckDelayTimers.clear();
 });
 
 watch(
@@ -1096,6 +1201,7 @@ defineExpose({
   playDrawAnimation,
   playEffectAnimation,
   playRemoteCardPlayAnimation,
+  waitForNoticeIdle,
 });
 </script>
 
@@ -1330,7 +1436,7 @@ defineExpose({
     <FlyInTextModal
       :is-open="isTurnNoticeOpen"
       text="輪到你的回合"
-      @close="isTurnNoticeOpen = false"
+      @close="closeTurnNotice"
     />
 
     <FlyInTextModal
@@ -1339,7 +1445,7 @@ defineExpose({
       :player-name="roundWinnerNotice?.name ?? ''"
       :avatar-url="roundWinnerNotice?.avatarUrl ?? ''"
       :duration="2400"
-      @close="isRoundWinnerNoticeOpen = false"
+      @close="closeRoundWinnerNotice"
     />
 
     <FlyInTextModal
@@ -1349,7 +1455,7 @@ defineExpose({
       :avatar-url="playerEliminatedNotice?.avatarUrl ?? ''"
       tone="danger"
       :duration="2400"
-      @close="isPlayerEliminatedNoticeOpen = false"
+      @close="closePlayerEliminatedNotice"
     />
 
     <RotateDeviceNotice />

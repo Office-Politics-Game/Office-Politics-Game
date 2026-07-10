@@ -1,6 +1,14 @@
 import pool from "../db/index.js"
 import { createInitialState } from "../game/initialState.js"
 
+const MAX_ROOM_PLAYERS = 4
+const COMPUTER_PLAYER_NAMES = [
+  "Computer 1",
+  "Computer 2",
+  "Computer 3",
+  "Computer 4",
+]
+
 function createServiceError(message, statusCode = 400){
   const error = new Error(message)
   error.statusCode = statusCode
@@ -9,6 +17,60 @@ function createServiceError(message, statusCode = 400){
 
 function generateRoomCode(){
   return Math.random().toString(36).substring(2, 8).toUpperCase()
+}
+
+function mapRoomPlayer(player){
+  const isComputer = Boolean(player.is_computer) || player.role === "computer"
+
+  return {
+    playerId: player.player_id,
+    username: player.username,
+    avatarId: player.avatar_id,
+    role: player.role,
+    seatOrder: player.seat_order,
+    isReady: isComputer ? true : player.is_ready,
+    isAlive: player.is_alive,
+    isComputer,
+  }
+}
+
+async function findOrCreateComputerPlayer(client, index){
+  const username = COMPUTER_PLAYER_NAMES[index] ?? `Computer ${index + 1}`
+  const account = `computer-player-${index + 1}`
+
+  const existingResult = await client.query(
+    `SELECT id, username, avatar_id
+     FROM players
+     WHERE account = $1 OR username = $2
+     ORDER BY id ASC
+     LIMIT 1`,
+    [account, username]
+  )
+
+  if (existingResult.rows.length > 0){
+    return existingResult.rows[0]
+  }
+
+  const playerResult = await client.query(
+    `INSERT INTO players (username, account, avatar_id, is_online)
+     VALUES ($1, $2, $3, false)
+     RETURNING id, username, avatar_id`,
+    [username, account, index + 1]
+  )
+
+  return playerResult.rows[0]
+}
+
+function getNextSeatOrder(players){
+  const occupiedSeats = new Set(players.map((player)=> Number(player.seat_order)))
+
+  for (let seatOrder = 1; seatOrder <= MAX_ROOM_PLAYERS; seatOrder += 1){
+    if (!occupiedSeats.has(seatOrder)){
+      return seatOrder
+    }
+  }
+
+  return players.length + 1
 }
 
 async function createRoom({ hostPlayerId }){
@@ -72,7 +134,7 @@ async function joinRoom({ roomCode, playerId }){
 
     const playerCount = Number(countResult.rows[0].count)
 
-    if (playerCount >= 4){
+    if (playerCount >= MAX_ROOM_PLAYERS){
       throw createServiceError("房間人數已滿")
     }
 
@@ -139,6 +201,7 @@ async function getRoomState({ roomCode }){
        grp.role,
        grp.seat_order,
        grp.is_ready,
+       (grp.role = 'computer') AS is_computer,
        grp.is_alive
      FROM game_room_players grp
      JOIN players p ON p.id = grp.player_id
@@ -154,17 +217,78 @@ async function getRoomState({ roomCode }){
       hostPlayerId: room.host_player_id,
       status: room.status,
     },
-    players: playerResult.rows.map((player)=>{
-      return {
-        playerId: player.player_id,
-        username: player.username,
-        avatarId: player.avatar_id,
-        role: player.role,
-        seatOrder: player.seat_order,
-        isReady: player.is_ready,
-        isAlive: player.is_alive,
-      }
-    }),
+    players: playerResult.rows.map(mapRoomPlayer),
+  }
+}
+
+async function addComputerPlayer({ roomCode, hostPlayerId }){
+  const client = await pool.connect()
+
+  try {
+    await client.query("BEGIN")
+
+    const roomResult = await client.query(
+      `SELECT * FROM game_rooms WHERE room_code = $1 FOR UPDATE`,
+      [roomCode]
+    )
+
+    if (roomResult.rows.length === 0){
+      throw createServiceError("Room not found", 404)
+    }
+
+    const room = roomResult.rows[0]
+
+    if (room.host_player_id !== Number(hostPlayerId)){
+      throw createServiceError("Only the host can add computer players", 403)
+    }
+
+    if (room.status !== "waiting"){
+      throw createServiceError("Computer players can only be added before the game starts")
+    }
+
+    const playerResult = await client.query(
+      `SELECT
+         grp.player_id,
+         grp.seat_order,
+         (grp.role = 'computer') AS is_computer
+       FROM game_room_players grp
+       WHERE grp.room_id = $1
+       ORDER BY grp.seat_order ASC`,
+      [room.id]
+    )
+    const roomPlayers = playerResult.rows
+
+    if (roomPlayers.length >= MAX_ROOM_PLAYERS){
+      throw createServiceError("Room is full")
+    }
+
+    const computerIndex = roomPlayers.filter((player)=> player.is_computer).length
+    const computerPlayer = await findOrCreateComputerPlayer(client, computerIndex)
+    const alreadyInRoom = roomPlayers.some((player)=>{
+      return Number(player.player_id) === Number(computerPlayer.id)
+    })
+
+    if (alreadyInRoom){
+      throw createServiceError("Computer player is already in the room")
+    }
+
+    const seatOrder = getNextSeatOrder(roomPlayers)
+
+    await client.query(
+      `INSERT INTO game_room_players
+       (room_id, player_id, role, seat_order, is_ready)
+       VALUES ($1, $2, 'computer', $3, true)
+       RETURNING *`,
+      [room.id, computerPlayer.id, seatOrder]
+    )
+
+    await client.query("COMMIT")
+    return getRoomState({ roomCode })
+  } catch (error){
+    await client.query("ROLLBACK")
+    throw error
+  } finally {
+    client.release()
   }
 }
 
@@ -194,7 +318,12 @@ async function startGame({ roomCode, playerId }){
     }
 
     const playerResult = await client.query(
-      `SELECT grp.player_id, grp.seat_order, grp.is_ready, p.username
+      `SELECT
+         grp.player_id,
+         grp.seat_order,
+         grp.is_ready,
+         (grp.role = 'computer') AS is_computer,
+         p.username
        FROM game_room_players grp
        JOIN players p ON p.id = grp.player_id
        WHERE grp.room_id = $1
@@ -204,7 +333,7 @@ async function startGame({ roomCode, playerId }){
 
     const players = playerResult.rows
 
-    if (players.length !== 4){
+    if (players.length !== MAX_ROOM_PLAYERS){
       throw createServiceError("玩家人數不足4位")
     }
 
@@ -253,6 +382,7 @@ async function startGame({ roomCode, playerId }){
 export {
   createRoom,
   joinRoom,
+  addComputerPlayer,
   updateReady,
   getRoomState,
   startGame,
