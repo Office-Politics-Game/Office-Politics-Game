@@ -1,5 +1,5 @@
 import { apiClient } from "./apiClient.js"
-import { getSupabaseClient } from "./supabaseClient.js"
+import { getOptionalSupabaseClient, getSupabaseClient } from "./supabaseClient.js"
 
 const AUTH_API_PATH = "/auth"
 const OAUTH_PROVIDERS = new Set(["google", "facebook"])
@@ -16,8 +16,25 @@ function verifyToken() {
   return apiClient.get(`${AUTH_API_PATH}/verify`);
 }
 
-function logout() {
-  return apiClient.post(`${AUTH_API_PATH}/logout`);
+async function logout() {
+  const response = await apiClient.post(`${AUTH_API_PATH}/logout`)
+  const supabase = getOptionalSupabaseClient()
+
+  if (!supabase) {
+    return response
+  }
+
+  try {
+    const { error } = await supabase.auth.signOut()
+
+    if (error) {
+      console.warn("Supabase session 清除失敗", error)
+    }
+  } catch (error) {
+    console.warn("Supabase session 清除失敗", error)
+  }
+
+  return response
 }
 
 function forgotPassword(payload) {

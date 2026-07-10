@@ -76,6 +76,50 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    async startOAuthLogin(provider) {
+      this.isLoading = true
+      this.errorMessage = ""
+
+      try {
+        await startOAuthLoginApi(provider)
+      } catch (error) {
+        this.errorMessage = getErrorMessage(error, "第三方登入失敗")
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async completeOAuthLogin() {
+      this.isLoading = true
+      this.errorMessage = ""
+      const appearanceStore = useAppearanceStore()
+
+      try {
+        const data = await completeOAuthLoginApi()
+        const { player: hydratedPlayer, appearance } =
+          await hydratePlayerAppearanceBundle(data.player || null)
+
+        this.currentPlayer = hydratedPlayer
+        this.isLoggedIn = Boolean(hydratedPlayer)
+        this.hasVerifiedToken = Boolean(hydratedPlayer)
+
+        appearanceStore.applyAppearance({
+          ...appearance,
+          playerId: hydratedPlayer?.id ?? null
+        })
+
+        return data
+      } catch (error) {
+        resetAuthState(this)
+        appearanceStore.resetAppearance()
+        this.errorMessage = getErrorMessage(error, "第三方登入失敗")
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
     async forgotPassword(payload) {
       this.isLoading = true
       this.errorMessage = ""
