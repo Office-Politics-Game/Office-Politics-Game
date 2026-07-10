@@ -5,6 +5,7 @@ import { createServer } from "node:http";
 import { router as roomRouter } from "./routes/roomRoutes.js";
 import { router as gameStateRouter } from "./routes/gameSessionRoutes.js";
 import { router as playerRouter } from "./routes/playerRoutes.js";
+import { router as achievementRouter } from "./routes/achievementRoutes.js";
 import { router as actionRouter, roomActionRouter } from "./routes/actionRoutes.js";
 import { router as friendRouter } from "./routes/friendRoutes.js";
 import { router as roomInvitationRouter } from "./routes/roomInvitationRoutes.js";
@@ -35,6 +36,7 @@ app.use("/api/rooms", roomRouter)
 app.use("/api/rooms", roomActionRouter)
 app.use("/api/game-states", gameStateRouter)
 app.use("/api/players", playerRouter)
+app.use("/api/players", achievementRouter)
 app.use("/api/actions", actionRouter)
 app.use("/api/friends", friendRouter)
 app.use("/api/chats", chatRouter)
