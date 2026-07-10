@@ -162,9 +162,6 @@ CREATE TABLE game_room_players (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-ALTER TABLE game_room_players
-ADD COLUMN IF NOT EXISTS is_computer BOOLEAN NOT NULL DEFAULT false;
-
 CREATE UNIQUE INDEX unique_room_player
 ON game_room_players(room_id, player_id);
 
