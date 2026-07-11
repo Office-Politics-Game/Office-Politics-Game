@@ -2,7 +2,12 @@ import { apiClient } from "./apiClient.js"
 import { getOptionalSupabaseClient, getSupabaseClient } from "./supabaseClient.js"
 
 const AUTH_API_PATH = "/auth"
-const OAUTH_PROVIDERS = new Set(["google", "facebook"])
+const OAUTH_PROVIDERS = new Set(["google", "discord"])
+const OAUTH_PROVIDER_OPTIONS = {
+  discord: {
+    scopes: "identify email"
+  }
+}
 
 function register(payload) {
   return apiClient.post(`${AUTH_API_PATH}/register`, payload);
@@ -55,6 +60,7 @@ async function startOAuthLogin(provider) {
     provider,
     options: {
       redirectTo: `${window.location.origin}/auth/callback`,
+      ...OAUTH_PROVIDER_OPTIONS[provider],
     },
   })
 

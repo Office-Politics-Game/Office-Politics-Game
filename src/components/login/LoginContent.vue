@@ -165,14 +165,15 @@
         class="social-button tap-pop flex items-center justify-center"
         type="button"
         :disabled="authStore.isLoading"
-        @click="handleOAuthLogin('facebook')"
+        @click="handleOAuthLogin('discord')"
       >
         <span
-          class="grid h-6 w-6 place-items-center bg-[#1877f2] text-sm font-black text-white"
+          class="grid h-6 w-6 place-items-center bg-[#5865f2] text-sm font-black text-white"
           aria-hidden="true"
-          >f</span
         >
-        Facebook
+          D
+        </span>
+        Discord
       </button>
       <button
         class="social-button tap-pop flex items-center justify-center"
