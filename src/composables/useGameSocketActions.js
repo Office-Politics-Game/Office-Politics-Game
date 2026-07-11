@@ -134,6 +134,56 @@ export function useGameSocketActions({
     }
   }
 
+  function normalizeShowdownResult(result) {
+    if (result === null || result === undefined) {
+      return null
+    }
+
+    const rejectInvalidResult = () => {
+      console.warn('[game:view] invalid-showdown-result', { result })
+      return null
+    }
+
+    if (
+      result.reason !== 'deck-empty' ||
+      result.winnerPlayerId === null ||
+      result.winnerPlayerId === undefined ||
+      !Array.isArray(result.players) ||
+      result.players.length === 0 ||
+      result.players.length > 4
+    ) {
+      return rejectInvalidResult()
+    }
+
+    const winnerPlayerId = normalizeAnimationPlayerId(result.winnerPlayerId)
+    const players = result.players.map((player, index) => {
+      const playerId = normalizeAnimationPlayerId(player?.playerId)
+
+      if (!playerId || !player?.card) {
+        return null
+      }
+
+      return {
+        playerId,
+        card: normalizeCard(player.card, index),
+      }
+    })
+
+    if (
+      !winnerPlayerId ||
+      players.some((player) => !player) ||
+      !players.some((player) => player.playerId === winnerPlayerId)
+    ) {
+      return rejectInvalidResult()
+    }
+
+    return {
+      ...result,
+      winnerPlayerId,
+      players,
+    }
+  }
+
   async function sendReadyForComputerTurn(reason) {
     if (!normalizedRoomCode.value || !resolvedCurrentPlayerId.value) {
       return
@@ -242,6 +292,7 @@ export function useGameSocketActions({
 
     if (event.type === 'play-card') {
       const animationResult = normalizeEffectAnimationResult(event.animationResult)
+      const showdownResult = normalizeShowdownResult(event.showdownResult)
       const discardedCard = event.discardedCard
         ? normalizeCard(event.discardedCard)
         : null
@@ -249,6 +300,9 @@ export function useGameSocketActions({
       await gameStage.value?.playRemoteCardPlayAnimation?.({ ...event, discardedCard })
       if (animationResult) {
         await gameStage.value?.playEffectAnimation?.(animationResult)
+      }
+      if (showdownResult) {
+        await gameStage.value?.playRoundShowdownAnimation?.(showdownResult)
       }
     }
   }
@@ -322,7 +376,11 @@ export function useGameSocketActions({
         roomCode: normalizedRoomCode.value,
         playerId: resolvedCurrentPlayerId.value,
       })
-      applyGameStatePayload(data)
+      if (data?.afterActionId) {
+        handleSocketGameState(data)
+      } else {
+        applyGameStatePayload(data)
+      }
     } catch (error) {
       console.warn('[game:view] draw-card:socket-failed', {
         roomCode: normalizedRoomCode.value,
@@ -378,7 +436,11 @@ export function useGameSocketActions({
         roomCode: normalizedRoomCode.value,
         ...playPayload,
       })
-      applyGameStatePayload(data)
+      if (data?.afterActionId) {
+        handleSocketGameState(data)
+      } else {
+        applyGameStatePayload(data)
+      }
     } catch (error) {
       console.warn('[game:view] play-card:socket-failed', {
         roomCode: normalizedRoomCode.value,
@@ -390,6 +452,7 @@ export function useGameSocketActions({
       try {
         const data = await playGameCard(normalizedRoomCode.value, playPayload)
         const animationResult = normalizeEffectAnimationResult(data?.animationResult)
+        const showdownResult = normalizeShowdownResult(data?.showdownResult)
         if (animationResult && gameStage.value?.playEffectAnimation) {
           try {
             await gameStage.value.playEffectAnimation(animationResult)
@@ -400,7 +463,19 @@ export function useGameSocketActions({
             })
           }
         }
-        await refreshRoomState()
+        if (showdownResult && gameStage.value?.playRoundShowdownAnimation) {
+          try {
+            await gameStage.value.playRoundShowdownAnimation(showdownResult)
+          } catch (animationError) {
+            console.warn('[game:view] play-card:showdown-animation-failed', {
+              showdownResult,
+              error: animationError,
+            })
+          }
+        }
+        if (!applyGameStatePayload(data)) {
+          await refreshRoomState()
+        }
       } catch (fallbackError) {
         console.warn('[game:view] play-card:fallback-failed', {
           roomCode: normalizedRoomCode.value,

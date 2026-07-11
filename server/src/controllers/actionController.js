@@ -34,6 +34,7 @@ async function handlePlayCard(req, res) {
             message: "卡牌效果已執行",
             result: result.result,
             animationResult: result.animationResult,
+            showdownResult: result.showdownResult,
             discardedCard: result.discardedCard,
             actionLog: result.actionLog,
             state: result.publicState,

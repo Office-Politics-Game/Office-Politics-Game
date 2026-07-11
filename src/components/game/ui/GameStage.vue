@@ -28,6 +28,7 @@ import PMAnimation from "../animations/PMAnimation.vue";
 import PlayerHand from "./PlayerHand.vue";
 import PlayerSeats from "./PlayerSeats.vue";
 import ProtectionAura from "../animations/ProtectionAura.vue";
+import RoundShowdownAnimation from "../animations/RoundShowdownAnimation.vue";
 import RotateDeviceNotice from "./RotateDeviceNotice.vue";
 import TableCardPiles from "./TableCardPiles.vue";
 import TurnStatus from "./TurnStatus.vue";
@@ -111,6 +112,7 @@ const playerHand = ref(null);
 const cardDrawAnimation = ref(null);
 const cardPlayAnimation = ref(null);
 const cardShuffleAnimation = ref(null);
+const roundShowdownAnimation = ref(null);
 const activeEffectResult = ref(null);
 const isInitialRoundDrawAnimating = ref(false);
 const initialRoundDealtPlayerIds = ref([]);
@@ -295,6 +297,7 @@ const activeProtectionAnimationPlayer = computed(() => {
 onBeforeUnmount(() => {
   cleanupCardPlay();
   cardPlayAnimation.value?.stop?.();
+  roundShowdownAnimation.value?.stop?.();
   stopEffectAnimation();
   cleanupNotices();
 });
@@ -388,6 +391,8 @@ defineExpose({
   playDrawAnimation,
   playEffectAnimation,
   playRemoteCardPlayAnimation,
+  playRoundShowdownAnimation: (result) =>
+    roundShowdownAnimation.value?.play?.(result) ?? Promise.resolve(false),
   waitForNoticeIdle,
 });
 </script>
@@ -562,6 +567,12 @@ defineExpose({
         :result="activeEffectResult"
         :get-player-hand-rect="animationRects.getPlayerHandRect"
         @complete="handleEffectAnimationComplete"
+      />
+
+      <RoundShowdownAnimation
+        ref="roundShowdownAnimation"
+        :get-player-hand-rect="animationRects.getPlayerHandRect"
+        :is-self-player="animationRects.isSelfPlayer"
       />
     </section>
 

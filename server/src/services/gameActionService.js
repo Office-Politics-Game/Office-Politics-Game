@@ -155,7 +155,7 @@ async function playCardAction({
         effectResult,
     )
 
-    finishTurn(state, numericPlayerId)
+    const { showdownResult } = finishTurn(state, numericPlayerId)
 
     await pool.query(
         `UPDATE game_sessions
@@ -187,6 +187,7 @@ async function playCardAction({
         gameSession,
         result: effectResult,
         animationResult,
+        showdownResult,
         discardedCard,
         actionLog,
         state,
