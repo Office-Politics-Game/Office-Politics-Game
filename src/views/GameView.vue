@@ -667,7 +667,7 @@ async function handleDrawRequest() {
       playerId: resolvedCurrentPlayerId.value,
     })
 
-    void data
+    applyGameStatePayload(data)
   } catch (error) {
     console.warn('[game:view] draw-card:socket-failed', {
       roomCode: normalizedRoomCode.value,
@@ -733,7 +733,7 @@ async function handlePlayCard(payload) {
       ...playPayload,
     })
 
-    void data
+    applyGameStatePayload(data)
   } catch (error) {
     console.warn('[game:view] play-card:socket-failed', {
       roomCode: normalizedRoomCode.value,

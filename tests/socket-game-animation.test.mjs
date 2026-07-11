@@ -16,21 +16,22 @@ test('game socket handlers broadcast animation actions before private state upda
   assert.match(source, /function createGameActionPayload/)
   assert.match(source, /function emitGameAction/)
   assert.match(source, /emit\("game:action"/)
+  assert.match(source, /function emitDrawCardActionToPlayers/)
   assert.match(drawHandler, /type: "draw-card"/)
   assert.match(drawHandler, /playerId: Number\(playerId\)/)
-  assert.match(drawHandler, /const playerRoom = `game:\$\{roomCode\}:player:\$\{playerId\}`/)
-  assert.match(drawHandler, /io\.to\(playerRoom\)\.emit\("game:action"[\s\S]*drawnCard: result\.drawnCard/)
-  assert.match(drawHandler, /io\.to\(`game:\$\{roomCode\}`\)\.except\(playerRoom\)\.emit\("game:action", drawAction\)/)
+  assert.match(source, /const playerRoom = `game:\$\{roomCode\}:player:\$\{action\.playerId\}`/)
+  assert.match(source, /io\.to\(playerRoom\)\.emit\("game:action"[\s\S]*drawnCard/)
+  assert.match(source, /io\.to\(`game:\$\{roomCode\}`\)\.except\(playerRoom\)\.emit\("game:action", actionPayload\)/)
   assert.ok(
-    drawHandler.indexOf('emit("game:action"') <
-      drawHandler.indexOf('await emitGameStateToPlayers'),
+    drawHandler.indexOf('emitDrawCardActionToPlayers') <
+      drawHandler.indexOf('await emitGameStateAfterActionToPlayers'),
   )
   assert.match(playHandler, /type: "play-card"/)
   assert.match(playHandler, /discardedCard: result\.discardedCard/)
   assert.match(playHandler, /animationResult: result\.animationResult/)
   assert.ok(
-    playHandler.indexOf('emitGameAction') <
-      playHandler.indexOf('await emitGameStateToPlayers'),
+    playHandler.indexOf('emitPlayCardActionToPlayers') <
+      playHandler.indexOf('await emitGameStateAfterActionToPlayers'),
   )
 })
 
@@ -43,7 +44,7 @@ test('game view subscribes to socket actions and defers state while animations r
   assert.match(source, /await emitWithAck\('game:subscribe'/)
   assert.match(source, /await emitWithAck\('game:draw-card'/)
   assert.match(source, /await emitWithAck\('game:play-card'/)
-  assert.match(source, /pendingSocketGameState\.value = data/)
+  assert.match(source, /pendingSocketGameStatesByActionId\.set\(afterActionId, data\)/)
   assert.match(source, /isPlayingSocketAction\.value/)
   assert.match(source, /socketActionQueue = socketActionQueue/)
   assert.match(source, /playDrawAnimation\?\.\(drawnCard, playerId\)/)
@@ -57,11 +58,31 @@ test('game view subscribes to socket actions and defers state while animations r
   assert.match(source, /onBeforeUnmount\(\(\) => \{[\s\S]*off\('game:action'/)
 })
 
+test('game view applies acknowledged draw and play states immediately', async () => {
+  const source = await readSource('src/views/GameView.vue')
+  const drawHandler = source.slice(
+    source.indexOf('async function handleDrawRequest'),
+    source.indexOf('async function handlePlayCard'),
+  )
+  const playHandler = source.slice(
+    source.indexOf('async function handlePlayCard'),
+    source.indexOf('function handleRoundSequenceComplete'),
+  )
+
+  assert.match(drawHandler, /const data = await emitWithAck\('game:draw-card'/)
+  assert.match(drawHandler, /applyGameStatePayload\(data\)/)
+  assert.doesNotMatch(drawHandler, /void data/)
+  assert.match(playHandler, /const data = await emitWithAck\('game:play-card'/)
+  assert.match(playHandler, /applyGameStatePayload\(data\)/)
+  assert.doesNotMatch(playHandler, /void data/)
+})
+
 test('game stage exposes remote opponent play animation for socket play-card actions', async () => {
   const source = await readSource('src/components/game/ui/GameStage.vue')
-  const remotePlayFunction = source.slice(
-    source.indexOf('async function playRemoteCardPlayAnimation'),
-    source.indexOf('function handleEffectAnimationComplete'),
+  const cardPlaySource = await readSource('src/composables/useGameStageCardPlay.js')
+  const remotePlayFunction = cardPlaySource.slice(
+    cardPlaySource.indexOf('async function playRemoteCardPlayAnimation'),
+    cardPlaySource.indexOf('function cleanupCardPlay'),
   )
 
   assert.match(source, /playRemoteCardPlayAnimation,/)

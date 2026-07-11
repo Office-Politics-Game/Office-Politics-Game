@@ -1,14 +1,22 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import gameTableBackgroundUrl from "@/assets/images/bg-game-table.webp";
 import gameLogoUrl from "@/assets/images/logo-en-white.png";
 import { useAudioSettings } from "@/composables/UseAudioSettings";
+import { useGameStageCardPlay } from "@/composables/useGameStageCardPlay";
+import { useGameStageDrawSequence } from "@/composables/useGameStageDrawSequence";
+import { useGameStageEffectAnimation } from "@/composables/useGameStageEffectAnimation";
+import {
+  getEliminatedSnapshot,
+  getRoundWinSnapshot,
+  useGameStageNotices,
+} from "@/composables/useGameStageNotices";
 import { useGameAnimationRects } from "@/composables/useGameAnimationRects";
 import CardDrawAnimation from "../animations/CardDrawAnimation.vue";
-import CardGuessSelector from "./CardGuessSelector.vue";
 import CardPlayAnimation from "../animations/CardPlayAnimation.vue";
 import CardShuffleAnimation from "../animations/CardShuffleAnimation.vue";
 import CardSwapAnimation from "../animations/CardSwapAnimation.vue";
+import CardPlayConfirmPanel from "./CardPlayConfirmPanel.vue";
 import CleanerAnimation from "../animations/CleanerAnimation.vue";
 import FlyInTextModal from "../animations/FlyInTextModal.vue";
 import GameCard from "./GameCard.vue";
@@ -104,41 +112,9 @@ const cardDrawAnimation = ref(null);
 const cardPlayAnimation = ref(null);
 const cardShuffleAnimation = ref(null);
 const activeEffectResult = ref(null);
-const activeCard = ref(null);
-const originRect = ref(null);
-const dragPoint = ref(null);
-const playZoneRect = ref(null);
-const discardRect = ref(null);
-const draggingCardId = ref(null);
-const isDragging = ref(false);
-const isOverPlayZone = ref(false);
-const isTurnNoticeOpen = ref(false);
-const isRoundStartNoticeOpen = ref(false);
-const isRoundWinnerNoticeOpen = ref(false);
-const roundWinnerNotice = ref(null);
-const isPlayerEliminatedNoticeOpen = ref(false);
-const playerEliminatedNotice = ref(null);
 const isInitialRoundDrawAnimating = ref(false);
 const initialRoundDealtPlayerIds = ref([]);
 const lastInitialRoundDealSignature = ref(null);
-const lastRoundStartNoticeKey = ref(null);
-const locallyHiddenPlayedCardIds = ref([]);
-const pendingPlay = ref(null);
-const selectedTargetPlayerId = ref(null);
-const selectedGuessRank = ref(null);
-let roundStartNoticeResolve = null;
-let effectAnimationResolve = null;
-let effectAnimationTimeout = null;
-let effectAnimationSequence = 0;
-let pointerMoveHandler = null;
-let pointerUpHandler = null;
-const hiddenPlayedCardTimers = new Map();
-const noticeIdleResolvers = [];
-const pendingNoticeOpenCount = ref(0);
-const noticeAckDelayTimers = new Set();
-const pendingNoticeAckDelayCount = ref(0);
-const NOTICE_CLOSE_ACK_BUFFER_MS = 600;
-const MANAGER_EFFECT_ACK_BUFFER_MS = 900;
 const resolvedCurrentPlayerId = computed(
   () =>
     props.currentPlayerId ??
@@ -173,10 +149,6 @@ const {
   setSoundVolume,
 } = useAudioSettings();
 
-const hasActivePlay = computed(() =>
-  Boolean(activeCard.value && originRect.value),
-);
-const roundStartNoticeText = computed(() => `第 ${props.roundNumber} 回合開始`);
 const isCurrentPlayerTurn = computed(() => {
   if (!props.currentTurnPlayerId || !resolvedCurrentPlayerId.value) {
     return true;
@@ -191,103 +163,120 @@ const isExplicitCurrentPlayerTurn = computed(
     Boolean(props.currentTurnPlayerId && resolvedCurrentPlayerId.value) &&
     String(props.currentTurnPlayerId) === String(resolvedCurrentPlayerId.value),
 );
-const pendingTargetMode = computed(
-  () => pendingPlay.value?.card.targetMode ?? "none",
-);
-const pendingRequiresTarget = computed(
-  () =>
-    pendingTargetMode.value === "opponent" ||
-    pendingTargetMode.value === "anyPlayer",
-);
-const pendingRequiresGuess = computed(() =>
-  Boolean(pendingPlay.value?.card.requiresGuess),
-);
-const selectableTargetPlayerIds = computed(() => {
-  if (!pendingRequiresTarget.value) {
-    return [];
-  }
 
-  return props.players
-    .filter((player) => {
-      if (pendingTargetMode.value === "opponent") {
-        return !player.isCurrentPlayer;
-      }
+let getInitialRoundDealSignature = () => null;
 
-      return true;
-    })
-    .map((player) => player.id);
+const {
+  isTurnNoticeOpen,
+  isRoundStartNoticeOpen,
+  isRoundWinnerNoticeOpen,
+  roundWinnerNotice,
+  isPlayerEliminatedNoticeOpen,
+  playerEliminatedNotice,
+  roundStartNoticeText,
+  playRoundStartNotice,
+  playTurnNotice,
+  playRoundWinnerNotice,
+  playPlayerEliminatedNotice,
+  closeRoundStartNotice,
+  closeTurnNotice,
+  closeRoundWinnerNotice,
+  closePlayerEliminatedNotice,
+  waitForNoticeIdle,
+  resolveNoticeIdleIfIdle,
+  holdNoticeAckAfterClose,
+  cleanupNotices,
+} = useGameStageNotices({
+  props,
+  isInitialRoundDrawAnimating,
+  activeEffectResult,
+  getInitialRoundDealSignature: () => getInitialRoundDealSignature(),
+  lastInitialRoundDealSignature,
 });
-const initialRoundDealtPlayerIdSet = computed(
-  () => new Set(initialRoundDealtPlayerIds.value),
-);
-const resolvedPlayerHandCardCounts = computed(() => {
-  if (!isInitialRoundDrawAnimating.value) {
-    return props.playerHandCardCounts;
-  }
 
-  return Object.fromEntries(
-    props.players.map((player) => [
-      player.id,
-      initialRoundDealtPlayerIdSet.value.has(player.id)
-        ? Number(props.playerHandCardCounts[player.id] ?? 0)
-        : 0,
-    ]),
-  );
+const {
+  playEffectAnimation,
+  stopEffectAnimation,
+  handleEffectAnimationComplete,
+} = useGameStageEffectAnimation({
+  activeEffectResult,
+  holdNoticeAckAfterClose,
+  resolveNoticeIdleIfIdle,
 });
-const visibleHandCards = computed(() => {
-  if (
-    isInitialRoundDrawAnimating.value &&
-    resolvedCurrentPlayerId.value &&
-    !initialRoundDealtPlayerIdSet.value.has(
-      String(resolvedCurrentPlayerId.value),
-    )
-  ) {
-    return [];
-  }
 
-  const pendingCardId = pendingPlay.value?.card?.id;
-  const hiddenCardIds = new Set(locallyHiddenPlayedCardIds.value);
-  const cards = pendingCardId
-    ? props.handCards.filter((card) => card.id !== pendingCardId)
-    : props.handCards;
-
-  return cards.filter((card) => !hiddenCardIds.has(card.id));
+const drawSequence = useGameStageDrawSequence({
+  props,
+  emit,
+  playerHand,
+  tableCardPilesRef,
+  cardDrawAnimation,
+  cardShuffleAnimation,
+  animationRects,
+  resolvedCurrentPlayerId,
+  isExplicitCurrentPlayerTurn,
+  isDrawAnimating,
+  activeDrawCard,
+  isInitialRoundDrawAnimating,
+  initialRoundDealtPlayerIds,
+  lastInitialRoundDealSignature,
+  playRoundStartNotice,
+  playTurnNotice,
+  resolveNoticeIdleIfIdle,
 });
-const advisorRuleDisabledCardIds = computed(() => {
-  const hasAdvisor = visibleHandCards.value.some(isAdvisorCard);
-  const hasPmOrHr = visibleHandCards.value.some(isPmOrHrCard);
 
-  if (!hasAdvisor || !hasPmOrHr) {
-    return [];
-  }
+getInitialRoundDealSignature = drawSequence.getInitialRoundDealSignature;
 
-  return visibleHandCards.value
-    .filter((card) => !isAdvisorCard(card))
-    .map((card) => card.id);
+const {
+  initialRoundDealtPlayerIdSet,
+  resolvedPlayerHandCardCounts,
+  playInitialRoundDrawSequence,
+  playDrawAnimation,
+} = drawSequence;
+
+const {
+  activeCard,
+  draggingCardId,
+  isDragging,
+  isOverPlayZone,
+  pendingPlay,
+  selectedTargetPlayerId,
+  selectedGuessRank,
+  hasActivePlay,
+  pendingRequiresTarget,
+  pendingRequiresGuess,
+  selectableTargetPlayerIds,
+  visibleHandCards,
+  advisorRuleDisabledCardIds,
+  visibleDiscardCards,
+  selectedTargetPlayer,
+  canConfirmPendingPlay,
+  isHandDrawRequired,
+  isPlayInteractionLocked,
+  isDeckDrawDisabled,
+  handDisabledMessage,
+  deckBlockedMessage,
+  dragPreviewStyle,
+  requestDraw,
+  selectTargetPlayer,
+  selectGuessRank,
+  confirmPendingPlay,
+  cancelPendingPlay,
+  handleCardPointerDown,
+  playRemoteCardPlayAnimation,
+  cleanupCardPlay,
+  pruneHiddenPlayedCards,
+} = useGameStageCardPlay({
+  props,
+  emit,
+  animationRects,
+  cardPlayAnimation,
+  isInitialRoundDrawAnimating,
+  initialRoundDealtPlayerIdSet,
+  resolvedCurrentPlayerId,
+  isCurrentPlayerTurn,
+  isDrawAnimating,
+  activeEffectResult,
 });
-const visibleDiscardCards = computed(() => {
-  const pendingCard = pendingPlay.value?.card;
-
-  if (
-    !pendingCard ||
-    props.discardCards.some((card) => card.id === pendingCard.id)
-  ) {
-    return props.discardCards;
-  }
-
-  return [...props.discardCards, pendingCard];
-});
-const selectedTargetPlayer = computed(
-  () =>
-    props.players.find(
-      (player) => player.id === selectedTargetPlayerId.value,
-    ) ?? null,
-);
-const selectedGuessOption = computed(
-  () =>
-    guessOptions.find((option) => option.rank === selectedGuessRank.value) ??
-    null,
-);
 const protectedPlayers = computed(() =>
   props.players.filter((player) => player.isProtected),
 );
@@ -303,809 +292,11 @@ const activeProtectionAnimationPlayer = computed(() => {
     ) ?? null
   );
 });
-const canConfirmPendingPlay = computed(() => {
-  if (!pendingPlay.value) {
-    return false;
-  }
-
-  if (pendingRequiresTarget.value && !selectedTargetPlayerId.value) {
-    return false;
-  }
-
-  if (pendingRequiresGuess.value && !selectedGuessRank.value) {
-    return false;
-  }
-
-  return true;
-});
-const isHandDrawRequired = computed(() => props.canDraw);
-const isPlayInteractionLocked = computed(
-  () =>
-    props.isLoading ||
-    isInitialRoundDrawAnimating.value ||
-    !isCurrentPlayerTurn.value ||
-    Boolean(activeCard.value) ||
-    Boolean(pendingPlay.value) ||
-    isDrawAnimating.value ||
-    Boolean(activeEffectResult.value),
-);
-const isHandPlayInteractionLocked = computed(
-  () => isPlayInteractionLocked.value || isHandDrawRequired.value,
-);
-const isDeckDrawDisabled = computed(
-  () => isPlayInteractionLocked.value || !props.canDraw,
-);
-const handDisabledMessage = computed(() =>
-  isHandDrawRequired.value ? "請先抽下一張牌" : "",
-);
-const deckBlockedMessage = computed(() =>
-  !isCurrentPlayerTurn.value ? "還沒輪到你" : "",
-);
-const dragPreviewStyle = computed(() => {
-  if (
-    !hasActivePlay.value ||
-    !originRect.value ||
-    !dragPoint.value ||
-    !isDragging.value
-  ) {
-    return { display: "none" };
-  }
-
-  const translateX =
-    dragPoint.value.x - (originRect.value.left + originRect.value.width / 2);
-  const translateY =
-    dragPoint.value.y - (originRect.value.top + originRect.value.height / 2);
-
-  return {
-    ...animationRects.rectToFixedStyle(originRect.value),
-    transform: `translate3d(${translateX}px, ${translateY}px, 0) scale(${isOverPlayZone.value ? 1.06 : 1})`,
-  };
-});
-
-function getCardName(card) {
-  return String(card?.name ?? "")
-    .trim()
-    .toLowerCase();
-}
-
-function getCardRank(card) {
-  return Number(card?.rank ?? card?.cardRank ?? card?.value);
-}
-
-function isAdvisorCard(card) {
-  return (
-    getCardRank(card) === 7 ||
-    ["advisor", "adviser"].includes(getCardName(card))
-  );
-}
-
-function isPmOrHrCard(card) {
-  const cardName = getCardName(card);
-
-  return (
-    getCardRank(card) === 5 ||
-    getCardRank(card) === 6 ||
-    cardName === "pm" ||
-    cardName === "hr"
-  );
-}
-
-function isSelfDraw(playerId) {
-  return !playerId || animationRects.isSelfPlayer(playerId);
-}
-
-function getInitialRoundDealSignature() {
-  if (
-    props.players.length === 0 ||
-    props.discardCards.length > 0 ||
-    props.handCards.length !== 1
-  ) {
-    return null;
-  }
-
-  const handCounts = props.players.map((player) =>
-    Number(props.playerHandCardCounts[player.id] ?? 0),
-  );
-
-  if (handCounts.some((count) => count !== 1)) {
-    return null;
-  }
-
-  return props.players
-    .map(
-      (player) =>
-        `${player.id}:${player.roundWins}:${props.playerHandCardCounts[player.id]}`,
-    )
-    .join("|");
-}
-
-function getRoundStartNoticeKey(signature) {
-  return signature ? `${props.roundNumber}:${signature}` : null;
-}
-
-function getInitialRoundDealCard(playerId) {
-  return animationRects.isSelfPlayer(playerId) ? props.handCards[0] : null;
-}
-
-async function playInitialRoundDrawSequence(signature) {
-  if (!signature || isInitialRoundDrawAnimating.value) {
-    return;
-  }
-
-  isInitialRoundDrawAnimating.value = true;
-  initialRoundDealtPlayerIds.value = [];
-  await nextTick();
-
-  try {
-    const deckPose = tableCardPilesRef.value?.getDeckAnimationPose?.();
-
-    if (deckPose) {
-      await cardShuffleAnimation.value?.play({
-        deckPose,
-        deckCount: Number(props.deckCount) || 0,
-      });
-    }
-
-    for (const player of props.players) {
-      const didDraw = await playDrawAnimation(
-        getInitialRoundDealCard(player.id),
-        player.id,
-      );
-
-      initialRoundDealtPlayerIds.value = [
-        ...new Set([...initialRoundDealtPlayerIds.value, player.id]),
-      ];
-
-      if (!didDraw) {
-        await nextTick();
-      }
-    }
-  } finally {
-    initialRoundDealtPlayerIds.value = props.players.map((player) => player.id);
-    isInitialRoundDrawAnimating.value = false;
-
-    await playRoundStartNotice(signature);
-
-    if (isExplicitCurrentPlayerTurn.value) {
-      playTurnNotice({ force: true });
-    }
-
-    emit("round-sequence-complete");
-    resolveNoticeIdleIfIdle();
-  }
-}
-
-function requestDraw() {
-  if (isPlayInteractionLocked.value || !props.canDraw) {
-    return;
-  }
-
-  emit("draw-request");
-}
-
-async function playDrawAnimation(card, playerId = null) {
-  if (isDrawAnimating.value) {
-    return false;
-  }
-
-  const activeDrawPlayerId =
-    playerId ?? props.drawPlayerId ?? resolvedCurrentPlayerId.value;
-  const shouldDrawSelf = isSelfDraw(activeDrawPlayerId);
-
-  if (shouldDrawSelf && !card) {
-    return false;
-  }
-
-  isDrawAnimating.value = true;
-  activeDrawCard.value = card ? { ...card } : null;
-
-  if (shouldDrawSelf) {
-    playerHand.value?.prepareDrawTarget();
-  }
-
-  await nextTick();
-
-  const startRect = animationRects.getDrawRect("source");
-  const targetRect = shouldDrawSelf
-    ? animationRects.getDrawRect("target")
-    : animationRects.getDrawRect("target", activeDrawPlayerId);
-
-  if (!startRect || !targetRect) {
-    playerHand.value?.finishDraw();
-    activeDrawCard.value = null;
-    isDrawAnimating.value = false;
-    return false;
-  }
-
-  try {
-    if (shouldDrawSelf) {
-      await cardDrawAnimation.value?.selfDraw({
-        startRect,
-        targetRect,
-      });
-    } else {
-      await cardDrawAnimation.value?.othersDraw({
-        startRect,
-        targetRect,
-      });
-    }
-    await nextTick();
-    return true;
-  } finally {
-    playerHand.value?.finishDraw();
-    activeDrawCard.value = null;
-    isDrawAnimating.value = false;
-  }
-}
-
-function settleEffectAnimation(result, completed = false) {
-  if (
-    result &&
-    activeEffectResult.value?.id &&
-    activeEffectResult.value.id !== result.id
-  ) {
-    return;
-  }
-
-  if (effectAnimationTimeout) {
-    window.clearTimeout(effectAnimationTimeout);
-    effectAnimationTimeout = null;
-  }
-
-  const resolve = effectAnimationResolve;
-  effectAnimationResolve = null;
-  activeEffectResult.value = null;
-  if (completed && result?.type === "manager") {
-    holdNoticeAckAfterClose(MANAGER_EFFECT_ACK_BUFFER_MS);
-  }
-  resolve?.(completed);
-  resolveNoticeIdleIfIdle();
-}
-
-function stopEffectAnimation() {
-  settleEffectAnimation(null, false);
-}
-
-function settleRoundStartNotice(completed = false) {
-  const resolve = roundStartNoticeResolve;
-  roundStartNoticeResolve = null;
-  resolve?.(completed);
-  resolveNoticeIdleIfIdle();
-}
-
-function closeRoundStartNotice() {
-  if (isRoundStartNoticeOpen.value) {
-    holdNoticeAckAfterClose();
-  }
-
-  isRoundStartNoticeOpen.value = false;
-  settleRoundStartNotice(true);
-}
-
-function isNoticeIdle() {
-  return (
-    pendingNoticeOpenCount.value === 0 &&
-    pendingNoticeAckDelayCount.value === 0 &&
-    !isTurnNoticeOpen.value &&
-    !isRoundStartNoticeOpen.value &&
-    !isRoundWinnerNoticeOpen.value &&
-    !isPlayerEliminatedNoticeOpen.value &&
-    !isInitialRoundDrawAnimating.value &&
-    !activeEffectResult.value
-  );
-}
-
-function resolveNoticeIdleIfIdle() {
-  if (!isNoticeIdle()) {
-    return;
-  }
-
-  while (noticeIdleResolvers.length > 0) {
-    noticeIdleResolvers.shift()?.(true);
-  }
-}
-
-function waitForNoticeIdle() {
-  if (isNoticeIdle()) {
-    return Promise.resolve(true);
-  }
-
-  return new Promise((resolve) => {
-    noticeIdleResolvers.push(resolve);
-  });
-}
-
-function scheduleNoticeOpen(openNotice) {
-  pendingNoticeOpenCount.value += 1;
-
-  nextTick(() => {
-    pendingNoticeOpenCount.value = Math.max(
-      0,
-      pendingNoticeOpenCount.value - 1,
-    );
-    openNotice();
-    resolveNoticeIdleIfIdle();
-  });
-}
-
-function holdNoticeAckAfterClose(durationMs = NOTICE_CLOSE_ACK_BUFFER_MS) {
-  const timer = window.setTimeout(() => {
-    noticeAckDelayTimers.delete(timer);
-    pendingNoticeAckDelayCount.value = noticeAckDelayTimers.size;
-    resolveNoticeIdleIfIdle();
-  }, durationMs);
-
-  noticeAckDelayTimers.add(timer);
-  pendingNoticeAckDelayCount.value = noticeAckDelayTimers.size;
-}
-
-function closeTurnNotice() {
-  if (isTurnNoticeOpen.value) {
-    holdNoticeAckAfterClose();
-  }
-
-  isTurnNoticeOpen.value = false;
-  resolveNoticeIdleIfIdle();
-}
-
-function closeRoundWinnerNotice() {
-  if (isRoundWinnerNoticeOpen.value) {
-    holdNoticeAckAfterClose();
-  }
-
-  isRoundWinnerNoticeOpen.value = false;
-  resolveNoticeIdleIfIdle();
-}
-
-function closePlayerEliminatedNotice() {
-  if (isPlayerEliminatedNoticeOpen.value) {
-    holdNoticeAckAfterClose();
-  }
-
-  isPlayerEliminatedNoticeOpen.value = false;
-  resolveNoticeIdleIfIdle();
-}
-
-async function playRoundStartNotice(
-  signature = getInitialRoundDealSignature(),
-) {
-  const noticeKey = getRoundStartNoticeKey(signature);
-
-  if (
-    !noticeKey ||
-    isRoundWinnerNoticeOpen.value ||
-    isPlayerEliminatedNoticeOpen.value ||
-    lastRoundStartNoticeKey.value === noticeKey
-  ) {
-    return false;
-  }
-
-  lastRoundStartNoticeKey.value = noticeKey;
-  isTurnNoticeOpen.value = false;
-  isRoundStartNoticeOpen.value = false;
-  settleRoundStartNotice(false);
-
-  await nextTick();
-
-  return new Promise((resolve) => {
-    roundStartNoticeResolve = resolve;
-    isRoundStartNoticeOpen.value = true;
-  });
-}
-
-function playTurnNotice({ force = false } = {}) {
-  const initialRoundDealSignature = getInitialRoundDealSignature();
-
-  if (
-    isRoundStartNoticeOpen.value ||
-    isRoundWinnerNoticeOpen.value ||
-    isPlayerEliminatedNoticeOpen.value ||
-    isInitialRoundDrawAnimating.value ||
-    (!force &&
-      initialRoundDealSignature &&
-      lastInitialRoundDealSignature.value !== initialRoundDealSignature)
-  ) {
-    return;
-  }
-
-  isTurnNoticeOpen.value = false;
-
-  scheduleNoticeOpen(() => {
-    isTurnNoticeOpen.value = true;
-  });
-}
-
-function playRoundWinnerNotice(player) {
-  if (!player) {
-    return;
-  }
-
-  isRoundStartNoticeOpen.value = false;
-  settleRoundStartNotice(false);
-  isTurnNoticeOpen.value = false;
-  isPlayerEliminatedNoticeOpen.value = false;
-  isRoundWinnerNoticeOpen.value = false;
-  roundWinnerNotice.value = {
-    name: player.name,
-    avatarUrl: player.avatarUrl,
-  };
-
-  scheduleNoticeOpen(() => {
-    isRoundWinnerNoticeOpen.value = true;
-  });
-}
-
-function playPlayerEliminatedNotice(player) {
-  if (!player) {
-    return;
-  }
-
-  isRoundStartNoticeOpen.value = false;
-  settleRoundStartNotice(false);
-  isTurnNoticeOpen.value = false;
-  isRoundWinnerNoticeOpen.value = false;
-  isPlayerEliminatedNoticeOpen.value = false;
-  playerEliminatedNotice.value = {
-    name: player.name,
-    avatarUrl: player.avatarUrl,
-  };
-
-  scheduleNoticeOpen(() => {
-    isPlayerEliminatedNoticeOpen.value = true;
-  });
-}
-
-function getRoundWinSnapshot(players) {
-  return Object.fromEntries(
-    players.map((player) => [String(player.id), Number(player.roundWins ?? 0)]),
-  );
-}
-
-function getEliminatedSnapshot(players) {
-  return Object.fromEntries(
-    players.map((player) => [String(player.id), Boolean(player.isEliminated)]),
-  );
-}
-
-function playEffectAnimation(result) {
-  if (!result?.type) {
-    return Promise.resolve(false);
-  }
-
-  stopEffectAnimation();
-
-  const nextResult = {
-    ...result,
-    id: result.id ?? `effect-${Date.now()}-${++effectAnimationSequence}`,
-  };
-
-  return new Promise((resolve) => {
-    effectAnimationResolve = resolve;
-    activeEffectResult.value = nextResult;
-
-    effectAnimationTimeout = window.setTimeout(
-      () => {
-        settleEffectAnimation(nextResult, nextResult.type === "protection");
-      },
-      nextResult.type === "protection" ? 1000 : 8000,
-    );
-  });
-}
-
-async function playRemoteCardPlayAnimation(action) {
-  const playerId = action?.playerId;
-  const card = action?.discardedCard;
-
-  if (!playerId || !card || animationRects.isSelfPlayer(playerId)) {
-    return false;
-  }
-
-  const player = props.players.find(
-    (candidate) => String(candidate.id) === String(playerId),
-  );
-  const originRect = animationRects.getPlayerHandRect(playerId);
-  const targetRect = animationRects.getDiscardRect();
-
-  if (!originRect || !targetRect) {
-    return false;
-  }
-
-  return Boolean(
-    await cardPlayAnimation.value?.play({
-      card,
-      originRect,
-      targetRect,
-      position: player?.position ?? "top",
-      faceUp: false,
-    }),
-  );
-}
-
-function handleEffectAnimationComplete(result) {
-  settleEffectAnimation(result, true);
-}
-
-function refreshDiscardRect() {
-  discardRect.value = animationRects.getPlayRect("discard");
-}
-
-function refreshPlayZoneRect() {
-  playZoneRect.value = animationRects.getPlayRect("zone");
-}
-
-function pointInsideRect(point, rect) {
-  if (!point || !rect) {
-    return false;
-  }
-
-  return (
-    point.x >= rect.left &&
-    point.x <= rect.left + rect.width &&
-    point.y >= rect.top &&
-    point.y <= rect.top + rect.height
-  );
-}
-
-function clearPointerListeners() {
-  if (pointerMoveHandler) {
-    window.removeEventListener("pointermove", pointerMoveHandler);
-    pointerMoveHandler = null;
-  }
-
-  if (pointerUpHandler) {
-    window.removeEventListener("pointerup", pointerUpHandler);
-    window.removeEventListener("pointercancel", pointerUpHandler);
-    pointerUpHandler = null;
-  }
-}
-
-function resetInteraction() {
-  clearPointerListeners();
-  activeCard.value = null;
-  originRect.value = null;
-  dragPoint.value = null;
-  playZoneRect.value = null;
-  discardRect.value = null;
-  draggingCardId.value = null;
-  isDragging.value = false;
-  isOverPlayZone.value = false;
-}
-
-function resetPendingChoices() {
-  selectedTargetPlayerId.value = null;
-  selectedGuessRank.value = null;
-}
-
-function preparePendingPlay(card) {
-  pendingPlay.value = { card };
-  resetPendingChoices();
-}
-
-function cardRequiresPlayChoices(card) {
-  return (
-    card?.targetMode === "opponent" ||
-    card?.targetMode === "anyPlayer" ||
-    Boolean(card?.requiresGuess)
-  );
-}
-
-function clearHiddenPlayedCard(cardId) {
-  const timer = hiddenPlayedCardTimers.get(cardId);
-
-  if (timer) {
-    window.clearTimeout(timer);
-    hiddenPlayedCardTimers.delete(cardId);
-  }
-
-  locallyHiddenPlayedCardIds.value = locallyHiddenPlayedCardIds.value.filter(
-    (hiddenCardId) => hiddenCardId !== cardId,
-  );
-}
-
-function hideSubmittedCard(cardId) {
-  if (!cardId || locallyHiddenPlayedCardIds.value.includes(cardId)) {
-    return;
-  }
-
-  locallyHiddenPlayedCardIds.value = [
-    ...locallyHiddenPlayedCardIds.value,
-    cardId,
-  ];
-
-  const timer = window.setTimeout(() => {
-    clearHiddenPlayedCard(cardId);
-  }, 5000);
-
-  hiddenPlayedCardTimers.set(cardId, timer);
-}
-
-function emitPlayCard(card, targetPlayerId = null, guessedRank = null) {
-  hideSubmittedCard(card.id);
-
-  emit("play-card", {
-    card,
-    cardId: card.id,
-    cardRank: card.rank,
-    effectKey: card.effectKey,
-    targetPlayerId,
-    guessedRank,
-  });
-}
-
-function selectTargetPlayer(playerId) {
-  if (!selectableTargetPlayerIds.value.includes(playerId)) {
-    return;
-  }
-
-  selectedTargetPlayerId.value = playerId;
-}
-
-function selectGuessRank(rank) {
-  if (!pendingRequiresGuess.value) {
-    return;
-  }
-
-  selectedGuessRank.value = rank;
-}
-
-function confirmPendingPlay() {
-  if (!canConfirmPendingPlay.value) {
-    return;
-  }
-
-  const playedCard = pendingPlay.value.card;
-
-  emitPlayCard(
-    playedCard,
-    selectedTargetPlayerId.value,
-    selectedGuessRank.value,
-  );
-
-  pendingPlay.value = null;
-  resetPendingChoices();
-}
-
-function cancelPendingPlay() {
-  pendingPlay.value = null;
-  resetPendingChoices();
-}
-
-function getDragReleaseRect() {
-  if (!originRect.value || !dragPoint.value) {
-    return null;
-  }
-
-  return animationRects.createPointCenteredRect(
-    dragPoint.value,
-    originRect.value,
-  );
-}
-
-async function playActiveCard() {
-  const card = activeCard.value;
-  const releaseRect = getDragReleaseRect();
-  refreshDiscardRect();
-
-  if (!card || !releaseRect || !discardRect.value) {
-    resetInteraction();
-    return;
-  }
-
-  const targetRect = discardRect.value;
-
-  try {
-    const didPlay = await cardPlayAnimation.value?.play({
-      card,
-      originRect: releaseRect,
-      targetRect,
-      position: "bottom",
-      faceUp: true,
-    });
-
-    if (didPlay) {
-      if (cardRequiresPlayChoices(card)) {
-        preparePendingPlay(card);
-      } else {
-        emitPlayCard(card);
-      }
-    }
-  } finally {
-    resetInteraction();
-  }
-}
-
-function handleWindowPointerMove(event) {
-  if (!hasActivePlay.value) {
-    return;
-  }
-
-  dragPoint.value = {
-    x: event.clientX,
-    y: event.clientY,
-  };
-
-  refreshPlayZoneRect();
-  isOverPlayZone.value = pointInsideRect(dragPoint.value, playZoneRect.value);
-}
-
-function handleWindowPointerUp(event) {
-  if (!hasActivePlay.value) {
-    resetInteraction();
-    return;
-  }
-
-  dragPoint.value = {
-    x: event.clientX,
-    y: event.clientY,
-  };
-
-  refreshPlayZoneRect();
-  isOverPlayZone.value = pointInsideRect(dragPoint.value, playZoneRect.value);
-  isDragging.value = false;
-  clearPointerListeners();
-
-  if (isOverPlayZone.value) {
-    playActiveCard();
-    return;
-  }
-
-  resetInteraction();
-}
-
-function handleCardPointerDown(card, event) {
-  if (
-    isHandPlayInteractionLocked.value ||
-    advisorRuleDisabledCardIds.value.includes(card.id)
-  ) {
-    return;
-  }
-
-  const cardElement = event.currentTarget;
-  const cardRect = animationRects.getCardElementRect(cardElement);
-
-  if (!cardRect) {
-    return;
-  }
-
-  event.preventDefault();
-  event.stopPropagation();
-
-  activeCard.value = card;
-  draggingCardId.value = card.id;
-  originRect.value = cardRect;
-  dragPoint.value = {
-    x: event.clientX,
-    y: event.clientY,
-  };
-  refreshDiscardRect();
-  refreshPlayZoneRect();
-  isDragging.value = true;
-  isOverPlayZone.value = pointInsideRect(dragPoint.value, playZoneRect.value);
-
-  pointerMoveHandler = handleWindowPointerMove;
-  pointerUpHandler = handleWindowPointerUp;
-  window.addEventListener("pointermove", pointerMoveHandler, { passive: true });
-  window.addEventListener("pointerup", pointerUpHandler);
-  window.addEventListener("pointercancel", pointerUpHandler);
-
-  if (typeof cardElement.setPointerCapture === "function") {
-    try {
-      cardElement.setPointerCapture(event.pointerId);
-    } catch {
-      // Pointer capture is a best-effort improvement only.
-    }
-  }
-}
-
 onBeforeUnmount(() => {
-  clearPointerListeners();
+  cleanupCardPlay();
   cardPlayAnimation.value?.stop?.();
   stopEffectAnimation();
-  settleRoundStartNotice(false);
-  hiddenPlayedCardTimers.forEach((timer) => window.clearTimeout(timer));
-  hiddenPlayedCardTimers.clear();
-  noticeAckDelayTimers.forEach((timer) => window.clearTimeout(timer));
-  noticeAckDelayTimers.clear();
+  cleanupNotices();
 });
 
 watch(
@@ -1189,11 +380,7 @@ watch(
 watch(
   () => props.handCards.map((card) => card.id),
   (cardIds) => {
-    const handCardIdSet = new Set(cardIds);
-
-    locallyHiddenPlayedCardIds.value
-      .filter((cardId) => !handCardIdSet.has(cardId))
-      .forEach(clearHiddenPlayedCard);
+    pruneHiddenPlayedCards(cardIds);
   },
 );
 
@@ -1298,53 +485,19 @@ defineExpose({
         />
       </Transition>
 
-      <section
+      <CardPlayConfirmPanel
         v-if="pendingPlay"
-        class="play-confirm-panel"
-        aria-label="出牌確認"
-      >
-        <div class="play-confirm-panel__summary">
-          <span>準備出牌</span>
-          <strong>{{ pendingPlay.card.name }}</strong>
-          <small>
-            {{
-              pendingRequiresTarget
-                ? selectedTargetPlayer
-                  ? `目標：${selectedTargetPlayer.name}`
-                  : "請點選玩家頭像"
-                : "此牌不需要指定目標"
-            }}
-          </small>
-        </div>
-
-        <CardGuessSelector
-          v-if="pendingRequiresGuess"
-          :guess-options="guessOptions"
-          :selected-rank="selectedGuessRank"
-          :excluded-ranks="[1]"
-          @select="selectGuessRank"
-        />
-
-        <p v-if="pendingRequiresGuess" class="play-confirm-panel__hint">
-          {{
-            selectedGuessOption
-              ? `猜測：${selectedGuessOption.name}`
-              : "實習生不能猜實習生，請選擇 2-8 的牌。"
-          }}
-        </p>
-
-        <div class="play-confirm-panel__actions">
-          <button type="button" @click="cancelPendingPlay">取消</button>
-          <button
-            type="button"
-            class="play-confirm-panel__confirm"
-            :disabled="!canConfirmPendingPlay"
-            @click="confirmPendingPlay"
-          >
-            確認出牌
-          </button>
-        </div>
-      </section>
+        :pending-play="pendingPlay"
+        :pending-requires-target="pendingRequiresTarget"
+        :pending-requires-guess="pendingRequiresGuess"
+        :selected-target-player="selectedTargetPlayer"
+        :selected-guess-rank="selectedGuessRank"
+        :guess-options="guessOptions"
+        :can-confirm-pending-play="canConfirmPendingPlay"
+        @select-guess="selectGuessRank"
+        @confirm="confirmPendingPlay"
+        @cancel="cancelPendingPlay"
+      />
 
       <CardDrawAnimation ref="cardDrawAnimation" :card="activeDrawCard" />
       <CardShuffleAnimation ref="cardShuffleAnimation" />
@@ -1503,88 +656,6 @@ defineExpose({
   background: rgba(0, 0, 0, 0.42);
   -webkit-backdrop-filter: blur(5px);
   backdrop-filter: blur(5px);
-}
-
-.play-confirm-panel {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 78;
-  display: grid;
-  gap: 12px;
-  width: min(340px, calc(100vw - 32px));
-  max-height: min(420px, calc(100dvh - 224px));
-  overflow: auto;
-  border: 1px solid rgba(250, 204, 21, 0.58);
-  border-radius: var(--radius-md, 0);
-  padding: 16px;
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(7, 17, 29, 0.9)),
-    rgba(7, 17, 29, 0.82);
-  box-shadow:
-    0 0 24px rgba(250, 204, 21, 0.16),
-    0 22px 48px rgba(0, 0, 0, 0.46);
-  color: #f8fafc;
-  backdrop-filter: blur(10px);
-}
-
-.play-confirm-panel__summary {
-  display: grid;
-  gap: 4px;
-}
-
-.play-confirm-panel__summary span {
-  color: #facc15;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.play-confirm-panel__summary strong {
-  font-size: 24px;
-  line-height: 1.05;
-}
-
-.play-confirm-panel__summary small,
-.play-confirm-panel__hint {
-  color: #cbd5e1;
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.35;
-}
-
-.play-confirm-panel__hint {
-  margin: 0;
-}
-
-.play-confirm-panel__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.play-confirm-panel__actions button {
-  min-height: 38px;
-  border: 1px solid rgba(148, 163, 184, 0.48);
-  border-radius: var(--radius-md, 0);
-  padding: 0 12px;
-  cursor: pointer;
-  background: rgba(15, 23, 42, 0.72);
-  color: #f8fafc;
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.play-confirm-panel__confirm {
-  border-color: rgba(250, 204, 21, 0.72) !important;
-  background: rgba(250, 204, 21, 0.18) !important;
-}
-
-.play-confirm-panel__actions button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 
 @media (orientation: landscape), (min-width: 768px) {

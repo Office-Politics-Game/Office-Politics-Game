@@ -53,23 +53,27 @@ test("game view does not ACK an intermediate computer draw while play animations
 
 test("game stage treats scheduled winner and eliminated notices as busy before ACK", async () => {
   const gameStageSource = await readSource("src/components/game/ui/GameStage.vue");
+  const noticeSource = await readSource("src/composables/useGameStageNotices.js");
+  const effectSource = await readSource("src/composables/useGameStageEffectAnimation.js");
   const gameViewSource = await readSource("src/views/GameView.vue");
 
-  assert.match(gameStageSource, /pendingNoticeOpenCount = ref\(0\)/);
-  assert.match(gameStageSource, /pendingNoticeOpenCount\.value === 0/);
-  assert.match(gameStageSource, /pendingNoticeAckDelayCount = ref\(0\)/);
-  assert.match(gameStageSource, /pendingNoticeAckDelayCount\.value === 0/);
-  assert.match(gameStageSource, /NOTICE_CLOSE_ACK_BUFFER_MS = 600/);
-  assert.match(gameStageSource, /MANAGER_EFFECT_ACK_BUFFER_MS = 900/);
-  assert.match(gameStageSource, /function scheduleNoticeOpen\(openNotice\)/);
-  assert.match(gameStageSource, /pendingNoticeOpenCount\.value \+= 1/);
-  assert.match(gameStageSource, /function holdNoticeAckAfterClose\(durationMs = NOTICE_CLOSE_ACK_BUFFER_MS\)/);
-  assert.match(gameStageSource, /window\.setTimeout\(\(\) => \{/);
-  assert.match(gameStageSource, /completed && result\?\.type === ["']manager["']/);
-  assert.match(gameStageSource, /holdNoticeAckAfterClose\(MANAGER_EFFECT_ACK_BUFFER_MS\)/);
-  assert.match(gameStageSource, /resolveNoticeIdleIfIdle\(\)/);
-  assert.match(gameStageSource, /scheduleNoticeOpen\(\(\) => \{\s+isRoundWinnerNoticeOpen\.value = true;/);
-  assert.match(gameStageSource, /scheduleNoticeOpen\(\(\) => \{\s+isPlayerEliminatedNoticeOpen\.value = true;/);
+  assert.match(gameStageSource, /useGameStageNotices/);
+  assert.match(gameStageSource, /waitForNoticeIdle/);
+  assert.match(noticeSource, /pendingNoticeOpenCount = ref\(0\)/);
+  assert.match(noticeSource, /pendingNoticeOpenCount\.value === 0/);
+  assert.match(noticeSource, /pendingNoticeAckDelayCount = ref\(0\)/);
+  assert.match(noticeSource, /pendingNoticeAckDelayCount\.value === 0/);
+  assert.match(noticeSource, /NOTICE_CLOSE_ACK_BUFFER_MS = 600/);
+  assert.match(noticeSource, /MANAGER_EFFECT_ACK_BUFFER_MS = 900/);
+  assert.match(noticeSource, /function scheduleNoticeOpen\(openNotice\)/);
+  assert.match(noticeSource, /pendingNoticeOpenCount\.value \+= 1/);
+  assert.match(noticeSource, /function holdNoticeAckAfterClose\(durationMs = NOTICE_CLOSE_ACK_BUFFER_MS\)/);
+  assert.match(noticeSource, /window\.setTimeout\(\(\) => \{/);
+  assert.match(effectSource, /completed && result\?\.type === ["']manager["']/);
+  assert.match(effectSource, /holdNoticeAckAfterClose\?\.\(MANAGER_EFFECT_ACK_BUFFER_MS\)/);
+  assert.match(effectSource, /resolveNoticeIdleIfIdle\?\.\(\)/);
+  assert.match(noticeSource, /scheduleNoticeOpen\(\(\) => \{\s+isRoundWinnerNoticeOpen\.value = true;/);
+  assert.match(noticeSource, /scheduleNoticeOpen\(\(\) => \{\s+isPlayerEliminatedNoticeOpen\.value = true;/);
   assert.match(gameStageSource, /:duration="2400"/);
   assert.match(gameViewSource, /await nextTick\(\)\s+await nextTick\(\)\s+await gameStage\.value\?\.waitForNoticeIdle\?\.\(\)/);
 });
