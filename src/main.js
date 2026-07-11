@@ -31,7 +31,7 @@ async function bootstrapApplication() {
   const playerStore = usePlayerStore(pinia);
 
   localStorage.removeItem("gameAuthToken");
-  
+
   const isVerified = await authStore.verifyToken();
 
   if (isVerified && authStore.currentPlayer) {

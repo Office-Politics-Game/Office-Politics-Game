@@ -135,8 +135,12 @@ export const useAuthStore = defineStore("auth", {
         return true
       } catch (error) {
         resetAuthState(this)
+<<<<<<< HEAD
         this.errorMessage = getErrorMessage(error, "驗證登入狀態失敗")
         appearanceStore.resetAppearance()
+=======
+        this.errorMessage = getErrorMessage(error, "登入驗證失敗");
+>>>>>>> ae495f1 (fix: 修正登入驗證狀態與空白格式)
 
         return false
       } finally {
