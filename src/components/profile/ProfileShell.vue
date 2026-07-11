@@ -32,7 +32,11 @@
       class="profile-paper"
       :style="{ '--paper-image': `url(${paperImage})` }"
     >
-      <ProfileSidebar :player="player" />
+      <ProfileSidebar
+        :player="player"
+        :can-edit="canEdit"
+        @edit-avatar="$emit('editAvatar')"
+      />
 
       <div class="profile-paper__content flex min-h-0 min-w-0 flex-1 flex-col">
         <header class="profile-paper__header relative pr-[38px] lg:pr-[58px]">
@@ -99,9 +103,13 @@ defineProps({
     type: Array,
     default: () => [],
   },
+  canEdit: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-defineEmits(["close", "update:activeTab"]);
+defineEmits(["close", "update:activeTab", "editAvatar"]);
 </script>
 
 <style scoped>

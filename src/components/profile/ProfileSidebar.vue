@@ -5,18 +5,32 @@
     <div
       class="profile-sidebar__identity flex items-center gap-3 pt-0 text-left lg:grid lg:gap-0 lg:justify-items-center lg:pt-1 lg:text-center"
     >
-      <img
-        v-if="player.avatarUrl"
-        class="profile-sidebar__avatar h-14 w-14 rounded-full border-[3px] border-[rgba(255,255,255,0.9)] object-cover lg:h-[104px] lg:w-[104px]"
-        :src="player.avatarUrl"
-        :alt="`${player.username} avatar`"
-      />
-      <div
-        v-else
-        class="profile-sidebar__avatar-placeholder h-14 w-14 rounded-full border-[3px] border-[rgba(255,255,255,0.9)] lg:h-[104px] lg:w-[104px]"
-        aria-hidden="true"
-      ></div>
-
+      <button
+        type="button"
+        class="profile-sidebar__avatar-button relative shrink-0"
+        :disabled="!canEdit"
+        :aria-label="canEdit ? '編輯頭像' : '登入後才能編輯頭像'"
+        @click="$emit('edit-avatar')"
+      >
+        <img
+          v-if="player.avatarUrl"
+          class="profile-sidebar__avatar h-14 w-14 rounded-full border-[3px] border-[rgba(255,255,255,0.9)] object-cover lg:h-[104px] lg:w-[104px]"
+          :src="player.avatarUrl"
+          :alt="`${player.username} 頭像`"
+        />
+        <div
+          v-else
+          class="profile-sidebar__avatar-placeholder h-14 w-14 rounded-full border-[3px] border-[rgba(255,255,255,0.9)] lg:h-[104px] lg:w-[104px]"
+          aria-hidden="true"
+        ></div>
+        <span
+          v-if="canEdit"
+          class="profile-sidebar__avatar-edit"
+          aria-hidden="true"
+        >
+          編輯
+        </span>
+      </button>
       <div class="profile-sidebar__identity-copy min-w-0 flex-1 lg:w-full">
         <h1
           class="profile-sidebar__name mt-0 mb-1.5 w-full overflow-hidden text-ellipsis whitespace-nowrap text-md font-black leading-[1.12] text-[#080a0f] lg:mt-6 lg:text-lg"
@@ -128,7 +142,13 @@ defineProps({
     type: Object,
     required: true,
   },
+  canEdit: {
+    type: Boolean,
+    default: false,
+  }
 });
+
+defineEmits(["edit-avatar"])
 </script>
 
 <style scoped>
@@ -204,5 +224,32 @@ defineProps({
     margin-top: -8px;
     font-size: var(--text-xs);
   }
+}
+
+.profile-sidebar__avatar-button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.profile-sidebar__avatar-button:disabled {
+  cursor: default;
+}
+
+.profile-sidebar__avatar-edit {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  border: 1px solid rgba(134, 179, 224, 0.8);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 2px 6px;
+  color: var(--brand-navy);
+  font-size: var(--text-xs);
+  font-weight: 900;
+}
+
+.profile-sidebar__avatar-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--brand-focus);
 }
 </style>

@@ -1,6 +1,6 @@
 <template>
   <nav
-    class="profile-tabs grid h-8 grid-cols-4 border-b border-[rgba(160,166,179,0.3)] lg:h-16"
+    class="profile-tabs grid h-8 grid-cols-3 border-b border-[rgba(160,166,179,0.3)] lg:h-16"
     aria-label="個人資料分頁"
   >
     <button

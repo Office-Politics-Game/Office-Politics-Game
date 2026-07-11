@@ -55,7 +55,6 @@ import { computed } from "vue";
 import {
   CalendarClock,
   Crown,
-  MapPin,
   Pencil,
   UserRound,
   BadgeInfo,
@@ -76,38 +75,37 @@ const emit = defineEmits(["edit"]);
 
 const items = computed(() => [
   {
+    id: "username",
     label: "暱稱",
     value: props.player.username,
     icon: UserRound,
     editable: true,
   },
   {
+    id: "title",
     label: "稱號",
     value: props.player.title,
     icon: Crown,
     editable: true,
   },
   {
+    id: "createdAt",
     label: "加入時間",
     value: props.player.createdAtDisplay,
     icon: CalendarClock,
     editable: false,
   },
   {
+    id: "playerCode",
     label: "玩家 ID",
     value: props.player.playerCode,
     icon: UserRound,
     editable: false,
   },
   {
-    label: "地區",
-    value: props.player.region,
-    icon: MapPin,
-    editable: false,
-  },
-  {
+    id: "bio",
     label: "自我介紹",
-    value: props.player.bio,
+    value: props.player.bio || "尚未設定",
     icon: BadgeInfo,
     editable: true,
   },

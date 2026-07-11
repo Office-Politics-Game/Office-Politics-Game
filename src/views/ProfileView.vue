@@ -9,13 +9,22 @@
     :exit-background-image="bgDashboard"
     :paper-image="paperBackground"
     :is-returning="isReturningToLobby"
+    :can-edit="profileStore.isMemberProfile"
     @close="goLobby"
+    @edit-avatar="openAvatarEditor"
   >
     <ProfileInfoPanel
       v-if="activeTab === 'profile'"
       :player="profilePlayer"
       :can-edit="profileStore.isMemberProfile"
       @edit="handleEditProfileField"
+    />
+    <ProfileMatchHistoryPanel
+      v-else-if="activeTab === 'matches' && profileStore.isMemberProfile"
+      :matches="profileStore.matchHistory"
+      :is-loading="profileStore.isMatchHistoryLoading"
+      :error-message="profileStore.matchHistoryErrorMessage"
+      @reload="profileStore.loadMatchHistory().catch(() => {})"
     />
     <AchievementPanel
       v-else-if="activeTab === 'badges' && profileStore.isMemberProfile"
@@ -38,6 +47,23 @@
       :description="activeTabMeta.description"
     />
   </ProfileShell>
+  <ProfileEditModal
+    v-if="editingField"
+    :field="editingField"
+    :initial-value="editingInitialValue"
+    :is-saving="profileStore.isUpdating"
+    :error-message="editErrorMessage"
+    @close="closeProfileEditor"
+    @save="saveProfileField"
+  />
+  <ProfileAvatarModal
+    v-if="isAvatarEditorOpen"
+    :selected-avatar-id="profilePlayer?.avatarId"
+    :is-saving="profileStore.isUpdating"
+    :error-message="editErrorMessage"
+    @close="closeAvatarEditor"
+    @save="saveAvatar"
+  />
 
   <main
     v-else
@@ -121,6 +147,9 @@ import { useAuthStore } from "@/stores/authStore.js";
 import { useAchievementStore } from "@/stores/achievementStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
 import { useProfileStore } from "@/stores/profileStore.js";
+import ProfileAvatarModal from "@/components/profile/ProfileAvatarModal.vue"
+import ProfileEditModal from "@/components/profile/ProfileEditModal.vue"
+import ProfileMatchHistoryPanel from "@/components/profile/ProfileMatchHistoryPanel.vue"
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -134,6 +163,11 @@ const equippedAvatarUrl = ref("");
 const hasResolvedEquippedAvatar = ref(false);
 const RETURN_ANIMATION_DURATION = 700;
 
+const editingField = ref(null)
+const editingInitialValue = ref("")
+const isAvatarEditorOpen = ref(false)
+const editErrorMessage = ref("")
+
 const tabs = [
   {
     id: "profile",
@@ -143,21 +177,16 @@ const tabs = [
   {
     id: "matches",
     label: "對戰紀錄",
-    description: "完整對戰紀錄正在整理中，之後會顯示近期牌局與勝負結果。",
+    description: "查看近期牌局與勝負結果。",
   },
   {
     id: "badges",
     label: "成就徽章",
-    description: "成就牆即將開放，未來會展示你的辦公室生存里程碑。",
-  },
-  {
-    id: "collection",
-    label: "造型收藏",
-    description: "收藏櫃正在佈置中，之後可查看已取得的頭像、牌背與桌面造型。",
+    description: "查看你的辦公室生存里程碑。",
   },
 ];
 
-const memberOnlyTabIds = ["matches", "badges", "collection"];
+const memberOnlyTabIds = ["matches", "badges"];
 
 const sourcePlayer = computed(
   () =>
@@ -365,13 +394,76 @@ async function fetchAchievements() {
     .catch(() => {});
 }
 
-function handleEditProfileField() {
+function handleEditProfileField(item) {
   if (!profileStore.isMemberProfile) {
     goLogin();
     return;
   }
 
-  window.alert("個人資料編輯尚未開放。");
+  if (!["username", "bio"].includes(item.id)) {
+    return
+  }
+
+  editingField.value = item
+  editingInitialValue.value = item.id === "bio" ? profilePlayer.value.bio : profilePlayer.value.username
+  editErrorMessage.value = ""
+}
+
+function closeProfileEditor() {
+  editingField.value = null
+  editingInitialValue.value = ""
+  editErrorMessage.value = ""
+}
+
+async function saveProfileField(value) {
+  if (!editingField.value) {
+    return
+  }
+
+  try {
+    const updatedProfile = await profileStore.updateMemberProfile({
+      [editingField.value.id]: value,
+    })
+
+    authStore.currentPlayer = {
+      ...authStore.currentPlayer,
+      ...updatedProfile,
+    }
+
+    closeProfileEditor()
+  } catch (error) {
+    editErrorMessage.value = error?.data?.message || error?.message || "個人資料更新失敗"
+  }
+}
+
+function openAvatarEditor() {
+  if (!profileStore.isMemberProfile) {
+    goLogin()
+    return
+  }
+
+  isAvatarEditorOpen.value = true
+  editErrorMessage.value = ""
+}
+
+function closeAvatarEditor() {
+  isAvatarEditorOpen.value = false
+  editErrorMessage.value = ""
+}
+
+async function saveAvatar(avatarId) {
+  try {
+    const updatedProfile = await profileStore.updateMemberProfile({ avatarId })
+
+    authStore.currentPlayer = {
+      ...authStore.currentPlayer,
+      ...updatedProfile,
+    }
+
+    closeAvatarEditor()
+  } catch (error) {
+    editErrorMessage.value = error?.data?.message || error?.message || "頭像更新失敗"
+  }
 }
 
 function goLogin() {
@@ -420,6 +512,15 @@ watch(
   ],
   () => {
     initializeProfile();
+  }
+);
+
+watch(
+  () => activeTab.value,
+  (tab) => {
+    if (tab === "matches" && profileStore.isMemberProfile) {
+      profileStore.loadMatchHistory();
+    }
   },
 );
 
