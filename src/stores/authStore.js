@@ -102,7 +102,7 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    async verifyToken() {
+    async verifyToken({ showError = false } = {}) {
       const appearanceStore = useAppearanceStore()
 
       if (this.hasVerifiedToken && this.isLoggedIn && this.currentPlayer) {
@@ -135,8 +135,11 @@ export const useAuthStore = defineStore("auth", {
         return true
       } catch (error) {
         resetAuthState(this)
-        this.errorMessage = getErrorMessage(error, "驗證登入狀態失敗")
         appearanceStore.resetAppearance()
+
+        if (showError) {
+          this.errorMessage = getErrorMessage(error, "登入驗證失敗")
+        }
 
         return false
       } finally {

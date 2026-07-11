@@ -41,10 +41,11 @@
       <div
         v-if="showLoginModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-        @click.self="handleAuthOverlayClose"
       >
         <LoginContent
           v-if="authModalMode === 'login'"
+          :notice-message="loginNoticeMessage"
+          :notice-type="loginNoticeType"
           @close="closeAuthModal"
           @open-guest="openGuestModal"
           @open-register="openRegisterModal"
@@ -72,7 +73,6 @@
       <div
         v-if="showGuestLoginModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-        @click.self="handleGuestOverlayClose"
       >
         <GuestLoginModal
           @close="closeGuestLoginModal"
