@@ -96,7 +96,11 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const playerStore = usePlayerStore();
-const { playPreGameSound } = usePreGameAudio();
+const {
+  playPreGameSound,
+  startPreGameBackground,
+  stopPreGameBackground,
+} = usePreGameAudio();
 const showLoginModal = ref(false);
 const showGuestLoginModal = ref(false);
 const authModalMode = ref("login");
@@ -113,6 +117,7 @@ function handlePrimaryAction() {
   playLoginClick();
 
   if (isMemberLoggedIn.value) {
+    startPreGameBackground({ fadeIn: true, userInitiated: true });
     router.push("/lobby");
     return;
   }
@@ -124,6 +129,7 @@ function handleSecondaryAction() {
   playLoginClick();
 
   if (isMemberLoggedIn.value) {
+    stopPreGameBackground({ fadeOut: false });
     authStore.logout();
     playerStore.resetPlayer();
     showLoginModal.value = false;

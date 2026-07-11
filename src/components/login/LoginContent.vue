@@ -176,7 +176,7 @@ const emit = defineEmits(["close", "open-guest", "open-register"])
 const authStore = useAuthStore()
 const playerStore = usePlayerStore()
 const router = useRouter()
-const { playPreGameSound } = usePreGameAudio()
+const { playPreGameSound, startPreGameBackground } = usePreGameAudio()
 
 const account = ref("")
 const password = ref("")
@@ -250,6 +250,8 @@ async function handleLogin() {
     if (authStore.currentPlayer) {
       playerStore.setCurrentPlayer(authStore.currentPlayer)
     }
+
+    startPreGameBackground({ fadeIn: true, userInitiated: true })
 
     emit("close")
     await router.push("/lobby")

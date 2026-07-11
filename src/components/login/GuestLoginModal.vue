@@ -121,7 +121,7 @@ import { createGuestPlayer } from "@/services/playerService";
 import { usePreGameAudio } from "@/composables/UsePreGameAudio";
 
 const emit = defineEmits(["close", "success"]);
-const { playPreGameSound } = usePreGameAudio();
+const { playPreGameSound, startPreGameBackground } = usePreGameAudio();
 
 const selectedAvatarIndex = ref(0);
 const nickname = ref(createGuestNickname());
@@ -180,6 +180,7 @@ async function submitGuest() {
       avatarId: selectedAvatar.value.id,
     });
 
+    startPreGameBackground({ fadeIn: true, userInitiated: true });
     emit("success", player);
   } catch (error) {
     errorMessage.value = error.message || "建立訪客資料失敗，請稍後再試";

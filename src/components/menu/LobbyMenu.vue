@@ -150,7 +150,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 const currencyStore = useCurrencyStore();
 const playerStore = usePlayerStore();
-const { playPreGameSound } = usePreGameAudio();
+const { playPreGameSound, stopPreGameBackground } = usePreGameAudio();
 const isSocialTransitioning = ref(false);
 const isProfileTransitioning = ref(false);
 const isMallTransitioning = ref(false);
@@ -238,6 +238,7 @@ function leaveLobby() {
   }
 
   playPreGameSound("login-button-click");
+  stopPreGameBackground({ fadeOut: false });
   authStore.logout();
   playerStore.resetPlayer();
   currencyStore.resetCurrency();

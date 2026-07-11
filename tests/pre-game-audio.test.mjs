@@ -11,6 +11,11 @@ test('pre-game audio assets use semantic filenames', async () => {
   assert.ok(audioFiles.includes('login-button-click.mp3'))
   assert.ok(audioFiles.includes('lobby-navigation-whoosh.mp3'))
   assert.ok(audioFiles.includes('lobby-money-chant-theme.mp3'))
+  assert.ok(audioFiles.includes('pre-game-lobby-theme.mp3'))
+  assert.equal(
+    audioFiles.includes('Red Right Hand 2011 Remaster  Nick Cave  The Bad Seeds  Instrumental.mp3'),
+    false,
+  )
   assert.ok(audioFiles.includes('lobby-footsteps-heels-01.mp3'))
   assert.ok(audioFiles.includes('lobby-footsteps-heels-02.mp3'))
   assert.ok(audioFiles.includes('lobby-footsteps-heels-03.mp3'))
@@ -18,16 +23,13 @@ test('pre-game audio assets use semantic filenames', async () => {
   assert.equal(audioFiles.some((fileName) => fileName.endsWith('.mp3.mp3')), false)
 })
 
-test('pre-game audio controller maps detail layers and ui sounds', async () => {
+test('pre-game audio controller maps ui sounds', async () => {
   const source = await readSource('src/composables/UsePreGameAudio.js')
 
   assert.match(source, /loginButtonClickUrl/)
   assert.match(source, /lobbyNavigationWhooshUrl/)
   assert.match(source, /lobbyMoneyChantThemeUrl/)
-  assert.match(source, /lobbyFootstepsHeels01Url/)
-  assert.match(source, /lobbyFootstepsHeels02Url/)
-  assert.match(source, /lobbyFootstepsHeels03Url/)
-  assert.match(source, /lobbyFootstepsHeels04Url/)
+  assert.match(source, /preGameLobbyThemeUrl/)
   assert.match(source, /function syncPreGameRouteAudio/)
   assert.match(source, /function playPreGameSound/)
   assert.match(source, /musicEnabled/)
@@ -47,68 +49,108 @@ test('pre-game audio controller does not load looping ambience music', async () 
 test('pre-game audio controller loops lobby background music', async () => {
   const source = await readSource('src/composables/UsePreGameAudio.js')
 
-  assert.match(source, /LOBBY_MUSIC_GAIN/)
-  assert.match(source, /lobbyMusicAudio/)
-  assert.match(source, /ensureLobbyMusicAudio/)
-  assert.match(source, /playLobbyMusic/)
+  assert.match(source, /PRE_LOGIN_MUSIC_GAIN = [\d.]+/)
+  assert.match(source, /PRE_GAME_MUSIC_GAIN = [\d.]+/)
+  assert.match(source, /loginLobbyMusicAudio/)
+  assert.match(source, /ensureLoginLobbyMusicAudio/)
+  assert.match(source, /playLoginLobbyMusic/)
+  assert.match(source, /preGameLobbyMusicAudio/)
+  assert.match(source, /ensurePreGameLobbyMusicAudio/)
+  assert.match(source, /playPreGameLobbyMusic/)
   assert.match(source, /createAudio\(lobbyMoneyChantThemeUrl, \{ loop: true \}\)/)
-  assert.match(source, /pauseAudio\(lobbyMusicAudio, \{ reset: true \}\)/)
+  assert.match(source, /createAudio\(preGameLobbyThemeUrl, \{ loop: true \}\)/)
+  assert.match(source, /pauseAudio\(loginLobbyMusicAudio, \{ reset: true \}\)/)
+  assert.match(source, /pauseAudio\(preGameLobbyMusicAudio, \{ reset: true \}\)/)
 })
 
-test('pre-game background audio only runs on entry and auth screens', async () => {
+test('login-before audio switches to the pre-game theme after explicit start', async () => {
   const source = await readSource('src/composables/UsePreGameAudio.js')
-  const routeNamesMatch = source.match(
+
+  assert.match(source, /PRE_LOGIN_AUDIO_ROUTE_NAMES/)
+  assert.match(source, /function startPreLoginBackground/)
+  assert.match(source, /function isPreLoginAudioRoute/)
+  assert.match(source, /pauseAudio\(loginLobbyMusicAudio, \{ reset: true \}\)/)
+  assert.match(source, /startPreGameBackground\(\{ fadeIn = false, userInitiated = false \} = \{\}\)/)
+})
+
+test('pre-game lobby music fades out when leaving the auth flow', async () => {
+  const source = await readSource('src/composables/UsePreGameAudio.js')
+
+  assert.match(source, /LOBBY_MUSIC_FADE_OUT_MS = 900/)
+  assert.match(source, /lobbyMusicFadeTimerId/)
+  assert.match(source, /function fadeOutAudio/)
+  assert.match(source, /window\.setInterval/)
+  assert.match(source, /stopPreGameBackground\(\{ fadeOut: true \}\)/)
+  assert.match(
+    source,
+    /stopPreGameBackground\(\{ fadeOut: false, preserveActivation: true \}\)/,
+  )
+})
+
+test('pre-game lobby music fades in when explicitly started', async () => {
+  const source = await readSource('src/composables/UsePreGameAudio.js')
+
+  assert.match(source, /LOBBY_MUSIC_FADE_IN_MS = 900/)
+  assert.match(source, /function fadeInAudio/)
+  assert.match(source, /preGameBackgroundStarted/)
+  assert.match(source, /playPreGameLobbyMusic\(\{ fadeIn \}\)/)
+
+  const loginSource = await readSource('src/components/login/LoginContent.vue')
+  const guestSource = await readSource('src/components/login/GuestLoginModal.vue')
+
+  assert.match(loginSource, /startPreGameBackground\(\{ fadeIn: true, userInitiated: true \}\)/)
+  assert.match(guestSource, /startPreGameBackground\(\{ fadeIn: true, userInitiated: true \}\)/)
+})
+
+test('pre-game background audio separates login-before and post-login routes', async () => {
+  const source = await readSource('src/composables/UsePreGameAudio.js')
+  const preLoginRouteNamesMatch = source.match(
+    /PRE_LOGIN_AUDIO_ROUTE_NAMES = Object\.freeze\(\[([\s\S]*?)\]\)/,
+  )
+  const preGameRouteNamesMatch = source.match(
     /PRE_GAME_AUDIO_ROUTE_NAMES = Object\.freeze\(\[([\s\S]*?)\]\)/,
   )
 
-  assert.ok(routeNamesMatch)
+  assert.ok(preLoginRouteNamesMatch)
+  assert.ok(preGameRouteNamesMatch)
 
-  const routeNames = Array.from(routeNamesMatch[1].matchAll(/"([^"]+)"/g)).map(
+  const preLoginRouteNames = Array.from(
+    preLoginRouteNamesMatch[1].matchAll(/"([^"]+)"/g),
+  ).map(
     ([, routeName]) => routeName,
   )
+  const preGameRouteNames = Array.from(
+    preGameRouteNamesMatch[1].matchAll(/"([^"]+)"/g),
+  ).map(([, routeName]) => routeName)
 
-  assert.deepEqual(routeNames, ["Entry", "Login", "Register"])
-})
-
-test('lobby footstep layer uses all heel sounds with stereo spread', async () => {
-  const source = await readSource('src/composables/UsePreGameAudio.js')
-  const layerUrls = Array.from(
-    source.matchAll(/url: (lobbyFootstepsHeels\d\dUrl)/g),
-  ).map(([, layerUrl]) => layerUrl)
-
-  assert.match(source, /LOBBY_FOOTSTEP_LAYERS/)
-  assert.match(source, /lobbyFootstepsHeels01Url/)
-  assert.match(source, /lobbyFootstepsHeels02Url/)
-  assert.match(source, /lobbyFootstepsHeels03Url/)
-  assert.match(source, /lobbyFootstepsHeels04Url/)
-  assert.deepEqual(layerUrls, [
-    'lobbyFootstepsHeels01Url',
-    'lobbyFootstepsHeels02Url',
-    'lobbyFootstepsHeels03Url',
-    'lobbyFootstepsHeels04Url',
+  assert.deepEqual(preLoginRouteNames, ["Entry", "Login", "Register"])
+  assert.deepEqual(preGameRouteNames, [
+    "LobbyHome",
+    "LobbyGameMenu",
+    "Matching",
+    "JoinRoom",
+    "CustomRoom",
+    "Loading",
   ])
-  assert.match(source, /createStereoPanner/)
-  assert.match(source, /\.pan\.value/)
-  assert.match(source, /playFootstepLayer/)
-  assert.match(source, /FOOTSTEP_INITIAL_DELAY_MS/)
-  assert.match(source, /scheduleFootstepLayer\(\{ initial: true \}\)/)
-  assert.match(source, /layers\.forEach/)
-  assert.doesNotMatch(source, /Math\.floor\(Math\.random\(\) \* audios\.length\)/)
 })
 
-test('pre-game audio mix keeps footsteps lower than lobby music', async () => {
+test('post-login lobby audio does not schedule footsteps', async () => {
   const source = await readSource('src/composables/UsePreGameAudio.js')
-  const musicGain = Number(source.match(/LOBBY_MUSIC_GAIN = ([\d.]+)/)?.[1])
-  const detailGain = Number(source.match(/LOBBY_DETAIL_GAIN = ([\d.]+)/)?.[1])
-  const layerGains = Array.from(source.matchAll(/gain: ([\d.]+)/g)).map(([, gain]) =>
-    Number(gain),
-  )
-  const footstepVolumes = layerGains.map((gain) => detailGain * gain)
 
-  assert.ok(detailGain <= musicGain)
-  assert.ok(layerGains.length >= 4)
-  assert.ok(layerGains.every((gain) => gain >= 0.9))
-  assert.ok(footstepVolumes.every((volume) => volume <= musicGain))
+  assert.doesNotMatch(source, /LOBBY_FOOTSTEP_LAYERS/)
+  assert.doesNotMatch(source, /scheduleFootstepLayer/)
+  assert.doesNotMatch(source, /playLobbyFootstep/)
+  assert.doesNotMatch(source, /connectFootstepLayer/)
+  assert.doesNotMatch(source, /lobbyFootstepsHeels\d\dUrl/)
+})
+
+test('pre-game audio mix excludes footsteps', async () => {
+  const source = await readSource('src/composables/UsePreGameAudio.js')
+
+  assert.match(source, /PRE_LOGIN_MUSIC_GAIN/)
+  assert.match(source, /PRE_GAME_MUSIC_GAIN/)
+  assert.doesNotMatch(source, /LOBBY_DETAIL_GAIN/)
+  assert.doesNotMatch(source, /gain:/)
 })
 
 test('login page actions trigger the shared click sound, including close controls', async () => {
@@ -141,6 +183,53 @@ test('login page actions trigger the shared click sound, including close control
   assert.match(guestSource, /@click="selectPreviousAvatar"/)
   assert.match(guestSource, /@click="selectNextAvatar"/)
   assert.match(guestSource, /@click="rollNickname"/)
+})
+
+test('login and guest play actions start the pre-game background theme', async () => {
+  const loginSource = await readSource('src/components/login/LoginContent.vue')
+  const guestSource = await readSource('src/components/login/GuestLoginModal.vue')
+
+  assert.match(loginSource, /startPreGameBackground\(\{ fadeIn: true, userInitiated: true \}\)/)
+  assert.match(guestSource, /startPreGameBackground\(\{ fadeIn: true, userInitiated: true \}\)/)
+})
+
+test('login failure does not start the post-login theme', async () => {
+  const loginSource = await readSource('src/components/login/LoginContent.vue')
+  const loginHandler = loginSource.slice(loginSource.indexOf('async function handleLogin()'))
+  const loginRequest = loginHandler.indexOf('await authStore.login')
+  const startThemeBeforeRequest = loginHandler
+    .slice(0, loginRequest)
+    .includes('startPreGameBackground({ fadeIn: true, userInitiated: true })')
+
+  assert.equal(startThemeBeforeRequest, false)
+  assert.match(
+    loginHandler,
+    /await authStore\.login[\s\S]*?startPreGameBackground\(\{ fadeIn: true, userInitiated: true \}\)/,
+  )
+})
+
+test('guest creation failure does not start the post-login theme', async () => {
+  const guestSource = await readSource('src/components/login/GuestLoginModal.vue')
+  const guestHandler = guestSource.slice(guestSource.indexOf('async function submitGuest()'))
+  const guestRequest = guestHandler.indexOf('await createGuestPlayer')
+  const startThemeBeforeRequest = guestHandler
+    .slice(0, guestRequest)
+    .includes('startPreGameBackground({ fadeIn: true, userInitiated: true })')
+
+  assert.equal(startThemeBeforeRequest, false)
+  assert.match(
+    guestHandler,
+    /await createGuestPlayer[\s\S]*?startPreGameBackground\(\{ fadeIn: true, userInitiated: true \}\)/,
+  )
+})
+
+test('leaving the lobby stops the post-login background theme immediately', async () => {
+  const audioSource = await readSource('src/composables/UsePreGameAudio.js')
+  const lobbySource = await readSource('src/components/menu/LobbyMenu.vue')
+
+  assert.match(audioSource, /function stopPreGameBackground/)
+  assert.match(audioSource, /stopPreGameBackground,/)
+  assert.match(lobbySource, /stopPreGameBackground\(\{ fadeOut: false \}\)/)
 })
 
 test('entry, login, and lobby screens are wired to pre-game audio', async () => {
