@@ -1,0 +1,155 @@
+## Context
+
+好友私訊後端目前以 REST 提供歷史查詢與訊息送出，chatService 已集中處理玩家存在、好友關係、封鎖狀態、空白內容與資料寫入。前端 chatStore 會在選擇好友時載入紀錄，並在 POST 成功後把 directMessage 加入目前 conversation，但接收方無法在不重新載入的情況下看到訊息。
+
+專案已有共用 Socket.IO client、伺服器初始化入口與房間／遊戲 handlers。好友功能只允許持有會員 token 的登入玩家使用，但既有房間與遊戲 Socket 仍支援不具會員 token 的流程，因此本變更不能把全站 Socket 連線改為強制會員驗證。
+
+## Goals / Non-Goals
+
+**Goals:**
+
+- 讓通過會員 token 驗證的玩家訂閱自己的聊天推播房間。
+- 保留 REST 作為訊息驗證、儲存與送出成功回應的唯一寫入介面。
+- REST 成功儲存訊息後，將同一個 directMessage 推送給接收者。
+- 讓 chatStore 將即時訊息寫入正確好友 conversation，並依訊息 ID 去重。
+- Socket 重連後重新訂閱，並補載目前選取的 conversation。
+- Socket 推播失敗時仍維持已成功 REST 寫入的 201 回應。
+- 訊息增加時標題與輸入區維持可見，僅訊息內容區產生垂直捲動。
+- 訊息泡泡維持 Square UI 方形語言，以較窄比例與左右三角尾巴區分方向。
+
+**Non-Goals:**
+
+- 不新增 chat:send 或把訊息送出改成 Socket。
+- 不加入未讀數、已讀狀態、typing、分頁、附件、群聊、房間聊天或遊戲內聊天。
+- 不重構全站 Socket 驗證與既有房間／遊戲事件。
+- 不新增聊天連線狀態 UI、不加入自動捲動邏輯，也不重設好友聊天以外的頁面視覺。
+
+## Decisions
+
+### 保留 REST 寫入並只用 Socket 推播
+
+前端繼續呼叫 POST /api/chats/direct/:friendId/messages。chatService 完成授權與 INSERT 後，由 controller 使用回傳的 directMessage 觸發推播。這保留既有錯誤碼、資料格式與測試邊界，也避免同時維護 REST 與 Socket 兩套寫入契約。
+
+Alternative considered: 新增 chat:send 並讓前端改用 Socket ack。此方案需要定義逾時、重送與 REST／Socket 一致性，不屬於第一版即時推播。
+
+### 使用 token 驗證聊天訂閱而不修改全站 Socket 握手
+
+新增 chat:subscribe，payload 只接受 token。handler 使用既有 verifyToken(token) 取得玩家，忽略任何由 client 宣告的 playerId，並把驗證出的玩家 ID 存入 socket.data.chatPlayerId。重新訂閱不同玩家時先離開舊房間。chat:unsubscribe 依 socket.data.chatPlayerId 離開房間並清除聊天身分。
+
+Alternative considered: 在 Socket.IO connection middleware 全域驗證 token。此方案會影響訪客房間與遊戲流程，因此排除。
+
+### 使用每位玩家的個人聊天房間
+
+驗證成功的 socket 加入 chat:player:<playerId>。REST 送出成功後只向 directMessage.receiverPlayerId 的個人房間發送 chat:message。寄件者目前分頁沿用 POST 回應更新，不接收同一事件，避免引入多裝置同步範圍。
+
+Alternative considered: 每組好友建立 conversation room。此方案需要加入／離開選取對話的生命週期，且無法在使用者查看其他好友時接收訊息，因此排除。
+
+### REST 成功後採非阻塞推播
+
+controller 僅在 sendDirectMessage 成功後取得 Socket server 並 emit。Socket server 尚未初始化或 emit 發生例外時記錄錯誤，但仍回傳既有 201 與 directMessage。service 或 REST 驗證失敗時不執行 emit。
+
+Alternative considered: 推播失敗就讓 REST 回應失敗。資料已寫入後回傳失敗會誘發 client 重送與重複訊息，因此排除。
+
+### chatStore 依訊息 ID 合併與去重
+
+chatStore 新增 mergeMessages(friendId, messages)，將既有快取、REST 歷史與 Socket 訊息依 id 合併，再以 createdAt、id 排序。appendMessage 改用相同去重規則。收到 chat:message 時，以 senderPlayerId 作為 conversation key；事件缺少有效 id、senderPlayerId 或 receiverPlayerId 時忽略，不污染狀態。
+
+Alternative considered: Socket 事件直接 push。此方案在重連補載或事件重送時會重複顯示，因此排除。
+
+### 重連後重新訂閱並補載目前對話
+
+chatStore 提供 startRealtime() 與 stopRealtime()。startRealtime() 只綁定一次 chat:message 與 connect listeners，立即執行 chat:subscribe；connect 事件再次訂閱成功後，若 selectedFriendId 存在則呼叫 loadMessages(selectedFriendId)。loadMessages 使用 mergeMessages，避免補載覆蓋重連期間已收到的事件。stopRealtime() 移除 listeners、嘗試 chat:unsubscribe，並重設訂閱旗標。
+
+Alternative considered: 只重新訂閱而不補載。Socket 斷線期間的事件無法補送，因此排除。
+
+### FriendView 管理好友聊天即時生命週期
+
+FriendView 在 canUseFriendSystem 為 true 時啟動即時訂閱，在狀態變為 false 時透過 clearChatData() 停止並清除聊天資料，元件卸載時呼叫 stopRealtime()。這讓好友頁內即使尚未選擇好友或正在查看其他好友，也能把事件存入正確 conversation；離開好友頁後則不保留不必要的 listener。
+
+Alternative considered: 由 FriendChatPanel 啟動訂閱。沒有選取好友時面板不會掛載，無法符合背景接收其他好友訊息的需求，因此排除。
+
+### 限制聊天高度並以訊息區獨立捲動
+
+FriendView 的右側內容區與 FriendChatPanel 都使用可縮小的 column flex 容器，透過 min-h-0、flex-1 與 overflow-hidden 建立有限高度。標題列與輸入區維持 shrink-0，中間 chat-body 保留 min-h-0、flex-1 與 overflow-y-auto，讓訊息超出時只在 chat-body 內捲動，輸入區不會被推到外層固定高度面板之外。
+
+Alternative considered: 在 message-list 外再新增一層捲動 div。父層若仍只有 min-height 而沒有有限高度，新增 wrapper 仍會隨內容長高，因此排除。
+
+### 使用窄版方形泡泡與 CSS 三角尾巴
+
+訊息泡泡維持零圓角與既有品牌色，桌面最大寬度限制為 62%，小螢幕放寬為 82% 以保留可讀性。泡泡使用 CSS 偽元素建立方向尾巴：好友訊息朝左、自己的訊息朝右；好友白色泡泡以雙層偽元素保留灰色邊框，自己的深色泡泡使用同色三角形。裝飾尾巴不新增 DOM，也不改變訊息語意。
+
+Alternative considered: 新增裝飾性 span 或使用 clip-path。前者增加無語意標記，後者會裁切既有邊框與陰影，因此排除。
+
+## Implementation Contract
+
+#### Observable behavior
+
+- 已登入會員開啟好友頁後會訂閱自己的聊天推播房間。
+- 玩家 A 透過既有 REST API 成功傳送訊息給玩家 B 後，玩家 B 在好友頁內不需重新整理即可收到同一個 directMessage。
+- 玩家 B 查看其他好友時，訊息仍存入玩家 A 的 conversation；切換回玩家 A 時可看到訊息。
+- REST 回應、Socket 事件與歷史補載包含相同訊息時，conversation 只保留一筆。
+- Socket 重連後自動恢復訂閱，並補載目前選取好友的歷史。
+- 離開好友頁、登出或清除聊天資料後，不再保留重複 listener 或聊天訂閱。
+- 訊息數量超過可視高度時，標題與輸入區仍固定可見，使用者可在訊息內容區垂直捲動。
+- 自己與好友的訊息分別顯示右向與左向三角尾巴；泡泡維持方形、桌面最大寬度 62%、小螢幕最大寬度 82%。
+
+#### Interface / data shape
+
+- chat:subscribe payload: { token: string }。
+- chat:subscribe success ack: { ok: true, data: { playerId: number } }。
+- chat:subscribe failure ack: { ok: false, error: { message: string } }。
+- chat:unsubscribe payload: {}。
+- chat:unsubscribe success ack: { ok: true, data: { playerId: number | null } }。
+- chat:message payload 為 directMessage：
+  - id: number
+  - senderPlayerId: number
+  - receiverPlayerId: number
+  - content: string
+  - createdAt: string
+- 個人房間名稱固定為 chat:player:<playerId>。
+- 既有 POST /api/chats/direct/:friendId/messages request 與 response shape 不變。
+- chatStore 對外新增 startRealtime()、stopRealtime()、mergeMessages(friendId, messages)，並保留既有 loadMessages、sendMessage、clearChatData。
+
+#### Failure modes
+
+- token 缺少或 verifyToken 失敗時，socket 不加入任何聊天房間並回傳失敗 ack。
+- 同一 socket 重新訂閱不同玩家時，必須先離開原本個人房間。
+- 沒有有效聊天身分時呼叫 chat:unsubscribe 仍回傳成功，playerId 為 null。
+- REST 授權、內容驗證或資料寫入失敗時不發送 chat:message。
+- Socket server 不存在或 emit 失敗時記錄伺服器錯誤，但 REST 仍回傳 201。
+- 前端訂閱失敗時保留 REST 歷史與送出能力，並避免重複綁定 listeners。
+- 格式不完整的 chat:message 不寫入任何 conversation。
+
+#### Acceptance criteria
+
+- server/tests/chatSocket.test.js 覆蓋有效 token、無效 token、重複訂閱換房與取消訂閱。
+- server/tests/chatController.test.js 覆蓋成功 REST 推播、service 失敗不推播，以及 Socket 不可用仍回傳 201。
+- tests/friend-chat-realtime.test.mjs 覆蓋訂閱生命週期、非目前好友訊息、訊息去重、重連補載與 listener 清理。
+- tests/friend-chat-layout.test.mjs 覆蓋有限高度、獨立捲動、固定輸入區、窄版泡泡與左右三角尾巴的樣式契約。
+- npm test 在 server 目錄通過。
+- node tests/friend-chat-realtime.test.mjs 通過。
+- npm run build 通過。
+- 已知的 tests/friend-api-integration.test.mjs 登入彈窗舊斷言不屬於本 change，驗證報告需單獨標示，不得在本 change 修改。
+
+#### Scope boundaries
+
+- In scope: 聊天 Socket handler、Socket server 註冊、REST 成功後推播、chatStore 即時同步、FriendView 生命週期、好友聊天捲動高度、窄版方形泡泡、左右三角尾巴與相關測試。
+- Out of scope: Socket 寫入、全站 Socket auth、未讀／已讀／typing、分頁、附件、其他聊天種類、登入彈窗舊斷言、自動捲動與其他 UI polish。
+
+## Risks / Trade-offs
+
+- [Risk] REST 已寫入但推播失敗，接收者當下看不到訊息。→ Mitigation: REST 保持成功，接收者重連或再次選取好友時由歷史補載恢復。
+- [Risk] 重連與歷史請求競態造成覆蓋或重複。→ Mitigation: 所有寫入 conversation 的路徑共用依 id 合併與排序。
+- [Risk] 重複 startRealtime 造成多重事件處理。→ Mitigation: store 使用啟動旗標與穩定 handler reference，stopRealtime 對稱移除。
+- [Risk] token 驗證增加 Supabase 查詢。→ Mitigation: 僅在首次訂閱與 Socket 重連時驗證，不在每則 chat:message 上驗證。
+- [Risk] 桌面窄版泡泡在小螢幕造成過度換行。→ Mitigation: 小螢幕最大寬度放寬為 82%，並保留 break-words。
+
+## Migration Plan
+
+- 不需要資料庫 migration 或新套件。
+- 先部署支援 chat events 的後端，再部署啟用訂閱的前端；舊前端可繼續使用 REST。
+- 回滾前端即可停止訂閱；回滾後端後前端訂閱會失敗，但 REST 聊天仍可使用。
+
+## Open Questions
+
+- none

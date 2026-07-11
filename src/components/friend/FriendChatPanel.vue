@@ -138,7 +138,7 @@ watch(
 @reference "tailwindcss";
 
 .friend-chat-panel {
-  @apply flex min-h-full flex-col border border-[rgba(134,179,224,0.38)] bg-[rgba(255,255,255,0.88)] shadow-[var(--shadow)];
+  @apply flex min-h-0 flex-1 flex-col overflow-hidden border border-[rgba(134,179,224,0.38)] bg-[rgba(255,255,255,0.88)] shadow-[var(--shadow)];
 }
 
 .chat-toolbar {
@@ -178,15 +178,45 @@ watch(
 }
 
 .message-bubble {
-  @apply max-w-[78%] border px-3 py-2 shadow-[0_10px_24px_rgba(0,19,50,0.08)];
+  @apply relative max-w-[62%] border px-4 py-2 shadow-[0_10px_24px_rgba(0,19,50,0.08)] max-md:max-w-[82%];
+}
+
+.message-bubble::before,
+.message-bubble::after {
+  position: absolute;
+  top: 12px;
+  width: 0;
+  height: 0;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  content: "";
+  pointer-events: none;
 }
 
 .chat-message--mine .message-bubble {
   @apply border-[var(--brand-active)] bg-[var(--brand-active)] text-white;
 }
 
+.chat-message--mine .message-bubble::after {
+  right: -8px;
+  border-left: 8px solid var(--brand-active);
+}
+
 .chat-message--friend .message-bubble {
   @apply border-[var(--gray-100)] bg-white text-[var(--brand-active)];
+}
+
+.chat-message--friend .message-bubble::before {
+  top: 11px;
+  left: -9px;
+  border-top-width: 8px;
+  border-bottom-width: 8px;
+  border-right: 9px solid var(--gray-100);
+}
+
+.chat-message--friend .message-bubble::after {
+  left: -7px;
+  border-right: 8px solid white;
 }
 
 .message-content {
