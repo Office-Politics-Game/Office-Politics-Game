@@ -36,11 +36,10 @@ test('game socket handlers broadcast animation actions before private state upda
 })
 
 test('game view subscribes to socket actions and defers state while animations run', async () => {
-  const source = await readSource('src/views/GameView.vue')
+  const source = await readSource('src/composables/useGameSocketActions.js')
 
-  assert.match(source, /import \{ connectSocket, emitWithAck \} from '@\/services\/socketClient'/)
-  assert.match(source, /socket\.on\('game:action', handleSocketGameAction\)/)
-  assert.match(source, /socket\.on\('game:state', handleSocketGameState\)/)
+  assert.match(source, /activeGameSocket\.on\('game:action', handleSocketGameAction\)/)
+  assert.match(source, /activeGameSocket\.on\('game:state', handleSocketGameState\)/)
   assert.match(source, /await emitWithAck\('game:subscribe'/)
   assert.match(source, /await emitWithAck\('game:draw-card'/)
   assert.match(source, /await emitWithAck\('game:play-card'/)
@@ -55,11 +54,12 @@ test('game view subscribes to socket actions and defers state while animations r
     source.indexOf('playRemoteCardPlayAnimation') <
       source.indexOf('playEffectAnimation?.(animationResult)'),
   )
-  assert.match(source, /onBeforeUnmount\(\(\) => \{[\s\S]*off\('game:action'/)
+  assert.match(source, /function cleanupGameSocket\(\)[\s\S]*off\('game:action'/)
+  assert.match(source, /function cleanupGameSocket\(\)[\s\S]*off\('game:state'/)
 })
 
 test('game view applies acknowledged draw and play states immediately', async () => {
-  const source = await readSource('src/views/GameView.vue')
+  const source = await readSource('src/composables/useGameSocketActions.js')
   const drawHandler = source.slice(
     source.indexOf('async function handleDrawRequest'),
     source.indexOf('async function handlePlayCard'),
