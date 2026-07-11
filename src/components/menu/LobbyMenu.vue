@@ -240,9 +240,6 @@ function leaveLobby() {
     return;
   }
 
-  authStore.logout();
-  playerStore.resetPlayer();
-  currencyStore.resetCurrency();
   router.push("/");
 }
 

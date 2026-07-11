@@ -1,5 +1,5 @@
 import pool from "../db/index.js"
-import { supabaseAdmin } from "../db/supabaseClient.js"
+import { supabaseAdmin, supabaseAuth } from "../db/supabaseClient.js"
 
 const DEFAULT_AVATAR_ID = 1
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -69,6 +69,26 @@ function getPasswordResetRedirectUrl() {
     return `${clientOrigin.replace(/\/$/, "")}/?auth=reset-password`
 }
 
+function getEmailConfirmRedirectUrl() {
+    if (process.env.EMAIL_CONFIRM_REDIRECT_URL) {
+        return process.env.EMAIL_CONFIRM_REDIRECT_URL
+    }
+
+    const clientOrigin =
+        process.env.CLIENT_ORIGIN ||
+        process.env.FRONTEND_URL ||
+        "http://localhost:5173"
+
+    return `${clientOrigin.replace(/\/$/, "")}/?auth=login`
+}
+
+function isEmailNotConfirmedError(error) {
+    return (
+        error?.code === "email_not_confirmed" ||
+        error?.message?.toLowerCase().includes("email not confirmed")
+    )
+}
+
 async function deleteSupabaseUserQuietly(authUserId) {
     try {
         const { error } = await supabaseAdmin.auth.admin.deleteUser(authUserId)
@@ -117,13 +137,15 @@ async function registerPlayer({ username, account, password, avatarId } = {}) {
         throw createAuthError(409, "Email帳號已被使用")
     }
 
-    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+    const { data, error } = await supabaseAuth.auth.signUp({
         email: trimmedAccount,
         password,
-        email_confirm: true,
-        user_metadata: {
-            username: trimmedUsername,
-            avatarId: avatarId ?? DEFAULT_AVATAR_ID
+        options: {
+            emailRedirectTo: getEmailConfirmRedirectUrl(),
+            data: {
+                username: trimmedUsername,
+                avatarId: avatarId ?? DEFAULT_AVATAR_ID
+            }
         }
     })
 
@@ -192,6 +214,10 @@ async function loginPlayer({ account, password } = {}) {
     })
 
     if (error) {
+        if (isEmailNotConfirmedError(error)) {
+            throw createAuthError(403, "請先完成信箱驗證後再登入")
+        }
+
         throw createAuthError(401, "密碼錯誤")
     }
 
