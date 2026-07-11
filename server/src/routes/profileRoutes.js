@@ -1,8 +1,10 @@
 import express from "express"
-import { handleGetProfile } from "../controllers/profileController.js"
+import { handleGetProfile, handleUpdateProfile } from "../controllers/profileController.js"
+import { requireAuth } from "../middlewares/authMiddleware.js"
 
 const router = express.Router()
 
-router.get("/", handleGetProfile)
+router.get("/", requireAuth, handleGetProfile)
+router.patch("/", requireAuth, handleUpdateProfile)
 
 export { router }
