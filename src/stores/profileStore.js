@@ -89,7 +89,6 @@ function normalizeProfile(player, identityType) {
     winRate: getWinRate(winCount, totalGames),
     playerCode: `CEO_${String(playerId).padStart(4, "0")}`,
     createdAtDisplay: formatDate(player.createdAt ?? player.created_at),
-    region: player.region || UNSET_TEXT,
     bio: player.bio || UNSET_TEXT,
   };
 }

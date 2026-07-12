@@ -128,7 +128,7 @@ watch(
 .profile-modal__title {
   margin: 0 0 20px;
   color: var(--brand-navy);
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
   font-weight: 900;
   text-align: center;
 }
