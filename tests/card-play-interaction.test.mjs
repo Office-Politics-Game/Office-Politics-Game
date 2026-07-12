@@ -4,7 +4,7 @@ import test from 'node:test'
 
 const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
-test('card guess selector renders rank choices and excludes intern guesses', async () => {
+test('card guess selector renders disabled intern and selectable rank choices', async () => {
   const componentUrl = new URL(
     '../src/components/game/ui/CardGuessSelector.vue',
     import.meta.url,
@@ -15,10 +15,11 @@ test('card guess selector renders rank choices and excludes intern guesses', asy
 
   assert.match(source, /guessOptions:/)
   assert.match(source, /excludedRanks:/)
-  assert.match(source, /availableGuessOptions/)
-  assert.match(source, /!excludedRankSet\.value\.has\(option\.rank\)/)
+  assert.match(source, /v-for="option in guessOptions"/)
+  assert.match(source, /:disabled="excludedRankSet\.has\(option\.rank\)"/)
   assert.match(source, /emit\('select', option\.rank\)/)
   assert.match(source, /card-guess-selector__option--selected/)
+  assert.match(source, /\.card-guess-selector__option:disabled/)
   assert.doesNotMatch(source, /rounded-/)
 })
 
@@ -60,11 +61,13 @@ test('game stage coordinates pending play target and guess confirmation', async 
   assert.match(source, /v-if="pendingPlay"[\s\S]*class="play-target-backdrop"/)
   assert.match(source, /\.play-target-backdrop \{[\s\S]*z-index: 44[\s\S]*background: rgba\(0, 0, 0, 0\.42\)[\s\S]*backdrop-filter: blur\(5px\)/)
   assert.match(source, /<CardPlayConfirmPanel/)
+  assert.match(source, /import \{ CARD_INFO_BY_RANK \} from ["']@\/constants\/cardInfo["']/)
+  assert.match(source, /Object\.entries\(CARD_INFO_BY_RANK\)/)
   assert.match(confirmPanelSource, /<CardGuessSelector/)
   assert.match(source, /@target-select="selectTargetPlayer"/)
   assert.match(confirmPanelSource, /:disabled="!canConfirmPendingPlay"/)
   assert.match(confirmPanelSource, /\.play-confirm-panel \{[\s\S]*left: 50%[\s\S]*top: 50%[\s\S]*transform: translate\(-50%, -50%\)/)
-  assert.match(confirmPanelSource, /\.play-confirm-panel \{[\s\S]*max-height: min\(420px, calc\(100dvh - 224px\)\)[\s\S]*overflow: auto/)
+  assert.match(confirmPanelSource, /\.play-confirm-panel \{[\s\S]*min-width: 440px[\s\S]*overflow: auto/)
 })
 
 test('game stage prunes hidden played cards through extracted card-play state', async () => {
@@ -75,4 +78,52 @@ test('game stage prunes hidden played cards through extracted card-play state', 
   assert.match(source, /pruneHiddenPlayedCards\(cardIds\)/)
   assert.doesNotMatch(source, /locallyHiddenPlayedCardIds/)
   assert.doesNotMatch(source, /clearHiddenPlayedCard/)
+})
+
+test('intern animation normalization requires and preserves the submitted guess', async () => {
+  const source = await readSource('src/composables/useGameSocketActions.js')
+
+  assert.match(source, /typeof result\.guessedCardName === ['"]string['"]/)
+  assert.match(source, /result\.guessedCardName\.trim\(\)/)
+  assert.match(source, /targetPlayerId && targetCard && guessedCardName/)
+  assert.match(source, /\{ \.\.\.result, id, targetPlayerId, targetCard, guessedCardName \}/)
+})
+
+test('game stage resolves the intern target name with a stable fallback', async () => {
+  const source = await readSource('src/components/game/ui/GameStage.vue')
+
+  assert.match(source, /const activeInternTargetPlayerName = computed/)
+  assert.match(source, /String\(player\.id\) === String\(activeEffectResult\.value\.targetPlayerId\)/)
+  assert.match(source, /\?\.name \?\? ["']玩家["']/)
+  assert.match(source, /:target-player-name="activeInternTargetPlayerName"/)
+})
+
+test('intern animation shows the submitted position before a persistent outcome', async () => {
+  const source = await readSource('src/components/game/animations/InternAnimation.vue')
+
+  assert.match(source, /targetPlayerName: \{ type: String, default: ['"]玩家['"] \}/)
+  assert.match(source, /intern-animation__prompt-value">[\s\S]*?targetPlayerName[\s\S]*?<\/span>/)
+  assert.match(source, /intern-animation__prompt-value">[\s\S]*?activeResult\.guessedCardName[\s\S]*?<\/span>/)
+  assert.match(source, /\.intern-animation__prompt \{[\s\S]*font-size: clamp\(14\.4px, 2\.7vw, 32\.4px\)/)
+  assert.match(source, /\.intern-animation__prompt-value \{[\s\S]*color: #facc15;[\s\S]*\}/)
+  assert.match(source, /const GUESS_PROMPT_HOLD_SECONDS = 1/)
+  assert.match(source, /\.to\(\{\}, \{ duration: GUESS_PROMPT_HOLD_SECONDS \}\)[\s\S]*\.set\(outcomeRef\.value/)
+  assert.match(source, /\[glowRef\.value, promptRef\.value, outcomeRef\.value\]/)
+  assert.match(source, /isReducedMotion\(\)/)
+  assert.match(source, /\.intern-animation__prompt \{[\s\S]*width: min\(92vw, 900px\)[\s\S]*overflow-wrap: anywhere/)
+})
+
+test('intern target selection precedes the position dialog', async () => {
+  const stageSource = await readSource('src/components/game/ui/GameStage.vue')
+  const cardPlaySource = await readSource('src/composables/useGameStageCardPlay.js')
+
+  assert.match(cardPlaySource, /const isPendingTargetSelectionActive = computed/)
+  assert.match(cardPlaySource, /!pendingRequiresGuess\.value \|\| !selectedTargetPlayerId\.value/)
+  assert.match(cardPlaySource, /const isPendingPlayPanelVisible = computed/)
+  assert.match(cardPlaySource, /!pendingRequiresTarget\.value \|\|[\s\S]*!pendingRequiresGuess\.value \|\|[\s\S]*Boolean\(selectedTargetPlayerId\.value\)/)
+  assert.match(stageSource, /:is-target-selection-active="isPendingTargetSelectionActive"/)
+  assert.match(stageSource, /v-if="pendingRequiresGuess && isPendingTargetSelectionActive"/)
+  assert.match(stageSource, />\s*請選擇玩家\s*<\/p>/)
+  assert.match(stageSource, /\.play-target-prompt \{[\s\S]*z-index: 45[\s\S]*pointer-events: none/)
+  assert.match(stageSource, /<CardPlayConfirmPanel[\s\S]*v-if="isPendingPlayPanelVisible"/)
 })

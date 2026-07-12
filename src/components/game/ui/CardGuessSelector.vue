@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed } from "vue";
 
 const props = defineProps({
   guessOptions: {
@@ -8,8 +8,7 @@ const props = defineProps({
     validator: (options) =>
       options.every(
         (option) =>
-          Number.isInteger(option?.rank) &&
-          typeof option?.name === 'string',
+          Number.isInteger(option?.rank) && typeof option?.name === "string",
       ),
   },
   selectedRank: {
@@ -21,25 +20,25 @@ const props = defineProps({
     default: () => [],
     validator: (ranks) => ranks.every((rank) => Number.isInteger(rank)),
   },
-})
+});
 
-const emit = defineEmits(['select'])
+const emit = defineEmits(["select"]);
 
-const excludedRankSet = computed(() => new Set(props.excludedRanks))
-const availableGuessOptions = computed(() =>
-  props.guessOptions.filter((option) => !excludedRankSet.value.has(option.rank)),
-)
+const excludedRankSet = computed(() => new Set(props.excludedRanks));
 </script>
 
 <template>
   <section class="card-guess-selector" aria-label="選擇猜測牌名">
     <button
-      v-for="option in availableGuessOptions"
+      v-for="option in guessOptions"
       :key="option.rank"
       type="button"
       class="card-guess-selector__option"
-      :class="{ 'card-guess-selector__option--selected': selectedRank === option.rank }"
+      :class="{
+        'card-guess-selector__option--selected': selectedRank === option.rank,
+      }"
       :aria-pressed="selectedRank === option.rank"
+      :disabled="excludedRankSet.has(option.rank)"
       @click="emit('select', option.rank)"
     >
       <span>{{ option.rank }}</span>
@@ -51,7 +50,7 @@ const availableGuessOptions = computed(() =>
 <style scoped>
 .card-guess-selector {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -63,17 +62,22 @@ const availableGuessOptions = computed(() =>
   cursor: pointer;
   background: rgba(15, 23, 42, 0.76);
   color: #f8fafc;
-  font-size: 13px;
-  font-weight: 900;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .card-guess-selector__option span {
   color: #facc15;
 }
 
-.card-guess-selector__option:hover,
+.card-guess-selector__option:hover:not(:disabled),
 .card-guess-selector__option--selected {
   border-color: rgba(250, 204, 21, 0.86);
   background: rgba(250, 204, 21, 0.16);
+}
+
+.card-guess-selector__option:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
 }
 </style>

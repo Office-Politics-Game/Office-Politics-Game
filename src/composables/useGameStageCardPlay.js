@@ -85,6 +85,18 @@ export function useGameStageCardPlay({
   const pendingRequiresGuess = computed(() =>
     Boolean(pendingPlay.value?.card.requiresGuess),
   );
+  const isPendingTargetSelectionActive = computed(
+    () =>
+      pendingRequiresTarget.value &&
+      (!pendingRequiresGuess.value || !selectedTargetPlayerId.value),
+  );
+  const isPendingPlayPanelVisible = computed(
+    () =>
+      Boolean(pendingPlay.value) &&
+      (!pendingRequiresTarget.value ||
+        !pendingRequiresGuess.value ||
+        Boolean(selectedTargetPlayerId.value)),
+  );
   const selectableTargetPlayerIds = computed(() => {
     if (!pendingRequiresTarget.value) {
       return [];
@@ -531,6 +543,8 @@ export function useGameStageCardPlay({
     hasActivePlay,
     pendingRequiresTarget,
     pendingRequiresGuess,
+    isPendingTargetSelectionActive,
+    isPendingPlayPanelVisible,
     selectableTargetPlayerIds,
     visibleHandCards,
     advisorRuleDisabledCardIds,

@@ -76,6 +76,7 @@ function buildCardEffectAnimationResult(context, effectResult) {
             type: 'intern',
             targetPlayerId,
             targetCard,
+            guessedCardName,
             outcome: targetCard.name === guessedCardName ? 'correct' : 'incorrect',
           }
         : null

@@ -6,6 +6,7 @@ import { useAudioSettings } from "@/composables/UseAudioSettings";
 import { useGameStageCardPlay } from "@/composables/useGameStageCardPlay";
 import { useGameStageDrawSequence } from "@/composables/useGameStageDrawSequence";
 import { useGameStageEffectAnimation } from "@/composables/useGameStageEffectAnimation";
+import { CARD_INFO_BY_RANK } from "@/constants/cardInfo";
 import {
   getEliminatedSnapshot,
   getRoundWinSnapshot,
@@ -130,15 +131,12 @@ const animationRects = useGameAnimationRects({
   currentPlayerId: resolvedCurrentPlayerId,
 });
 
-const guessOptions = [
-  { rank: 2, name: "打掃阿姨" },
-  { rank: 3, name: "部門主管" },
-  { rank: 4, name: "職場老鳥" },
-  { rank: 5, name: "專案經理" },
-  { rank: 6, name: "人資主管" },
-  { rank: 7, name: "資深顧問" },
-  { rank: 8, name: "執行長" },
-];
+const guessOptions = Object.entries(CARD_INFO_BY_RANK).map(
+  ([rank, cardInfo]) => ({
+    rank: Number(rank),
+    name: cardInfo.chinese,
+  }),
+);
 
 const {
   musicEnabled,
@@ -246,6 +244,8 @@ const {
   hasActivePlay,
   pendingRequiresTarget,
   pendingRequiresGuess,
+  isPendingTargetSelectionActive,
+  isPendingPlayPanelVisible,
   selectableTargetPlayerIds,
   visibleHandCards,
   advisorRuleDisabledCardIds,
@@ -282,6 +282,18 @@ const {
 const protectedPlayers = computed(() =>
   props.players.filter((player) => player.isProtected),
 );
+const activeInternTargetPlayerName = computed(() => {
+  if (activeEffectResult.value?.type !== "intern") {
+    return "玩家";
+  }
+
+  return (
+    props.players.find(
+      (player) =>
+        String(player.id) === String(activeEffectResult.value.targetPlayerId),
+    )?.name ?? "玩家"
+  );
+});
 const activeProtectionAnimationPlayer = computed(() => {
   if (activeEffectResult.value?.type !== "protection") {
     return null;
@@ -412,14 +424,21 @@ defineExpose({
         aria-hidden="true"
       ></div>
 
+      <p
+        v-if="pendingRequiresGuess && isPendingTargetSelectionActive"
+        class="play-target-prompt"
+        role="status"
+        aria-live="polite"
+      >
+        請選擇玩家
+      </p>
+
       <PlayerSeats
         ref="playerSeats"
         :players="players"
         :dealt-player-ids="initialRoundDealtPlayerIds"
         :player-hand-card-counts="resolvedPlayerHandCardCounts"
-        :is-target-selection-active="
-          Boolean(pendingPlay) && pendingRequiresTarget
-        "
+        :is-target-selection-active="isPendingTargetSelectionActive"
         :selectable-player-ids="selectableTargetPlayerIds"
         :selected-target-player-id="selectedTargetPlayerId"
         @target-select="selectTargetPlayer"
@@ -491,7 +510,7 @@ defineExpose({
       </Transition>
 
       <CardPlayConfirmPanel
-        v-if="pendingPlay"
+        v-if="isPendingPlayPanelVisible"
         :pending-play="pendingPlay"
         :pending-requires-target="pendingRequiresTarget"
         :pending-requires-guess="pendingRequiresGuess"
@@ -538,6 +557,7 @@ defineExpose({
       <InternAnimation
         v-if="activeEffectResult?.type === 'intern'"
         :result="activeEffectResult"
+        :target-player-name="activeInternTargetPlayerName"
         :get-player-hand-rect="animationRects.getPlayerHandRect"
         :get-discard-rect="animationRects.getDiscardRect"
         @complete="handleEffectAnimationComplete"
@@ -667,6 +687,24 @@ defineExpose({
   background: rgba(0, 0, 0, 0.42);
   -webkit-backdrop-filter: blur(5px);
   backdrop-filter: blur(5px);
+}
+
+.play-target-prompt {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 20px;
+  pointer-events: none;
+  color: #fff;
+  font-size: clamp(24px, 5vw, 60px);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1.1;
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 @media (orientation: landscape), (min-width: 768px) {

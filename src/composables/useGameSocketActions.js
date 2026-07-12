@@ -74,9 +74,13 @@ export function useGameSocketActions({
       case 'intern': {
         const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
         const targetCard = result.targetCard ? normalizeCard(result.targetCard) : null
+        const guessedCardName = typeof result.guessedCardName === 'string'
+          ? result.guessedCardName.trim()
+          : ''
 
-        return targetPlayerId && targetCard && ['correct', 'incorrect'].includes(result.outcome)
-          ? { ...result, id, targetPlayerId, targetCard }
+        return targetPlayerId && targetCard && guessedCardName &&
+          ['correct', 'incorrect'].includes(result.outcome)
+          ? { ...result, id, targetPlayerId, targetCard, guessedCardName }
           : null
       }
       case 'protection': {
