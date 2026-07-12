@@ -47,6 +47,7 @@ defineEmits(["update:active-tab"]);
 
 <style scoped>
 .profile-tabs__button {
+  cursor: pointer;
   transition:
     color 0.18s ease,
     background 0.18s ease;

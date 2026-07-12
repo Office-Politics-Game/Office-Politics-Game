@@ -201,6 +201,7 @@ defineEmits(["close", "update:active-tab", "edit-avatar"]);
 }
 
 .profile-paper__close {
+  cursor: pointer;
   transition:
     background 0.18s ease,
     color 0.18s ease;

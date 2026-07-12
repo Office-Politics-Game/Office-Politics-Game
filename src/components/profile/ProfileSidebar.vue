@@ -202,6 +202,80 @@ defineEmits(["edit-avatar"])
   color: #c73b34;
 }
 
+.profile-sidebar__avatar-button {
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.profile-sidebar__avatar {
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.profile-sidebar__avatar-button:not(:disabled):hover .profile-sidebar__avatar,
+.profile-sidebar__avatar-button:not(:disabled):focus-visible .profile-sidebar__avatar {
+  border-color: var(--brand-hover);
+  box-shadow: 0 0 0 4px var(--brand-focus);
+}
+
+.profile-sidebar__avatar-button:focus-visible {
+  outline: none;
+}
+
+.profile-sidebar__avatar-button:hover .profile-sidebar__avatar-edit {
+  color: var(--brand-hover);
+  transform: translateY(-1px);
+}
+
+.profile-sidebar__avatar-button:disabled {
+  cursor: default;
+}
+
+.profile-sidebar__avatar-button:disabled:hover .profile-sidebar__avatar-edit {
+  color: var(--brand-navy);
+  background: transparent;
+  transform: none;
+}
+
+.profile-sidebar__avatar {
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.profile-sidebar__avatar-button:hover .profile-sidebar__avatar {
+  border-color: var(--brand-hover);
+  box-shadow: 0 0 0 4px var(--brand-focus);
+}
+
+.profile-sidebar__avatar-button:disabled:hover .profile-sidebar__avatar {
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: none;
+}
+
+.profile-sidebar__avatar-edit {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid rgba(134, 179, 224, 0.8);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--brand-navy);
+  box-shadow: 0 4px 10px rgba(0, 19, 50, 0.18);
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
 @media (max-width: 1024px) {
   .profile-sidebar__rate-ring {
     display: grid;
@@ -224,35 +298,5 @@ defineEmits(["edit-avatar"])
     margin-top: -8px;
     font-size: var(--text-xs);
   }
-}
-
-.profile-sidebar__avatar-button {
-  border: 0;
-  background: transparent;
-  padding: 0;
-}
-
-.profile-sidebar__avatar-button:disabled {
-  cursor: default;
-}
-
-.profile-sidebar__avatar-edit {
-  position: absolute;
-  right: -4px;
-  bottom: -4px;
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border: 1px solid rgba(134, 179, 224, 0.8);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.95);
-  color: var(--brand-navy);
-  box-shadow: 0 4px 10px rgba(0, 19, 50, 0.18);
-}
-
-.profile-sidebar__avatar-button:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 4px var(--brand-focus);
 }
 </style>

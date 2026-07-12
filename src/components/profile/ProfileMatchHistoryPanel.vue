@@ -100,6 +100,17 @@ function formatDate(value) {
   color: var(--brand-active);
   font-size: var(--text-sm);
   font-weight: 900;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.match-panel__header button:hover {
+  background: var(--brand-hover);
+  color: white;
+  transform: translateY(-1px);
 }
 
 .match-panel__state {

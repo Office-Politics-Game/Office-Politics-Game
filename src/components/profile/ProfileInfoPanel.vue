@@ -15,8 +15,8 @@
     >
       <div
         v-for="item in items"
-        :key="item.label"
-        class="profile-info__row grid min-h-10 grid-cols-[128px_minmax(0,1fr)_32px] items-center border-b border-[rgba(160,166,179,0.24)] lg:min-h-[66px] lg:grid-cols-[330px_minmax(0,1fr)_48px]"
+        :key="item.id"
+        class="profile-info__row grid min-h-10 grid-cols-[128px_minmax(0,1fr)_32px] items-center border-b border-[rgba(160,166,179,0.24)] lg:min-h-[66px] lg:grid-cols-[260px_minmax(0,1fr)_48px]"
       >
         <dt
           class="flex min-w-0 items-center gap-[9px] pl-2.5 text-xs font-bold text-[var(--gray-500)] lg:gap-6 lg:pl-6 lg:text-[16px]"
@@ -58,6 +58,7 @@ import {
   Pencil,
   UserRound,
   BadgeInfo,
+  KeyRound,
 } from "lucide-vue-next";
 
 const props = defineProps({
@@ -82,11 +83,25 @@ const items = computed(() => [
     editable: true,
   },
   {
+    id: "playerCode",
+    label: "玩家 ID",
+    value: props.player.playerCode,
+    icon: UserRound,
+    editable: false,
+  },
+  {
     id: "title",
     label: "稱號",
     value: props.player.title,
     icon: Crown,
     editable: false,
+  },
+  {
+    id: "bio",
+    label: "自我介紹",
+    value: props.player.bio || "尚未設定",
+    icon: BadgeInfo,
+    editable: true,
   },
   {
     id: "createdAt",
@@ -96,17 +111,10 @@ const items = computed(() => [
     editable: false,
   },
   {
-    id: "playerCode",
-    label: "玩家 ID",
-    value: props.player.playerCode,
-    icon: UserRound,
-    editable: false,
-  },
-  {
-    id: "bio",
-    label: "自我介紹",
-    value: props.player.bio || "尚未設定",
-    icon: BadgeInfo,
+    id: "password",
+    label: "帳號安全",
+    value: "修改密碼",
+    icon: KeyRound,
     editable: true,
   },
 ]);
@@ -118,14 +126,17 @@ const items = computed(() => [
 }
 
 .profile-info__edit {
+  cursor: pointer;
   transition:
     background 0.18s ease,
-    color 0.18s ease;
+    color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .profile-info__edit:hover {
   background: var(--brand-hover);
   color: white;
+  transform: translateY(-1px);
 }
 
 .profile-info__edit:focus-visible {
@@ -137,10 +148,12 @@ const items = computed(() => [
   cursor: not-allowed;
   background: rgba(160, 166, 179, 0.24);
   color: var(--brand-disabled);
+  transform: none;
 }
 
 .profile-info__edit:disabled:hover {
   background: rgba(160, 166, 179, 0.24);
   color: var(--brand-disabled);
+  transform: none;
 }
 </style>

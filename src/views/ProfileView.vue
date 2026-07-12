@@ -71,6 +71,10 @@
       @close="closeAvatarEditor"
       @save="saveAvatar"
     />
+    <ProfilePasswordModal
+      v-if="isPasswordEditorOpen"
+      @close="closePasswordEditor"
+    />
   </template>
 
   <main
@@ -158,6 +162,7 @@ import { useProfileStore } from "@/stores/profileStore.js";
 import ProfileAvatarModal from "@/components/profile/ProfileAvatarModal.vue";
 import ProfileEditModal from "@/components/profile/ProfileEditModal.vue";
 import ProfileMatchHistoryPanel from "@/components/profile/ProfileMatchHistoryPanel.vue";
+import ProfilePasswordModal from "@/components/profile/ProfilePasswordModal.vue";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -175,6 +180,7 @@ const editingField = ref(null)
 const editingInitialValue = ref("")
 const isAvatarEditorOpen = ref(false)
 const editErrorMessage = ref("")
+const isPasswordEditorOpen = ref(false)
 
 const tabs = [
   {
@@ -408,6 +414,11 @@ function handleEditProfileField(item) {
     return;
   }
 
+  if (item.id === "password") {
+    openPasswordEditor();
+    return;
+  }
+
   if (!["username", "bio"].includes(item.id)) {
     return
   }
@@ -472,6 +483,14 @@ async function saveAvatar(avatarId) {
   } catch (error) {
     editErrorMessage.value = error?.data?.message || error?.message || "頭像更新失敗"
   }
+}
+
+function openPasswordEditor() {
+  isPasswordEditorOpen.value = true;
+}
+
+function closePasswordEditor() {
+  isPasswordEditorOpen.value = false;
 }
 
 function goLogin() {
@@ -642,8 +661,17 @@ watch(
 }
 
 .profile-state-panel__button {
+  cursor: pointer;
   min-height: 48px;
   min-width: 144px;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.profile-state-panel__button:hover {
+  transform: translateY(-1px);
 }
 
 .profile-page-state.is-returning .profile-state-exit-layer {

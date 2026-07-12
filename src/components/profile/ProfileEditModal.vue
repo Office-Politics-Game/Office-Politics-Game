@@ -4,6 +4,7 @@
       <button
         type="button"
         class="profile-modal__close"
+        aria-label="關閉編輯視窗"
         @click="$emit('close')"
       >
         ×
@@ -106,17 +107,33 @@ watch(
   right: 12px;
   width: 36px;
   height: 36px;
+  cursor: pointer;
   border: 0;
   background: var(--brand-active);
   color: white;
   font-size: 24px;
   font-weight: 700;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.profile-modal__close:hover {
+  background: var(--brand-hover);
+  color: white;
+  transform: translateY(-1px);
+}
+
+.profile-modal__close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--brand-focus);
 }
 
 .profile-modal__title {
   margin: 0 0 20px;
   color: var(--brand-navy);
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
   font-weight: 900;
   text-align: center;
 }
@@ -133,7 +150,7 @@ watch(
 }
 
 .profile-modal__textarea {
-  min-height: 112px;
+  min-height: 160px;
   resize: vertical;
 }
 
@@ -153,9 +170,18 @@ watch(
 
 .profile-modal__button {
   min-height: 48px;
+  cursor: pointer;
   border: 1px solid var(--brand-primary);
   font-size: var(--text-md);
   font-weight: 900;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.profile-modal__button:hover {
+  background: var(--brand-hover);
+  color: white;
 }
 
 .profile-modal__button--ghost {
