@@ -17,6 +17,13 @@
       :can-edit="profileStore.isMemberProfile"
       @edit="handleEditProfileField"
     />
+    <AchievementPanel
+      v-else-if="activeTab === 'badges' && profileStore.isMemberProfile"
+      :achievements="achievementStore.achievements"
+      :is-loading="achievementStore.isLoading"
+      :error-message="achievementStore.errorMessage"
+      @retry="fetchAchievements"
+    />
     <ProfileEmptyPanel
       v-else-if="isGuestLockedTab"
       :title="activeTabMeta.label"
@@ -97,6 +104,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import AchievementPanel from "@/components/profile/AchievementPanel.vue";
 import ProfileEmptyPanel from "@/components/profile/ProfileEmptyPanel.vue";
 import ProfileInfoPanel from "@/components/profile/ProfileInfoPanel.vue";
 import ProfileShell from "@/components/profile/ProfileShell.vue";
@@ -105,11 +113,13 @@ import bgDashboard from "@/assets/images/bg-dashboard.webp";
 import paperBackground from "@/assets/images/waiting-room.webp";
 import { useProfileInitializer } from "@/composables/useProfileInitializer.js";
 import { useAuthStore } from "@/stores/authStore.js";
+import { useAchievementStore } from "@/stores/achievementStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
 import { useProfileStore } from "@/stores/profileStore.js";
 
 const router = useRouter();
 const authStore = useAuthStore();
+const achievementStore = useAchievementStore();
 const playerStore = usePlayerStore();
 const profileStore = useProfileStore();
 const { initializeProfile: initializeProfileData } = useProfileInitializer();
@@ -147,6 +157,7 @@ const activeTabMeta = computed(
 );
 
 const profilePlayer = computed(() => profileStore.profile);
+const profilePlayerId = computed(() => profilePlayer.value?.id ?? null);
 const lockedTabs = computed(() =>
   profileStore.isGuestProfile ? memberOnlyTabIds : [],
 );
@@ -207,6 +218,21 @@ async function initializeProfile() {
   }
 }
 
+async function fetchAchievements() {
+  if (
+    activeTab.value !== "badges" ||
+    !profileStore.isMemberProfile ||
+    !profilePlayerId.value
+  ) {
+    achievementStore.resetAchievements();
+    return;
+  }
+
+  await achievementStore
+    .fetchPlayerAchievements(profilePlayerId.value)
+    .catch(() => {});
+}
+
 function handleEditProfileField() {
   if (!profileStore.isMemberProfile) {
     goLogin();
@@ -263,6 +289,18 @@ watch(
   () => {
     initializeProfile();
   },
+);
+
+watch(
+  () => [
+    activeTab.value,
+    profilePlayerId.value,
+    profileStore.isMemberProfile,
+  ],
+  () => {
+    fetchAchievements();
+  },
+  { immediate: true },
 );
 </script>
 
