@@ -1,4 +1,4 @@
-import { getProfile, updateProfile } from "../services/profileService.js"
+import { getProfile, updateProfile, getProfileMatches } from "../services/profileService.js"
 
 function getErrorStatus(error) {
   return error.statusCode || 500
@@ -28,4 +28,16 @@ async function handleUpdateProfile(req, res) {
   }
 }
 
-export { handleGetProfile, handleUpdateProfile }
+async function handleGetProfileMatches(req, res) {
+  try {
+    const matches = await getProfileMatches(req.player.id, req.query);
+
+    res.status(200).json({ matches });
+  } catch (error) {
+    res.status(getErrorStatus(error)).json({
+      message: error.message || "取得對戰紀錄失敗",
+    });
+  }
+}
+
+export { handleGetProfile, handleUpdateProfile, handleGetProfileMatches }

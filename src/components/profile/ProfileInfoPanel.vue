@@ -86,7 +86,7 @@ const items = computed(() => [
     label: "稱號",
     value: props.player.title,
     icon: Crown,
-    editable: true,
+    editable: false,
   },
   {
     id: "createdAt",

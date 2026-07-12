@@ -28,7 +28,7 @@
           class="profile-sidebar__avatar-edit"
           aria-hidden="true"
         >
-          編輯
+          <Pencil :size="14" stroke-width="2.6" />
         </span>
       </button>
       <div class="profile-sidebar__identity-copy min-w-0 flex-1 lg:w-full">
@@ -135,7 +135,7 @@
 </template>
 
 <script setup>
-import { Crown } from "lucide-vue-next";
+import { Crown, Pencil } from "lucide-vue-next";
 
 defineProps({
   player: {
@@ -240,12 +240,15 @@ defineEmits(["edit-avatar"])
   position: absolute;
   right: -4px;
   bottom: -4px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
   border: 1px solid rgba(134, 179, 224, 0.8);
-  background: rgba(255, 255, 255, 0.92);
-  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
   color: var(--brand-navy);
-  font-size: var(--text-xs);
-  font-weight: 900;
+  box-shadow: 0 4px 10px rgba(0, 19, 50, 0.18);
 }
 
 .profile-sidebar__avatar-button:focus-visible {

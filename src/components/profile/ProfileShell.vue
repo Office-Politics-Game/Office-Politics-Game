@@ -5,7 +5,7 @@
     :style="{ backgroundImage: `url(${backgroundImage})` }"
   >
     <div
-      class="profile-exit-layer absolute inset-0 z-0 bg-center bg-cover opacity-0 will-change-[opacity]"
+      class="profile-exit-layer pointer-events-none absolute inset-0 z-0 bg-center bg-cover opacity-0 will-change-[opacity]"
       :style="{ backgroundImage: `url(${exitBackgroundImage})` }"
       aria-hidden="true"
     ></div>
@@ -35,7 +35,7 @@
       <ProfileSidebar
         :player="player"
         :can-edit="canEdit"
-        @edit-avatar="$emit('editAvatar')"
+        @edit-avatar="$emit('edit-avatar')"
       />
 
       <div class="profile-paper__content flex min-h-0 min-w-0 flex-1 flex-col">
@@ -44,7 +44,7 @@
             :tabs="tabs"
             :active-tab="activeTab"
             :locked-tabs="lockedTabs"
-            @update:active-tab="$emit('update:activeTab', $event)"
+            @update:active-tab="$emit('update:active-tab', $event)"
           />
           <button
             type="button"
@@ -109,7 +109,7 @@ defineProps({
   },
 });
 
-defineEmits(["close", "update:activeTab", "editAvatar"]);
+defineEmits(["close", "update:active-tab", "edit-avatar"]);
 </script>
 
 <style scoped>

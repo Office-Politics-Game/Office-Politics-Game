@@ -12,7 +12,7 @@
         'profile-tabs__button--active': tab.id === activeTab,
         'profile-tabs__button--locked': lockedTabs.includes(tab.id),
       }"
-      @click="$emit('update:activeTab', tab.id)"
+      @click="$emit('update:active-tab', tab.id)"
     >
       {{ tab.label }}
       <span
@@ -42,7 +42,7 @@ defineProps({
   },
 });
 
-defineEmits(["update:activeTab"]);
+defineEmits(["update:active-tab"]);
 </script>
 
 <style scoped>

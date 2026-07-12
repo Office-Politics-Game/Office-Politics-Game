@@ -108,5 +108,8 @@ async function updateProfile(playerId, payload = {}) {
   }
 }
 
+async function getProfileMatches() {
+  return [];
+}
 
-export { formatProfile, getProfile, updateProfile }
+export { formatProfile, getProfile, updateProfile, getProfileMatches }
