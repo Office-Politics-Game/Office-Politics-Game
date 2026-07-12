@@ -5,9 +5,9 @@ CREATE TABLE players (
   avatar_id INTEGER,
   level INTEGER NOT NULL DEFAULT 1 CHECK (level >= 1),
   exp INTEGER NOT NULL DEFAULT 0 CHECK (exp >= 0),
-  coins INTEGER NOT NULL DEFAULT 0 CHECK (coins >= 0),
-  gems INTEGER NOT NULL DEFAULT 0 CHECK (gems >= 0),
-  tickets INTEGER NOT NULL DEFAULT 0 CHECK (tickets >= 0),
+  coins INTEGER NOT NULL DEFAULT 0 CHECK (coins >= 0 AND coins <= 99999),
+  gems INTEGER NOT NULL DEFAULT 0 CHECK (gems >= 0 AND gems <= 99999),
+  tickets INTEGER NOT NULL DEFAULT 0 CHECK (tickets >= 0 AND tickets <= 99999),
   win_count INTEGER NOT NULL DEFAULT 0 CHECK (win_count >= 0),
   lose_count INTEGER NOT NULL DEFAULT 0 CHECK (lose_count >= 0),
   total_games INTEGER NOT NULL DEFAULT 0 CHECK (total_games >= 0),
@@ -63,6 +63,30 @@ ON friends(player_id, status);
 
 CREATE INDEX friends_friend_status_idx
 ON friends(friend_id, status);
+
+CREATE TABLE achievements (
+  id SERIAL PRIMARY KEY,
+  code VARCHAR(50) NOT NULL UNIQUE,
+  name VARCHAR(100) NOT NULL,
+  description TEXT NOT NULL,
+  category VARCHAR(50) NOT NULL,
+  reward_currency VARCHAR(20),
+  reward_amount INTEGER NOT NULL DEFAULT 0 CHECK (reward_amount >= 0),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CHECK (reward_currency IS NULL OR reward_currency IN ('coin', 'diamond', 'ticket'))
+);
+
+CREATE TABLE player_achievements (
+  id SERIAL PRIMARY KEY,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  achievement_id INTEGER NOT NULL REFERENCES achievements(id) ON DELETE CASCADE,
+  unlocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (player_id, achievement_id)
+);
+
+CREATE INDEX player_achievements_player_id_idx
+ON player_achievements(player_id);
 
 CREATE TABLE player_currency_logs (
   id SERIAL PRIMARY KEY,
