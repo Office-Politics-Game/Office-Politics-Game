@@ -11,7 +11,7 @@
         <RoomInvitationNotice />
 
         <CurrencyBar
-          class="absolute bottom-4 right-8.5 lg:bottom-9 lg:right-14.5"
+          class="absolute bottom-1.5 right-7 origin-bottom-right scale-[0.6] lg:bottom-3 lg:right-12"
           :items="['coins', 'gems']"
         />
         <!-- 開始遊玩 -->
@@ -240,9 +240,6 @@ function leaveLobby() {
     return;
   }
 
-  authStore.logout();
-  playerStore.resetPlayer();
-  currencyStore.resetCurrency();
   router.push("/");
 }
 
