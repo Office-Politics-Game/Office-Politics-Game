@@ -3,6 +3,7 @@ import {
   joinRoom,
   updateReady,
   getRoomState,
+  kickPlayer,
   startGame,
 } from "../services/roomService.js";
 
@@ -84,6 +85,40 @@ async function handleGetRoomState(req, res) {
   }
 }
 
+async function handleKickPlayer(req, res) {
+  try {
+    const { roomCode, targetPlayerId } = req.params;
+    const { requesterPlayerId } = req.body;
+    const numericRequesterPlayerId = Number(requesterPlayerId);
+    const numericTargetPlayerId = Number(targetPlayerId);
+
+    if (
+      !Number.isInteger(numericRequesterPlayerId) ||
+      numericRequesterPlayerId <= 0 ||
+      !Number.isInteger(numericTargetPlayerId) ||
+      numericTargetPlayerId <= 0
+    ) {
+      return res.status(400).json({ message: "缺少或無效的玩家ID" });
+    }
+
+    const roomState = await kickPlayer({
+      roomCode,
+      requesterPlayerId: numericRequesterPlayerId,
+      targetPlayerId: numericTargetPlayerId,
+    });
+
+    return res.status(200).json({
+      message: "玩家已移出房間",
+      roomState,
+    });
+  } catch (error) {
+    return res.status(getErrorStatus(error)).json({
+      message: error.statusCode ? error.message : "移出玩家失敗",
+      error: error.message,
+    });
+  }
+}
+
 async function handleStartGame(req, res) {
   try {
     const { roomCode } = req.params;
@@ -109,5 +144,6 @@ export {
   handleJoinRoom,
   handleUpdateReady,
   handleGetRoomState,
+  handleKickPlayer,
   handleStartGame,
 };

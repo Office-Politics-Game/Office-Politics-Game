@@ -11,6 +11,16 @@ function generateRoomCode(){
   return Math.random().toString(36).substring(2, 8).toUpperCase()
 }
 
+function parsePositiveInteger(value, fieldName){
+  const parsedValue = Number(value)
+
+  if (!Number.isInteger(parsedValue) || parsedValue <= 0){
+    throw createServiceError(`${fieldName} 必須是正整數`)
+  }
+
+  return parsedValue
+}
+
 async function createRoom({ hostPlayerId }){
   const client = await pool.connect()
 
@@ -168,6 +178,103 @@ async function getRoomState({ roomCode }){
   }
 }
 
+async function kickPlayer({ roomCode, requesterPlayerId, targetPlayerId }){
+  const numericRequesterPlayerId = parsePositiveInteger(
+    requesterPlayerId,
+    "requesterPlayerId"
+  )
+  const numericTargetPlayerId = parsePositiveInteger(
+    targetPlayerId,
+    "targetPlayerId"
+  )
+
+  if (numericRequesterPlayerId === numericTargetPlayerId){
+    throw createServiceError("房主不能將自己移出房間")
+  }
+
+  const client = await pool.connect()
+
+  try {
+    await client.query("BEGIN")
+
+    const roomResult = await client.query(
+      `SELECT id, room_code, host_player_id, status
+       FROM game_rooms
+       WHERE room_code = $1
+       FOR UPDATE`,
+      [roomCode]
+    )
+
+    if (roomResult.rows.length === 0){
+      throw createServiceError("查無此房間", 404)
+    }
+
+    const room = roomResult.rows[0]
+    const memberResult = await client.query(
+      `SELECT player_id, role, seat_order
+       FROM game_room_players
+       WHERE room_id = $1
+       ORDER BY seat_order ASC
+       FOR UPDATE`,
+      [room.id]
+    )
+    const requester = memberResult.rows.find(
+      (member) => Number(member.player_id) === numericRequesterPlayerId
+    )
+    const target = memberResult.rows.find(
+      (member) => Number(member.player_id) === numericTargetPlayerId
+    )
+
+    if (!requester){
+      throw createServiceError("操作者不在該房間中", 404)
+    }
+
+    if (Number(room.host_player_id) !== numericRequesterPlayerId || requester.role !== "host"){
+      throw createServiceError("該玩家不是房主，無法移出玩家", 403)
+    }
+
+    if (!target){
+      throw createServiceError("目標玩家不在該房間中", 404)
+    }
+
+    if (target.role === "host" || Number(target.player_id) === Number(room.host_player_id)){
+      throw createServiceError("不能將房主移出房間")
+    }
+
+    if (room.status !== "waiting"){
+      throw createServiceError("遊戲已開始，無法移出玩家")
+    }
+
+    await client.query(
+      `DELETE FROM game_room_players
+       WHERE room_id = $1 AND player_id = $2`,
+      [room.id, numericTargetPlayerId]
+    )
+
+    const remainingMembers = memberResult.rows.filter(
+      (member) => Number(member.player_id) !== numericTargetPlayerId
+    )
+
+    for (const [index, member] of remainingMembers.entries()){
+      await client.query(
+        `UPDATE game_room_players
+         SET seat_order = $1
+         WHERE room_id = $2 AND player_id = $3`,
+        [index + 1, room.id, member.player_id]
+      )
+    }
+
+    await client.query("COMMIT")
+  } catch (error){
+    await client.query("ROLLBACK")
+    throw error
+  } finally {
+    client.release()
+  }
+
+  return getRoomState({ roomCode })
+}
+
 async function startGame({ roomCode, playerId }){
   const client = await pool.connect()
 
@@ -255,5 +362,6 @@ export {
   joinRoom,
   updateReady,
   getRoomState,
+  kickPlayer,
   startGame,
 }
