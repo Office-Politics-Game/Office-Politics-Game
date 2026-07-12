@@ -506,9 +506,10 @@ onMounted(() => {
 
 watch(
   () => [
-    authStore.token,
     authStore.isLoggedIn,
     playerStore.currentPlayer?.id,
+    authStore.hasVerifiedToken,
+    authStore.currentPlayer?.id
   ],
   () => {
     initializeProfile();

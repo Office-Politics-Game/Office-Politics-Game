@@ -109,4 +109,4 @@ async function updateProfile(playerId, payload = {}) {
 }
 
 
-export { formatProfile, updateProfile }
+export { formatProfile, getProfile, updateProfile }
