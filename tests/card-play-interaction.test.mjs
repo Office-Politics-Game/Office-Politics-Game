@@ -127,3 +127,28 @@ test('intern target selection precedes the position dialog', async () => {
   assert.match(stageSource, /\.play-target-prompt \{[\s\S]*z-index: 45[\s\S]*pointer-events: none/)
   assert.match(stageSource, /<CardPlayConfirmPanel[\s\S]*v-if="isPendingPlayPanelVisible"/)
 })
+
+test('card play uses a six pixel drag threshold and inspection state', async () => {
+  const cardPlaySource = await readSource('src/composables/useGameStageCardPlay.js')
+  const stageSource = await readSource('src/components/game/ui/GameStage.vue')
+
+  assert.match(cardPlaySource, /const DRAG_THRESHOLD_PX = 6/)
+  assert.match(cardPlaySource, /distance <= DRAG_THRESHOLD_PX/)
+  assert.match(cardPlaySource, /const inspectedCard = ref\(null\)/)
+  assert.match(cardPlaySource, /releasedSource === "inspection" \? null : releasedCard/)
+  assert.match(cardPlaySource, /if \(isOverPlayZone\.value\) \{\s*playActiveCard\(\)/)
+  assert.match(cardPlaySource, /function canDragCard\(card\)/)
+  assert.match(cardPlaySource, /!isHandPlayInteractionLocked\.value/)
+  assert.match(stageSource, /import CardInspectionOverlay/)
+  assert.match(stageSource, /v-if="inspectedCard && !isDragging"/)
+  assert.match(stageSource, /@card-pointerdown="handleCardPointerDown"/)
+})
+
+test('inspection supports card, backdrop, and escape dismissal', async () => {
+  const source = await readSource('src/components/game/ui/CardInspectionOverlay.vue')
+
+  assert.match(source, /@pointerdown\.self="emit\('close'\)"/)
+  assert.match(source, /if \(event\.key === "Escape"\) emit\("close"\)/)
+  assert.match(source, /emit\("card-pointerdown", props\.card, event, "inspection"\)/)
+  assert.match(source, /window\.removeEventListener\("keydown", handleKeydown\)/)
+})

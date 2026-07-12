@@ -1,5 +1,8 @@
 <script setup>
 import { ref } from 'vue'
+import cursorGrabUrl from '@/assets/icons/cursor-grab.svg'
+import cursorGrabbingUrl from '@/assets/icons/cursor-grabbing.svg'
+import cursorPointerUrl from '@/assets/icons/cursor-pointer.svg'
 import GameCard from './GameCard.vue'
 import HoverBlockHint from './HoverBlockHint.vue'
 
@@ -70,6 +73,12 @@ function isCardRuleDisabled(card) {
   return props.disabledCardIds.includes(card.id)
 }
 
+const cursorStyle = {
+  '--cursor-pointer': `url("${cursorPointerUrl}") 5 3, pointer`,
+  '--cursor-grab': `url("${cursorGrabUrl}") 16 14, grab`,
+  '--cursor-grabbing': `url("${cursorGrabbingUrl}") 16 14, grabbing`,
+}
+
 defineExpose({
   prepareDrawTarget,
   getDrawTargetRect,
@@ -83,6 +92,7 @@ defineExpose({
   <section
     ref="handRoot"
     class="player-hand relative"
+    :style="cursorStyle"
     :class="{
       'player-hand--drawing': isDrawing,
       'player-hand--single': props.cards.length === 1,
@@ -101,10 +111,10 @@ defineExpose({
         'hover-block-hint-target': props.isInteractionDisabled,
       }"
       role="button"
-      :tabindex="isCardDisabled(card) ? -1 : 0"
-      :aria-disabled="isCardDisabled(card)"
-      :aria-label="`出牌：${card.name}`"
-      @pointerdown="!isCardDisabled(card) && emit('card-pointerdown', card, $event)"
+      tabindex="0"
+      :aria-disabled="isCardDisabled(card) ? 'true' : undefined"
+      :aria-label="`檢視卡牌：${card.name}`"
+      @pointerdown="emit('card-pointerdown', card, $event)"
     >
       <div class="game-card-motion size-full">
         <GameCard
@@ -140,7 +150,7 @@ defineExpose({
 }
 
 .game-card-arrangement {
-  cursor: grab;
+  cursor: var(--cursor-grab, grab) !important;
   touch-action: none;
   filter: drop-shadow(0 12px 18px rgba(0, 19, 50, 0.32));
   transition:
@@ -151,17 +161,17 @@ defineExpose({
 }
 
 .game-card-arrangement:active {
-  cursor: grabbing;
+  cursor: var(--cursor-grabbing, grabbing) !important;
 }
 
 .game-card-arrangement--rule-disabled,
 .game-card-arrangement--rule-disabled:active {
-  cursor: not-allowed;
+  cursor: not-allowed !important;
 }
 
 .game-card-arrangement--interaction-disabled,
 .game-card-arrangement--interaction-disabled:active {
-  cursor: default;
+  cursor: var(--cursor-pointer, pointer) !important;
 }
 
 .game-card-arrangement:nth-child(1) {

@@ -1,5 +1,7 @@
 import { computed, ref } from "vue";
 
+const DRAG_THRESHOLD_PX = 6;
+
 function getCardName(card) {
   return String(card?.name ?? "")
     .trim()
@@ -65,6 +67,12 @@ export function useGameStageCardPlay({
   const pendingPlay = ref(null);
   const selectedTargetPlayerId = ref(null);
   const selectedGuessRank = ref(null);
+  const inspectedCard = ref(null);
+
+  let gestureCard = null;
+  let gestureSource = "hand";
+  let gestureOriginRect = null;
+  let gestureStartPoint = null;
 
   let pointerMoveHandler = null;
   let pointerUpHandler = null;
@@ -259,6 +267,10 @@ export function useGameStageCardPlay({
     draggingCardId.value = null;
     isDragging.value = false;
     isOverPlayZone.value = false;
+    gestureCard = null;
+    gestureSource = "hand";
+    gestureOriginRect = null;
+    gestureStartPoint = null;
   }
 
   function resetPendingChoices() {
@@ -267,6 +279,7 @@ export function useGameStageCardPlay({
   }
 
   function preparePendingPlay(card) {
+    inspectedCard.value = null;
     pendingPlay.value = { card };
     resetPendingChoices();
   }
@@ -393,6 +406,7 @@ export function useGameStageCardPlay({
       });
 
       if (didPlay) {
+        inspectedCard.value = null;
         if (cardRequiresPlayChoices(card)) {
           preparePendingPlay(card);
         } else {
@@ -405,8 +419,25 @@ export function useGameStageCardPlay({
   }
 
   function handleWindowPointerMove(event) {
-    if (!hasActivePlay.value) {
+    if (!gestureCard || !gestureStartPoint) {
       return;
+    }
+
+    if (!isDragging.value) {
+      const distance = Math.hypot(
+        event.clientX - gestureStartPoint.x,
+        event.clientY - gestureStartPoint.y,
+      );
+
+      if (distance <= DRAG_THRESHOLD_PX || !canDragCard(gestureCard)) {
+        return;
+      }
+
+      activeCard.value = gestureCard;
+      originRect.value = gestureOriginRect;
+      draggingCardId.value =
+        gestureSource === "hand" ? gestureCard.id : null;
+      isDragging.value = true;
     }
 
     dragPoint.value = {
@@ -419,8 +450,28 @@ export function useGameStageCardPlay({
   }
 
   function handleWindowPointerUp(event) {
-    if (!hasActivePlay.value) {
-      resetInteraction();
+    if (!gestureCard || !gestureStartPoint) {
+      return;
+    }
+
+    const releasedCard = gestureCard;
+    const releasedSource = gestureSource;
+    const distance = Math.hypot(
+      event.clientX - gestureStartPoint.x,
+      event.clientY - gestureStartPoint.y,
+    );
+
+    if (!isDragging.value) {
+      clearPointerListeners();
+      gestureCard = null;
+      gestureOriginRect = null;
+      gestureStartPoint = null;
+
+      if (distance <= DRAG_THRESHOLD_PX) {
+        inspectedCard.value =
+          releasedSource === "inspection" ? null : releasedCard;
+      }
+
       return;
     }
 
@@ -442,14 +493,15 @@ export function useGameStageCardPlay({
     resetInteraction();
   }
 
-  function handleCardPointerDown(card, event) {
-    if (
-      isHandPlayInteractionLocked.value ||
-      advisorRuleDisabledCardIds.value.includes(card.id)
-    ) {
-      return;
-    }
+  function canDragCard(card) {
+    return (
+      !isHandPlayInteractionLocked.value &&
+      !advisorRuleDisabledCardIds.value.includes(card.id)
+    );
+  }
 
+  function handleCardPointerDown(card, event, source = "hand") {
+    if (gestureCard || isDragging.value) return;
     const cardElement = event.currentTarget;
     const cardRect = animationRects.getCardElementRect(cardElement);
 
@@ -460,17 +512,13 @@ export function useGameStageCardPlay({
     event.preventDefault();
     event.stopPropagation();
 
-    activeCard.value = card;
-    draggingCardId.value = card.id;
-    originRect.value = cardRect;
-    dragPoint.value = {
+    gestureCard = card;
+    gestureSource = source;
+    gestureOriginRect = cardRect;
+    gestureStartPoint = {
       x: event.clientX,
       y: event.clientY,
     };
-    refreshDiscardRect();
-    refreshPlayZoneRect();
-    isDragging.value = true;
-    isOverPlayZone.value = pointInsideRect(dragPoint.value, playZoneRect.value);
 
     pointerMoveHandler = handleWindowPointerMove;
     pointerUpHandler = handleWindowPointerUp;
@@ -520,12 +568,20 @@ export function useGameStageCardPlay({
 
   function cleanupCardPlay() {
     clearPointerListeners();
+    inspectedCard.value = null;
     hiddenPlayedCardTimers.forEach((timer) => window.clearTimeout(timer));
     hiddenPlayedCardTimers.clear();
   }
 
   function pruneHiddenPlayedCards(cardIds) {
     const handCardIdSet = new Set(cardIds);
+
+    if (
+      inspectedCard.value &&
+      !handCardIdSet.has(inspectedCard.value.id)
+    ) {
+      inspectedCard.value = null;
+    }
 
     locallyHiddenPlayedCardIds.value
       .filter((cardId) => !handCardIdSet.has(cardId))
@@ -540,6 +596,7 @@ export function useGameStageCardPlay({
     pendingPlay,
     selectedTargetPlayerId,
     selectedGuessRank,
+    inspectedCard,
     hasActivePlay,
     pendingRequiresTarget,
     pendingRequiresGuess,

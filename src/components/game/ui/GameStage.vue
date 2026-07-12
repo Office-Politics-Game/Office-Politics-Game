@@ -18,6 +18,7 @@ import CardPlayAnimation from "../animations/CardPlayAnimation.vue";
 import CardShuffleAnimation from "../animations/CardShuffleAnimation.vue";
 import CardSwapAnimation from "../animations/CardSwapAnimation.vue";
 import CardPlayConfirmPanel from "./CardPlayConfirmPanel.vue";
+import CardInspectionOverlay from "./CardInspectionOverlay.vue";
 import CleanerAnimation from "../animations/CleanerAnimation.vue";
 import FlyInTextModal from "../animations/FlyInTextModal.vue";
 import GameCard from "./GameCard.vue";
@@ -241,6 +242,7 @@ const {
   pendingPlay,
   selectedTargetPlayerId,
   selectedGuessRank,
+  inspectedCard,
   hasActivePlay,
   pendingRequiresTarget,
   pendingRequiresGuess,
@@ -523,6 +525,13 @@ defineExpose({
         @cancel="cancelPendingPlay"
       />
 
+      <CardInspectionOverlay
+        v-if="inspectedCard && !isDragging"
+        :card="inspectedCard"
+        @close="inspectedCard = null"
+        @card-pointerdown="handleCardPointerDown"
+      />
+
       <CardDrawAnimation ref="cardDrawAnimation" :card="activeDrawCard" />
       <CardShuffleAnimation ref="cardShuffleAnimation" />
 
@@ -649,7 +658,7 @@ defineExpose({
 <style scoped>
 .card-play-drag-preview {
   z-index: 49;
-  cursor: grabbing;
+  cursor: var(--cursor-grabbing, grabbing);
   filter: drop-shadow(0 18px 24px rgba(0, 0, 0, 0.42));
   transform-origin: 50% 50%;
   will-change: transform;
