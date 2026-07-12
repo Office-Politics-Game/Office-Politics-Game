@@ -2,6 +2,7 @@ import { jest } from "@jest/globals"
 
 const queryMock = jest.fn()
 const addCurrencyMock = jest.fn()
+const unlockAchievementMock = jest.fn()
 
 jest.unstable_mockModule("../src/db/index.js", () => ({
     default: {
@@ -11,6 +12,22 @@ jest.unstable_mockModule("../src/db/index.js", () => ({
 
 jest.unstable_mockModule("../src/services/currencyService.js", () => ({
     addCurrency: addCurrencyMock,
+}))
+
+jest.unstable_mockModule("../src/services/achievementService.js", () => ({
+    appendUnlockedAchievements: (payload, achievements) => {
+        const unlockedAchievements = achievements.filter(Boolean)
+
+        if (unlockedAchievements.length === 0) {
+            return payload
+        }
+
+        return {
+            ...payload,
+            unlockedAchievements,
+        }
+    },
+    unlockAchievement: unlockAchievementMock,
 }))
 
 const {
@@ -23,6 +40,7 @@ const {
 beforeEach(() => {
     queryMock.mockReset()
     addCurrencyMock.mockReset()
+    unlockAchievementMock.mockReset()
 })
 
 describe("topUpService", () => {
@@ -94,6 +112,11 @@ describe("topUpService", () => {
     })
 
     test("mockPayTopUpOrder() marks order paid and adds currency", async () => {
+        unlockAchievementMock.mockResolvedValueOnce({
+            code: "first_top_up",
+            name: "Shareholder",
+        })
+
         queryMock
             .mockResolvedValueOnce({
                 rows: [
@@ -121,6 +144,11 @@ describe("topUpService", () => {
         const order = await mockPayTopUpOrder(10)
 
         expect(order.status).toBe("paid")
+        expect(order.unlockedAchievements).toEqual([
+            expect.objectContaining({
+                code: "first_top_up",
+            }),
+        ])
         expect(addCurrencyMock).toHaveBeenCalledWith(
             1,
             "diamond",
@@ -128,6 +156,7 @@ describe("topUpService", () => {
             "top_up",
             expect.any(String)
         )
+        expect(unlockAchievementMock).toHaveBeenCalledWith(1, "first_top_up")
     })
 
     test("mockPayTopUpOrder() rejects paid order", async () => {
@@ -145,6 +174,7 @@ describe("topUpService", () => {
         })
 
         expect(addCurrencyMock).not.toHaveBeenCalled()
+        expect(unlockAchievementMock).not.toHaveBeenCalled()
     })
 
     test("createEcpayCheckout() returns checkout data for pending order", async () => {

@@ -1,5 +1,9 @@
 import pool from "../db/index.js"
 import { createInitialState } from "../game/initialState.js"
+import {
+  appendUnlockedAchievements,
+  unlockAchievement,
+} from "./achievementService.js"
 
 function createServiceError(message, statusCode = 400){
   const error = new Error(message)
@@ -35,7 +39,13 @@ async function createRoom({ hostPlayerId }){
     )
 
     await client.query("COMMIT")
-    return { room }
+
+    const unlockedAchievement = await unlockAchievement(
+      hostPlayerId,
+      "first_room_create"
+    )
+
+    return appendUnlockedAchievements({ room }, [unlockedAchievement])
   } catch (error) {
     await client.query("ROLLBACK")
     throw error

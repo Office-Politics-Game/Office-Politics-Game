@@ -24,8 +24,29 @@ const apiClient = axios.create({
   baseURL: API_BASE_URL,
 });
 
+function emitUnlockedAchievements(data) {
+  const unlockedAchievements = data?.unlockedAchievements;
+
+  if (
+    typeof window === "undefined" ||
+    !Array.isArray(unlockedAchievements) ||
+    unlockedAchievements.length === 0
+  ) {
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("achievement:unlocked", {
+      detail: { achievements: unlockedAchievements },
+    }),
+  );
+}
+
 apiClient.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    emitUnlockedAchievements(response.data);
+    return response.data;
+  },
   (error) => Promise.reject(normalizeApiError(error)),
 );
 

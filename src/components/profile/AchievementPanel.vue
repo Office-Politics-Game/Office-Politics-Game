@@ -22,19 +22,18 @@
       <button type="button" @click="emit('retry')">再試一次</button>
     </div>
 
-    <p v-else-if="achievements.length === 0" class="achievement-panel__state">
+    <p v-else-if="unlockedAchievements.length === 0" class="achievement-panel__state">
       尚未建立成就資料。
     </p>
 
     <ul v-else class="achievement-panel__list">
       <li
-        v-for="achievement in achievements"
+        v-for="achievement in unlockedAchievements"
         :key="achievement.code"
         class="achievement-card"
-        :class="{ 'achievement-card--locked': !achievement.isUnlocked }"
       >
         <span class="achievement-card__icon" aria-hidden="true">
-          {{ achievement.isUnlocked ? "★" : "?" }}
+          ★
         </span>
 
         <div class="achievement-card__content">
@@ -49,7 +48,7 @@
         </div>
 
         <span class="achievement-card__status">
-          {{ achievement.isUnlocked ? "已解鎖" : "未解鎖" }}
+          已解鎖
         </span>
       </li>
     </ul>
@@ -57,7 +56,9 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from "vue"
+
+const props = defineProps({
   achievements: {
     type: Array,
     default: () => [],
@@ -73,6 +74,10 @@ defineProps({
 })
 
 const emit = defineEmits(["retry"])
+
+const unlockedAchievements = computed(() => {
+  return props.achievements.filter((achievement) => achievement.isUnlocked)
+})
 
 const rewardLabels = {
   coin: "金幣",

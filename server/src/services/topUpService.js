@@ -1,5 +1,9 @@
 import pool from "../db/index.js"
 import { addCurrency } from "./currencyService.js"
+import {
+  appendUnlockedAchievements,
+  unlockAchievement,
+} from "./achievementService.js"
 import crypto from "node:crypto"
 
 const topUpPackages = [
@@ -117,7 +121,12 @@ async function mockPayTopUpOrder(orderId) {
     `儲值訂單 #${order.id}`
   )
 
-  return paidResult.rows[0]
+  const unlockedAchievement = await unlockAchievement(
+    order.player_id,
+    "first_top_up"
+  )
+
+  return appendUnlockedAchievements(paidResult.rows[0], [unlockedAchievement])
 }
 
 function formatEcpayDate(date = new Date()) {

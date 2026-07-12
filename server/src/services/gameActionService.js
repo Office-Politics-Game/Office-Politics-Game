@@ -10,6 +10,10 @@ import { addLog } from "./actionLogService.js"
 import { discardCard } from "./discardService.js"
 import { finishTurn } from "./roundFlowService.js"
 import {
+    appendUnlockedAchievements,
+    unlockAchievement,
+} from "./achievementService.js"
+import {
     checkTurn,
     checkPlayer,
     checkCard,
@@ -21,6 +25,39 @@ function createServiceError(message, statusCode = 400) {
     const error = new Error(message)
     error.statusCode = statusCode
     return error
+}
+
+async function unlockGameEndAchievements(state, viewerPlayerId) {
+    if (state.phase !== "finished") {
+        return []
+    }
+
+    const players = Array.isArray(state.players) ? state.players : []
+    const unlockedAchievements = []
+
+    for (const player of players) {
+        const unlockedAchievement = await unlockAchievement(
+            player.playerId,
+            "first_game_complete"
+        )
+
+        if (player.playerId === viewerPlayerId) {
+            unlockedAchievements.push(unlockedAchievement)
+        }
+    }
+
+    if (state.winnerPlayerId) {
+        const unlockedAchievement = await unlockAchievement(
+            state.winnerPlayerId,
+            "first_game_win"
+        )
+
+        if (state.winnerPlayerId === viewerPlayerId) {
+            unlockedAchievements.push(unlockedAchievement)
+        }
+    }
+
+    return unlockedAchievements
 }
 
 async function drawCardAction({ roomCode, playerId }) {
@@ -183,7 +220,12 @@ async function playCardAction({
 
     const publicState = getPublicState(state, numericPlayerId)
 
-    return {
+    const unlockedAchievements = await unlockGameEndAchievements(
+        state,
+        numericPlayerId
+    )
+
+    return appendUnlockedAchievements({
         gameSession,
         result: effectResult,
         animationResult,
@@ -191,7 +233,7 @@ async function playCardAction({
         actionLog,
         state,
         publicState,
-    }
+    }, unlockedAchievements)
 }
 
 export { drawCardAction, playCardAction }
