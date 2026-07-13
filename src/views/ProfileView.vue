@@ -111,6 +111,11 @@ import ProfileShell from "@/components/profile/ProfileShell.vue";
 import bgPersonal from "@/assets/images/bg-personal.webp";
 import bgDashboard from "@/assets/images/bg-dashboard.webp";
 import paperBackground from "@/assets/images/waiting-room.webp";
+import { guestAvatars } from "@/constants/guestOptions.js";
+import {
+  getPlayerEquippedItems,
+  getPlayerShopItems,
+} from "@/services/shopApi.js";
 import { useProfileInitializer } from "@/composables/useProfileInitializer.js";
 import { useAuthStore } from "@/stores/authStore.js";
 import { useAchievementStore } from "@/stores/achievementStore.js";
@@ -125,6 +130,8 @@ const profileStore = useProfileStore();
 const { initializeProfile: initializeProfileData } = useProfileInitializer();
 const activeTab = ref("profile");
 const isReturningToLobby = ref(false);
+const equippedAvatarUrl = ref("");
+const hasResolvedEquippedAvatar = ref(false);
 const RETURN_ANIMATION_DURATION = 700;
 
 const tabs = [
@@ -152,18 +159,143 @@ const tabs = [
 
 const memberOnlyTabIds = ["matches", "badges", "collection"];
 
+const sourcePlayer = computed(
+  () =>
+    profileStore.profilePlayer ||
+    authStore.currentPlayer ||
+    playerStore.currentPlayer ||
+    null,
+);
+
+function toNumber(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function formatNumber(value) {
+  return new Intl.NumberFormat("zh-TW").format(toNumber(value, 0));
+}
+
+function formatDate(value) {
+  if (!value) {
+    return "尚未設定";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "尚未設定";
+  }
+
+  return new Intl.DateTimeFormat("zh-TW", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function getNextExp(level) {
+  const safeLevel = Math.max(1, toNumber(level, 1));
+  return safeLevel * 1000;
+}
+
+function getWinRate(winCount, totalGames) {
+  const safeTotalGames = Math.max(0, toNumber(totalGames, 0));
+
+  if (safeTotalGames === 0) {
+    return "0%";
+  }
+
+  const rate = Math.round((toNumber(winCount, 0) / safeTotalGames) * 100);
+  return `${rate}%`;
+}
+
 const activeTabMeta = computed(
   () => tabs.find((tab) => tab.id === activeTab.value) ?? tabs[0],
 );
 
-const profilePlayer = computed(() => profileStore.profile);
-const profilePlayerId = computed(() => profilePlayer.value?.id ?? null);
 const lockedTabs = computed(() =>
   profileStore.isGuestProfile ? memberOnlyTabIds : [],
 );
 const isGuestLockedTab = computed(
   () =>
     profileStore.isGuestProfile && memberOnlyTabIds.includes(activeTab.value),
+);
+
+const profilePlayer = computed(() => {
+  const player = sourcePlayer.value;
+  const level = toNumber(player.level, 12);
+  const exp = toNumber(player.exp, 3250);
+  const nextExp = getNextExp(level);
+  const winCount = toNumber(player.winCount ?? player.win_count, 62);
+  const loseCount = toNumber(player.loseCount ?? player.lose_count, 38);
+  const totalGames = toNumber(player.totalGames ?? player.total_games, winCount + loseCount);
+  const avatar = guestAvatars.find((item) => item.id === toNumber(player.avatarId ?? player.avatar_id, 1));
+  const playerId = toNumber(player.id, 1);
+  const fallbackAvatarUrl = avatar?.image ?? guestAvatars[0].image;
+  const shouldWaitForEquippedAvatar =
+    playerId > 0 && !player.avatarUrl && !hasResolvedEquippedAvatar.value;
+
+  return {
+    id: playerId,
+    username: player.username || "CEO小陳",
+    title: player.title || "職場操盤手",
+    avatarUrl: shouldWaitForEquippedAvatar
+      ? ""
+      : equippedAvatarUrl.value || player.avatarUrl || fallbackAvatarUrl,
+    level,
+    exp,
+    nextExp,
+    expPercent: Math.min(Math.round((exp / nextExp) * 100), 100),
+    expDisplay: formatNumber(exp),
+    nextExpDisplay: formatNumber(nextExp),
+    winCount,
+    loseCount,
+    totalGames,
+    winRate: getWinRate(winCount, totalGames),
+    playerCode: `CEO_${String(playerId).padStart(4, "0")}`,
+    createdAtDisplay: formatDate(player.createdAt ?? player.created_at),
+    region: player.region || "台灣",
+    bio: player.bio || "在辦公室，我就是規則。",
+  };
+});
+
+const profilePlayerId = computed(() => profilePlayer.value?.id ?? null);
+
+watch(
+  () => sourcePlayer.value?.id,
+  async (playerId) => {
+    equippedAvatarUrl.value = "";
+    hasResolvedEquippedAvatar.value = false;
+
+    const numericPlayerId = Number(playerId);
+
+    if (!Number.isInteger(numericPlayerId) || numericPlayerId <= 0) {
+      hasResolvedEquippedAvatar.value = true;
+      return;
+    }
+
+    try {
+      const [playerItemsResponse, equippedResponse] = await Promise.all([
+        getPlayerShopItems(numericPlayerId),
+        getPlayerEquippedItems(numericPlayerId),
+      ]);
+
+      const avatarItemId = equippedResponse?.equipped?.avatarItemId;
+      const avatarInventoryEntry = (playerItemsResponse?.items || []).find(
+        (entry) =>
+          entry?.item?.type === "avatar" &&
+          Number(entry?.item?.id) === Number(avatarItemId),
+      );
+
+      equippedAvatarUrl.value = avatarInventoryEntry?.item?.imageUrl || "";
+    } catch {
+      equippedAvatarUrl.value = "";
+    } finally {
+      hasResolvedEquippedAvatar.value = true;
+    }
+  },
+  { immediate: true },
 );
 
 const statePanel = computed(() => {

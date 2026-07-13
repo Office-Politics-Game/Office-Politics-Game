@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { storeToRefs } from "pinia";
 import gameTableBackgroundUrl from "@/assets/images/bg-game-table.webp";
 import gameLogoUrl from "@/assets/images/logo-en-white.png";
 import { useAudioSettings } from "@/composables/UseAudioSettings";
@@ -12,22 +13,23 @@ import {
   useGameStageNotices,
 } from "@/composables/useGameStageNotices";
 import { useGameAnimationRects } from "@/composables/useGameAnimationRects";
+import { useAppearanceStore } from "@/stores/appearanceStore.js";
 import CardDrawAnimation from "../animations/CardDrawAnimation.vue";
 import CardPlayAnimation from "../animations/CardPlayAnimation.vue";
 import CardShuffleAnimation from "../animations/CardShuffleAnimation.vue";
 import CardSwapAnimation from "../animations/CardSwapAnimation.vue";
-import CardPlayConfirmPanel from "./CardPlayConfirmPanel.vue";
 import CleanerAnimation from "../animations/CleanerAnimation.vue";
 import FlyInTextModal from "../animations/FlyInTextModal.vue";
-import GameCard from "./GameCard.vue";
-import GameSettingsIcon from "./GameSettingsIcon.vue";
-import GameSettingsModal from "./GameSettingsModal.vue";
 import InternAnimation from "../animations/InternAnimation.vue";
 import ManagerAnimation from "../animations/ManagerAnimation.vue";
 import PMAnimation from "../animations/PMAnimation.vue";
+import ProtectionAura from "../animations/ProtectionAura.vue";
+import CardPlayConfirmPanel from "./CardPlayConfirmPanel.vue";
+import GameCard from "./GameCard.vue";
+import GameSettingsIcon from "./GameSettingsIcon.vue";
+import GameSettingsModal from "./GameSettingsModal.vue";
 import PlayerHand from "./PlayerHand.vue";
 import PlayerSeats from "./PlayerSeats.vue";
-import ProtectionAura from "../animations/ProtectionAura.vue";
 import RotateDeviceNotice from "./RotateDeviceNotice.vue";
 import TableCardPiles from "./TableCardPiles.vue";
 import TurnStatus from "./TurnStatus.vue";
@@ -102,6 +104,9 @@ const emit = defineEmits([
   "play-card",
   "round-sequence-complete",
 ]);
+
+const appearanceStore = useAppearanceStore();
+const { boardSkinUrl } = storeToRefs(appearanceStore);
 const isSettingsOpen = ref(false);
 const isDrawAnimating = ref(false);
 const activeDrawCard = ref(null);
@@ -121,6 +126,9 @@ const resolvedCurrentPlayerId = computed(
     props.players.find((player) => player.isCurrentPlayer)?.id ??
     null,
 );
+const resolvedTableBackgroundUrl = computed(
+  () => boardSkinUrl.value || gameTableBackgroundUrl,
+);
 const animationRects = useGameAnimationRects({
   playerHand,
   playerSeats,
@@ -129,13 +137,13 @@ const animationRects = useGameAnimationRects({
 });
 
 const guessOptions = [
-  { rank: 2, name: "打掃阿姨" },
-  { rank: 3, name: "部門主管" },
-  { rank: 4, name: "職場老鳥" },
-  { rank: 5, name: "專案經理" },
-  { rank: 6, name: "人資主管" },
-  { rank: 7, name: "資深顧問" },
-  { rank: 8, name: "執行長" },
+  { rank: 2, name: "Cleaner" },
+  { rank: 3, name: "Manager" },
+  { rank: 4, name: "Senior" },
+  { rank: 5, name: "PM" },
+  { rank: 6, name: "HR" },
+  { rank: 7, name: "Advisor" },
+  { rank: 8, name: "CEO" },
 ];
 
 const {
@@ -277,6 +285,7 @@ const {
   isDrawAnimating,
   activeEffectResult,
 });
+
 const protectedPlayers = computed(() =>
   props.players.filter((player) => player.isProtected),
 );
@@ -292,6 +301,7 @@ const activeProtectionAnimationPlayer = computed(() => {
     ) ?? null
   );
 });
+
 onBeforeUnmount(() => {
   cleanupCardPlay();
   cardPlayAnimation.value?.stop?.();
@@ -398,8 +408,8 @@ defineExpose({
   >
     <section
       class="game-stage relative hidden h-[100dvh] w-[100dvw] overflow-hidden bg-cover bg-center bg-no-repeat"
-      :style="{ backgroundImage: `url(${gameTableBackgroundUrl})` }"
-      aria-label="Office Politics 遊戲舞台"
+      :style="{ backgroundImage: `url(${resolvedTableBackgroundUrl})` }"
+      aria-label="Office Politics 遊戲桌面"
     >
       <div
         v-if="pendingPlay"
@@ -588,13 +598,13 @@ defineExpose({
 
     <FlyInTextModal
       :is-open="isTurnNoticeOpen"
-      text="輪到你的回合"
+      text="你的回合"
       @close="closeTurnNotice"
     />
 
     <FlyInTextModal
       :is-open="isRoundWinnerNoticeOpen"
-      text="回合勝利"
+      text="回合獲勝"
       :player-name="roundWinnerNotice?.name ?? ''"
       :avatar-url="roundWinnerNotice?.avatarUrl ?? ''"
       :duration="2400"

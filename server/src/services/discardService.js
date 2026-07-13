@@ -1,11 +1,22 @@
 import { removeHandCard } from "./handService.js"
 
+function attachCardOwner(card, playerId) {
+  if (!card) {
+    return card
+  }
+
+  return {
+    ...card,
+    ownerPlayerId: Number(playerId),
+  }
+}
+
 // 出牌
 function discardCard( player, cardId, discardPile ) {
-  const removedCard = removeHandCard(
+  const removedCard = attachCardOwner(removeHandCard(
     player,
     cardId
-  )
+  ), player?.playerId)
   
   if (removedCard === null) {
     return null  
