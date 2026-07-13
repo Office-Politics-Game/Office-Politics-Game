@@ -1,6 +1,8 @@
 import pool from "../db/index.js"
 
 const VALID_AVATAR_IDS = new Set([1, 2, 3, 4])
+const DEFAULT_MATCH_HISTORY_LIMIT = 20
+const MAX_MATCH_HISTORY_LIMIT = 40
 
 const PROFILE_SELECT_SQL = `id, username, avatar_id, bio,
     level, exp, win_count, lose_count, total_games, created_at, updated_at`
@@ -24,6 +26,52 @@ function formatProfile(row) {
     totalGames: row.total_games,
     createdAt: row.created_at,
     updatedAt: row.updated_at
+  }
+}
+
+function normalizeMatchHistoryLimit(value) {
+  const limit = Number.parseInt(value, 10)
+
+  if (!Number.isInteger(limit) || limit <= 0) {
+    return DEFAULT_MATCH_HISTORY_LIMIT
+  }
+
+  return Math.min(limit, MAX_MATCH_HISTORY_LIMIT)
+}
+
+function normalizeMatchParticipants(participants) {
+  if (Array.isArray(participants)) {
+    return participants
+  }
+
+  if (!participants) {
+    return []
+  }
+
+  try {
+    return JSON.parse(participants)
+  } catch {
+    return []
+  }
+}
+
+function formatProfileMatch(row) {
+  return {
+    id: row.id,
+    roomId: row.room_id,
+    result: row.result,
+    winnerPlayerId: row.winner_player_id,
+    winnerUsername: row.winner_username || "暫無記錄",
+    startedAt: row.started_at,
+    endedAt: row.ended_at,
+    xpGained: row.result === "win" ? 300 : 100,
+    participants: normalizeMatchParticipants(row.participants).map((participant) => ({
+      playerId: participant.playerId,
+      username: participant.username,
+      avatarId: participant.avatarId,
+      roundWins: participant.roundWins,
+      result: participant.result
+    }))
   }
 }
 
@@ -108,8 +156,57 @@ async function updateProfile(playerId, payload = {}) {
   }
 }
 
-async function getProfileMatches() {
-  return [];
+async function getProfileMatches(playerId, query = {}) {
+  const limit = normalizeMatchHistoryLimit(query.limit)
+
+  const result = await pool.query(
+    `SELECT
+        matches.id,
+        matches.room_id,
+        matches.winner_player_id,
+        matches.started_at,
+        matches.ended_at,
+        current_participant.result,
+        winner_participant.username_snapshot AS winner_username,
+        COALESCE(
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'playerId', participant.player_id,
+              'username', participant.username_snapshot,
+              'avatarId', participant.avatar_id_snapshot,
+              'roundWins', participant.round_wins,
+              'result', participant.result
+            )
+            ORDER BY participant.round_wins DESC, participant.id ASC
+          ) FILTER (WHERE participant.id IS NOT NULL),
+          '[]'
+        ) AS participants
+      FROM matches
+      INNER JOIN match_participants AS current_participant
+        ON current_participant.match_id = matches.id
+        AND current_participant.player_id = $1
+      LEFT JOIN match_participants AS winner_participant
+        ON winner_participant.match_id = matches.id
+        AND winner_participant.player_id = matches.winner_player_id
+      LEFT JOIN match_participants AS participant
+        ON participant.match_id = matches.id
+      WHERE matches.ended_at IS NOT NULL
+      GROUP BY
+        matches.id,
+        current_participant.result,
+        winner_participant.username_snapshot
+      ORDER BY matches.ended_at DESC, matches.id DESC
+      LIMIT $2`,
+    [playerId, limit]
+  )
+
+  return result.rows.map(formatProfileMatch)
 }
 
-export { formatProfile, getProfile, updateProfile, getProfileMatches }
+export {
+  formatProfile,
+  formatProfileMatch,
+  getProfile,
+  updateProfile,
+  getProfileMatches
+}
