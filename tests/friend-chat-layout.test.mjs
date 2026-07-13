@@ -55,14 +55,20 @@ test("long conversations scroll inside the message body while the composer stays
   assert.match(composerRule, /shrink-0/)
 })
 
-test("square message bubbles are narrow and point toward their sender", async () => {
+test("square message bubbles are narrow and point toward their aligned edge", async () => {
   const source = await readSource("src/components/friend/FriendChatPanel.vue")
   const bubbleRule = getCssRule(source, ".message-bubble")
+  const mineRule = getCssRule(source, ".chat-message--mine")
+  const friendRule = getCssRule(source, ".chat-message--friend")
   const commonTailRule = getCssRule(
     source,
     ".message-bubble::before,\n.message-bubble::after",
   )
-  const ownTailRule = getCssRule(
+  const ownOuterTailRule = getCssRule(
+    source,
+    ".chat-message--mine .message-bubble::before",
+  )
+  const ownInnerTailRule = getCssRule(
     source,
     ".chat-message--mine .message-bubble::after",
   )
@@ -82,10 +88,31 @@ test("square message bubbles are narrow and point toward their sender", async ()
   assert.match(commonTailRule, /position:\s*absolute/)
   assert.match(commonTailRule, /content:\s*""/)
   assert.match(commonTailRule, /pointer-events:\s*none/)
-  assert.match(ownTailRule, /right:\s*-8px/)
-  assert.match(ownTailRule, /border-left:\s*8px solid var\(--brand-active\)/)
-  assert.match(friendOuterTailRule, /left:\s*-9px/)
-  assert.match(friendOuterTailRule, /border-right:\s*9px solid var\(--gray-100\)/)
-  assert.match(friendInnerTailRule, /left:\s*-7px/)
-  assert.match(friendInnerTailRule, /border-right:\s*8px solid white/)
+  assert.match(mineRule, /items-start/)
+  assert.match(friendRule, /items-end/)
+  assert.match(ownOuterTailRule, /left:\s*-9px/)
+  assert.match(ownOuterTailRule, /border-right:\s*9px solid var\(--gray-100\)/)
+  assert.match(ownInnerTailRule, /left:\s*-7px/)
+  assert.match(ownInnerTailRule, /border-right:\s*8px solid white/)
+  assert.match(friendOuterTailRule, /right:\s*-9px/)
+  assert.match(friendOuterTailRule, /border-left:\s*9px solid var\(--gray-200\)/)
+  assert.match(friendInnerTailRule, /right:\s*-7px/)
+  assert.match(friendInnerTailRule, /border-left:\s*8px solid var\(--gray-100\)/)
+})
+
+test("message ownership uses labels and source-specific bubble colors", async () => {
+  const source = await readSource("src/components/friend/FriendChatPanel.vue")
+  const authorRule = getCssRule(source, ".message-author")
+  const mineBubbleRule = getCssRule(source, ".chat-message--mine .message-bubble")
+  const friendBubbleRule = getCssRule(source, ".chat-message--friend .message-bubble")
+
+  assert.match(
+    source,
+    /<p class="message-author">\s*\{\{\s*isMine\(message\) \? "我" : friend\.playerId\s*\}\}\s*<\/p>\s*<div class="message-bubble">/,
+  )
+  assert.match(authorRule, /text-xs/)
+  assert.match(mineBubbleRule, /bg-white/)
+  assert.match(friendBubbleRule, /bg-\[var\(--gray-100\)\]/)
+  assert.doesNotMatch(mineBubbleRule, /rounded/)
+  assert.doesNotMatch(friendBubbleRule, /rounded/)
 })

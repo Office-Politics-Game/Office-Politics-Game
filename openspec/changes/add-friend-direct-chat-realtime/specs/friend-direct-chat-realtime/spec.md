@@ -134,7 +134,7 @@ The friend page SHALL start realtime chat only for an authenticated member who c
 
 ### Requirement: Scrollable direct chat layout and speech bubble presentation
 
-The friend chat panel SHALL remain within the vertical space allocated by the friend page. The toolbar and message composer MUST remain visible while only the message body scrolls when message content exceeds the available height. Message bubbles SHALL retain square corners, use a maximum width of 62 percent on desktop and 82 percent on small screens, and display a CSS triangle tail pointing right for the current player and left for the friend.
+The friend chat panel SHALL remain within the vertical space allocated by the friend page. The toolbar and message composer MUST remain visible while only the message body scrolls when message content exceeds the available height. Message bubbles SHALL retain square corners and use a maximum width of 62 percent on desktop and 82 percent on small screens. Current-player messages MUST align left, use a white bubble with a left-pointing CSS triangle tail, and display the label \"我\" above the bubble. Friend messages MUST align right, use a light-gray bubble with a right-pointing CSS triangle tail, and display only the selected friend's actual player ID above the bubble without a descriptive prefix.
 
 #### Scenario: Long conversation remains usable
 
@@ -145,9 +145,16 @@ The friend chat panel SHALL remain within the vertical space allocated by the fr
 #### Scenario: Message direction is visible in the bubble shape
 
 - **WHEN** the conversation renders messages from both the current player and the friend
-- **THEN** current-player bubbles have a right-pointing triangle tail
-- **AND** friend bubbles have a left-pointing triangle tail
+- **THEN** current-player bubbles align left and have a left-pointing triangle tail
+- **AND** friend bubbles align right and have a right-pointing triangle tail
 - **AND** both bubble variants retain square corners and wrap long text
+
+#### Scenario: Message ownership is visible through color and identity
+
+- **WHEN** the conversation renders a current-player message and a friend message for friend player ID 123
+- **THEN** the current-player message uses a white bubble with the label \"我\" above it
+- **AND** the friend message uses a light-gray bubble with only \"123\" above it
+- **AND** neither identity label is rendered inside the message bubble
 
 #### Scenario: Bubble width remains readable across screen sizes
 
@@ -155,6 +162,62 @@ The friend chat panel SHALL remain within the vertical space allocated by the fr
 - **THEN** each message bubble uses a maximum width of 62 percent
 - **AND WHEN** the chat panel is rendered on a small-screen viewport
 - **THEN** each message bubble uses a maximum width of 82 percent
+
+### Requirement: Keyboard-friendly direct message submission
+
+The friend chat textarea SHALL treat an unmodified Enter keydown as a submit shortcut when the message is non-blank and no send request is active. Shift+Enter MUST retain the textarea's native line-break behavior. Enter keydowns with Ctrl, Alt, or Meta modifiers and Enter keydowns generated while an input method editor is composing text MUST NOT submit the message or suppress the native input behavior. A submit shortcut received while the message is blank or a send request is active MUST NOT invoke the message-send action.
+
+#### Scenario: Unmodified Enter sends one message
+
+- **WHEN** the textarea contains "hello", no send request is active, and the player presses Enter without modifiers outside IME composition
+- **THEN** the keydown default is prevented
+- **AND** the existing message-submit action is invoked exactly once
+
+#### Scenario: Shift Enter inserts a line break
+
+- **WHEN** the player presses Shift+Enter in the textarea
+- **THEN** the keydown default is not prevented
+- **AND** the message-submit action is not invoked
+
+#### Scenario: IME confirmation does not send
+
+- **WHEN** the player presses Enter while `isComposing` is true
+- **THEN** the keydown default is not prevented
+- **AND** the message-submit action is not invoked
+
+#### Scenario: Submit shortcut is disabled
+
+- **WHEN** the player presses unmodified Enter while the message is blank or a send request is active
+- **THEN** the keydown default is prevented
+- **AND** the message-submit action is not invoked
+
+### Requirement: Automatic latest-message visibility
+
+The friend chat panel SHALL scroll the active message body to its maximum vertical position after the selected friend changes, REST history renders, or the current conversation gains a new latest message from either the REST send response or chat:message. The panel MUST wait until Vue finishes the corresponding DOM update before scrolling. A new latest message MUST force the active conversation to the bottom even when the player was reading older messages. This behavior MUST NOT mutate conversation data or change REST, Socket.IO, or chat-store contracts.
+
+#### Scenario: Sender sees the newly sent message
+
+- **WHEN** the current player successfully sends a message and the REST response is merged into the active conversation
+- **THEN** the message body scrolls to its maximum vertical position after the new message renders
+- **AND** the newly sent message is visible without manual scrollbar movement
+
+#### Scenario: Receiver sees the realtime message
+
+- **WHEN** the active conversation receives a valid chat:message and renders it as the new latest message
+- **THEN** the message body scrolls to its maximum vertical position after the new message renders
+- **AND** the received message is visible without manual scrollbar movement
+
+#### Scenario: Friend selection or history load displays the latest message
+
+- **WHEN** the player selects another friend or REST history finishes rendering for the active friend
+- **THEN** the active message body scrolls to its maximum vertical position
+- **AND** the most recent rendered message is visible
+
+#### Scenario: New message interrupts older-message reading
+
+- **WHEN** the player has manually scrolled upward and the active conversation gains a new latest message
+- **THEN** the message body returns to its maximum vertical position
+- **AND** no unread prompt or additional player action is required
 
 ### Requirement: Recoverable realtime subscription
 

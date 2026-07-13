@@ -34,7 +34,7 @@
       </button>
     </div>
 
-    <div class="chat-body">
+    <div ref="chatBodyRef" class="chat-body">
       <div v-if="chatStore.isLoading" class="chat-state">
         聊天紀錄載入中...
       </div>
@@ -54,6 +54,9 @@
           class="chat-message"
           :class="isMine(message) ? 'chat-message--mine' : 'chat-message--friend'"
         >
+          <p class="message-author">
+            {{ isMine(message) ? "我" : friend.playerId }}
+          </p>
           <div class="message-bubble">
             <p class="message-content">
               {{ message.content }}
@@ -75,6 +78,7 @@
         rows="2"
         placeholder="輸入訊息"
         :disabled="chatStore.isSending"
+        @keydown="handleMessageKeydown"
       ></textarea>
 
       <button type="submit" class="chat-send-button" :disabled="sendDisabled">
@@ -85,8 +89,10 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import { useChatStore } from "@/stores/chatStore.js";
+import { isFriendChatSubmitShortcut } from "@/utils/FriendChatKeyboard.js";
+import { scrollFriendChatToLatest } from "@/utils/FriendChatScroll.js";
 
 const props = defineProps({
   friend: {
@@ -100,12 +106,21 @@ const props = defineProps({
 });
 
 const chatStore = useChatStore();
+const chatBodyRef = ref(null);
 const messageText = ref("");
 
 const messages = computed(() => chatStore.messagesByFriend(props.friend.playerId));
+const latestMessageId = computed(
+  () => messages.value.at(-1)?.id ?? null,
+);
 const sendDisabled = computed(
   () => chatStore.isSending || !messageText.value.trim(),
 );
+
+async function scrollToLatestMessage() {
+  await nextTick();
+  scrollFriendChatToLatest(chatBodyRef.value);
+}
 
 function isMine(message) {
   return Number(message.senderPlayerId) === Number(props.currentPlayerId);
@@ -131,6 +146,20 @@ function formatMessageTime(value) {
   }).format(date);
 }
 
+function handleMessageKeydown(event) {
+  if (!isFriendChatSubmitShortcut(event)) {
+    return;
+  }
+
+  event.preventDefault();
+
+  if (sendDisabled.value) {
+    return;
+  }
+
+  submitMessage();
+}
+
 async function submitMessage() {
   const sentMessage = await chatStore.sendMessage({
     friendId: props.friend.playerId,
@@ -147,6 +176,16 @@ watch(
   (friendId) => {
     chatStore.loadMessages(friendId);
   },
+  { immediate: true },
+);
+
+watch(
+  [
+    () => props.friend.playerId,
+    () => messages.value.length,
+    latestMessageId,
+  ],
+  scrollToLatestMessage,
   { immediate: true },
 );
 </script>
@@ -191,15 +230,19 @@ watch(
 }
 
 .chat-message {
-  @apply flex w-full;
+  @apply flex w-full flex-col;
 }
 
 .chat-message--mine {
-  @apply justify-end;
+  @apply items-start;
 }
 
 .chat-message--friend {
-  @apply justify-start;
+  @apply items-end;
+}
+
+.message-author {
+  @apply mb-1 text-xs font-bold text-[var(--gray-400)];
 }
 
 .message-bubble {
@@ -219,19 +262,10 @@ watch(
 }
 
 .chat-message--mine .message-bubble {
-  @apply border-[var(--brand-active)] bg-[var(--brand-active)] text-white;
-}
-
-.chat-message--mine .message-bubble::after {
-  right: -8px;
-  border-left: 8px solid var(--brand-active);
-}
-
-.chat-message--friend .message-bubble {
   @apply border-[var(--gray-100)] bg-white text-[var(--brand-active)];
 }
 
-.chat-message--friend .message-bubble::before {
+.chat-message--mine .message-bubble::before {
   top: 11px;
   left: -9px;
   border-top-width: 8px;
@@ -239,9 +273,26 @@ watch(
   border-right: 9px solid var(--gray-100);
 }
 
-.chat-message--friend .message-bubble::after {
+.chat-message--mine .message-bubble::after {
   left: -7px;
   border-right: 8px solid white;
+}
+
+.chat-message--friend .message-bubble {
+  @apply border-[var(--gray-200)] bg-[var(--gray-100)] text-[var(--brand-active)];
+}
+
+.chat-message--friend .message-bubble::before {
+  top: 11px;
+  right: -9px;
+  border-top-width: 8px;
+  border-bottom-width: 8px;
+  border-left: 9px solid var(--gray-200);
+}
+
+.chat-message--friend .message-bubble::after {
+  right: -7px;
+  border-left: 8px solid var(--gray-100);
 }
 
 .message-content {

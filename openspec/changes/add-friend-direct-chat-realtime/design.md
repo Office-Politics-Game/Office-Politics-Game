@@ -16,13 +16,15 @@
 - Socket 推播失敗時仍維持已成功 REST 寫入的 201 回應。
 - 訊息增加時標題與輸入區維持可見，僅訊息內容區產生垂直捲動。
 - 訊息泡泡維持 Square UI 方形語言，以較窄比例與左右三角尾巴區分方向。
+- 讓玩家可用 Enter 送出好友私訊，並保留 Shift+Enter 換行與中文輸入法組字安全性。
+- 讓目前對話在自己送出、收到訊息、切換好友與歷史載入完成後一律顯示最新一則訊息。
 
 **Non-Goals:**
 
 - 不新增 chat:send 或把訊息送出改成 Socket。
 - 不加入未讀數、已讀狀態、typing、分頁、附件、群聊、房間聊天或遊戲內聊天。
 - 不重構全站 Socket 驗證與既有房間／遊戲事件。
-- 不新增聊天連線狀態 UI、不加入自動捲動邏輯，也不重設好友聊天以外的頁面視覺。
+- 不新增未讀提示、保留舊閱讀位置的條件判斷、平滑捲動動畫，也不重設好友聊天以外的頁面視覺。
 
 ## Decisions
 
@@ -76,9 +78,29 @@ Alternative considered: 在 message-list 外再新增一層捲動 div。父層�
 
 ### 使用窄版方形泡泡與 CSS 三角尾巴
 
-訊息泡泡維持零圓角與既有品牌色，桌面最大寬度限制為 62%，小螢幕放寬為 82% 以保留可讀性。泡泡使用 CSS 偽元素建立方向尾巴：好友訊息朝左、自己的訊息朝右；好友白色泡泡以雙層偽元素保留灰色邊框，自己的深色泡泡使用同色三角形。裝飾尾巴不新增 DOM，也不改變訊息語意。
+訊息泡泡維持零圓角與既有品牌色，桌面最大寬度限制為 62%，小螢幕放寬為 82% 以保留可讀性。泡泡使用 CSS 偽元素建立朝所在側外側的方向尾巴，必要時使用雙層偽元素保留邊框。裝飾尾巴不新增 DOM，也不改變訊息語意。
 
 Alternative considered: 新增裝飾性 span 或使用 clip-path。前者增加無語意標記，後者會裁切既有邊框與陰影，因此排除。
+
+### 以訊息擁有者控制視覺方向與身分標示
+
+FriendChatPanel 繼續以 `senderPlayerId === currentPlayerId` 判斷本人訊息，不改動訊息資料結構。每則訊息新增一個包含身分標示與泡泡的垂直容器：本人整組靠左、使用白色泡泡與左向尾巴，泡泡上方顯示小字「我」；對方整組靠右、使用 `--gray-100` 淺灰泡泡與右向尾巴，泡泡上方只顯示 `friend.playerId` 的實際值，不加「玩家 ID」或其他前綴。時間保留在泡泡內右下角。
+
+Alternative considered: 將身分文字放入泡泡內。這不符合身分標示位於訊息框上方的需求，因此排除。使用 CSS `content` 產生身分文字也被排除，因動態玩家 ID 難以維護且無法提供可靠的可存取文字節點。
+
+### 使用鍵盤事件區分送出、換行與輸入法組字
+
+新增 `src/utils/FriendChatKeyboard.js`，由純函式 `isFriendChatSubmitShortcut(event)` 判斷鍵盤事件是否為送出手勢。只有 `key === "Enter"`、沒有 Shift／Ctrl／Alt／Meta 修飾鍵且 `isComposing !== true` 時回傳 true。FriendChatPanel 的 textarea 以 `@keydown="handleMessageKeydown"` 接收事件；送出手勢先呼叫 `event.preventDefault()`，再以既有 `sendDisabled` 阻止空白內容或送出中的重複請求，符合條件時沿用 `submitMessage()`。Shift+Enter 與輸入法組字事件不阻止預設行為，也不呼叫送出。
+
+Alternative considered: 使用 `@keydown.enter.exact.prevent`。雖然較短，但 `prevent` 會在進入 handler 前執行，無法先排除中文輸入法組字事件，因此不採用。表單層級監聽也會擴大到未來其他輸入控制，故排除。
+
+### 讓目前對話永遠跟隨最新訊息
+
+新增 `src/utils/FriendChatScroll.js`，由 `scrollFriendChatToLatest(container)` 將可捲動容器的 `scrollTop` 設為 `scrollHeight`；容器尚未掛載時直接返回。FriendChatPanel 在 `chat-body` 保留 DOM ref，並監聽目前好友 ID、訊息數量與最後一則訊息 ID。任一來源改變後先等待 Vue `nextTick()` 完成 DOM 更新，再捲到最下方。REST 送出回應與目前好友的 `chat:message` 都會經既有 conversation 合併流程改變最新訊息，因此共用同一條捲動路徑；切換好友及歷史載入完成也會觸發相同行為。
+
+此行為採使用者核准的強制跟隨方案：即使玩家手動往上閱讀舊訊息，只要目前對話出現新訊息就會回到最新一則。捲動只作用於目前掛載的 `chat-body`，不修改 conversation、REST、Socket 或 chatStore。
+
+Alternative considered: 只有接近底部時才自動捲動，或顯示「新訊息」按鈕。兩者可保留閱讀位置，但仍可能要求玩家額外操作才能看到最新訊息，不符合本次需求，因此排除。使用平滑捲動也被排除，以避免連續訊息造成動畫堆疊。
 
 ### 讓未訂閱狀態自動重試並顯示即時狀態
 
@@ -106,7 +128,11 @@ Alternative considered: 把 Socket 與 timer 直接放入 Pinia state。這會�
 - 離開好友頁、登出或清除聊天資料後，不再保留重複 listener 或聊天訂閱。
 - 同一個 raw Pinia store 經不同 Vue Proxy 包裝呼叫 `startRealtime()`、connect callback、`subscribeRealtime()` 或 `stopRealtime()` 時，必須共用同一個 generation、handlers 與 retry 資源，不得把有效訂閱誤判為過期。
 - 訊息數量超過可視高度時，標題與輸入區仍固定可見，使用者可在訊息內容區垂直捲動。
-- 自己與好友的訊息分別顯示右向與左向三角尾巴；泡泡維持方形、桌面最大寬度 62%、小螢幕最大寬度 82%。
+- 本人訊息整組靠左，上方顯示「我」，使用白色方形泡泡與左向三角尾巴；對方訊息整組靠右，上方只顯示實際玩家 ID，使用淺灰色方形泡泡與右向三角尾巴。
+- 兩種泡泡在桌面維持最大寬度 62%、小螢幕維持最大寬度 82%，時間保留在泡泡內右下角。
+- 玩家在好友私訊輸入框按下無修飾鍵的 Enter 時會送出一次非空白訊息；Shift+Enter 會插入換行，輸入法組字期間按 Enter 只處理選字，不會送出。
+- 空白內容或訊息送出處理中按 Enter 時不會呼叫 REST 送出，也不會產生重複訊息。
+- 目前對話在自己送出、收到即時訊息、切換好友或歷史載入完成後，訊息內容區會在 DOM 更新後捲到最下方並顯示最新一則；玩家正在閱讀舊訊息時也採相同行為。
 
 #### Interface / data shape
 
@@ -125,6 +151,10 @@ Alternative considered: 把 Socket 與 timer 直接放入 Pinia state。這會�
 - 既有 POST /api/chats/direct/:friendId/messages request 與 response shape 不變。
 - chatStore 對外新增 startRealtime()、stopRealtime()、mergeMessages(friendId, messages)，並保留既有 loadMessages、sendMessage、clearChatData。
 - generation、handler bundle、retry timer 與 retry count 的內部索引鍵固定為 `toRaw(store)`；這不改變 chatStore 公開 API 或 Pinia state shape。
+- `isFriendChatSubmitShortcut(event)` 接受鍵盤事件形狀 `{ key, shiftKey, ctrlKey, altKey, metaKey, isComposing }` 並回傳 boolean；不讀寫 Vue、Pinia、DOM 或聊天狀態。
+- FriendChatPanel 的 `handleMessageKeydown(event)` 只在 helper 回傳 true 時阻止預設行為，並沿用既有 `sendDisabled` 與 `submitMessage()`。
+- `scrollFriendChatToLatest(container)` 接受可讀寫 `scrollTop` 且具有 `scrollHeight` 的容器；容器存在時設定 `scrollTop = scrollHeight`，容器為 null 或 undefined 時不執行任何操作。
+- FriendChatPanel 監聽目前好友 ID、訊息數量與最後一則訊息 ID，等待 `nextTick()` 後將目前 `chat-body` 交給 `scrollFriendChatToLatest(container)`。
 
 #### Failure modes
 
@@ -136,6 +166,9 @@ Alternative considered: 把 Socket 與 timer 直接放入 Pinia state。這會�
 - 前端訂閱失敗時保留 REST 歷史與送出能力，並避免重複綁定 listeners。
 - 格式不完整的 chat:message 不寫入任何 conversation。
 - 等價 Vue Proxy 進入另一個 chatStore action 時不得遺失即時生命週期資源；若 raw store 已停止，舊 callback 仍必須被 generation 檢查拒絕。
+- Shift／Ctrl／Alt／Meta+Enter 或 `isComposing === true` 時不得阻止原生輸入，也不得呼叫 `submitMessage()`。
+- 純 Enter 事件若 `sendDisabled` 為 true，必須阻止 textarea 新增非預期換行，但不得呼叫 `submitMessage()`。
+- `chat-body` 尚未掛載或目前 conversation 沒有訊息時，自動捲動不得丟出例外，也不得改變聊天狀態。
 
 #### Acceptance criteria
 
@@ -144,6 +177,9 @@ Alternative considered: 把 Socket 與 timer 直接放入 Pinia state。這會�
 - tests/friend-chat-realtime.test.mjs 覆蓋訂閱生命週期、非目前好友訊息、訊息去重、重連補載與 listener 清理。
 - tests/friend-chat-realtime.test.mjs 覆蓋不同 Vue Proxy 指向同一 raw store 時，connect callback 仍可送出 chat:subscribe，且 stop 可清除同一組生命週期資源。
 - tests/friend-chat-layout.test.mjs 覆蓋有限高度、獨立捲動、固定輸入區、窄版泡泡與左右三角尾巴的樣式契約。
+- tests/friend-chat-layout.test.mjs 覆蓋本人靠左白色並顯示「我」，以及對方靠右淺灰色並只顯示實際玩家 ID。
+- tests/friend-chat-keyboard.test.mjs 覆蓋純 Enter、Shift／Ctrl／Alt／Meta+Enter、中文輸入法組字事件，以及 FriendChatPanel 的 preventDefault、sendDisabled 與 submitMessage 接線。
+- tests/friend-chat-scroll.test.mjs 覆蓋捲動 helper、空容器安全性，以及 FriendChatPanel 在好友、訊息數量或最新訊息 ID 改變後等待 DOM 更新並捲到底部的接線。
 - npm test 在 server 目錄通過。
 - node tests/friend-chat-realtime.test.mjs 通過。
 - npm run build 通過。
@@ -151,8 +187,8 @@ Alternative considered: 把 Socket 與 timer 直接放入 Pinia state。這會�
 
 #### Scope boundaries
 
-- In scope: 聊天 Socket handler、Socket server 註冊、REST 成功後推播、chatStore 即時同步、raw Pinia store 生命週期索引、FriendView 生命週期、好友聊天捲動高度、窄版方形泡泡、左右三角尾巴與相關測試。
-- Out of scope: Socket 寫入、全站 Socket auth、未讀／已讀／typing、分頁、附件、其他聊天種類、登入彈窗舊斷言、自動捲動與其他 UI polish。
+- In scope: 聊天 Socket handler、Socket server 註冊、REST 成功後推播、chatStore 即時同步、raw Pinia store 生命週期索引、FriendView 生命週期、好友聊天捲動高度、目前對話強制跟隨最新訊息、窄版方形泡泡、依訊息擁有者決定的左右方向、白色／淺灰色來源區分、身分標示、三角尾巴、Enter 送出、Shift+Enter 換行、輸入法組字保護與相關測試。
+- Out of scope: Socket 寫入、全站 Socket auth、未讀／已讀／typing、分頁、附件、其他聊天種類、登入彈窗舊斷言、保留舊閱讀位置的條件判斷、平滑捲動動畫、「新訊息」按鈕與其他 UI polish。
 
 ## Risks / Trade-offs
 
@@ -162,6 +198,8 @@ Alternative considered: 把 Socket 與 timer 直接放入 Pinia state。這會�
 - [Risk] token 驗證增加 Supabase 查詢。→ Mitigation: 僅在首次訂閱與 Socket 重連時驗證，不在每則 chat:message 上驗證。
 - [Risk] 桌面窄版泡泡在小螢幕造成過度換行。→ Mitigation: 小螢幕最大寬度放寬為 82%，並保留 break-words。
 - [Risk] 將 Proxy 正規化為 raw store 後，停止流程若漏用相同鍵會殘留 listener 或 timer。→ Mitigation: 所有 WeakMap 存取集中經由同一個 key helper，並以等價 Proxy 的 start／connect／stop 測試覆蓋。
+- [Risk] 中文輸入法以 Enter 確認候選字時誤送訊息。→ Mitigation: 純鍵盤 helper 明確排除 `isComposing === true`，handler 在判斷後才呼叫 `preventDefault()`。
+- [Risk] 玩家閱讀舊訊息時收到新訊息會被強制帶回最下方。→ Mitigation: 這是使用者核准的方案 A；測試與人工驗收明確確認目前對話永遠跟隨最新訊息。
 
 ## Migration Plan
 

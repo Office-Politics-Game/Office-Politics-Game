@@ -40,3 +40,25 @@
 
 - [x] 8.1 先擴充 tests/friend-chat-realtime.test.mjs 覆蓋 Stable realtime lifecycle identity，使用兩個等價 Vue Proxy 指向同一 raw Pinia store，驗證 startRealtime 建立的 generation 在另一個 Proxy 進入 subscribeRealtime 時仍可取回，且透過另一個 Proxy 呼叫 stopRealtime 可清除相同 handlers；執行 node tests/friend-chat-realtime.test.mjs，確認跨 Proxy 訂閱案例維持通過，但現有以 Proxy 為 WeakMap 鍵的實作無法在 stopRealtime 清除 chat listeners 而產生預期失敗。
 - [x] 8.2 實作「以 raw Pinia store 穩定索引即時生命週期」，讓 generation、handler bundle、retry timer 與 retry count 的所有 WeakMap 存取統一使用 `toRaw(store)`，移除 server/src/controllers/chatController.js、server/src/socket/chatHandlers.js、src/services/socketClient.js、src/stores/chatStore.js 與 src/views/FriendView.vue 的暫時診斷碼；執行 node tests/friend-chat-realtime.test.mjs、node tests/friend-chat-layout.test.mjs、server 目錄的 npm.cmd test -- --runInBand --cacheDirectory=.jest-cache、npm.cmd run build 與 git diff --check，並由兩個已登入瀏覽器確認接收者不重新整理即可看到新訊息。
+
+## 9. 訊息來源方向與身分標示
+
+- [x] 9.1 先擴充 tests/friend-chat-layout.test.mjs 覆蓋 Scrollable direct chat layout and speech bubble presentation 與「以訊息擁有者控制視覺方向與身分標示」，驗證本人訊息整組靠左、白色泡泡、左向尾巴且泡泡上方顯示「我」，對方訊息整組靠右、`--gray-100` 淺灰泡泡、右向尾巴且泡泡上方只渲染 `friend.playerId`；執行 node tests/friend-chat-layout.test.mjs 並確認現有相反方向與顏色會產生預期失敗。
+- [x] 9.2 實作「以訊息擁有者控制視覺方向與身分標示」，在 src/components/friend/FriendChatPanel.vue 以語意文字節點將身分標示放在泡泡外上方，維持 `isMine(message)` 判斷與既有資料流程，讓本人靠左白色並顯示「我」、對方靠右淺灰色並只顯示實際玩家 ID，三角尾巴依所在側朝外且時間維持泡泡內右下角；執行 node tests/friend-chat-layout.test.mjs 驗證新的方向、顏色、標示與 Square UI 契約通過。
+- [ ] 9.3 執行 node tests/friend-chat-layout.test.mjs、node tests/friend-chat-realtime.test.mjs、npm.cmd run build 與 git diff --check，並人工確認本人／對方訊息在桌面與小螢幕都維持左白「我」／右灰玩家 ID、泡泡最大寬度 62%／82%、輸入區固定與訊息區可捲動；不得修改 Socket、REST 或 chatStore 資料結構，自動跟隨最新訊息另依 11.5 驗證。
+
+## 10. 好友私訊鍵盤送出
+
+- [x] 10.1 先新增 tests/friend-chat-keyboard.test.mjs 覆蓋 Keyboard-friendly direct message submission 與「使用鍵盤事件區分送出、換行與輸入法組字」的純函式契約，驗證無修飾 Enter 為送出手勢，而 Shift／Ctrl／Alt／Meta+Enter、非 Enter 按鍵與 `isComposing === true` 皆不是送出手勢；執行 node tests/friend-chat-keyboard.test.mjs 並確認因 src/utils/FriendChatKeyboard.js 尚不存在而產生預期失敗。
+- [x] 10.2 實作 `isFriendChatSubmitShortcut(event)`，只讀取 `key`、`shiftKey`、`ctrlKey`、`altKey`、`metaKey` 與 `isComposing` 並回傳 boolean，不存取 Vue、DOM 或聊天狀態；執行 node tests/friend-chat-keyboard.test.mjs 驗證純 Enter 通過、所有修飾鍵與輸入法組字案例皆被排除。
+- [x] 10.3 擴充 tests/friend-chat-keyboard.test.mjs 覆蓋 FriendChatPanel 鍵盤接線，驗證 textarea 綁定 `handleMessageKeydown`、送出手勢先呼叫 `preventDefault()`、`sendDisabled` 為 true 時不送出、可送出時只沿用一次 `submitMessage()`，並確認現有尚未綁定鍵盤事件的元件產生預期失敗。
+- [x] 10.4 在 src/components/friend/FriendChatPanel.vue 實作 `handleMessageKeydown(event)` 並使用 `isFriendChatSubmitShortcut(event)`，讓 Enter 送出、Shift+Enter 保留換行、輸入法組字不誤送、空白或送出中不重複送出；執行 node tests/friend-chat-keyboard.test.mjs、node tests/friend-chat-layout.test.mjs 與 node tests/friend-chat-realtime.test.mjs 驗證鍵盤操作不影響既有版面與即時聊天。
+- [ ] 10.5 執行 node tests/friend-chat-keyboard.test.mjs、node tests/friend-chat-layout.test.mjs、node tests/friend-chat-realtime.test.mjs、npm.cmd run build 與 git diff --check，並人工確認純 Enter 送出一次、Shift+Enter 可輸入換行、中文輸入法 Enter 選字不送出；不得修改 REST、Socket、chatStore 或訊息身分判斷契約。
+
+## 11. 目前對話自動跟隨最新訊息
+
+- [x] 11.1 先新增 tests/friend-chat-scroll.test.mjs 覆蓋 Automatic latest-message visibility 與「讓目前對話永遠跟隨最新訊息」的純函式契約，以 scrollTop 為 120、scrollHeight 為 640 的容器驗證執行後 scrollTop 等於 640，並驗證 null／undefined 容器不丟出例外；執行 node tests/friend-chat-scroll.test.mjs 並確認因 src/utils/FriendChatScroll.js 尚不存在而產生預期失敗。
+- [x] 11.2 實作 `scrollFriendChatToLatest(container)`，容器存在時只執行 `container.scrollTop = container.scrollHeight`，容器不存在時直接返回，不讀寫 Vue、Pinia、REST、Socket 或 conversation；執行 node tests/friend-chat-scroll.test.mjs 驗證捲到底部與空容器安全性全部通過。
+- [x] 11.3 擴充 tests/friend-chat-scroll.test.mjs 覆蓋 FriendChatPanel 自動捲動接線，驗證 chat-body 綁定 `chatBodyRef`、元件監聽 `friend.playerId`、目前 conversation 訊息數量與最後一則訊息 ID、等待 `nextTick()` 後呼叫一次 `scrollFriendChatToLatest(chatBodyRef.value)`；執行 node tests/friend-chat-scroll.test.mjs 並確認尚未接線的 FriendChatPanel 產生預期失敗。
+- [x] 11.4 在 src/components/friend/FriendChatPanel.vue 實作「讓目前對話永遠跟隨最新訊息」，使自己送出、收到目前好友的即時訊息、切換好友或歷史載入完成後，一律等待 DOM 更新再將目前 chat-body 捲到底部，即使玩家正在閱讀舊訊息也強制顯示最新一則；執行 node tests/friend-chat-scroll.test.mjs、node tests/friend-chat-keyboard.test.mjs、node tests/friend-chat-layout.test.mjs 與 node tests/friend-chat-realtime.test.mjs 驗證不影響鍵盤、版面與即時同步。
+- [ ] 11.5 執行 node tests/friend-chat-scroll.test.mjs、node tests/friend-chat-keyboard.test.mjs、node tests/friend-chat-layout.test.mjs、node tests/friend-chat-realtime.test.mjs、npm.cmd run build、git diff --check 與 spectra validate "add-friend-direct-chat-realtime"；再以兩個已登入瀏覽器人工確認發送方與接收方都自動看到最新訊息、切換好友與歷史載入後位於底部，且手動上捲後收到新訊息會強制回到底部，不得修改 REST、Socket、chatStore 或 conversation 資料結構。
