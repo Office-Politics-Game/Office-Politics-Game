@@ -9,6 +9,7 @@ import {
 import { addLog } from "./actionLogService.js"
 import { discardCard } from "./discardService.js"
 import { finishTurn } from "./roundFlowService.js"
+import { finalizeMatchProgress } from "./playerProgressService.js"
 import {
     checkTurn,
     checkPlayer,
@@ -168,6 +169,14 @@ async function playCardAction({
         WHERE id = $4`,
         [state, state.phase, state.currentTurnPlayerId, gameSession.id]
     )
+
+    const matchProgress = state.phase === "finished"
+        ? await finalizeMatchProgress({
+            matchId: gameSession.match_id,
+            state,
+        })
+        : { finalized: false }
+
     const actionLog = await addLog(
         gameSession.room_id,
         numericPlayerId,
@@ -192,6 +201,7 @@ async function playCardAction({
         showdownResult,
         discardedCard,
         actionLog,
+        matchProgress,
         state,
         publicState,
     }

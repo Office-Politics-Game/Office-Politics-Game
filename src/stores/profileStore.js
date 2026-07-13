@@ -15,7 +15,7 @@ function toNumber(value, fallback) {
 }
 
 function getNextExp(level) {
-  return Math.max(level * 400 + 200, 1000);
+  return level * 400 + 200;
 }
 
 function getWinRate(winCount, totalGames) {
