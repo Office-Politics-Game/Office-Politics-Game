@@ -206,6 +206,7 @@ describe("profileService", () => {
         result: "win",
         winnerPlayerId: 1,
         winnerUsername: "測試玩家",
+        xpGained: 300,
         startedAt: "2026-07-13T01:00:00.000Z",
         endedAt: "2026-07-13T01:30:00.000Z",
         participants: [

@@ -40,10 +40,10 @@ test("profile personal area keeps expected fields and edit entry points", async 
   assert.match(profileStoreSource, /getProfileMatches/);
   assert.doesNotMatch(matchPanelSource, /整理中/);
   assert.match(matchPanelSource, /目前還沒有對戰紀錄/);
-  assert.match(matchPanelSource, /勝者/);
+  assert.match(matchPanelSource, /贏家/);
   assert.match(matchPanelSource, /participants/);
 
-  assert.match(matchPanelSource, /Battle Log/);
+  assert.doesNotMatch(matchPanelSource, /Battle Log/);
   assert.match(matchPanelSource, /WIN/);
   assert.match(matchPanelSource, /LOSE/);
   assert.match(matchPanelSource, /小局/);

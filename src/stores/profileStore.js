@@ -100,6 +100,7 @@ function normalizeMatchHistoryItem(match) {
     result: match.result,
     winnerPlayerId: match.winnerPlayerId,
     winnerUsername: match.winnerUsername || UNSET_TEXT,
+    xpGained: toNumber(match.xpGained ?? match.xp_gained, 0),
     startedAt: match.startedAt,
     endedAt: match.endedAt,
     participants: Array.isArray(match.participants)
@@ -197,6 +198,9 @@ export const useProfileStore = defineStore("profile", {
       this.errorMessage = "";
       this.loadedIdentityType = "guest";
       this.profile = normalizeProfile(player, "guest");
+      this.matchHistory = [];
+      this.matchHistoryErrorMessage = "";
+      this.isMatchHistoryLoading = false;
 
       return this.profile;
     },
@@ -206,6 +210,10 @@ export const useProfileStore = defineStore("profile", {
       this.isLoading = false;
       this.errorMessage = "";
       this.loadedIdentityType = identityType;
+      this.matchHistory = [];
+      this.isUpdating = false;
+      this.isMatchHistoryLoading = false;
+      this.matchHistoryErrorMessage = "";
     },
 
     clearError() {

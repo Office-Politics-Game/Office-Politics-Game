@@ -11,15 +11,13 @@
         <span>重新整理</span>
       </button>
     </header>
-
     <p v-if="isLoading" class="match-panel__state">載入中...</p>
     <p v-else-if="errorMessage" class="match-panel__state">
       {{ errorMessage }}
     </p>
     <p v-else-if="matches.length === 0" class="match-panel__state">
-      目前還沒有對戰紀錄。
+      目前還沒有對戰紀錄
     </p>
-
     <ul v-else class="match-panel__list">
       <li
         v-for="match in matches"
@@ -31,18 +29,15 @@
           <strong>{{ getResultMeta(match).code }}</strong>
           <span>{{ getResultMeta(match).label }}</span>
         </div>
-
         <div class="match-row__main">
           <time class="match-row__date">
             {{ formatDate(match.endedAt || match.startedAt) }}
           </time>
-
           <div class="match-row__winner">
             <Crown class="match-row__icon" aria-hidden="true" />
             <span>贏家:</span>
             <strong>{{ match.winnerUsername || "尚未記錄" }}</strong>
           </div>
-
           <div class="match-row__scoreline">
             <span class="match-row__score-label">小局</span>
             <span
@@ -53,7 +48,6 @@
             </span>
           </div>
         </div>
-
         <div class="match-row__reward">
           <Sparkles class="match-row__icon" aria-hidden="true" />
           <strong>+{{ getXpGained(match) }} XP</strong>
@@ -337,6 +331,13 @@ function getScorelineText(match) {
   white-space: nowrap;
 }
 
+.match-row__score-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .match-row__score-label {
   flex: 0 0 auto;
   border: 1px solid var(--brand-primary);
@@ -347,11 +348,10 @@ function getScorelineText(match) {
   line-height: 1.2;
 }
 
-.match-row__score-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.match-row__score-player strong {
+  flex: 0 0 auto;
+  color: var(--gray-500);
+  font-weight: 800;
 }
 
 .match-row__reward {
@@ -364,6 +364,19 @@ function getScorelineText(match) {
   color: var(--brand-hover);
   font-size: var(--text-sm);
   font-weight: 900;
+}
+
+.match-row__score-player:last-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.match-row__score-player:last-child .match-row__score-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 900px) {

@@ -1,3 +1,25 @@
+ALTER TABLE matches
+ADD COLUMN IF NOT EXISTS winner_player_id INTEGER;
+
+ALTER TABLE matches
+ADD COLUMN IF NOT EXISTS ended_at TIMESTAMP;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.table_constraints
+    WHERE table_schema = current_schema()
+      AND table_name = 'matches'
+      AND constraint_name = 'matches_winner_player_id_fkey'
+  ) THEN
+    ALTER TABLE matches
+    ADD CONSTRAINT matches_winner_player_id_fkey
+    FOREIGN KEY (winner_player_id)
+    REFERENCES players(id);
+  END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS match_participants (
   id SERIAL PRIMARY KEY,
   match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
