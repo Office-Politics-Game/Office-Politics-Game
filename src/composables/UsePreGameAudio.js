@@ -4,6 +4,7 @@ import lobbyMoneyChantThemeUrl from "@/assets/audio/lobby-money-chant-theme.mp3"
 import preGameLobbyThemeUrl from "@/assets/audio/pre-game-lobby-theme.mp3";
 import lobbyNavigationWhooshUrl from "@/assets/audio/lobby-navigation-whoosh.mp3";
 import loginButtonClickUrl from "@/assets/audio/login-button-click.mp3";
+import mallEntranceBellUrl from "@/assets/audio/mall-entrance-bell.mp3";
 
 export const PRE_LOGIN_AUDIO_ROUTE_NAMES = Object.freeze([
   "Entry",
@@ -18,11 +19,14 @@ export const PRE_GAME_AUDIO_ROUTE_NAMES = Object.freeze([
   "JoinRoom",
   "CustomRoom",
   "Loading",
+  "Profile",
+  "Friend",
+  "Gacha",
 ]);
 
 const PRE_LOGIN_ROUTE_NAME_SET = new Set(PRE_LOGIN_AUDIO_ROUTE_NAMES);
 const PRE_GAME_ROUTE_NAME_SET = new Set(PRE_GAME_AUDIO_ROUTE_NAMES);
-const PRE_LOGIN_MUSIC_GAIN = 1.8;
+const PRE_LOGIN_MUSIC_GAIN = 1.0;
 const PRE_GAME_MUSIC_GAIN = 0.2;
 const LOBBY_MUSIC_FADE_IN_MS = 900;
 const LOBBY_MUSIC_FADE_OUT_MS = 900;
@@ -32,6 +36,7 @@ const SOUND_EFFECT_GAIN = 0.78;
 const soundEffectUrls = {
   "login-button-click": loginButtonClickUrl,
   "lobby-navigation-whoosh": lobbyNavigationWhooshUrl,
+  "mall-entrance-bell": mallEntranceBellUrl,
 };
 
 let loginLobbyMusicAudio = null;
@@ -395,7 +400,7 @@ function ensureSettingsWatcher() {
 export function usePreGameAudio() {
   ensureSettingsWatcher();
 
-  function syncPreGameRouteAudio(routeName) {
+  function syncPreGameRouteAudio(routeName, { fadeIn = false } = {}) {
     if (isPreLoginAudioRoute(routeName)) {
       startPreLoginBackground();
       return;
@@ -406,14 +411,17 @@ export function usePreGameAudio() {
       currentPreLoginRouteActive = false;
       pauseAudio(loginLobbyMusicAudio, { reset: true });
       if (preGameBackgroundStarted) {
-        startPreGameBackground();
+        startPreGameBackground({ fadeIn });
       }
       return;
     }
 
     currentPreLoginRouteActive = false;
     pauseAudio(loginLobbyMusicAudio, { reset: true });
-    stopPreGameBackground({ fadeOut: true });
+    stopPreGameBackground({
+      fadeOut: true,
+      preserveActivation: routeName === "Mall",
+    });
   }
 
   function playPreGameSound(soundName) {

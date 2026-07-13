@@ -129,7 +129,7 @@
         <button
           type="button"
           class="btn-dark order-2 h-8 translate-y-1 whitespace-nowrap px-2.5 py-1 text-xs font-bold xl:order-none xl:h-11 xl:px-4 xl:py-2 xl:text-sm"
-          @click="router.push('/lobby')"
+          @click="goLobby"
         >
           返回大廳
         </button>
@@ -380,6 +380,7 @@ import { useRoute, useRouter } from "vue-router";
 import CurrencyBar from "@/components/common/CurrencyBar.vue";
 import MallProductCard from "@/components/mall/MallProductCard.vue";
 import { useButtonClickAudio } from "@/composables/UseButtonClickAudio";
+import { usePreGameAudio } from "@/composables/UsePreGameAudio";
 import bgDashboard from "@/assets/images/bg-dashboard.webp";
 import stockToken from "@/assets/images/stock-token.webp";
 import stockTokenBundle from "@/assets/images/stock-token-bundle.webp";
@@ -414,6 +415,9 @@ const authStore = useAuthStore();
 const currencyStore = useCurrencyStore();
 const playerStore = usePlayerStore();
 const { handleButtonClick } = useButtonClickAudio();
+const { playPreGameSound } = usePreGameAudio();
+const MALL_ENTRANCE_BELL_DELAY_MS = 200;
+let mallEntranceBellTimerId = null;
 
 const categories = mallCategories;
 const fallbackItems = mallItems;
@@ -767,10 +771,19 @@ watch(
 
 onMounted(() => {
   window.addEventListener("keydown", handleEscape);
+  mallEntranceBellTimerId = window.setTimeout(() => {
+    mallEntranceBellTimerId = null;
+    playPreGameSound("mall-entrance-bell");
+  }, MALL_ENTRANCE_BELL_DELAY_MS);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", handleEscape);
+
+  if (mallEntranceBellTimerId !== null) {
+    window.clearTimeout(mallEntranceBellTimerId);
+    mallEntranceBellTimerId = null;
+  }
 });
 </script>
 

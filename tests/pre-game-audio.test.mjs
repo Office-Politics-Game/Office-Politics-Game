@@ -49,7 +49,7 @@ test('pre-game audio controller does not load looping ambience music', async () 
 test('pre-game audio controller loops lobby background music', async () => {
   const source = await readSource('src/composables/UsePreGameAudio.js')
 
-  assert.match(source, /PRE_LOGIN_MUSIC_GAIN = [\d.]+/)
+  assert.match(source, /PRE_LOGIN_MUSIC_GAIN = 1\.0/)
   assert.match(source, /PRE_GAME_MUSIC_GAIN = [\d.]+/)
   assert.match(source, /loginLobbyMusicAudio/)
   assert.match(source, /ensureLoginLobbyMusicAudio/)
@@ -80,7 +80,7 @@ test('pre-game lobby music fades out when leaving the auth flow', async () => {
   assert.match(source, /lobbyMusicFadeTimerId/)
   assert.match(source, /function fadeOutAudio/)
   assert.match(source, /window\.setInterval/)
-  assert.match(source, /stopPreGameBackground\(\{ fadeOut: true \}\)/)
+  assert.match(source, /stopPreGameBackground\(\{\s*fadeOut: true,/)
   assert.match(
     source,
     /stopPreGameBackground\(\{ fadeOut: false, preserveActivation: true \}\)/,
@@ -131,6 +131,9 @@ test('pre-game background audio separates login-before and post-login routes', a
     "JoinRoom",
     "CustomRoom",
     "Loading",
+    "Profile",
+    "Friend",
+    "Gacha",
   ])
 })
 
@@ -247,6 +250,17 @@ test('entry, login, and lobby screens are wired to pre-game audio', async () => 
   assert.match(gameMenuSource, /playPreGameSound\(["']lobby-navigation-whoosh["']\)/)
 })
 
+test('pre-game lobby music continues through personal, social, and recruitment pages', async () => {
+  const source = await readSource('src/composables/UsePreGameAudio.js')
+  const routeListStart = source.indexOf('export const PRE_GAME_AUDIO_ROUTE_NAMES')
+  const routeListEnd = source.indexOf(']);', routeListStart)
+  const routeList = source.slice(routeListStart, routeListEnd)
+
+  for (const routeName of ['Profile', 'Friend', 'Gacha']) {
+    assert.match(routeList, new RegExp(`"${routeName}"`))
+  }
+})
+
 test('starting the game menu uses the shared click sound', async () => {
   const source = await readSource('src/components/menu/LobbyMenu.vue')
   const startGameAction = source.slice(source.indexOf('function openGameMenu()'))
@@ -293,4 +307,46 @@ test('mall entry and leave lobby actions use the shared click sound', async () =
   assert.match(mallAction, /playPreGameSound\("login-button-click"\)/)
   assert.doesNotMatch(mallAction, /playLobbyNavigationSound\(\)/)
   assert.match(leaveAction, /playPreGameSound\("login-button-click"\)/)
+})
+
+test('mall entrance uses a delayed semantic bell sound', async () => {
+  const audioFiles = await readdir(new URL('../src/assets/audio/', import.meta.url))
+  const audioSource = await readSource('src/composables/UsePreGameAudio.js')
+  const mallSource = await readSource('src/views/MallView.vue')
+  const lobbySource = await readSource('src/components/menu/LobbyMenu.vue')
+
+  assert.ok(audioFiles.includes('mall-entrance-bell.mp3'))
+  assert.match(audioSource, /mallEntranceBellUrl/)
+  assert.match(audioSource, /"mall-entrance-bell": mallEntranceBellUrl/)
+  assert.match(lobbySource, /function openMallPage\(\)[\s\S]*?playPreGameSound\("login-button-click"\)/)
+  assert.match(mallSource, /MALL_ENTRANCE_BELL_DELAY_MS = 200/)
+  assert.match(mallSource, /playPreGameSound\("mall-entrance-bell"\)/)
+  assert.match(mallSource, /window\.setTimeout/)
+  assert.match(mallSource, /window\.clearTimeout/)
+})
+
+test('all mall return controls use the shared lobby handler', async () => {
+  const mallSource = await readSource('src/views/MallView.vue')
+  const returnHandlers = Array.from(mallSource.matchAll(/@click="goLobby"/g))
+
+  assert.equal(returnHandlers.length, 3)
+  assert.doesNotMatch(mallSource, /@click="router\.push\('\/lobby'\)"/)
+})
+
+test('returning from mall preserves activation and fades the pre-game theme in', async () => {
+  const appSource = await readSource('src/App.vue')
+  const audioSource = await readSource('src/composables/UsePreGameAudio.js')
+
+  assert.match(appSource, /\(routeName, previousRouteName\) =>/)
+  assert.match(appSource, /previousRouteName === "Mall"/)
+  assert.match(appSource, /syncPreGameRouteAudio\(routeName, \{ fadeIn \}\)/)
+  assert.match(
+    audioSource,
+    /function syncPreGameRouteAudio\(routeName, \{ fadeIn = false \} = \{\}\)/,
+  )
+  assert.match(audioSource, /startPreGameBackground\(\{ fadeIn \}\)/)
+  assert.match(
+    audioSource,
+    /preserveActivation: routeName === "Mall"/,
+  )
 })
