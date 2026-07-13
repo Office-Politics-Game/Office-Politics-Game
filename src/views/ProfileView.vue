@@ -204,7 +204,7 @@ const memberOnlyTabIds = ["matches", "badges"];
 
 const sourcePlayer = computed(
   () =>
-    profileStore.profilePlayer ||
+    profileStore.profile ||
     authStore.currentPlayer ||
     playerStore.currentPlayer ||
     null,
@@ -239,18 +239,17 @@ function formatDate(value) {
 
 function getNextExp(level) {
   const safeLevel = Math.max(1, toNumber(level, 1));
-  return safeLevel * 1000;
+  return Math.max(safeLevel * 400 + 200, 1000);
 }
 
 function getWinRate(winCount, totalGames) {
   const safeTotalGames = Math.max(0, toNumber(totalGames, 0));
 
   if (safeTotalGames === 0) {
-    return "0%";
+    return 0;
   }
 
-  const rate = Math.round((toNumber(winCount, 0) / safeTotalGames) * 100);
-  return `${rate}%`;
+  return Math.round((toNumber(winCount, 0) / safeTotalGames) * 100);
 }
 
 const activeTabMeta = computed(
@@ -267,6 +266,11 @@ const isGuestLockedTab = computed(
 
 const profilePlayer = computed(() => {
   const player = sourcePlayer.value;
+
+  if (!player) {
+    return null;
+  }
+
   const level = toNumber(player.level, 12);
   const exp = toNumber(player.exp, 3250);
   const nextExp = getNextExp(level);
