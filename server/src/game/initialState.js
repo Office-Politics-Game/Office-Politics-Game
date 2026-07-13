@@ -15,6 +15,7 @@ function createInitialState (players){
             playerId: player.player_id,
             username: player.username,
             seatOrder: player.seat_order,
+            isComputer: Boolean(player.is_computer),
             hand: [card],
             isProtected: false,
             isEliminated: false,

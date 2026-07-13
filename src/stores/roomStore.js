@@ -5,6 +5,7 @@ import {
   getRoomState as getRoomStateRequest,
   getRoomGameState as getRoomGameStateRequest,
   updateRoomState as updateRoomStateRequest,
+  addComputerPlayer as addComputerPlayerRequest,
   startRoom as startRoomRequest,
 } from "@/services/roomApi.js";
 import { connectSocket, emitWithAck } from "@/services/socketClient.js";
@@ -247,6 +248,33 @@ export const useRoomStore = defineStore("room", {
         return response;
       } catch (error) {
         this.errorMessage = getErrorMessage(error, "更新房間狀態失敗。");
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async addComputerPlayer(roomCode, payload) {
+      this.isLoading = true;
+      this.clearError();
+
+      try {
+        const response = await emitWithAck("room:add-computer", {
+          roomCode,
+          ...payload,
+        }).catch(async () => {
+          const fallbackResponse = await addComputerPlayerRequest(roomCode, payload);
+          await this.fetchRoomState(roomCode);
+          return fallbackResponse;
+        });
+        this.roomCode = roomCode;
+        saveRoomCode(this.roomCode);
+        if (response?.room) {
+          this.applyRoomState(response);
+        }
+        return response;
+      } catch (error) {
+        this.errorMessage = getErrorMessage(error, "Add computer player failed");
         throw error;
       } finally {
         this.isLoading = false;

@@ -1,6 +1,7 @@
 import {
   createRoom,
   joinRoom,
+  addComputerPlayer,
   updateReady,
   getRoomState,
   kickPlayer,
@@ -45,6 +46,26 @@ async function handleJoinRoom(req, res) {
   } catch (error) {
     return res.status(getErrorStatus(error)).json({
       message: error.statusCode ? error.message : "加入房間失敗",
+      error: error.message,
+    });
+  }
+}
+
+async function handleAddComputerPlayer(req, res) {
+  try {
+    const { roomCode } = req.params;
+    const { hostPlayerId } = req.body;
+
+    if (!hostPlayerId) {
+      return res.status(400).json({ message: "缺少房主玩家 ID" });
+    }
+
+    const roomState = await addComputerPlayer({ roomCode, hostPlayerId });
+
+    res.status(201).json(roomState);
+  } catch (error) {
+    return res.status(getErrorStatus(error)).json({
+      message: error.statusCode ? error.message : "Add computer player failed",
       error: error.message,
     });
   }
@@ -142,6 +163,7 @@ async function handleStartGame(req, res) {
 export {
   handleCreateRoom,
   handleJoinRoom,
+  handleAddComputerPlayer,
   handleUpdateReady,
   handleGetRoomState,
   handleKickPlayer,

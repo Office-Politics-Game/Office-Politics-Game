@@ -1,0 +1,2 @@
+ALTER TABLE game_room_players
+ADD COLUMN IF NOT EXISTS is_computer BOOLEAN NOT NULL DEFAULT false;
