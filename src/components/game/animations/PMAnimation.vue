@@ -87,7 +87,8 @@ async function play(result) {
   const originRect = props.getPlayerHandRect?.(result.targetPlayerId)
   const discardRect = props.getDiscardRect?.()
   const deckRect = props.getDeckRect?.()
-  if (!originRect || !discardRect || !result.discardedCard || (result.newCard && !deckRect)) {
+  const shouldDrawNewCard = result.newCardDrawn === true || Boolean(result.newCard)
+  if (!originRect || !discardRect || !result.discardedCard || (shouldDrawNewCard && !deckRect)) {
     finishAnimation(result)
     return
   }
@@ -135,7 +136,7 @@ async function play(result) {
   })
   if (isStale(result)) return
 
-  if (result.newCard) {
+  if (shouldDrawNewCard) {
     const options = { startRect: deckRect, targetRect: originRect, onLanded: () => {} }
     if (props.isSelfPlayer?.(result.targetPlayerId)) await drawRef.value?.selfDraw(options)
     else await drawRef.value?.othersDraw(options)

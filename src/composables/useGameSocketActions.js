@@ -112,6 +112,8 @@ export function useGameSocketActions({
         const discardedCard = result.discardedCard
           ? normalizeCard(result.discardedCard)
           : null
+        const newCard = result.newCard ? normalizeCard(result.newCard) : null
+        const newCardDrawn = result.newCardDrawn === true || Boolean(newCard)
 
         return targetPlayerId && discardedCard
           ? {
@@ -119,7 +121,8 @@ export function useGameSocketActions({
               id,
               targetPlayerId,
               discardedCard,
-              newCard: result.newCard ? normalizeCard(result.newCard) : null,
+              newCardDrawn,
+              newCard,
             }
           : null
       }

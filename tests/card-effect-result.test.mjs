@@ -205,7 +205,7 @@ test('intern hides the original target card only after a correct guess', async (
   assert.match(stage, /temporarilyHiddenSeatHandPlayerIds/)
 })
 
-test('effect card visibility resolves cleaner and intern views without duplicate cards', () => {
+test('effect card visibility resolves cleaner, intern, and pm views without duplicate cards', () => {
   const activeEffectResult = ref(null)
   const handCards = ref([{ id: '7', name: 'Manager' }])
   const {
@@ -263,6 +263,24 @@ test('effect card visibility resolves cleaner and intern views without duplicate
   }
   assert.deepEqual(temporarilyHiddenCardIds.value, [])
   assert.deepEqual(temporarilyHiddenSeatHandPlayerIds.value, [])
+
+  activeEffectResult.value = {
+    type: 'pm',
+    targetPlayerId: 'self',
+    discardedCard: { id: '7', name: 'Manager' },
+    newCardDrawn: true,
+  }
+  assert.deepEqual(temporarilyHiddenCardIds.value, ['7'])
+  assert.deepEqual(temporarilyHiddenSeatHandPlayerIds.value, [])
+
+  activeEffectResult.value = {
+    type: 'pm',
+    targetPlayerId: 'other',
+    discardedCard: { id: '7', name: 'Manager' },
+    newCardDrawn: true,
+  }
+  assert.deepEqual(temporarilyHiddenCardIds.value, [])
+  assert.deepEqual(temporarilyHiddenSeatHandPlayerIds.value, ['other'])
 })
 
 test('manager animation compares, emphasizes, returns the winner, and discards the loser', async () => {
@@ -314,25 +332,30 @@ test('manager reveals the opponent loser while shrinking, before it reaches disc
 test('project manager animation discards then reuses normal draw animation', async () => {
   const source = await readSource('src/components/game/animations/PMAnimation.vue')
   const drawSource = await readSource('src/components/game/animations/CardDrawAnimation.vue')
+  const socketSource = await readSource('src/composables/useGameSocketActions.js')
   assert.match(source, /import CardDrawAnimation/)
   assert.match(source, /getDeckRect/)
   assert.match(source, /drawRef\.value\?\.selfDraw/)
   assert.match(source, /drawRef\.value\?\.othersDraw/)
   assert.match(source, /result\.discardedCard/)
   assert.match(source, /result\.newCard/)
+  assert.match(source, /shouldDrawNewCard = result\.newCardDrawn === true \|\| Boolean\(result\.newCard\)/)
   assert.match(
     source,
-    /\.to\(cardRef\.value, \{ x: discardTranslation\.x/,
+    /getDiscardVars\(discardTranslation, discardRect, height/,
   )
   assert.match(
     source,
-    /showDiscardCard\.value = false[\s\S]*await nextTick\(\)[\s\S]*showVeil\.value = false[\s\S]*await nextTick\(\)[\s\S]*duration: 0\.5[\s\S]*drawRef\.value\?\.selfDraw/,
+    /showDiscardCard\.value = false[\s\S]*await nextTick\(\)[\s\S]*duration: 0\.5[\s\S]*if \(shouldDrawNewCard\)[\s\S]*drawRef\.value\?\.selfDraw/,
   )
-  assert.match(source, /v-if="showVeil" ref="veilRef"/)
-  assert.match(source, /v-if="showDiscardCard" ref="cardRef"/)
-  assert.doesNotMatch(source, /glow|ring|slash|shockwave/)
+  assert.match(source, /v-if="showDiscardCard"/)
+  assert.match(source, /ref="cardLayerRef"/)
+  assert.match(source, /<CardDrawAnimation ref="drawRef" :card="drawCard"/)
+  assert.doesNotMatch(source, /pm-animation__(glow|ring|slash|shockwave)/)
   assert.match(drawSource, /function stop\(\)/)
   assert.match(drawSource, /stop,/)
+  assert.match(socketSource, /const newCardDrawn = result\.newCardDrawn === true \|\| Boolean\(newCard\)/)
+  assert.match(socketSource, /newCardDrawn,[\s\S]*newCard,/)
 })
 
 test('game stage and demo mount all four animations directly', async () => {

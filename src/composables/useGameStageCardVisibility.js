@@ -31,11 +31,16 @@ export function useGameStageCardVisibility({
       result?.type === "intern" &&
       result.outcome === "correct" &&
       isSelfPlayer?.(result.targetPlayerId) === true;
+    const shouldHidePmCard =
+      result?.type === "pm" &&
+      isSelfPlayer?.(result.targetPlayerId) === true;
     const targetCard = shouldHideCleanerCard
       ? cleanerResult.targetCard
       : shouldHideInternCard
         ? result.targetCard
-        : null;
+        : shouldHidePmCard
+          ? result.discardedCard
+          : null;
 
     return targetCard?.id ? [String(targetCard.id)] : [];
   });
@@ -45,7 +50,8 @@ export function useGameStageCardVisibility({
     const cleanerResult = activeCleanerAnimationResult.value;
     const targetPlayerId =
       cleanerResult?.targetPlayerId ??
-      (result?.type === "intern" && result.outcome === "correct"
+      ((result?.type === "intern" && result.outcome === "correct") ||
+      result?.type === "pm"
         ? result.targetPlayerId
         : null);
 

@@ -28,6 +28,7 @@ function createCardEffectAnimationContext({
   const targetPlayer = findPlayerById(state, targetPlayerId)
 
   return {
+    state,
     cardName: card?.name ?? null,
     playerId,
     targetPlayerId,
@@ -44,6 +45,7 @@ function buildCardEffectAnimationResult(context, effectResult) {
   }
 
   const {
+    state,
     cardName,
     playerId,
     targetPlayerId,
@@ -132,15 +134,26 @@ function buildCardEffectAnimationResult(context, effectResult) {
         sourceType: 'senior',
       }
 
-    case 'PM':
-      return effectResult?.discardedCard
-        ? {
-            type: 'pm',
+    case 'PM': {
+      if (!effectResult?.discardedCard) {
+        return null
+      }
+
+      const newCard = effectResult.newCardDrawn
+        ? attachCardOwner(
+            findPlayerById(state, targetPlayerId)?.hand?.[0] ?? null,
             targetPlayerId,
-            discardedCard: effectResult.discardedCard,
-            newCard: effectResult.newCard ?? null,
-          }
+          )
         : null
+
+      return {
+        type: 'pm',
+        targetPlayerId,
+        discardedCard: effectResult.discardedCard,
+        newCardDrawn: Boolean(effectResult.newCardDrawn),
+        newCard,
+      }
+    }
 
     case 'HR':
       if (targetProtected) {
@@ -166,7 +179,51 @@ function buildCardEffectAnimationResult(context, effectResult) {
   }
 }
 
+function createCardEffectAnimationResultForViewer(
+  animationResult,
+  viewerPlayerId,
+  sourcePlayerId,
+) {
+  if (!animationResult?.type) {
+    return animationResult
+  }
+
+  const numericViewerPlayerId = Number(viewerPlayerId)
+
+  if (animationResult.type === 'cleaner') {
+    const numericSourcePlayerId = Number(sourcePlayerId)
+
+    if (numericViewerPlayerId === numericSourcePlayerId) {
+      return {
+        ...animationResult,
+        viewerPlayerId: numericSourcePlayerId,
+        revealCard: true,
+      }
+    }
+
+    return {
+      type: 'cleaner',
+      targetPlayerId: animationResult.targetPlayerId,
+      viewerPlayerId: numericSourcePlayerId,
+      revealCard: false,
+    }
+  }
+
+  if (animationResult.type === 'pm') {
+    const isTargetPlayer =
+      numericViewerPlayerId === Number(animationResult.targetPlayerId)
+
+    return {
+      ...animationResult,
+      newCard: isTargetPlayer ? animationResult.newCard ?? null : null,
+    }
+  }
+
+  return animationResult
+}
+
 export {
   buildCardEffectAnimationResult,
+  createCardEffectAnimationResultForViewer,
   createCardEffectAnimationContext,
 }

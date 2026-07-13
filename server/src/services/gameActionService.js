@@ -4,6 +4,7 @@ import { getPublicState } from "./gameStateService.js"
 import { runCardEffect, checkGuess } from "./cardEffectService.js"
 import {
     buildCardEffectAnimationResult,
+    createCardEffectAnimationResultForViewer,
     createCardEffectAnimationContext,
 } from "./cardEffectAnimationService.js"
 import { addLog } from "./actionLogService.js"
@@ -177,7 +178,11 @@ async function playCardAction({
             targetPlayerId,
             guessedCardName,
             result: effectResult,
-            animationResult,
+            animationResult: createCardEffectAnimationResultForViewer(
+                animationResult,
+                numericPlayerId,
+                numericPlayerId,
+            ),
             discardedCard,
             nextTurnPlayerId: state.currentTurnPlayerId,
         })
