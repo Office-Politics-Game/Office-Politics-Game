@@ -66,6 +66,9 @@ describe("useIntern", () => {
 
         expect(player.isEliminated).toBe(true)
         expect(state.players[1].isEliminated).toBe(true)
+        expect(state.players[1].hand).toEqual([])
+        expect(state.players[1].discardedCards).toEqual([{ id: 5, name: "PM" }])
+        expect(state.discardPile).toEqual([{ id: 5, name: "PM" }])
     })
 
     test("猜測 Intern 不合法時回傳 null", () => {
@@ -88,6 +91,9 @@ describe("useManager", () => {
 
         expect(player.playerId).toBe(2)
         expect(player.isEliminated).toBe(true)
+        expect(state.players[1].hand).toEqual([])
+        expect(state.players[1].discardedCards).toEqual([{ id: 1, name: "Intern" }])
+        expect(state.discardPile).toEqual([{ id: 1, name: "Intern" }])
     })
 
     test("目標玩家受保護時回傳 null", () => {
@@ -205,6 +211,8 @@ describe("useCeo", () => {
         const player = useCeo(state, 1, { id: 8, name: "CEO" })
 
         expect(player.isEliminated).toBe(true)
+        expect(state.players[0].hand).toEqual([])
+        expect(state.discardPile).toEqual([{ id: 3, name: "Manager" }])
     })
 })
 
@@ -256,5 +264,7 @@ describe("CEO effect", () => {
     expect(player.playerId).toBe(1)
     expect(player.isEliminated).toBe(true)
     expect(state.players[0].isEliminated).toBe(true)
+    expect(state.players[0].hand).toEqual([])
+    expect(state.discardPile).toEqual([{ id: 3, name: "Manager" }])
   })
 })

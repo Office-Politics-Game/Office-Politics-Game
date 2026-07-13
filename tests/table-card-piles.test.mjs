@@ -6,15 +6,16 @@ const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'u
 
 test('game stage imports and renders the table card piles', async () => {
   const source = await readSource('src/components/game/ui/GameStage.vue')
+  const cardPlaySource = await readSource('src/composables/useGameStageCardPlay.js')
 
   assert.match(source, /import TableCardPiles from ["']\.\/TableCardPiles\.vue["']/)
   assert.match(source, /<TableCardPiles/)
   assert.match(source, /ref="tableCardPilesRef"/)
   assert.match(source, /:deck-count="deckCount"/)
   assert.match(source, /:discard-cards="visibleDiscardCards"/)
-  assert.match(source, /const isDeckDrawDisabled = computed\([\s\S]*=>/)
-  assert.match(source, /isPlayInteractionLocked\.value \|\| !props\.canDraw/)
-  assert.match(source, /const deckBlockedMessage = computed\(\(\) =>[\s\S]*!isCurrentPlayerTurn\.value \? ["'][^"']+["'] : ["']["']/)
+  assert.match(cardPlaySource, /const isDeckDrawDisabled = computed\([\s\S]*=>/)
+  assert.match(cardPlaySource, /isPlayInteractionLocked\.value \|\| !props\.canDraw/)
+  assert.match(cardPlaySource, /const deckBlockedMessage = computed\(\(\) =>[\s\S]*!isCurrentPlayerTurn\.value \? ["'][^"']+["'] : ["']["']/)
   assert.match(source, /:is-draw-disabled="isDeckDrawDisabled"/)
   assert.match(source, /:draw-disabled-message="deckBlockedMessage"/)
   assert.match(source, /:is-drop-target-active="isOverPlayZone && hasActivePlay"/)

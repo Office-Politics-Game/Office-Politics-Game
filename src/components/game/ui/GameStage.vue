@@ -290,6 +290,8 @@ const {
   cancelPendingPlay,
   handleCardPointerDown,
   playRemoteCardPlayAnimation,
+  stageDiscardedCard,
+  clearStagedDiscardCard,
   cleanupCardPlay,
   pruneHiddenPlayedCards,
 } = useGameStageCardPlay({
@@ -470,6 +472,8 @@ defineExpose({
   playDrawAnimation,
   playEffectAnimation,
   playRemoteCardPlayAnimation,
+  stageDiscardedCard,
+  clearStagedDiscardCard,
   playRoundShowdownAnimation: (result) =>
     roundShowdownAnimation.value?.play?.(result) ?? Promise.resolve(false),
   waitForNoticeIdle,
