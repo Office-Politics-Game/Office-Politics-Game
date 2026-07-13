@@ -9,25 +9,27 @@ const COMPUTER_PLAYER_NAMES = [
   "Computer 4",
 ]
 
-function createServiceError(message, statusCode = 400){
+function createServiceError(message, statusCode = 400) {
   const error = new Error(message)
   error.statusCode = statusCode
   return error
 }
 
-function generateRoomCode(){
+function generateRoomCode() {
   return Math.random().toString(36).substring(2, 8).toUpperCase()
 }
 
-function parsePositiveInteger(value, fieldName){
+function parsePositiveInteger(value, fieldName) {
   const parsedValue = Number(value)
 
-  if (!Number.isInteger(parsedValue) || parsedValue <= 0){
+  if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
     throw createServiceError(`${fieldName} 必須是正整數`)
   }
 
   return parsedValue
-function mapRoomPlayer(player){
+}
+
+function mapRoomPlayer(player) {
   const isComputer = Boolean(player.is_computer) || player.role === "computer"
 
   return {
@@ -42,7 +44,7 @@ function mapRoomPlayer(player){
   }
 }
 
-async function findOrCreateComputerPlayer(client, index){
+async function findOrCreateComputerPlayer(client, index) {
   const username = COMPUTER_PLAYER_NAMES[index] ?? `Computer ${index + 1}`
   const account = `computer-player-${index + 1}`
 
@@ -55,7 +57,7 @@ async function findOrCreateComputerPlayer(client, index){
     [account, username]
   )
 
-  if (existingResult.rows.length > 0){
+  if (existingResult.rows.length > 0) {
     return existingResult.rows[0]
   }
 
@@ -69,11 +71,11 @@ async function findOrCreateComputerPlayer(client, index){
   return playerResult.rows[0]
 }
 
-function getNextSeatOrder(players){
-  const occupiedSeats = new Set(players.map((player)=> Number(player.seat_order)))
+function getNextSeatOrder(players) {
+  const occupiedSeats = new Set(players.map((player) => Number(player.seat_order)))
 
-  for (let seatOrder = 1; seatOrder <= MAX_ROOM_PLAYERS; seatOrder += 1){
-    if (!occupiedSeats.has(seatOrder)){
+  for (let seatOrder = 1; seatOrder <= MAX_ROOM_PLAYERS; seatOrder += 1) {
+    if (!occupiedSeats.has(seatOrder)) {
       return seatOrder
     }
   }
@@ -81,7 +83,7 @@ function getNextSeatOrder(players){
   return players.length + 1
 }
 
-async function createRoom({ hostPlayerId }){
+async function createRoom({ hostPlayerId }) {
   const client = await pool.connect()
 
   try {
@@ -114,7 +116,7 @@ async function createRoom({ hostPlayerId }){
   }
 }
 
-async function joinRoom({ roomCode, playerId }){
+async function joinRoom({ roomCode, playerId }) {
   const client = await pool.connect()
 
   try {
@@ -125,14 +127,14 @@ async function joinRoom({ roomCode, playerId }){
       [roomCode]
     )
 
-    if (roomResult.rows.length === 0){
-      throw createServiceError("加入房間失敗", 404)
+    if (roomResult.rows.length === 0) {
+      throw createServiceError("查無此房間", 404)
     }
 
     const room = roomResult.rows[0]
 
-    if (room.status !== "waiting"){
-      throw createServiceError("該房間遊戲中，無法加入房間")
+    if (room.status !== "waiting") {
+      throw createServiceError("房間正在遊戲中，無法加入")
     }
 
     const countResult = await client.query(
@@ -142,8 +144,8 @@ async function joinRoom({ roomCode, playerId }){
 
     const playerCount = Number(countResult.rows[0].count)
 
-    if (playerCount >= MAX_ROOM_PLAYERS){
-      throw createServiceError("房間人數已滿")
+    if (playerCount >= MAX_ROOM_PLAYERS) {
+      throw createServiceError("房間已滿")
     }
 
     await client.query(
@@ -155,7 +157,7 @@ async function joinRoom({ roomCode, playerId }){
     )
 
     await client.query("COMMIT")
-  } catch (error){
+  } catch (error) {
     await client.query("ROLLBACK")
     throw error
   } finally {
@@ -163,13 +165,13 @@ async function joinRoom({ roomCode, playerId }){
   }
 }
 
-async function updateReady({ roomCode, playerId, isReady }){
+async function updateReady({ roomCode, playerId, isReady }) {
   const roomResult = await pool.query(
     `SELECT * FROM game_rooms WHERE room_code = $1`,
     [roomCode]
   )
 
-  if (roomResult.rows.length === 0){
+  if (roomResult.rows.length === 0) {
     throw createServiceError("查無此房間", 404)
   }
 
@@ -183,12 +185,12 @@ async function updateReady({ roomCode, playerId, isReady }){
     [isReady, room.id, playerId]
   )
 
-  if (result.rows.length === 0){
-    throw createServiceError("玩家不在該房間中，無法變更狀態", 404)
+  if (result.rows.length === 0) {
+    throw createServiceError("玩家不在該房間中", 404)
   }
 }
 
-async function getRoomState({ roomCode }){
+async function getRoomState({ roomCode }) {
   const roomResult = await pool.query(
     `SELECT id, room_code, host_player_id, status
      FROM game_rooms
@@ -196,7 +198,7 @@ async function getRoomState({ roomCode }){
     [roomCode]
   )
 
-  if (roomResult.rows.length === 0){
+  if (roomResult.rows.length === 0) {
     throw createServiceError("查無此房間", 404)
   }
 
@@ -209,8 +211,8 @@ async function getRoomState({ roomCode }){
        grp.role,
        grp.seat_order,
        grp.is_ready,
-       (grp.role = 'computer') AS is_computer,
-       grp.is_alive
+       grp.is_alive,
+       grp.is_computer
      FROM game_room_players grp
      JOIN players p ON p.id = grp.player_id
      WHERE grp.room_id = $1
@@ -229,7 +231,7 @@ async function getRoomState({ roomCode }){
   }
 }
 
-async function addComputerPlayer({ roomCode, hostPlayerId }){
+async function addComputerPlayer({ roomCode, hostPlayerId }) {
   const client = await pool.connect()
 
   try {
@@ -240,25 +242,25 @@ async function addComputerPlayer({ roomCode, hostPlayerId }){
       [roomCode]
     )
 
-    if (roomResult.rows.length === 0){
-      throw createServiceError("Room not found", 404)
+    if (roomResult.rows.length === 0) {
+      throw createServiceError("查無此房間", 404)
     }
 
     const room = roomResult.rows[0]
 
-    if (room.host_player_id !== Number(hostPlayerId)){
-      throw createServiceError("Only the host can add computer players", 403)
+    if (room.host_player_id !== Number(hostPlayerId)) {
+      throw createServiceError("只有房主可以加入電腦玩家", 403)
     }
 
-    if (room.status !== "waiting"){
-      throw createServiceError("Computer players can only be added before the game starts")
+    if (room.status !== "waiting") {
+      throw createServiceError("只能在遊戲開始前加入電腦玩家")
     }
 
     const playerResult = await client.query(
       `SELECT
          grp.player_id,
          grp.seat_order,
-         (grp.role = 'computer') AS is_computer
+         grp.is_computer
        FROM game_room_players grp
        WHERE grp.room_id = $1
        ORDER BY grp.seat_order ASC`,
@@ -266,33 +268,33 @@ async function addComputerPlayer({ roomCode, hostPlayerId }){
     )
     const roomPlayers = playerResult.rows
 
-    if (roomPlayers.length >= MAX_ROOM_PLAYERS){
-      throw createServiceError("Room is full")
+    if (roomPlayers.length >= MAX_ROOM_PLAYERS) {
+      throw createServiceError("房間已滿")
     }
 
-    const computerIndex = roomPlayers.filter((player)=> player.is_computer).length
+    const computerIndex = roomPlayers.filter((player) => player.is_computer).length
     const computerPlayer = await findOrCreateComputerPlayer(client, computerIndex)
-    const alreadyInRoom = roomPlayers.some((player)=>{
+    const alreadyInRoom = roomPlayers.some((player) => {
       return Number(player.player_id) === Number(computerPlayer.id)
     })
 
-    if (alreadyInRoom){
-      throw createServiceError("Computer player is already in the room")
+    if (alreadyInRoom) {
+      throw createServiceError("電腦玩家已在房間中")
     }
 
     const seatOrder = getNextSeatOrder(roomPlayers)
 
     await client.query(
       `INSERT INTO game_room_players
-       (room_id, player_id, role, seat_order, is_ready)
-       VALUES ($1, $2, 'computer', $3, true)
+       (room_id, player_id, role, seat_order, is_ready, is_computer)
+       VALUES ($1, $2, 'computer', $3, true, true)
        RETURNING *`,
       [room.id, computerPlayer.id, seatOrder]
     )
 
     await client.query("COMMIT")
     return getRoomState({ roomCode })
-  } catch (error){
+  } catch (error) {
     await client.query("ROLLBACK")
     throw error
   } finally {
@@ -300,7 +302,7 @@ async function addComputerPlayer({ roomCode, hostPlayerId }){
   }
 }
 
-async function kickPlayer({ roomCode, requesterPlayerId, targetPlayerId }){
+async function kickPlayer({ roomCode, requesterPlayerId, targetPlayerId }) {
   const numericRequesterPlayerId = parsePositiveInteger(
     requesterPlayerId,
     "requesterPlayerId"
@@ -310,8 +312,8 @@ async function kickPlayer({ roomCode, requesterPlayerId, targetPlayerId }){
     "targetPlayerId"
   )
 
-  if (numericRequesterPlayerId === numericTargetPlayerId){
-    throw createServiceError("房主不能將自己移出房間")
+  if (numericRequesterPlayerId === numericTargetPlayerId) {
+    throw createServiceError("房主不能將自己移出房間", 400)
   }
 
   const client = await pool.connect()
@@ -327,13 +329,13 @@ async function kickPlayer({ roomCode, requesterPlayerId, targetPlayerId }){
       [roomCode]
     )
 
-    if (roomResult.rows.length === 0){
+    if (roomResult.rows.length === 0) {
       throw createServiceError("查無此房間", 404)
     }
 
     const room = roomResult.rows[0]
     const memberResult = await client.query(
-      `SELECT player_id, role, seat_order
+      `SELECT player_id, role, seat_order, is_computer
        FROM game_room_players
        WHERE room_id = $1
        ORDER BY seat_order ASC
@@ -347,24 +349,24 @@ async function kickPlayer({ roomCode, requesterPlayerId, targetPlayerId }){
       (member) => Number(member.player_id) === numericTargetPlayerId
     )
 
-    if (!requester){
+    if (!requester) {
       throw createServiceError("操作者不在該房間中", 404)
     }
 
-    if (Number(room.host_player_id) !== numericRequesterPlayerId || requester.role !== "host"){
-      throw createServiceError("該玩家不是房主，無法移出玩家", 403)
+    if (Number(room.host_player_id) !== numericRequesterPlayerId || requester.role !== "host") {
+      throw createServiceError("只有房主可以移出玩家", 403)
     }
 
-    if (!target){
+    if (!target) {
       throw createServiceError("目標玩家不在該房間中", 404)
     }
 
-    if (target.role === "host" || Number(target.player_id) === Number(room.host_player_id)){
-      throw createServiceError("不能將房主移出房間")
+    if (target.role === "host" || Number(target.player_id) === Number(room.host_player_id)) {
+      throw createServiceError("不能將房主移出房間", 400)
     }
 
-    if (room.status !== "waiting"){
-      throw createServiceError("遊戲已開始，無法移出玩家")
+    if (room.status !== "waiting") {
+      throw createServiceError("遊戲已開始，無法移出玩家", 409)
     }
 
     await client.query(
@@ -377,7 +379,7 @@ async function kickPlayer({ roomCode, requesterPlayerId, targetPlayerId }){
       (member) => Number(member.player_id) !== numericTargetPlayerId
     )
 
-    for (const [index, member] of remainingMembers.entries()){
+    for (const [index, member] of remainingMembers.entries()) {
       await client.query(
         `UPDATE game_room_players
          SET seat_order = $1
@@ -387,7 +389,7 @@ async function kickPlayer({ roomCode, requesterPlayerId, targetPlayerId }){
     }
 
     await client.query("COMMIT")
-  } catch (error){
+  } catch (error) {
     await client.query("ROLLBACK")
     throw error
   } finally {
@@ -397,7 +399,7 @@ async function kickPlayer({ roomCode, requesterPlayerId, targetPlayerId }){
   return getRoomState({ roomCode })
 }
 
-async function startGame({ roomCode, playerId }){
+async function startGame({ roomCode, playerId }) {
   const client = await pool.connect()
 
   try {
@@ -408,27 +410,22 @@ async function startGame({ roomCode, playerId }){
       [roomCode]
     )
 
-    if (roomResult.rows.length === 0){
+    if (roomResult.rows.length === 0) {
       throw createServiceError("查無此房間", 404)
     }
 
     const room = roomResult.rows[0]
 
-    if (room.host_player_id !== Number(playerId)){
-      throw createServiceError("該玩家不是房主，無法開始遊戲", 403)
+    if (room.host_player_id !== Number(playerId)) {
+      throw createServiceError("只有房主可以開始遊戲", 403)
     }
 
-    if (room.status !== "waiting"){
+    if (room.status !== "waiting") {
       throw createServiceError("遊戲已開始")
     }
 
     const playerResult = await client.query(
-      `SELECT
-         grp.player_id,
-         grp.seat_order,
-         grp.is_ready,
-         (grp.role = 'computer') AS is_computer,
-         p.username
+      `SELECT grp.player_id, grp.seat_order, grp.is_ready, p.username
        FROM game_room_players grp
        JOIN players p ON p.id = grp.player_id
        WHERE grp.room_id = $1
@@ -438,16 +435,16 @@ async function startGame({ roomCode, playerId }){
 
     const players = playerResult.rows
 
-    if (players.length !== MAX_ROOM_PLAYERS){
-      throw createServiceError("玩家人數不足4位")
+    if (players.length !== MAX_ROOM_PLAYERS) {
+      throw createServiceError("玩家人數需滿 4 人")
     }
 
-    const allReady = players.every((player)=>{
+    const allReady = players.every((player) => {
       return player.is_ready
     })
 
-    if (!allReady){
-      throw createServiceError("仍有玩家狀態處於準備中")
+    if (!allReady) {
+      throw createServiceError("所有玩家都必須準備完成")
     }
 
     const matchResult = await client.query(
@@ -476,7 +473,7 @@ async function startGame({ roomCode, playerId }){
     )
 
     await client.query("COMMIT")
-  } catch (error){
+  } catch (error) {
     await client.query("ROLLBACK")
     throw error
   } finally {

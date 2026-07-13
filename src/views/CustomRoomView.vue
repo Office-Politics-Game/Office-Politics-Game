@@ -183,7 +183,6 @@ function handleRemovePlayer(index) {
   if (index === 0 || !isHostPlayer.value) {
     return;
   }
-
 }
 
 async function handleStartRoom() {

@@ -22,10 +22,10 @@ const room = {
 }
 
 const members = [
-  { player_id: 1, role: "host", seat_order: 1 },
-  { player_id: 2, role: "player", seat_order: 2 },
-  { player_id: 3, role: "player", seat_order: 3 },
-  { player_id: 4, role: "player", seat_order: 4 },
+  { player_id: 1, role: "host", seat_order: 1, is_computer: false },
+  { player_id: 2, role: "player", seat_order: 2, is_computer: false },
+  { player_id: 3, role: "player", seat_order: 3, is_computer: false },
+  { player_id: 4, role: "player", seat_order: 4, is_computer: false },
 ]
 
 beforeEach(() => {
@@ -55,7 +55,6 @@ describe("roomService kickPlayer", () => {
     clientQueryMock
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] })
 
     await expect(
       kickPlayer({ roomCode: "NONE", requesterPlayerId: 1, targetPlayerId: 2 })
@@ -69,7 +68,6 @@ describe("roomService kickPlayer", () => {
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [room] })
       .mockResolvedValueOnce({ rows: members })
-      .mockResolvedValueOnce({ rows: [] })
 
     await expect(
       kickPlayer({ roomCode: "ROOM01", requesterPlayerId: 2, targetPlayerId: 3 })
@@ -83,7 +81,6 @@ describe("roomService kickPlayer", () => {
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [room] })
       .mockResolvedValueOnce({ rows: members })
-      .mockResolvedValueOnce({ rows: [] })
 
     await expect(
       kickPlayer({ roomCode: "ROOM01", requesterPlayerId: 9, targetPlayerId: 2 })
@@ -95,7 +92,6 @@ describe("roomService kickPlayer", () => {
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [room] })
       .mockResolvedValueOnce({ rows: members })
-      .mockResolvedValueOnce({ rows: [] })
 
     await expect(
       kickPlayer({ roomCode: "ROOM01", requesterPlayerId: 1, targetPlayerId: 9 })
@@ -115,18 +111,44 @@ describe("roomService kickPlayer", () => {
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ ...room, status: "playing" }] })
       .mockResolvedValueOnce({ rows: members })
-      .mockResolvedValueOnce({ rows: [] })
 
     await expect(
       kickPlayer({ roomCode: "ROOM01", requesterPlayerId: 1, targetPlayerId: 2 })
-    ).rejects.toMatchObject({ statusCode: 400 })
+    ).rejects.toMatchObject({ statusCode: 409 })
   })
 
   test("Host can remove a waiting-room member and Seat order remains contiguous", async () => {
     const updatedPlayers = [
-      { player_id: 1, username: "A", role: "host", seat_order: 1 },
-      { player_id: 2, username: "B", role: "player", seat_order: 2 },
-      { player_id: 4, username: "D", role: "player", seat_order: 3 },
+      {
+        player_id: 1,
+        username: "A",
+        avatar_id: 1,
+        role: "host",
+        seat_order: 1,
+        is_ready: true,
+        is_alive: true,
+        is_computer: false,
+      },
+      {
+        player_id: 2,
+        username: "B",
+        avatar_id: 2,
+        role: "player",
+        seat_order: 2,
+        is_ready: false,
+        is_alive: true,
+        is_computer: false,
+      },
+      {
+        player_id: 4,
+        username: "D",
+        avatar_id: 4,
+        role: "player",
+        seat_order: 3,
+        is_ready: false,
+        is_alive: true,
+        is_computer: false,
+      },
     ]
 
     clientQueryMock
@@ -137,8 +159,7 @@ describe("roomService kickPlayer", () => {
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] })
+
     queryMock
       .mockResolvedValueOnce({ rows: [room] })
       .mockResolvedValueOnce({ rows: updatedPlayers })
@@ -159,6 +180,7 @@ describe("roomService kickPlayer", () => {
     )
     expect(clientQueryMock).toHaveBeenCalledWith("COMMIT")
     expect(result.players.map((player) => player.playerId)).toEqual([1, 2, 4])
+    expect(result.players.map((player) => player.seatOrder)).toEqual([1, 2, 3])
   })
 
   test("Removal is atomic: 座位更新失敗時 rollback", async () => {
