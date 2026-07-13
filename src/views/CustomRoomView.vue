@@ -5,7 +5,6 @@ import { Copy, Play } from "@lucide/vue";
 import { useRoute, useRouter } from "vue-router";
 import InviteFriendModal from "@/components/gameRoom/InviteFriendModal.vue";
 import PlayerList from "@/components/gameRoom/CustomRoomPlayerList.vue";
-import { getRankingList } from "@/services/rankingService.js";
 import BG from "@/assets/images/bg-dashboard.webp";
 import { useCurrentPlayerId } from "@/composables/useCurrentPlayerId.js";
 import { useFriendStore } from "@/stores/friendStore.js";
@@ -23,8 +22,6 @@ const { currentPlayerId } = useCurrentPlayerId();
 const { roomCode, players, errorMessage, isLoading, isRoomReadyToStart } =
   storeToRefs(roomStore);
 
-const availablePlayers = ref([]);
-const localPlayerSlots = ref([]);
 const showInviteFriendModal = ref(false);
 const invitingSlotIndex = ref(null);
 const isRestoringRoomState = ref(false);
@@ -63,24 +60,6 @@ const emptyPlayerSlots = [
   },
 ];
 
-function createPlayerSlot(player, index) {
-  return {
-    id: player.id,
-    isHost: index === 0,
-    isReady: index !== 0,
-    name: player.name,
-    level: player.level,
-    stars: player.stars,
-    avatar: player.avatar,
-    isComputer: true,
-    canRemovePlayer: index !== 0,
-  };
-}
-
-function createEmptySlot(index) {
-  return { ...emptyPlayerSlots[index] };
-}
-
 function createRoomPlayerSlot(player, index) {
   return {
     id: player.playerId,
@@ -90,8 +69,11 @@ function createRoomPlayerSlot(player, index) {
     avatar: player.avatarUrl
       ? player.avatarUrl
       : resolveAvatarUrl(player.avatarId ?? player.avatar_id, index),
+    isComputer: Boolean(player.isComputer),
     canToggleReady:
-      String(player.playerId) === String(resolvedPlayerId.value) && player.role !== "host",
+      !player.isComputer &&
+      String(player.playerId) === String(resolvedPlayerId.value) &&
+      player.role !== "host",
     canRemovePlayer:
       isHostPlayer.value && String(player.playerId) !== String(resolvedPlayerId.value),
   };
@@ -101,12 +83,12 @@ function createRestoringSlot(slot, index) {
   return {
     id: `restoring-${index}`,
     isHost: index === 0,
-    name: index === 0 ? "房主連線中" : `等待玩家 ${index + 1}`,
+    name: index === 0 ? "房主載入中" : `等待玩家 ${index + 1}`,
     level: null,
     avatar: null,
     isReady: index === 0,
     isPlaceholder: true,
-    placeholderLabel: index === 0 ? "正在同步房間資訊" : "同步玩家席位中",
+    placeholderLabel: index === 0 ? "正在還原房間狀態" : "載入玩家資料中",
     ...slot,
   };
 }
@@ -119,12 +101,9 @@ const playerSlots = computed(() =>
       return createRoomPlayerSlot(roomPlayer, index);
     }
 
-    if (localPlayerSlots.value[index]?.name) {
-      return localPlayerSlots.value[index];
-    }
-
     return {
       ...slot,
+      canAddComputer: index !== 0 && Boolean(roomCode.value) && isHostPlayer.value,
       canInviteFriend:
         Boolean(slot.option2) && Boolean(roomCode.value) && isHostPlayer.value,
     };
@@ -149,9 +128,7 @@ const currentPlayerEntry = computed(() =>
   ),
 );
 
-const isHostPlayer = computed(
-  () => currentPlayerEntry.value?.role === "host",
-);
+const isHostPlayer = computed(() => currentPlayerEntry.value?.role === "host");
 
 const occupiedSlotCount = computed(
   () => displayPlayerSlots.value.filter((slot) => slot.name && !slot.isPlaceholder).length,
@@ -164,10 +141,6 @@ const readySlotCount = computed(
     ).length,
 );
 
-const hasLocalComputerPlayers = computed(() =>
-  localPlayerSlots.value.some((slot) => slot?.isComputer),
-);
-
 const inviteePlayerIds = computed(() =>
   new Set(players.value.map((player) => Number(player.playerId))),
 );
@@ -178,14 +151,8 @@ const availableInviteFriends = computed(() =>
   ),
 );
 
-const isRoomReadyToStartWithLocalPlayers = computed(
-  () =>
-    occupiedSlotCount.value === 4 &&
-    playerSlots.value.every((slot) => !slot.name || slot.isReady),
-);
-
 async function toggleReady(slot) {
-  if (!roomCode.value || slot.isHost) {
+  if (!roomCode.value || slot.isHost || slot.isComputer) {
     return;
   }
 
@@ -195,54 +162,29 @@ async function toggleReady(slot) {
   });
 }
 
-function handleAddComputer(index) {
+async function handleAddComputer(index) {
   if (index === 0 || players.value[index]) {
     return;
   }
 
-  const player = availablePlayers.value.find(
-    (candidate) =>
-      !playerSlots.value.some((slot) => slot.id === candidate.id),
-  );
-
-  if (!player) {
+  if (!roomCode.value || !resolvedPlayerId.value || !isHostPlayer.value) {
     return;
   }
 
-  localPlayerSlots.value[index] = createPlayerSlot(player, index);
+  await roomStore.addComputerPlayer(roomCode.value, {
+    hostPlayerId: resolvedPlayerId.value,
+  });
 }
 
 function handleRemovePlayer(index) {
   if (index === 0 || !isHostPlayer.value) {
     return;
   }
-
-  if (players.value[index]) {
-    players.value.splice(index, 1);
-    return;
-  }
-
-  localPlayerSlots.value[index] = null;
 }
 
 async function handleStartRoom() {
-  if (hasLocalComputerPlayers.value) {
-    if (!isRoomReadyToStartWithLocalPlayers.value) {
-      return;
-    }
-
-    router.push({
-      name: "Loading",
-      query: {
-        roomCode: roomCode.value,
-        playerId: String(resolvedPlayerId.value ?? ""),
-      },
-    });
-    return;
-  }
-
   if (!roomCode.value) {
-    roomStore.errorMessage = "目前沒有房間可以開始。";
+    roomStore.errorMessage = "找不到房間，無法開始遊戲";
     return;
   }
 
@@ -261,12 +203,12 @@ async function handleStartRoom() {
 
 async function openInviteFriendModal(index) {
   if (!isHostPlayer.value) {
-    roomInvitationStore.sendErrorMessage = "只有房主可以邀請好友。";
+    roomInvitationStore.sendErrorMessage = "只有房主可以邀請好友";
     return;
   }
 
   if (!roomCode.value) {
-    roomInvitationStore.sendErrorMessage = "目前沒有房間可以邀請好友。";
+    roomInvitationStore.sendErrorMessage = "找不到房間，無法邀請好友";
     return;
   }
 
@@ -307,10 +249,6 @@ async function copyRoomCode() {
 }
 
 onMounted(async () => {
-  const rankingPlayers = await getRankingList();
-  availablePlayers.value = rankingPlayers;
-
-  let hasRestoredRoomState = false;
   const roomCodeToRestore = requestedRoomCode.value || roomCode.value;
 
   if (roomCodeToRestore && !players.value.length) {
@@ -326,30 +264,13 @@ onMounted(async () => {
       } else {
         await roomStore.fetchRoomState(roomCodeToRestore);
       }
-      hasRestoredRoomState = roomStore.players.length > 0;
     } catch {
-      hasRestoredRoomState = false;
       await roomStore.fetchRoomState(roomCodeToRestore).catch(() => null);
     } finally {
       window.setTimeout(() => {
         isRestoringRoomState.value = false;
       }, 220);
     }
-  }
-
-  if (!players.value.length && !hasRestoredRoomState) {
-    const occupiedSlots = rankingPlayers
-      .slice(0, 3)
-      .map((player, index) => createPlayerSlot(player, index));
-
-    localPlayerSlots.value = emptyPlayerSlots.map((slot, index) =>
-      occupiedSlots[index]
-        ? {
-            ...slot,
-            ...occupiedSlots[index],
-          }
-        : null,
-    );
   }
 
   if (!roomCodeToRestore) {
@@ -393,7 +314,7 @@ watch(
   >
     <section
       class="flex h-90 w-600 flex-col items-center overflow-hidden pt-5 lg:h-170 lg:w-400 lg:pt-14"
-      aria-label="自訂遊戲局"
+      aria-label="自訂房間大廳"
     >
       <div
         class="flex w-52 items-center justify-center gap-2 text-sm font-bold leading-none text-white lg:w-80 lg:text-2xl"
@@ -441,7 +362,7 @@ watch(
 
       <div class="custom-room-status mt-4 text-sm font-bold text-white">
         <template v-if="isRestoringRoomState">
-          正在同步房間玩家狀態
+          正在還原房間與玩家狀態
         </template>
         <template v-else>
           {{ occupiedSlotCount }}/4 players
@@ -464,7 +385,7 @@ watch(
           :disabled="
             isRestoringRoomState ||
             isLoading ||
-            (!hasLocalComputerPlayers && (!isHostPlayer || !isRoomReadyToStart))
+            (!isHostPlayer || !isRoomReadyToStart)
           "
           @click="handleStartRoom"
         >
@@ -472,7 +393,7 @@ watch(
             class="h-4 w-4 fill-current lg:h-5 lg:w-5"
             :stroke-width="2.4"
           />
-          {{ isLoading ? "處理中" : "開始遊戲" }}
+          {{ isLoading ? "載入中" : "開始遊戲" }}
         </button>
       </div>
     </section>
