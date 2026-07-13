@@ -80,6 +80,43 @@ test('game stage prunes hidden played cards through extracted card-play state', 
   assert.doesNotMatch(source, /clearHiddenPlayedCard/)
 })
 
+test('submitted cards stay hidden while their effect or staged discard is active', async () => {
+  const source = await readSource('src/composables/useGameStageCardPlay.js')
+
+  assert.match(source, /const HIDDEN_PLAYED_CARD_FALLBACK_MS = 5000/)
+  assert.match(source, /const HIDDEN_PLAYED_CARD_RETRY_MS = 250/)
+  assert.match(source, /function scheduleHiddenPlayedCardCleanup/)
+  assert.match(source, /stagedDiscardCard\.value\?\.id === cardId/)
+  assert.match(source, /Boolean\(activeEffectResult\.value\)/)
+  assert.match(
+    source,
+    /scheduleHiddenPlayedCardCleanup\(cardId, HIDDEN_PLAYED_CARD_RETRY_MS\)/,
+  )
+  assert.match(source, /scheduleHiddenPlayedCardCleanup\(cardId\)/)
+})
+
+test('remote players lose one visible hand card as soon as they play it', async () => {
+  const stage = await readSource('src/components/game/ui/GameStage.vue')
+  const cardPlaySource = await readSource('src/composables/useGameStageCardPlay.js')
+
+  assert.match(cardPlaySource, /const stagedRemotePlayedCard = ref\(null\)/)
+  assert.match(cardPlaySource, /const visiblePlayerHandCardCounts = computed/)
+  assert.match(
+    cardPlaySource,
+    /remainingCount: currentCount - 1/,
+  )
+  assert.match(
+    cardPlaySource,
+    /Math\.min\([\s\S]*currentCount,[\s\S]*stagedPlay\.remainingCount/,
+  )
+  assert.match(
+    cardPlaySource,
+    /stagedRemotePlayedCard\.value = null/,
+  )
+  assert.match(stage, /resolvedPlayerHandCardCounts,/)
+  assert.match(stage, /:player-hand-card-counts="visiblePlayerHandCardCounts"/)
+})
+
 test('intern animation normalization requires and preserves the submitted guess', async () => {
   const source = await readSource('src/composables/useGameSocketActions.js')
 

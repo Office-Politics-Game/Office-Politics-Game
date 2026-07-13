@@ -81,8 +81,10 @@ async function play(result) {
     ? props.getPlayerHandRect?.(result.viewerPlayerId)
     : null
   const hiddenFromViewer = result.revealCard === false
-  const startsFaceUp =
-    hiddenFromViewer && result.targetCard && props.isSelfPlayer?.(result.targetPlayerId)
+  const keepsFaceUp =
+    hiddenFromViewer &&
+    Boolean(result.targetCard) &&
+    props.isSelfPlayer?.(result.targetPlayerId) === true
 
   if (
     !originRect ||
@@ -124,7 +126,7 @@ async function play(result) {
     transformPerspective: 1200,
   })
   gsap.set(flipperElement, {
-    rotationY: startsFaceUp ? 0 : 180,
+    rotationY: keepsFaceUp ? 0 : 180,
     transformPerspective: 1200,
     transformStyle: 'preserve-3d',
   })
@@ -147,14 +149,6 @@ async function play(result) {
         }),
     )
 
-  if (startsFaceUp) {
-    timeline.value.to(
-      flipperElement,
-      getFlipVars(180, timing.flip),
-      '<',
-    )
-  }
-
   if (!hiddenFromViewer) {
     timeline.value.to(flipperElement, getFlipVars(0, timing.flip))
   }
@@ -174,14 +168,6 @@ async function play(result) {
       reduced: reduceMotion,
     }),
   )
-
-  if (startsFaceUp) {
-    timeline.value.to(
-      flipperElement,
-      getFlipVars(0, timing.flip),
-      '<',
-    )
-  }
 
 }
 

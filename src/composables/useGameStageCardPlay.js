@@ -1,6 +1,8 @@
 import { computed, nextTick, ref } from "vue";
 
 const DRAG_THRESHOLD_PX = 6;
+const HIDDEN_PLAYED_CARD_FALLBACK_MS = 5000;
+const HIDDEN_PLAYED_CARD_RETRY_MS = 250;
 
 function getCardName(card) {
   return String(card?.name ?? "")
@@ -54,6 +56,7 @@ export function useGameStageCardPlay({
   isCurrentPlayerTurn,
   isDrawAnimating,
   activeEffectResult,
+  resolvedPlayerHandCardCounts,
 } = {}) {
   const activeCard = ref(null);
   const originRect = ref(null);
@@ -69,6 +72,7 @@ export function useGameStageCardPlay({
   const selectedTargetPlayerId = ref(null);
   const selectedGuessRank = ref(null);
   const inspectedCard = ref(null);
+  const stagedRemotePlayedCard = ref(null);
 
   let gestureCard = null;
   let gestureSource = "hand";
@@ -138,6 +142,29 @@ export function useGameStageCardPlay({
       : props.handCards;
 
     return cards.filter((card) => !hiddenCardIds.has(card.id));
+  });
+  const visiblePlayerHandCardCounts = computed(() => {
+    const counts =
+      resolvedPlayerHandCardCounts?.value ?? props.playerHandCardCounts;
+    const stagedPlay = stagedRemotePlayedCard.value;
+
+    if (!stagedPlay) {
+      return counts;
+    }
+
+    const currentCount = Number(counts[stagedPlay.playerId]);
+
+    if (!Number.isInteger(currentCount) || currentCount < 0) {
+      return counts;
+    }
+
+    return {
+      ...counts,
+      [stagedPlay.playerId]: Math.min(
+        currentCount,
+        stagedPlay.remainingCount,
+      ),
+    };
   });
   const advisorRuleDisabledCardIds = computed(() => {
     const hasAdvisor = visibleHandCards.value.some(isAdvisorCard);
@@ -307,6 +334,25 @@ export function useGameStageCardPlay({
     );
   }
 
+  function scheduleHiddenPlayedCardCleanup(
+    cardId,
+    delay = HIDDEN_PLAYED_CARD_FALLBACK_MS,
+  ) {
+    const timer = window.setTimeout(() => {
+      if (
+        stagedDiscardCard.value?.id === cardId ||
+        Boolean(activeEffectResult.value)
+      ) {
+        scheduleHiddenPlayedCardCleanup(cardId, HIDDEN_PLAYED_CARD_RETRY_MS);
+        return;
+      }
+
+      clearHiddenPlayedCard(cardId);
+    }, delay);
+
+    hiddenPlayedCardTimers.set(cardId, timer);
+  }
+
   function hideSubmittedCard(cardId) {
     if (!cardId || locallyHiddenPlayedCardIds.value.includes(cardId)) {
       return;
@@ -316,12 +362,7 @@ export function useGameStageCardPlay({
       ...locallyHiddenPlayedCardIds.value,
       cardId,
     ];
-
-    const timer = window.setTimeout(() => {
-      clearHiddenPlayedCard(cardId);
-    }, 5000);
-
-    hiddenPlayedCardTimers.set(cardId, timer);
+    scheduleHiddenPlayedCardCleanup(cardId);
   }
 
   function emitPlayCard(card, targetPlayerId = null, guessedRank = null) {
@@ -357,6 +398,7 @@ export function useGameStageCardPlay({
 
   function clearStagedDiscardCard() {
     stagedDiscardCard.value = null;
+    stagedRemotePlayedCard.value = null;
   }
 
   function selectTargetPlayer(playerId) {
@@ -574,6 +616,17 @@ export function useGameStageCardPlay({
       return false;
     }
 
+    const counts =
+      resolvedPlayerHandCardCounts?.value ?? props.playerHandCardCounts;
+    const currentCount = Number(counts[playerId]);
+
+    if (Number.isInteger(currentCount) && currentCount > 0) {
+      stagedRemotePlayedCard.value = {
+        playerId: String(playerId),
+        remainingCount: currentCount - 1,
+      };
+    }
+
     const player = props.players.find(
       (candidate) => String(candidate.id) === String(playerId),
     );
@@ -634,6 +687,7 @@ export function useGameStageCardPlay({
     isPendingPlayPanelVisible,
     selectableTargetPlayerIds,
     visibleHandCards,
+    visiblePlayerHandCardCounts,
     advisorRuleDisabledCardIds,
     visibleDiscardCards,
     selectedTargetPlayer,

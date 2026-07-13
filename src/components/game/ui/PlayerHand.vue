@@ -28,6 +28,11 @@ const props = defineProps({
     default: () => [],
     validator: (cardIds) => cardIds.every((cardId) => typeof cardId === 'string'),
   },
+  temporarilyHiddenCardIds: {
+    type: Array,
+    default: () => [],
+    validator: (cardIds) => cardIds.every((cardId) => typeof cardId === 'string'),
+  },
   isInteractionDisabled: {
     type: Boolean,
     default: false,
@@ -73,6 +78,10 @@ function isCardRuleDisabled(card) {
   return props.disabledCardIds.includes(card.id)
 }
 
+function isCardTemporarilyHidden(card) {
+  return props.temporarilyHiddenCardIds.includes(card.id)
+}
+
 function getHandElement() {
   return handRoot.value
 }
@@ -113,10 +122,12 @@ defineExpose({
         'game-card-arrangement--disabled': isCardDisabled(card),
         'game-card-arrangement--interaction-disabled': props.isInteractionDisabled,
         'game-card-arrangement--rule-disabled': isCardRuleDisabled(card),
+        'game-card-arrangement--temporarily-hidden': isCardTemporarilyHidden(card),
         'hover-block-hint-target': props.isInteractionDisabled,
       }"
       role="button"
       tabindex="0"
+      :aria-hidden="isCardTemporarilyHidden(card) ? 'true' : undefined"
       :aria-disabled="isCardDisabled(card) ? 'true' : undefined"
       :aria-label="`檢視卡牌：${card.name}`"
       @pointerdown="emit('card-pointerdown', card, $event)"
@@ -203,6 +214,12 @@ defineExpose({
   opacity: 0;
   visibility: hidden;
   filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0));
+}
+
+.game-card-arrangement--temporarily-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

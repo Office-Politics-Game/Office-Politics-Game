@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { access, readFile } from 'node:fs/promises'
 import test from 'node:test'
+import { ref } from 'vue'
+import { useGameStageCardVisibility } from '../src/composables/useGameStageCardVisibility.js'
 
 const readSource = (path) =>
   readFile(new URL(`../${path}`, import.meta.url), 'utf8')
@@ -67,7 +69,7 @@ test('cleaner animation reveals for two seconds and returns to its hand', async 
   const source = await readSource('src/components/game/animations/CleanerAnimation.vue')
   assert.match(source, /getPlayerHandRect/)
   assert.match(source, /\.to\(\{\}, \{ duration: 2 \}\)/)
-  assert.match(source, /rotationY: startsFaceUp \? 0 : 180/)
+  assert.match(source, /rotationY: keepsFaceUp \? 0 : 180/)
   assert.match(source, /getFlipVars\(0, timing\.flip\)/)
   assert.match(source, /getFlipVars\(180, timing\.flip\)/)
   assert.match(source, /getReturnToOriginVars\(startScale/)
@@ -133,25 +135,19 @@ test('pm and hr prompts show only the yellow target player before their effects'
   assert.match(demo, /:target-player-name="getPlayerName\(swapResult\.targetPlayerId\)"/)
 })
 
-test('cleaner flips the current player card from front to back without fading', async () => {
+test('cleaner keeps the current player card face up while moving it out and back', async () => {
   const source = await readSource('src/components/game/animations/CleanerAnimation.vue')
   const stage = await readSource('src/components/game/ui/GameStage.vue')
-  const demo = await readSource('src/views/CardPlayTestView.vue')
+  const hand = await readSource('src/components/game/ui/PlayerHand.vue')
+  const visibility = await readSource('src/composables/useGameStageCardVisibility.js')
 
   assert.match(source, /isSelfPlayer:/)
   assert.match(
     source,
-    /startsFaceUp =[\s\S]*props\.isSelfPlayer\?\.\(result\.targetPlayerId\)/,
+    /keepsFaceUp =[\s\S]*props\.isSelfPlayer\?\.\(result\.targetPlayerId\) === true/,
   )
-  assert.match(source, /rotationY: startsFaceUp \? 0 : 180/)
-  assert.match(
-    source,
-    /if \(startsFaceUp\)[\s\S]*getFlipVars\(180, timing\.flip\)[\s\S]*'<',/,
-  )
-  assert.match(
-    source,
-    /x: 0,[\s\S]*y: 0,[\s\S]*if \(startsFaceUp\)[\s\S]*getFlipVars\(0, timing\.flip\)[\s\S]*'<',/,
-  )
+  assert.match(source, /rotationY: keepsFaceUp \? 0 : 180/)
+  assert.doesNotMatch(source, /if \(keepsFaceUp\)/)
   const cardSetSource = source.slice(
     source.indexOf('gsap.set(cardElement'),
     source.indexOf('gsap.set(flipperElement'),
@@ -161,11 +157,112 @@ test('cleaner flips the current player card from front to back without fading', 
     source,
     /\.to\(cardElement,\s*\{[^}]*opacity:/,
   )
+  assert.match(stage, /useGameStageCardVisibility/)
+  assert.match(visibility, /const activeCleanerAnimationResult = computed/)
+  assert.match(visibility, /const targetCard = unref\(handCards\)\?\.\[0\] \?\? null/)
+  assert.match(stage, /:result="activeCleanerAnimationResult"/)
+  assert.match(stage, /:temporarily-hidden-card-ids="temporarilyHiddenCardIds"/)
   assert.match(stage, /:is-self-player="animationRects\.isSelfPlayer"/)
+  assert.match(hand, /temporarilyHiddenCardIds/)
+  assert.match(hand, /game-card-arrangement--temporarily-hidden/)
+  assert.match(hand, /visibility: hidden/)
+})
+
+test('cleaner hides the original opponent card back without revealing it to bystanders', async () => {
+  const source = await readSource('src/components/game/animations/CleanerAnimation.vue')
+  const stage = await readSource('src/components/game/ui/GameStage.vue')
+  const seats = await readSource('src/components/game/ui/PlayerSeats.vue')
+  const visibility = await readSource('src/composables/useGameStageCardVisibility.js')
+
+  assert.match(visibility, /const temporarilyHiddenSeatHandPlayerIds = computed/)
+  assert.match(visibility, /cleanerResult\?\.targetPlayerId/)
+  assert.match(visibility, /return \[String\(targetPlayerId\)\]/)
+  assert.match(stage, /:temporarily-hidden-hand-card-player-ids="temporarilyHiddenSeatHandPlayerIds"/)
+  assert.match(seats, /temporarilyHiddenHandCardPlayerIds/)
+  assert.match(seats, /index === 0/)
+  assert.match(seats, /player-seat-hand-target__card--temporarily-hidden/)
+  assert.match(source, /rotationY: keepsFaceUp \? 0 : 180/)
+  assert.match(source, /Boolean\(result\.targetCard\)/)
+})
+
+test('intern hides the original target card only after a correct guess', async () => {
+  const stage = await readSource('src/components/game/ui/GameStage.vue')
+  const visibility = await readSource('src/composables/useGameStageCardVisibility.js')
+
   assert.match(
-    demo,
-    /:is-self-player="isSelfPlayer"/,
+    visibility,
+    /result\?\.type === "intern"[\s\S]*result\.outcome === "correct"/,
   )
+  assert.match(
+    visibility,
+    /shouldHideInternCard[\s\S]*isSelfPlayer\?\.\(result\.targetPlayerId\) === true/,
+  )
+  assert.match(
+    visibility,
+    /result\?\.type === "intern" && result\.outcome === "correct"[\s\S]*result\.targetPlayerId/,
+  )
+  assert.match(stage, /temporarilyHiddenCardIds/)
+  assert.match(stage, /temporarilyHiddenSeatHandPlayerIds/)
+})
+
+test('effect card visibility resolves cleaner and intern views without duplicate cards', () => {
+  const activeEffectResult = ref(null)
+  const handCards = ref([{ id: '7', name: 'Manager' }])
+  const {
+    activeCleanerAnimationResult,
+    temporarilyHiddenCardIds,
+    temporarilyHiddenSeatHandPlayerIds,
+  } = useGameStageCardVisibility({
+    activeEffectResult,
+    handCards,
+    isSelfPlayer: (playerId) => playerId === 'self',
+  })
+
+  activeEffectResult.value = {
+    type: 'cleaner',
+    targetPlayerId: 'self',
+    targetCard: null,
+    revealCard: false,
+  }
+  assert.equal(activeCleanerAnimationResult.value.targetCard, handCards.value[0])
+  assert.deepEqual(temporarilyHiddenCardIds.value, ['7'])
+  assert.deepEqual(temporarilyHiddenSeatHandPlayerIds.value, [])
+
+  activeEffectResult.value = {
+    type: 'cleaner',
+    targetPlayerId: 'other',
+    targetCard: null,
+    revealCard: false,
+  }
+  assert.deepEqual(temporarilyHiddenCardIds.value, [])
+  assert.deepEqual(temporarilyHiddenSeatHandPlayerIds.value, ['other'])
+
+  activeEffectResult.value = {
+    type: 'intern',
+    targetPlayerId: 'self',
+    targetCard: { id: '7', name: 'Manager' },
+    outcome: 'correct',
+  }
+  assert.deepEqual(temporarilyHiddenCardIds.value, ['7'])
+  assert.deepEqual(temporarilyHiddenSeatHandPlayerIds.value, [])
+
+  activeEffectResult.value = {
+    type: 'intern',
+    targetPlayerId: 'other',
+    targetCard: { id: '7', name: 'Manager' },
+    outcome: 'correct',
+  }
+  assert.deepEqual(temporarilyHiddenCardIds.value, [])
+  assert.deepEqual(temporarilyHiddenSeatHandPlayerIds.value, ['other'])
+
+  activeEffectResult.value = {
+    type: 'intern',
+    targetPlayerId: 'self',
+    targetCard: { id: '7', name: 'Manager' },
+    outcome: 'incorrect',
+  }
+  assert.deepEqual(temporarilyHiddenCardIds.value, [])
+  assert.deepEqual(temporarilyHiddenSeatHandPlayerIds.value, [])
 })
 
 test('manager animation compares, emphasizes, returns the winner, and discards the loser', async () => {

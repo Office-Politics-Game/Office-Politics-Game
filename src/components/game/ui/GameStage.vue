@@ -5,6 +5,7 @@ import gameTableBackgroundUrl from "@/assets/images/bg-game-table.webp";
 import gameLogoUrl from "@/assets/images/logo-en-white.png";
 import { useAudioSettings } from "@/composables/UseAudioSettings";
 import { useGameStageCardPlay } from "@/composables/useGameStageCardPlay";
+import { useGameStageCardVisibility } from "@/composables/useGameStageCardVisibility";
 import { useGameStageDrawSequence } from "@/composables/useGameStageDrawSequence";
 import { useGameStageEffectAnimation } from "@/composables/useGameStageEffectAnimation";
 import { CARD_INFO_BY_RANK } from "@/constants/cardInfo";
@@ -282,6 +283,7 @@ const {
   isPendingPlayPanelVisible,
   selectableTargetPlayerIds,
   visibleHandCards,
+  visiblePlayerHandCardCounts,
   advisorRuleDisabledCardIds,
   visibleDiscardCards,
   selectedTargetPlayer,
@@ -314,6 +316,7 @@ const {
   isCurrentPlayerTurn,
   isDrawAnimating,
   activeEffectResult,
+  resolvedPlayerHandCardCounts,
 });
 
 const protectedPlayers = computed(() =>
@@ -332,6 +335,15 @@ const activeCleanerTargetPlayerName = computed(() => {
   }
 
   return resolvePlayerName(activeEffectResult.value.targetPlayerId);
+});
+const {
+  activeCleanerAnimationResult,
+  temporarilyHiddenCardIds,
+  temporarilyHiddenSeatHandPlayerIds,
+} = useGameStageCardVisibility({
+  activeEffectResult,
+  handCards: computed(() => props.handCards),
+  isSelfPlayer: animationRects.isSelfPlayer,
 });
 const activeInternTargetPlayerName = computed(() => {
   if (activeEffectResult.value?.type !== "intern") {
@@ -533,7 +545,8 @@ defineExpose({
         ref="playerSeats"
         :players="players"
         :dealt-player-ids="initialRoundDealtPlayerIds"
-        :player-hand-card-counts="resolvedPlayerHandCardCounts"
+        :player-hand-card-counts="visiblePlayerHandCardCounts"
+        :temporarily-hidden-hand-card-player-ids="temporarilyHiddenSeatHandPlayerIds"
         :is-target-selection-active="isPendingTargetSelectionActive"
         :selectable-player-ids="selectableTargetPlayerIds"
         :selected-target-player-id="selectedTargetPlayerId"
@@ -580,6 +593,7 @@ defineExpose({
           :cards="visibleHandCards"
           :dragging-card-id="draggingCardId"
           :disabled-card-ids="advisorRuleDisabledCardIds"
+          :temporarily-hidden-card-ids="temporarilyHiddenCardIds"
           :is-interaction-disabled="isHandDrawRequired"
           :disabled-message="handDisabledMessage"
           @card-pointerdown="handleCardPointerDown"
@@ -652,7 +666,7 @@ defineExpose({
 
       <CleanerAnimation
         v-if="activeEffectResult?.type === 'cleaner'"
-        :result="activeEffectResult"
+        :result="activeCleanerAnimationResult"
         :target-player-name="activeCleanerTargetPlayerName"
         :get-player-hand-rect="animationRects.getPlayerHandRect"
         :is-self-player="animationRects.isSelfPlayer"
