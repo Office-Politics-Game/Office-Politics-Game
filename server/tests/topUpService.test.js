@@ -114,7 +114,7 @@ describe("topUpService", () => {
     test("mockPayTopUpOrder() marks order paid and adds currency", async () => {
         unlockAchievementMock.mockResolvedValueOnce({
             code: "first_top_up",
-            name: "Shareholder",
+            name: "資本進場",
         })
 
         queryMock
