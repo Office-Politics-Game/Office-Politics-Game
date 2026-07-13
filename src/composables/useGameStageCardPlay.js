@@ -96,13 +96,12 @@ export function useGameStageCardPlay({
   const isPendingTargetSelectionActive = computed(
     () =>
       pendingRequiresTarget.value &&
-      (!pendingRequiresGuess.value || !selectedTargetPlayerId.value),
+      !selectedTargetPlayerId.value,
   );
   const isPendingPlayPanelVisible = computed(
     () =>
       Boolean(pendingPlay.value) &&
       (!pendingRequiresTarget.value ||
-        !pendingRequiresGuess.value ||
         Boolean(selectedTargetPlayerId.value)),
   );
   const selectableTargetPlayerIds = computed(() => {

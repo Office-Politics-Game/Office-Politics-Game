@@ -307,6 +307,27 @@ const {
 const protectedPlayers = computed(() =>
   props.players.filter((player) => player.isProtected),
 );
+function resolvePlayerName(playerId) {
+  return (
+    props.players.find(
+      (player) => String(player.id) === String(playerId),
+    )?.name ?? "玩家"
+  );
+}
+const activeCleanerSourcePlayerName = computed(() => {
+  if (activeEffectResult.value?.type !== "cleaner") {
+    return "玩家";
+  }
+
+  return resolvePlayerName(activeEffectResult.value.viewerPlayerId);
+});
+const activeCleanerTargetPlayerName = computed(() => {
+  if (activeEffectResult.value?.type !== "cleaner") {
+    return "玩家";
+  }
+
+  return resolvePlayerName(activeEffectResult.value.targetPlayerId);
+});
 const activeInternTargetPlayerName = computed(() => {
   if (activeEffectResult.value?.type !== "intern") {
     return "玩家";
@@ -471,7 +492,7 @@ defineExpose({
       ></div>
 
       <p
-        v-if="pendingRequiresGuess && isPendingTargetSelectionActive"
+        v-if="isPendingTargetSelectionActive"
         class="play-target-prompt"
         role="status"
         aria-live="polite"
@@ -602,6 +623,8 @@ defineExpose({
       <CleanerAnimation
         v-if="activeEffectResult?.type === 'cleaner'"
         :result="activeEffectResult"
+        :source-player-name="activeCleanerSourcePlayerName"
+        :target-player-name="activeCleanerTargetPlayerName"
         :get-player-hand-rect="animationRects.getPlayerHandRect"
         :is-self-player="animationRects.isSelfPlayer"
         @complete="handleEffectAnimationComplete"
