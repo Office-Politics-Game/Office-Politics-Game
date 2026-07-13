@@ -11,6 +11,7 @@ CREATE TABLE players (
   win_count INTEGER NOT NULL DEFAULT 0 CHECK (win_count >= 0),
   lose_count INTEGER NOT NULL DEFAULT 0 CHECK (lose_count >= 0),
   total_games INTEGER NOT NULL DEFAULT 0 CHECK (total_games >= 0),
+  title VARCHAR(100),
   is_online BOOLEAN NOT NULL DEFAULT false,
   last_login_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -19,6 +20,9 @@ CREATE TABLE players (
 
 ALTER TABLE players
 ADD COLUMN IF NOT EXISTS account VARCHAR(255) UNIQUE;
+
+ALTER TABLE players
+ADD COLUMN IF NOT EXISTS title VARCHAR(100);
 
 ALTER TABLE players
 ALTER COLUMN avatar_id SET DEFAULT 1;

@@ -1,4 +1,7 @@
-import { getCurrentProfile } from "../services/profileService.js"
+import {
+  getCurrentProfile,
+  setProfileTitle,
+} from "../services/profileService.js"
 
 function getBearerToken(req) {
   const authorization = req.headers.authorization || ""
@@ -23,4 +26,17 @@ async function handleGetProfile(req, res) {
   }
 }
 
-export { handleGetProfile }
+async function handleSetProfileTitle(req, res) {
+  try {
+    const token = getBearerToken(req)
+    const profile = await setProfileTitle(token, req.body?.achievementCode)
+
+    res.status(200).json({ profile })
+  } catch (error) {
+    res.status(error.statusCode || 500).json({
+      message: error.message || "Failed to update profile title",
+    })
+  }
+}
+
+export { handleGetProfile, handleSetProfileTitle }

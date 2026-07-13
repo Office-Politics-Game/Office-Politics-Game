@@ -10,4 +10,16 @@ function getProfile(token) {
   });
 }
 
-export { getProfile };
+function setProfileTitle(token, achievementCode) {
+  return apiClient.patch(
+    `${PROFILE_API_PATH}/title`,
+    { achievementCode },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+}
+
+export { getProfile, setProfileTitle };

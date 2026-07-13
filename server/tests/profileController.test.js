@@ -1,12 +1,16 @@
 import { jest } from "@jest/globals"
 
 const mockGetCurrentProfile = jest.fn()
+const mockSetProfileTitle = jest.fn()
 
 jest.unstable_mockModule("../src/services/profileService.js", () => ({
   getCurrentProfile: mockGetCurrentProfile,
+  setProfileTitle: mockSetProfileTitle,
 }))
 
-const { handleGetProfile } = await import("../src/controllers/profileController.js")
+const { handleGetProfile, handleSetProfileTitle } = await import(
+  "../src/controllers/profileController.js"
+)
 
 function createMockResponse() {
   const res = {
@@ -23,13 +27,15 @@ function createMockResponse() {
 describe("profileController", () => {
   beforeEach(() => {
     mockGetCurrentProfile.mockReset()
+    mockSetProfileTitle.mockReset()
   })
 
-  test("Authorization Bearer token 有效時回傳 profile", async () => {
+  test("returns profile for Authorization Bearer token", async () => {
     const profile = {
       id: 1,
-      username: "測試玩家",
+      username: "Test Player",
       avatarId: 2,
+      title: "First Win",
     }
     mockGetCurrentProfile.mockResolvedValueOnce(profile)
 
@@ -47,8 +53,8 @@ describe("profileController", () => {
     expect(res.json).toHaveBeenCalledWith({ profile })
   })
 
-  test("沒有 Authorization header 時回傳 401", async () => {
-    const error = new Error("缺少登入驗證token")
+  test("returns 401 for missing Authorization header", async () => {
+    const error = new Error("Missing token")
     error.statusCode = 401
     mockGetCurrentProfile.mockRejectedValueOnce(error)
 
@@ -62,12 +68,12 @@ describe("profileController", () => {
     expect(mockGetCurrentProfile).toHaveBeenCalledWith("")
     expect(res.status).toHaveBeenCalledWith(401)
     expect(res.json).toHaveBeenCalledWith({
-      message: "缺少登入驗證token",
+      message: "Missing token",
     })
   })
 
-  test("玩家資料不存在時回傳 404", async () => {
-    const error = new Error("找不到玩家資料")
+  test("returns 404 when profile player is missing", async () => {
+    const error = new Error("Player not found")
     error.statusCode = 404
     mockGetCurrentProfile.mockRejectedValueOnce(error)
 
@@ -82,7 +88,58 @@ describe("profileController", () => {
 
     expect(res.status).toHaveBeenCalledWith(404)
     expect(res.json).toHaveBeenCalledWith({
-      message: "找不到玩家資料",
+      message: "Player not found",
+    })
+  })
+
+  test("sets profile title and returns updated profile", async () => {
+    const profile = {
+      id: 1,
+      username: "Test Player",
+      title: "First Win",
+    }
+    mockSetProfileTitle.mockResolvedValueOnce(profile)
+
+    const req = {
+      headers: {
+        authorization: "Bearer valid-token",
+      },
+      body: {
+        achievementCode: "first_game_win",
+      },
+    }
+    const res = createMockResponse()
+
+    await handleSetProfileTitle(req, res)
+
+    expect(mockSetProfileTitle).toHaveBeenCalledWith(
+      "valid-token",
+      "first_game_win",
+    )
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(res.json).toHaveBeenCalledWith({ profile })
+  })
+
+  test("forwards title service errors", async () => {
+    const error = new Error("Achievement has not been unlocked")
+    error.statusCode = 403
+    mockSetProfileTitle.mockRejectedValueOnce(error)
+
+    const req = {
+      headers: {
+        authorization: "Bearer valid-token",
+      },
+      body: {
+        achievementCode: "first_game_win",
+      },
+    }
+    const res = createMockResponse()
+
+    await handleSetProfileTitle(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(403)
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Achievement has not been unlocked",
     })
   })
 })
