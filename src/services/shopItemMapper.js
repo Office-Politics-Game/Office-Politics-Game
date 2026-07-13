@@ -1,3 +1,6 @@
+import { getCardSkinThemeLogo } from "@/constants/cardSkinThemes.js";
+import { resolveImageAssetUrl } from "@/utils/assetUrlResolver.js";
+
 const shopTypeCategoryMap = {
   avatar: "avatar",
   board_skin: "board",
@@ -54,7 +57,10 @@ function normalizeShopItem(item, options = {}) {
     currency: item.currency ?? "coin",
     actionLabel: isOwned ? "已擁有" : isAvailable ? "立即購買" : "敬請期待",
     actionState: isOwned ? "owned" : isAvailable ? "buy" : "coming",
-    previewImage: item.imageUrl || item.image_url || fallbackImage,
+    previewImage:
+      (item.type === "card_skin" ? getCardSkinThemeLogo(item) : "") ||
+      resolveImageAssetUrl(item.imageUrl || item.image_url) ||
+      fallbackImage,
     shopItem: item,
   };
 }

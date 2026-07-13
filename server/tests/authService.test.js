@@ -1,10 +1,14 @@
 import { jest } from "@jest/globals"
 
+const mockSignUp = jest.fn()
 const mockQuery = jest.fn()
-const mockCreateUser = jest.fn()
 const mockDeleteUser = jest.fn()
 const mockSignInWithPassword = jest.fn()
 const mockGetUser = jest.fn()
+const mockResetPasswordForEmail = jest.fn()
+const mockUpdateUserById = jest.fn()
+
+const VALID_PASSWORD = "Aa123456!"
 
 jest.unstable_mockModule("../src/db/index.js", () => ({
     default: {
@@ -17,15 +21,27 @@ jest.unstable_mockModule("../src/db/supabaseClient.js", () => ({
         auth: {
             signInWithPassword: mockSignInWithPassword,
             getUser: mockGetUser,
+            resetPasswordForEmail: mockResetPasswordForEmail,
             admin: {
-                createUser: mockCreateUser,
-                deleteUser: mockDeleteUser
+                deleteUser: mockDeleteUser,
+                updateUserById: mockUpdateUserById
             }
+        }
+    },
+    supabaseAuth: {
+        auth: {
+            signUp: mockSignUp
         }
     }
 }))
 
-const { registerPlayer, loginPlayer, verifyToken } = await import("../src/services/authService.js")
+const {
+    registerPlayer,
+    loginPlayer,
+    verifyToken,
+    requestPasswordReset,
+    resetPlayerPassword
+} = await import("../src/services/authService.js")
 
 const SELECT_DUPLICATE_PLAYER_SQL = `SELECT username, account
          FROM players
@@ -40,6 +56,21 @@ const PLAYER_SELECT_SQL = `id, auth_user_id, username, account, avatar_id,
 const INSERT_PLAYER_SQL = `INSERT INTO players (auth_user_id, username, account, avatar_id)
             VALUES ($1, $2, $3, $4)
             RETURNING ${PLAYER_SELECT_SQL}`
+
+function resetMocks() {
+    mockQuery.mockReset()
+    mockDeleteUser.mockReset()
+    mockSignInWithPassword.mockReset()
+    mockGetUser.mockReset()
+    mockResetPasswordForEmail.mockReset()
+    mockUpdateUserById.mockReset()
+    mockSignUp.mockReset()
+
+    delete process.env.EMAIL_CONFIRM_REDIRECT_URL
+    delete process.env.PASSWORD_RESET_REDIRECT_URL
+    delete process.env.CLIENT_ORIGIN
+    delete process.env.FRONTEND_URL
+}
 
 //假資料庫的玩家資料
 function createPlayerRow(overrides = {}) {
@@ -67,11 +98,7 @@ function createPlayerRow(overrides = {}) {
 
 describe("註冊玩家服務", () => {
     beforeEach(() => {
-        mockQuery.mockReset()
-        mockCreateUser.mockReset()
-        mockDeleteUser.mockReset()
-        mockSignInWithPassword.mockReset()
-        mockGetUser.mockReset()
+        resetMocks()
     })
 
     test("未輸入用戶名稱時，丟出錯誤", async () => {
@@ -79,13 +106,13 @@ describe("註冊玩家服務", () => {
             registerPlayer({
                 username: "",
                 account: "test@example.com",
-                password: "123456",
+                password: VALID_PASSWORD,
                 avatarId: 1
             })
         ).rejects.toThrow("請輸入用戶名稱")
 
         expect(mockQuery).not.toHaveBeenCalled()
-        expect(mockCreateUser).not.toHaveBeenCalled()
+        expect(mockSignUp).not.toHaveBeenCalled()
         expect(mockDeleteUser).not.toHaveBeenCalled()
     })
 
@@ -94,13 +121,13 @@ describe("註冊玩家服務", () => {
             registerPlayer({
                 username: "測試玩家",
                 account: "",
-                password: "123456",
+                password: VALID_PASSWORD,
                 avatarId: 1,
             })
         ).rejects.toThrow("請輸入Email帳號")
 
         expect(mockQuery).not.toHaveBeenCalled()
-        expect(mockCreateUser).not.toHaveBeenCalled()
+        expect(mockSignUp).not.toHaveBeenCalled()
         expect(mockDeleteUser).not.toHaveBeenCalled()
     })
 
@@ -109,13 +136,13 @@ describe("註冊玩家服務", () => {
             registerPlayer({
                 username: "測試玩家",
                 account: "test001",
-                password: "123456",
+                password: VALID_PASSWORD,
                 avatarId: 1
             })
         ).rejects.toThrow("Email格式不正確")
 
         expect(mockQuery).not.toHaveBeenCalled()
-        expect(mockCreateUser).not.toHaveBeenCalled()
+        expect(mockSignUp).not.toHaveBeenCalled()
         expect(mockDeleteUser).not.toHaveBeenCalled()
     })
 
@@ -130,7 +157,22 @@ describe("註冊玩家服務", () => {
         ).rejects.toThrow("請輸入密碼")
 
         expect(mockQuery).not.toHaveBeenCalled()
-        expect(mockCreateUser).not.toHaveBeenCalled()
+        expect(mockSignUp).not.toHaveBeenCalled()
+        expect(mockDeleteUser).not.toHaveBeenCalled()
+    })
+
+    test("密碼格式不符合規則時，丟出錯誤", async () => {
+        await expect(
+            registerPlayer({
+                username: "測試玩家",
+                account: "test@example.com",
+                password: "123456",
+                avatarId: 1
+            })
+        ).rejects.toThrow("密碼格式不符合規則")
+
+        expect(mockQuery).not.toHaveBeenCalled()
+        expect(mockSignUp).not.toHaveBeenCalled()
         expect(mockDeleteUser).not.toHaveBeenCalled()
     })
 
@@ -148,7 +190,7 @@ describe("註冊玩家服務", () => {
             registerPlayer({
                 username: "測試玩家",
                 account: "test@example.com",
-                password: "123456",
+                password: VALID_PASSWORD,
                 avatarId: 1
             })
         ).rejects.toThrow("用戶名稱已被使用")
@@ -159,7 +201,7 @@ describe("註冊玩家服務", () => {
             SELECT_DUPLICATE_PLAYER_SQL,
             ["測試玩家", "test@example.com"]
         )
-        expect(mockCreateUser).not.toHaveBeenCalled()
+        expect(mockSignUp).not.toHaveBeenCalled()
         expect(mockDeleteUser).not.toHaveBeenCalled()
     })
 
@@ -177,7 +219,7 @@ describe("註冊玩家服務", () => {
             registerPlayer({
                 username: "測試玩家",
                 account: "test@example.com",
-                password: "123456",
+                password: VALID_PASSWORD,
                 avatarId: 1
             })
         ).rejects.toThrow("Email帳號已被使用")
@@ -188,7 +230,7 @@ describe("註冊玩家服務", () => {
             SELECT_DUPLICATE_PLAYER_SQL,
             ["測試玩家", "test@example.com"]
         )
-        expect(mockCreateUser).not.toHaveBeenCalled()
+        expect(mockSignUp).not.toHaveBeenCalled()
         expect(mockDeleteUser).not.toHaveBeenCalled()
     })
 
@@ -201,7 +243,7 @@ describe("註冊玩家服務", () => {
                 rows: [createPlayerRow()]
             })
 
-        mockCreateUser.mockResolvedValueOnce({
+        mockSignUp.mockResolvedValueOnce({
             data: {
                 user: {
                     id: "auth-user-001",
@@ -213,16 +255,21 @@ describe("註冊玩家服務", () => {
         const player = await registerPlayer({
             username: "測試玩家",
             account: "test@example.com",
-            password: "123456",
+            password: VALID_PASSWORD,
             avatarId: 2
         })
 
-        expect(mockQuery).toHaveBeenCalledTimes(2)
-        expect(mockQuery).toHaveBeenNthCalledWith(
-            1,
-            SELECT_DUPLICATE_PLAYER_SQL,
-            ["測試玩家", "test@example.com"]
-        )
+        expect(mockSignUp).toHaveBeenCalledWith({
+            email: "test@example.com",
+            password: VALID_PASSWORD,
+            options: {
+                emailRedirectTo: "http://localhost:5173/?auth=login",
+                data: {
+                    username: "測試玩家",
+                    avatarId: 2
+                }
+            }
+        })
 
         expect(mockQuery).toHaveBeenNthCalledWith(
             2,
@@ -268,7 +315,7 @@ describe("註冊玩家服務", () => {
                 ]
             })
 
-        mockCreateUser.mockResolvedValueOnce({
+        mockSignUp.mockResolvedValueOnce({
             data: {
                 user: {
                     id: "auth-user-001"
@@ -280,16 +327,18 @@ describe("註冊玩家服務", () => {
         await registerPlayer({
             username: "測試玩家",
             account: "test@example.com",
-            password: "123456"
+            password: VALID_PASSWORD
         })
 
-        expect(mockCreateUser).toHaveBeenCalledWith({
+        expect(mockSignUp).toHaveBeenCalledWith({
             email: "test@example.com",
-            password: "123456",
-            email_confirm: true,
-            user_metadata: {
-                username: "測試玩家",
-                avatarId: 1
+            password: VALID_PASSWORD,
+            options: {
+                emailRedirectTo: "http://localhost:5173/?auth=login",
+                data: {
+                    username: "測試玩家",
+                    avatarId: 1
+                }
             }
         })
 
@@ -309,7 +358,7 @@ describe("註冊玩家服務", () => {
                 rows: [createPlayerRow()]
             })
 
-        mockCreateUser.mockResolvedValueOnce({
+        mockSignUp.mockResolvedValueOnce({
             data: {
                 user: {
                     id: "auth-user-001"
@@ -321,7 +370,7 @@ describe("註冊玩家服務", () => {
         await registerPlayer({
             username: "  測試玩家  ",
             account: "  TEST@EXAMPLE.COM  ",
-            password: "123456",
+            password: VALID_PASSWORD,
             avatarId: 2
         })
 
@@ -331,13 +380,15 @@ describe("註冊玩家服務", () => {
             ["測試玩家", "test@example.com"]
         )
 
-        expect(mockCreateUser).toHaveBeenCalledWith({
+        expect(mockSignUp).toHaveBeenCalledWith({
             email: "test@example.com",
-            password: "123456",
-            email_confirm: true,
-            user_metadata: {
-                username: "測試玩家",
-                avatarId: 2
+            password: VALID_PASSWORD,
+            options: {
+                emailRedirectTo: "http://localhost:5173/?auth=login",
+                data: {
+                    username: "測試玩家",
+                    avatarId: 2
+                }
             }
         })
 
@@ -353,7 +404,7 @@ describe("註冊玩家服務", () => {
             rows: []
         })
 
-        mockCreateUser.mockResolvedValueOnce({
+        mockSignUp.mockResolvedValueOnce({
             data: {
                 user: null
             },
@@ -364,13 +415,13 @@ describe("註冊玩家服務", () => {
             registerPlayer({
                 username: "測試玩家",
                 account: "test@example.com",
-                password: "123456",
+                password: VALID_PASSWORD,
                 avatarId: 1
             })
         ).rejects.toThrow("該用戶已存在")
 
         expect(mockQuery).toHaveBeenCalledTimes(1)
-        expect(mockCreateUser).toHaveBeenCalledTimes(1)
+        expect(mockSignUp).toHaveBeenCalledTimes(1)
         expect(mockDeleteUser).not.toHaveBeenCalled()
     })
 
@@ -379,7 +430,7 @@ describe("註冊玩家服務", () => {
             rows: []
         })
 
-        mockCreateUser.mockResolvedValueOnce({
+        mockSignUp.mockResolvedValueOnce({
             data: {
                 user: null
             },
@@ -390,13 +441,13 @@ describe("註冊玩家服務", () => {
             registerPlayer({
                 username: "測試玩家",
                 account: "test@example.com",
-                password: "123456",
+                password: VALID_PASSWORD,
                 avatarId: 1
             })
         ).rejects.toThrow("會員建立失敗")
 
         expect(mockQuery).toHaveBeenCalledTimes(1)
-        expect(mockCreateUser).toHaveBeenCalledTimes(1)
+        expect(mockSignUp).toHaveBeenCalledTimes(1)
         expect(mockDeleteUser).not.toHaveBeenCalled()
     })
 
@@ -409,7 +460,7 @@ describe("註冊玩家服務", () => {
             })
             .mockRejectedValueOnce(dbError)
 
-        mockCreateUser.mockResolvedValueOnce({
+        mockSignUp.mockResolvedValueOnce({
             data: {
                 user: {
                     id: "auth-user-001"
@@ -427,12 +478,12 @@ describe("註冊玩家服務", () => {
             registerPlayer({
                 username: "測試玩家",
                 account: "test@example.com",
-                password: "123456",
+                password: VALID_PASSWORD,
                 avatarId: 1
             })
         ).rejects.toThrow("db資料表寫入失敗")
 
-        expect(mockCreateUser).toHaveBeenCalledTimes(1)
+        expect(mockSignUp).toHaveBeenCalledTimes(1)
         expect(mockDeleteUser).toHaveBeenCalledTimes(1)
         expect(mockDeleteUser).toHaveBeenCalledWith("auth-user-001")
     })
@@ -446,7 +497,7 @@ describe("註冊玩家服務", () => {
             })
             .mockRejectedValueOnce(dbError)
 
-        mockCreateUser.mockResolvedValueOnce({
+        mockSignUp.mockResolvedValueOnce({
             data: {
                 user: {
                     id: "auth-user-001"
@@ -461,22 +512,19 @@ describe("註冊玩家服務", () => {
             registerPlayer({
                 username: "測試玩家",
                 account: "test@example.com",
-                password: "123456",
+                password: VALID_PASSWORD,
                 avatarId: 1
             })
         ).rejects.toThrow("db資料表寫入失敗")
 
+        expect(mockSignUp).toHaveBeenCalledTimes(1)
         expect(mockDeleteUser).toHaveBeenCalledWith("auth-user-001")
     })
 })
 
 describe("登入玩家服務", () => {
     beforeEach(() => {
-        mockQuery.mockReset()
-        mockCreateUser.mockReset()
-        mockDeleteUser.mockReset()
-        mockSignInWithPassword.mockReset()
-        mockGetUser.mockReset()
+        resetMocks()
     })
 
     test("未輸入Email帳號時，丟出錯誤", async () => {
@@ -557,7 +605,36 @@ describe("登入玩家服務", () => {
         })
     })
 
-    test("登入成功時，回傳會員資料與token", async () => {
+    test("Email尚未驗證時，登入會丟出錯誤", async () => {
+        mockQuery.mockResolvedValueOnce({
+            rows: [createPlayerRow()]
+        })
+
+        mockSignInWithPassword.mockResolvedValueOnce({
+            data: {
+                user: null,
+                session: null
+            },
+            error: {
+                code: "email_not_confirmed",
+                message: "Email not confirmed"
+            }
+        })
+
+        await expect(
+            loginPlayer({
+                account: "test@example.com",
+                password: VALID_PASSWORD
+            })
+        ).rejects.toThrow("請先完成信箱驗證後再登入")
+
+        expect(mockSignInWithPassword).toHaveBeenCalledWith({
+            email: "test@example.com",
+            password: VALID_PASSWORD
+        })
+    })
+
+    test("登入成功時，回傳會員資料與設定 Cookie 所需 token", async () => {
         mockQuery
             .mockResolvedValueOnce({
                 rows: [createPlayerRow()]
@@ -579,6 +656,7 @@ describe("登入玩家服務", () => {
                 },
                 session: {
                     access_token: "mock-access-token",
+                    expires_in: 3600,
                 },
             },
             error: null
@@ -614,7 +692,8 @@ describe("登入玩家服務", () => {
                 createdAt: "2026-07-01T00:00:00.000Z",
                 updatedAt: "2026-07-01T03:30:00.000Z",
             },
-            token: "mock-access-token"
+            token: "mock-access-token",
+            expiresIn: 3600
         })
 
         expect(result.player.password).toBeUndefined()
@@ -622,13 +701,271 @@ describe("登入玩家服務", () => {
     })
 })
 
+describe("忘記密碼服務", () => {
+    beforeEach(() => {
+        resetMocks()
+    })
+
+    test("未輸入Email帳號時，丟出錯誤", async () => {
+        await expect(
+            requestPasswordReset({
+                account: ""
+            })
+        ).rejects.toThrow("請輸入Email帳號")
+
+        expect(mockResetPasswordForEmail).not.toHaveBeenCalled()
+    })
+
+    test("Email格式不正確時，丟出錯誤", async () => {
+        await expect(
+            requestPasswordReset({
+                account: "test001"
+            })
+        ).rejects.toThrow("Email格式不正確")
+
+        expect(mockResetPasswordForEmail).not.toHaveBeenCalled()
+    })
+
+    test("成功時，呼叫Supabase寄出重設密碼信", async () => {
+        mockResetPasswordForEmail.mockResolvedValueOnce({
+            data: {},
+            error: null
+        })
+
+        const result = await requestPasswordReset({
+            account: "  TEST@EXAMPLE.COM  "
+        })
+
+        expect(mockResetPasswordForEmail).toHaveBeenCalledWith(
+            "test@example.com",
+            {
+                redirectTo: "http://localhost:5173/?auth=reset-password"
+            }
+        )
+
+        expect(result).toEqual({
+            message: "重設密碼信已透過電子郵件傳送至您的信箱"
+        })
+    })
+
+    test("有設定PASSWORD_RESET_REDIRECT_URL時，使用指定的重設密碼網址", async () => {
+        process.env.PASSWORD_RESET_REDIRECT_URL =
+            "https://office-politics-game.vercel.app/?auth=reset-password"
+
+        mockResetPasswordForEmail.mockResolvedValueOnce({
+            data: {},
+            error: null
+        })
+
+        await requestPasswordReset({
+            account: "test@example.com"
+        })
+
+        expect(mockResetPasswordForEmail).toHaveBeenCalledWith(
+            "test@example.com",
+            {
+                redirectTo: "https://office-politics-game.vercel.app/?auth=reset-password"
+            }
+        )
+    })
+
+    test("未設定PASSWORD_RESET_REDIRECT_URL但有CLIENT_ORIGIN時，使用CLIENT_ORIGIN產生重設密碼網址", async () => {
+        process.env.CLIENT_ORIGIN = "https://client.example.com"
+
+        mockResetPasswordForEmail.mockResolvedValueOnce({
+            data: {},
+            error: null
+        })
+
+        await requestPasswordReset({
+            account: "test@example.com"
+        })
+
+        expect(mockResetPasswordForEmail).toHaveBeenCalledWith(
+            "test@example.com",
+            {
+                redirectTo: "https://client.example.com/?auth=reset-password"
+            }
+        )
+    })
+
+    test("未設定PASSWORD_RESET_REDIRECT_URL與CLIENT_ORIGIN但有FRONTEND_URL時，使用FRONTEND_URL產生重設密碼網址", async () => {
+        process.env.FRONTEND_URL = "https://frontend.example.com"
+
+        mockResetPasswordForEmail.mockResolvedValueOnce({
+            data: {},
+            error: null
+        })
+
+        await requestPasswordReset({
+            account: "test@example.com"
+        })
+
+        expect(mockResetPasswordForEmail).toHaveBeenCalledWith(
+            "test@example.com",
+            {
+                redirectTo: "https://frontend.example.com/?auth=reset-password"
+            }
+        )
+    })
+
+    test("Supabase寄送重設密碼信失敗時，丟出錯誤", async () => {
+        mockResetPasswordForEmail.mockResolvedValueOnce({
+            data: null,
+            error: new Error("rate limit exceeded")
+        })
+
+        await expect(
+            requestPasswordReset({
+                account: "test@example.com"
+            })
+        ).rejects.toThrow("重設密碼信寄送失敗，請稍後再試")
+    })
+})
+
+describe("重設密碼服務", () => {
+    beforeEach(() => {
+        resetMocks()
+    })
+
+    test("未提供token時，丟出錯誤", async () => {
+        await expect(
+            resetPlayerPassword({
+                token: "",
+                password: VALID_PASSWORD
+            })
+        ).rejects.toThrow("重設密碼連結已失效，請重新申請")
+
+        expect(mockGetUser).not.toHaveBeenCalled()
+        expect(mockUpdateUserById).not.toHaveBeenCalled()
+    })
+
+    test("密碼格式不符合規則時，丟出錯誤", async () => {
+        await expect(
+            resetPlayerPassword({
+                token: "valid-reset-token",
+                password: "123456"
+            })
+        ).rejects.toThrow("密碼格式不符合規則")
+
+        expect(mockGetUser).not.toHaveBeenCalled()
+        expect(mockUpdateUserById).not.toHaveBeenCalled()
+    })
+
+    test("密碼缺少數字時，丟出錯誤", async () => {
+        await expect(
+            resetPlayerPassword({
+                token: "valid-reset-token",
+                password: "Aaaaaaaa!"
+            })
+        ).rejects.toThrow("密碼格式不符合規則")
+
+        expect(mockGetUser).not.toHaveBeenCalled()
+        expect(mockUpdateUserById).not.toHaveBeenCalled()
+    })
+
+    test("密碼缺少特殊符號時，丟出錯誤", async () => {
+        await expect(
+            resetPlayerPassword({
+                token: "valid-reset-token",
+                password: "Aa123456"
+            })
+        ).rejects.toThrow("密碼格式不符合規則")
+
+        expect(mockGetUser).not.toHaveBeenCalled()
+        expect(mockUpdateUserById).not.toHaveBeenCalled()
+    })
+
+    test("Supabase驗證token失敗時，丟出錯誤", async () => {
+        mockGetUser.mockResolvedValueOnce({
+            data: {
+                user: null
+            },
+            error: new Error("token無效")
+        })
+
+        await expect(
+            resetPlayerPassword({
+                token: "invalid-reset-token",
+                password: VALID_PASSWORD
+            })
+        ).rejects.toThrow("重設密碼連結已失效，請重新申請")
+
+        expect(mockGetUser).toHaveBeenCalledWith("invalid-reset-token")
+        expect(mockUpdateUserById).not.toHaveBeenCalled()
+    })
+
+    test("重設密碼成功時，更新Supabase使用者密碼", async () => {
+        mockGetUser.mockResolvedValueOnce({
+            data: {
+                user: {
+                    id: "auth-user-001"
+                }
+            },
+            error: null
+        })
+
+        mockUpdateUserById.mockResolvedValueOnce({
+            data: {
+                user: {
+                    id: "auth-user-001"
+                }
+            },
+            error: null
+        })
+
+        const result = await resetPlayerPassword({
+            token: "valid-reset-token",
+            password: VALID_PASSWORD
+        })
+
+        expect(mockGetUser).toHaveBeenCalledWith("valid-reset-token")
+        expect(mockUpdateUserById).toHaveBeenCalledWith(
+            "auth-user-001",
+            {
+                password: VALID_PASSWORD
+            }
+        )
+
+        expect(result).toEqual({
+            message: "密碼已更新，請重新登入"
+        })
+    })
+
+    test("Supabase更新密碼失敗時，丟出錯誤", async () => {
+        mockGetUser.mockResolvedValueOnce({
+            data: {
+                user: {
+                    id: "auth-user-001"
+                }
+            },
+            error: null
+        })
+
+        mockUpdateUserById.mockResolvedValueOnce({
+            data: null,
+            error: new Error("password update failed")
+        })
+
+        await expect(
+            resetPlayerPassword({
+                token: "valid-reset-token",
+                password: VALID_PASSWORD
+            })
+        ).rejects.toThrow("密碼重設失敗，請稍後再試")
+
+        expect(mockUpdateUserById).toHaveBeenCalledWith(
+            "auth-user-001",
+            {
+                password: VALID_PASSWORD
+            }
+        )
+    })
+})
+
 describe("驗證登入狀態服務", () => {
     beforeEach(() => {
-        mockQuery.mockReset()
-        mockCreateUser.mockReset()
-        mockDeleteUser.mockReset()
-        mockSignInWithPassword.mockReset()
-        mockGetUser.mockReset()
+        resetMocks()
     })
 
     test("未提供token時，丟出錯誤", async () => {

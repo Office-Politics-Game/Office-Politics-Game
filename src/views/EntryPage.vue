@@ -1,6 +1,5 @@
 <template>
   <div class="relative min-h-screen w-full overflow-hidden bg-gray-900">
-    <!-- 背景影片 -->
     <div class="absolute inset-0 overflow-hidden">
       <video
         class="absolute inset-0 h-full w-full object-cover entry-video"
@@ -12,24 +11,17 @@
         <source :src="bgEntryVideo" type="video/mp4" />
       </video>
     </div>
-
-    <!-- 暗色遮罩 -->
     <div class="absolute inset-0 bg-black/40 entry-overlay" />
-
-    <!-- 內容容器 -->
     <div
       class="relative z-10 flex flex-col items-center justify-center min-h-screen px-4"
     >
-      <!-- Logo 和標題 -->
       <div class="flex flex-col items-center gap-6 mb-8 lg:mb-12">
-        <!-- Logo 圖片 -->
         <img
           src="@/assets/images/logo-main.png"
           alt="Office Politics Logo"
           class="object-contain drop-shadow-lg w-66 lg:w-120"
         />
       </div>
-
       <div class="flex w-full max-w-60 flex-col gap-4 lg:max-w-xs">
         <button
           class="btn-glass tap-pop"
@@ -46,8 +38,6 @@
           {{ isMemberLoggedIn ? "登出" : "訪客遊玩" }}
         </button>
       </div>
-
-      <!-- 登入彈窗 -->
       <div
         v-if="showLoginModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
@@ -58,15 +48,27 @@
           @close="closeAuthModal"
           @open-guest="openGuestModal"
           @open-register="openRegisterModal"
+          @open-forgot-password="openForgotPasswordModal"
         />
         <RegisterPage
-          v-else
+          v-else-if="authModalMode === 'register'"
           @close="closeAuthModal"
-          @back-login="authModalMode = 'login'"
+          @back-login="showLoginMode"
           @register-success="handleRegisterSuccess"
         />
+        <ForgotPasswordContent
+          v-else-if="authModalMode === 'forgot-password'"
+          @close="closeAuthModal"
+          @back-login="showLoginMode"
+        />
+        <ResetPasswordContent
+          v-else-if="authModalMode === 'reset-password'"
+          :reset-token="resetPasswordToken"
+          @close="closeAuthModal"
+          @back-login="showLoginMode"
+          @reset-success="showLoginMode"
+        />
       </div>
-
       <div
         v-if="showGuestLoginModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
@@ -90,6 +92,8 @@ import RegisterPage from "@/components/register/RegisterPage.vue";
 import { usePlayerStore } from "@/stores/playerStore.js";
 import { useAuthStore } from "@/stores/authStore.js";
 import bgEntryVideo from "@/assets/videos/EntryPage_BgVideo.mp4";
+import ForgotPasswordContent from "@/components/login/ForgotPasswordContent.vue";
+import ResetPasswordContent from "@/components/login/ResetPasswordContent.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -98,6 +102,7 @@ const playerStore = usePlayerStore();
 const showLoginModal = ref(false);
 const showGuestLoginModal = ref(false);
 const authModalMode = ref("login");
+const resetPasswordToken = ref("");
 
 const isMemberLoggedIn = computed(
   () => authStore.isLoggedIn && Boolean(authStore.currentPlayer),
@@ -112,9 +117,14 @@ function handlePrimaryAction() {
   openLoginModal();
 }
 
-function handleSecondaryAction() {
+async function handleSecondaryAction() {
   if (isMemberLoggedIn.value) {
-    authStore.logout();
+    const didLogout = await authStore.logout();
+
+    if (!didLogout) {
+      return;
+    }
+
     playerStore.resetPlayer();
     showLoginModal.value = false;
     showGuestLoginModal.value = false;
@@ -128,21 +138,6 @@ function handleSecondaryAction() {
 function openGuestModal() {
   showLoginModal.value = false;
   showGuestLoginModal.value = true;
-}
-
-function closeLoginModal() {
-  showLoginModal.value = false;
-
-  if (route.query.auth !== "login") {
-    return;
-  }
-
-  const { auth, ...nextQuery } = route.query;
-
-  router.replace({
-    name: "Entry",
-    query: nextQuery,
-  });
 }
 
 function handleGuestCreated(player) {
@@ -162,9 +157,44 @@ function openRegisterModal() {
   showLoginModal.value = true;
 }
 
+function openForgotPasswordModal() {
+  authModalMode.value = "forgot-password";
+  showLoginModal.value = true;
+}
+
+function showLoginMode() {
+  authModalMode.value = "login";
+  resetPasswordToken.value = "";
+  clearAuthQuery();
+}
+
+function clearAuthQuery() {
+  if (route.name !== "Entry" || !route.query.auth) {
+    return;
+  }
+
+  const { auth, ...nextQuery } = route.query;
+
+  router.replace({
+    name: "Entry",
+    query: nextQuery,
+    hash: "",
+  });
+}
+
+function getResetPasswordTokenFromUrl() {
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const queryToken = route.query.access_token;
+  const hashToken = hashParams.get("access_token");
+
+  return typeof queryToken === "string" ? queryToken : hashToken || "";
+}
+
 function closeAuthModal() {
   showLoginModal.value = false;
   authModalMode.value = "login";
+  resetPasswordToken.value = "";
+  clearAuthQuery();
 }
 
 function handleRegisterSuccess() {
@@ -191,6 +221,20 @@ watch(
   () => route.query.auth,
   (auth) => {
     if (auth === "login") {
+      authModalMode.value = "login";
+      showLoginModal.value = true;
+      return;
+    }
+
+    if (auth === "forgot-password") {
+      authModalMode.value = "forgot-password";
+      showLoginModal.value = true;
+      return;
+    }
+
+    if (auth === "reset-password") {
+      resetPasswordToken.value = getResetPasswordTokenFromUrl();
+      authModalMode.value = "reset-password";
       showLoginModal.value = true;
     }
   },
