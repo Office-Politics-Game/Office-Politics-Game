@@ -11,7 +11,7 @@
         <RoomInvitationNotice />
 
         <CurrencyBar
-          class="absolute bottom-4 right-8.5 lg:bottom-9 lg:right-14.5"
+          class="absolute bottom-1.5 right-7 origin-bottom-right scale-[0.6] lg:bottom-3 lg:right-12"
           :items="['coins', 'gems']"
         />
         <!-- 開始遊玩 -->
@@ -77,6 +77,7 @@
         <button
           class="menu-btn left-[212px] bottom-[47px] h-[90px] w-[95px] lg:left-[353px] lg:bottom-[79px] lg:h-[150px] lg:w-[158px]"
           :disabled="isAnyPageTransitioning"
+          @click="openGachaPage"
         >
           <div class="btn-content">
             <img
@@ -141,6 +142,7 @@ import friendBg from "@/assets/images/bg-friend-view.webp";
 import profileBg from "@/assets/images/bg-personal.webp";
 import menuBg from "@/assets/images/menu.webp";
 import CurrencyBar from "@/components/common/CurrencyBar.vue";
+import { useProfileInitializer } from "@/composables/useProfileInitializer.js";
 import { useAuthStore } from "@/stores/authStore.js";
 import { useCurrencyStore } from "@/stores/currencyStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
@@ -150,6 +152,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 const currencyStore = useCurrencyStore();
 const playerStore = usePlayerStore();
+const { initializeProfile } = useProfileInitializer();
 const { playPreGameSound, stopPreGameBackground } = usePreGameAudio();
 const isSocialTransitioning = ref(false);
 const isProfileTransitioning = ref(false);
@@ -169,7 +172,7 @@ const transitionBackBg = computed(() =>
 );
 
 const transitionBackTitle = computed(() =>
-  isProfileTransitioning.value ? "個人區域" : "社交",
+  isProfileTransitioning.value ? "個人頁面" : "社交",
 );
 
 const transitionBackSubtitle = computed(() =>
@@ -214,7 +217,13 @@ function openFriendPage() {
   }, SOCIAL_FLIP_DURATION);
 }
 
-function openProfilePage() {
+function wait(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+async function openProfilePage() {
   if (isAnyPageTransitioning.value) {
     return;
   }
@@ -222,24 +231,31 @@ function openProfilePage() {
   playLobbyNavigationSound();
   isProfileTransitioning.value = true;
 
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    router.push("/profile");
-    return;
-  }
+  const shouldReduceMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)",
+  ).matches;
+  const profileLoad = initializeProfile().catch(() => null);
+  const flipDelay = shouldReduceMotion
+    ? Promise.resolve()
+    : wait(PROFILE_FLIP_DURATION);
 
-  window.setTimeout(() => {
-    router.push("/profile");
-  }, PROFILE_FLIP_DURATION);
+  await Promise.all([profileLoad, flipDelay]);
+  router.push("/profile");
 }
 
-function leaveLobby() {
+async function leaveLobby() {
   if (isAnyPageTransitioning.value) {
     return;
   }
 
   playPreGameSound("login-button-click");
+  const didLogout = await authStore.logout();
+
+  if (!didLogout) {
+    return;
+  }
+
   stopPreGameBackground({ fadeOut: false });
-  authStore.logout();
   playerStore.resetPlayer();
   currencyStore.resetCurrency();
   router.push("/");
@@ -270,6 +286,15 @@ function openGameMenu() {
 
   playPreGameSound("login-button-click");
   router.push({ name: "LobbyGameMenu" });
+}
+
+function openGachaPage() {
+  if (isAnyPageTransitioning.value) {
+    return;
+  }
+
+  playPreGameSound("login-button-click");
+  router.push("/gacha");
 }
 </script>
 

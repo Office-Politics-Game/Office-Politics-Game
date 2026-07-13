@@ -37,6 +37,10 @@ function startRoom(roomCode, payload) {
   return apiClient.post(buildRoomPath(roomCode, "start"), payload);
 }
 
+function addComputerPlayer(roomCode, payload) {
+  return apiClient.post(buildRoomPath(roomCode, "computer-players"), payload);
+}
+
 function getRoomGameState(roomCode, playerId) {
   return apiClient.get(
     `${GAME_STATE_API_PATH}/room/${encodeURIComponent(roomCode)}`,
@@ -52,5 +56,6 @@ export {
   getRoomState,
   getRoomGameState,
   updateRoomState,
+  addComputerPlayer,
   startRoom,
 };

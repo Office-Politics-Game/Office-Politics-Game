@@ -35,7 +35,7 @@
           autocomplete="name"
           placeholder="用戶名稱"
           :disabled="isSubmitting"
-          @input="usernameError = ''"
+          @input="handleRegisterInput"
         />
         <p v-if="usernameError" class="login-error" role="alert">
           {{ usernameError }}
@@ -51,7 +51,7 @@
           inputmode="email"
           placeholder="Email帳號"
           :disabled="isSubmitting"
-          @input="accountError = ''"
+          @input="handleRegisterInput"
         />
         <p v-if="accountError" class="login-error" role="alert">
           {{ accountError }}
@@ -66,7 +66,7 @@
           autocomplete="new-password"
           placeholder="密碼"
           :disabled="isSubmitting"
-          @input="handlePasswordInput"
+          @input="handleRegisterPasswordInput"
         />
         <button
           type="button"
@@ -91,7 +91,7 @@
           autocomplete="new-password"
           placeholder="確認密碼"
           :disabled="isSubmitting"
-          @input="confirmPasswordError = ''"
+          @input="handleRegisterInput"
         />
         <button
           type="button"
@@ -107,6 +107,7 @@
           {{ confirmPasswordError }}
         </p>
       </label>
+      <PasswordRuleList :password="form.password" />
       <div
         v-if="apiStatusMessage"
         class="auth-alert"
@@ -178,6 +179,8 @@ import { reactive, ref, onBeforeUnmount } from "vue"
 import { useAuthStore } from "@/stores/authStore.js"
 import { Eye, EyeOff } from "lucide-vue-next"
 import { usePreGameAudio } from "@/composables/UsePreGameAudio"
+import { getPasswordError } from "@/utils/passwordRules.js"
+import PasswordRuleList from "@/components/login/PasswordRuleList.vue"
 
 const authStore = useAuthStore()
 const emit = defineEmits(["close", "back-login", "register-success"])
@@ -252,7 +255,7 @@ function validateRegisterForm() {
     accountError.value = ""
   }
 
-  passwordError.value = form.password.trim() ? "" : "請輸入密碼"
+  passwordError.value = getPasswordError(form.password)
 
   if (!form.confirmPassword.trim()) {
     confirmPasswordError.value = "請再次輸入密碼"
@@ -270,12 +273,17 @@ function validateRegisterForm() {
   )
 }
 
-function handlePasswordInput() {
-  passwordError.value = ""
+function handleRegisterInput() {
+  clearRegisterErrors()
+  clearApiStatus()
+  authStore.clearError()
+}
 
-  if (confirmPasswordError.value === "密碼不一致，請重新輸入") {
+function handleRegisterPasswordInput() {
+  handleRegisterInput()
+
+  if (form.confirmPassword) {
     form.confirmPassword = ""
-    confirmPasswordError.value = ""
   }
 }
 
@@ -294,7 +302,7 @@ async function handleRegister() {
   authStore.clearError()
 
   try {
-    await authStore.register({
+    const data = await authStore.register({
       username: form.username.trim(),
       account: form.account.trim().toLowerCase(),
       password: form.password,
@@ -302,9 +310,11 @@ async function handleRegister() {
     })
 
     clearRegisterErrors()
-    showApiStatus("success", "註冊成功，正在返回登入頁面", () => {
-      emit("register-success")
-    })
+    showApiStatus(
+      "success",
+      data?.message || "註冊成功，請至信箱完成驗證後再登入",
+      () => { emit("register-success") }
+    )
   } catch (error) {
     showApiStatus(
       "error", error instanceof Error ? error.message : "註冊失敗，請稍後再試"
@@ -417,8 +427,22 @@ onBeforeUnmount(() => {
   @apply m-0 text-sm font-bold text-[var(--brand-hover)];
 }
 
+.login-input[type="password"]::-ms-reveal,
+.login-input[type="password"]::-ms-clear {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.login-input::-webkit-credentials-auto-fill-button,
+.login-input::-webkit-contacts-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
+}
+
 .password-toggle {
-  @apply absolute right-3 top-6 grid h-8 w-8 -translate-y-1/2 place-items-center border-0 bg-transparent text-[var(--brand-active)] transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+  @apply absolute right-2 top-6 z-10 grid h-8 w-10 -translate-y-1/2 place-items-center border-0 bg-transparent text-[var(--brand-active)] transition-colors disabled:cursor-not-allowed disabled:opacity-60;
 }
 
 .password-toggle:hover:not(:disabled) {
@@ -598,8 +622,8 @@ onBeforeUnmount(() => {
 
   .password-toggle {
     top: 20px;
-    right: 8px;
-    width: 32px;
+    right: 6px;
+    width: 40px;
     height: 32px;
   }
 

@@ -1,8 +1,10 @@
 import pool from "../db/index.js"
-import { supabaseAdmin } from "../db/supabaseClient.js"
+import { supabaseAdmin, supabaseAuth } from "../db/supabaseClient.js"
 
 const DEFAULT_AVATAR_ID = 1
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const PASSWORD_RULE_ERROR_MESSAGE = "密碼格式不符合規則"
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=[\]{};':"|,.<>/?`~])[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"|,.<>/?`~]{8,16}$/
 const PLAYER_SELECT_SQL = `id, auth_user_id, username, account, avatar_id,
     level, exp, coins, gems, tickets,
     win_count, lose_count, total_games,
@@ -40,6 +42,53 @@ function isValidEmail(email) {
   return EMAIL_REGEX.test(email);
 }
 
+function isValidPassword(password) {
+    return PASSWORD_REGEX.test(password)
+}
+
+function validatePassword(password) {
+    if (!password) {
+        throw createAuthError(400, "請輸入密碼")
+    }
+
+    if (!isValidPassword(password)) {
+        throw createAuthError(400, PASSWORD_RULE_ERROR_MESSAGE)
+    }
+}
+
+function getPasswordResetRedirectUrl() {
+    if (process.env.PASSWORD_RESET_REDIRECT_URL) {
+        return process.env.PASSWORD_RESET_REDIRECT_URL
+    }
+
+    const clientOrigin =
+        process.env.CLIENT_ORIGIN ||
+        process.env.FRONTEND_URL ||
+        "http://localhost:5173"
+
+    return `${clientOrigin.replace(/\/$/, "")}/?auth=reset-password`
+}
+
+function getEmailConfirmRedirectUrl() {
+    if (process.env.EMAIL_CONFIRM_REDIRECT_URL) {
+        return process.env.EMAIL_CONFIRM_REDIRECT_URL
+    }
+
+    const clientOrigin =
+        process.env.CLIENT_ORIGIN ||
+        process.env.FRONTEND_URL ||
+        "http://localhost:5173"
+
+    return `${clientOrigin.replace(/\/$/, "")}/?auth=login`
+}
+
+function isEmailNotConfirmedError(error) {
+    return (
+        error?.code === "email_not_confirmed" ||
+        error?.message?.toLowerCase().includes("email not confirmed")
+    )
+}
+
 async function deleteSupabaseUserQuietly(authUserId) {
     try {
         const { error } = await supabaseAdmin.auth.admin.deleteUser(authUserId)
@@ -68,9 +117,7 @@ async function registerPlayer({ username, account, password, avatarId } = {}) {
         throw createAuthError(400, "Email格式不正確");
     }
 
-    if (!password) {
-        throw createAuthError(400, "請輸入密碼")
-    }
+    validatePassword(password)
 
     const duplicateResult = await pool.query(
         `SELECT username, account
@@ -90,13 +137,15 @@ async function registerPlayer({ username, account, password, avatarId } = {}) {
         throw createAuthError(409, "Email帳號已被使用")
     }
 
-    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+    const { data, error } = await supabaseAuth.auth.signUp({
         email: trimmedAccount,
         password,
-        email_confirm: true,
-        user_metadata: {
-            username: trimmedUsername,
-            avatarId: avatarId ?? DEFAULT_AVATAR_ID
+        options: {
+            emailRedirectTo: getEmailConfirmRedirectUrl(),
+            data: {
+                username: trimmedUsername,
+                avatarId: avatarId ?? DEFAULT_AVATAR_ID
+            }
         }
     })
 
@@ -165,11 +214,16 @@ async function loginPlayer({ account, password } = {}) {
     })
 
     if (error) {
+        if (isEmailNotConfirmedError(error)) {
+            throw createAuthError(403, "請先完成信箱驗證後再登入")
+        }
+
         throw createAuthError(401, "密碼錯誤")
     }
 
     const authUserId = data.user?.id
     const token = data.session?.access_token
+    const expiresIn = data.session?.expires_in
 
     if (!authUserId || !token) {
         throw createAuthError(500, "登入失敗")
@@ -191,7 +245,62 @@ async function loginPlayer({ account, password } = {}) {
 
     return {
         player: formatPlayer(updatedPlayerResult.rows[0]),
-        token
+        token,
+        expiresIn
+    }
+}
+
+async function requestPasswordReset({ account } = {}) {
+    const trimmedAccount = account?.trim().toLowerCase()
+
+    if (!trimmedAccount) {
+        throw createAuthError(400, "請輸入Email帳號")
+    }
+
+    if (!isValidEmail(trimmedAccount)) {
+        throw createAuthError(400, "Email格式不正確")
+    }
+
+    const { error } = await supabaseAdmin.auth.resetPasswordForEmail(
+        trimmedAccount,
+        {
+            redirectTo: getPasswordResetRedirectUrl()
+        }
+    )
+
+    if (error) {
+        throw createAuthError(400, "重設密碼信寄送失敗，請稍後再試")
+    }
+
+    return {
+        message: "重設密碼信已透過電子郵件傳送至您的信箱"
+    }
+}
+
+async function resetPlayerPassword({ token, password } = {}) {
+    if (!token) {
+        throw createAuthError(401, "重設密碼連結已失效，請重新申請")
+    }
+
+    validatePassword(password)
+
+    const { data, error } = await supabaseAdmin.auth.getUser(token)
+
+    if (error || !data?.user?.id) {
+        throw createAuthError(401, "重設密碼連結已失效，請重新申請")
+    }
+
+    const { error: updateError } =
+        await supabaseAdmin.auth.admin.updateUserById(data.user.id, {
+            password
+        })
+
+    if (updateError) {
+        throw createAuthError(400, "密碼重設失敗，請稍後再試")
+    }
+
+    return {
+        message: "密碼已更新，請重新登入"
     }
 }
 
@@ -223,4 +332,4 @@ async function verifyToken(token) {
     return formatPlayer(player)
 }
 
-export { registerPlayer, loginPlayer, verifyToken }
+export { registerPlayer, loginPlayer, verifyToken, requestPasswordReset, resetPlayerPassword }

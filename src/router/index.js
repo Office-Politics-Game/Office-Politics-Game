@@ -7,6 +7,7 @@ import GameView from "../views/GameView.vue";
 import FriendView from "@/views/FriendView.vue";
 import MallView from "@/views/MallView.vue";
 import ProfileView from "@/views/ProfileView.vue";
+import GachaView from "@/views/GachaView.vue";
 import Result from "@/views/Result.vue";
 import LoadingView from "@/views/LoadingView.vue";
 import GameMenuPanel from "@/components/gameRoom/GameMenuPanel.vue";
@@ -17,6 +18,7 @@ import InviteFriendModal from "@/components/gameRoom/InviteFriendModal.vue";
 import CardDealDemoView from "@/views/CardDealDemoView.vue";
 import AnimationDemoView from "@/views/AnimationDemoView.vue";
 import CardPlayTestView from "@/views/CardPlayTestView.vue";
+import ProfileEquipmentTestView from "@/views/ProfileEquipmentTestView.vue";
 import NotFoundView from "@/views/NotFoundView.vue";
 import { useAuthStore } from "../stores/authStore.js";
 
@@ -89,6 +91,19 @@ const routes = [
     path: "/profile",
     name: "Profile",
     component: ProfileView,
+  },
+  {
+    path: "/profile-equipment-test",
+    name: "ProfileEquipmentTest",
+    component: ProfileEquipmentTestView,
+    meta: {
+      requiresAuth: true,
+    },
+  },
+  {
+    path: "/gacha",
+    name: "Gacha",
+    component: GachaView,
   },
   {
     path: "/game-menu",

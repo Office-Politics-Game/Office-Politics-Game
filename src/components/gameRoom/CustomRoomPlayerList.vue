@@ -109,6 +109,7 @@ defineEmits(["add-computer", "invite-friend", "remove-player", "toggle-ready"]);
             <button
               class="room-player-option-button m-0 w-full whitespace-nowrap border-0 bg-transparent text-center text-[14px] font-black leading-[1.12] lg:text-[28px]"
               type="button"
+              :disabled="!slot.canAddComputer"
               @click="$emit('add-computer', index)"
             >
               {{ slot.option1 }}

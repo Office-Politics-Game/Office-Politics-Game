@@ -6,10 +6,17 @@
       class="profile-sidebar__identity flex items-center gap-3 pt-0 text-left lg:grid lg:gap-0 lg:justify-items-center lg:pt-1 lg:text-center"
     >
       <img
+        v-if="player.avatarUrl"
         class="profile-sidebar__avatar h-14 w-14 rounded-full border-[3px] border-[rgba(255,255,255,0.9)] object-cover lg:h-[104px] lg:w-[104px]"
         :src="player.avatarUrl"
-        :alt="`${player.username} 頭像`"
+        :alt="`${player.username} avatar`"
       />
+      <div
+        v-else
+        class="profile-sidebar__avatar-placeholder h-14 w-14 rounded-full border-[3px] border-[rgba(255,255,255,0.9)] lg:h-[104px] lg:w-[104px]"
+        aria-hidden="true"
+      ></div>
+
       <div class="profile-sidebar__identity-copy min-w-0 flex-1 lg:w-full">
         <h1
           class="profile-sidebar__name mt-0 mb-1.5 w-full overflow-hidden text-ellipsis whitespace-nowrap text-md font-black leading-[1.12] text-[#080a0f] lg:mt-6 lg:text-lg"
@@ -33,7 +40,7 @@
       <div
         class="profile-sidebar__level-row flex min-w-0 items-center justify-between gap-3 text-[length:var(--text-sm)] font-bold text-[var(--brand-navy)]"
       >
-        <span class="shrink-0">等級 {{ player.level }}</span>
+        <span class="shrink-0">Lv. {{ player.level }}</span>
         <span
           class="min-w-0 max-w-[104px] overflow-hidden text-ellipsis whitespace-nowrap text-right text-[length:var(--text-xs)] font-semibold text-[var(--gray-400)] lg:max-w-[150px]"
         >
@@ -51,8 +58,8 @@
       </div>
     </div>
 
-    <section class="profile-sidebar__stats self-end" aria-label="勝率">
-      <h2 class="m-0 text-sm font-extrabold text-[var(--brand-navy)]">勝率</h2>
+    <section class="profile-sidebar__stats self-end" aria-label="戰績">
+      <h2 class="m-0 text-sm font-extrabold text-[var(--brand-navy)]">戰績</h2>
       <div
         class="profile-sidebar__stats-body flex items-center justify-between gap-3 lg:block"
       >
@@ -62,7 +69,7 @@
         >
           <div>
             <strong>{{ player.winRate }}%</strong>
-            <span>總勝率</span>
+            <span>勝率</span>
           </div>
         </div>
         <dl
@@ -128,6 +135,13 @@ defineProps({
 .profile-sidebar__title-icon {
   color: #d9792f;
   fill: rgba(217, 121, 47, 0.22);
+}
+
+.profile-sidebar__avatar-placeholder {
+  flex: none;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.78), transparent 35%),
+    linear-gradient(135deg, rgba(166, 181, 198, 0.55), rgba(109, 126, 148, 0.75));
 }
 
 .profile-sidebar__rate-ring {
