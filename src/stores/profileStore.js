@@ -143,6 +143,14 @@ export const useProfileStore = defineStore("profile", {
       return this.profile;
     },
 
+    setProfileTitle(title) {
+      if (!this.profile) {
+        return;
+      }
+
+      this.profile.title = title || UNSET_TEXT;
+    },
+
     clearProfile(identityType = "anonymous") {
       this.profile = null;
       this.isLoading = false;

@@ -23,6 +23,7 @@
       :is-loading="achievementStore.isLoading"
       :error-message="achievementStore.errorMessage"
       @retry="fetchAchievements"
+      @use-title="handleUseAchievementTitle"
     />
     <ProfileEmptyPanel
       v-else-if="isGuestLockedTab"
@@ -240,6 +241,10 @@ function handleEditProfileField() {
   }
 
   window.alert("個人資料編輯尚未開放。");
+}
+
+function handleUseAchievementTitle(achievement) {
+  profileStore.setProfileTitle(achievement?.name);
 }
 
 function goLogin() {

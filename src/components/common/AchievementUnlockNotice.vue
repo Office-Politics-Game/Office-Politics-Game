@@ -2,7 +2,7 @@
   <Transition name="achievement-notice">
     <section
       v-if="achievementStore.unlockedAchievements.length > 0"
-      class="fixed right-4 top-4 z-50 w-[min(320px,calc(100vw-32px))] border border-amber-300/70 bg-slate-950/90 p-4 text-white shadow-2xl backdrop-blur"
+      class="fixed bottom-6 left-1/2 z-50 w-[min(360px,calc(100vw-32px))] -translate-x-1/2 border border-amber-300/70 bg-slate-950/90 p-4 text-white shadow-2xl backdrop-blur"
       role="status"
       aria-live="polite"
     >
@@ -94,6 +94,6 @@ onBeforeUnmount(() => {
 .achievement-notice-enter-from,
 .achievement-notice-leave-to {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: translate(-50%, 8px);
 }
 </style>

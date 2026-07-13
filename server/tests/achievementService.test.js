@@ -132,8 +132,8 @@ describe("achievementService", () => {
                     {
                         id: 10,
                         code: "first_friend",
-                        name: "First Connection",
-                        description: "Add one friend.",
+                        name: "社交新人",
+                        description: "第一次加好友",
                         category: "social",
                         reward_currency: null,
                         reward_amount: 0,
@@ -167,8 +167,8 @@ describe("achievementService", () => {
                     {
                         id: 10,
                         code: "first_friend",
-                        name: "First Connection",
-                        description: "Add one friend.",
+                        name: "社交新人",
+                        description: "第一次加好友",
                         category: "social",
                         reward_currency: null,
                         reward_amount: 0,
