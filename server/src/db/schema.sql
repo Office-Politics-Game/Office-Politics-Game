@@ -181,6 +181,7 @@ CREATE TABLE game_room_players (
   role VARCHAR(20),
   seat_order INTEGER,
   is_ready BOOLEAN DEFAULT false,
+  is_computer BOOLEAN NOT NULL DEFAULT false,
   is_alive BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
