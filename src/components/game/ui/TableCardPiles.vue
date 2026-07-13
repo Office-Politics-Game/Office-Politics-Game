@@ -274,6 +274,12 @@ watch(
 defineExpose({
   getDeckRect,
   getDeckAnimationPose,
+  getDeckElement() {
+    return deckPile.value;
+  },
+  getDiscardElement() {
+    return discardPile.value;
+  },
   getDiscardRect() {
     const topDiscardCard = discardPile.value?.querySelector(
       ".table-card-pile__card:last-child",

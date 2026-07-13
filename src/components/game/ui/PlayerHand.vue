@@ -73,6 +73,10 @@ function isCardRuleDisabled(card) {
   return props.disabledCardIds.includes(card.id)
 }
 
+function getHandElement() {
+  return handRoot.value
+}
+
 const cursorStyle = {
   '--cursor-pointer': `url("${cursorPointerUrl}") 5 3, pointer`,
   '--cursor-grab': `url("${cursorGrabUrl}") 16 14, grab`,
@@ -84,6 +88,7 @@ defineExpose({
   getDrawTargetRect,
   getDealTargetRect,
   getHandRect,
+  getHandElement,
   finishDraw,
 })
 </script>

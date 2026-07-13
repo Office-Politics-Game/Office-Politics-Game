@@ -4,7 +4,9 @@ import App from "./App.vue";
 import router from "./router";
 import { useAuthStore } from "@/stores/authStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
+import "intro.js/introjs.css";
 import "./assets/styles/main.css";
+import "./assets/styles/game-tutorial.css";
 
 function restoreGuestPlayer(playerStore) {
   try {

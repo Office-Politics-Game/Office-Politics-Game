@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import gameTableBackgroundUrl from "@/assets/images/bg-game-table.webp";
 import gameLogoUrl from "@/assets/images/logo-en-white.png";
 import { useAudioSettings } from "@/composables/UseAudioSettings";
@@ -13,6 +13,7 @@ import {
   useGameStageNotices,
 } from "@/composables/useGameStageNotices";
 import { useGameAnimationRects } from "@/composables/useGameAnimationRects";
+import { useGameTutorial } from "@/composables/UseGameTutorial";
 import CardDrawAnimation from "../animations/CardDrawAnimation.vue";
 import CardPlayAnimation from "../animations/CardPlayAnimation.vue";
 import CardShuffleAnimation from "../animations/CardShuffleAnimation.vue";
@@ -125,6 +126,19 @@ const resolvedCurrentPlayerId = computed(
     props.players.find((player) => player.isCurrentPlayer)?.id ??
     null,
 );
+const { startTutorial, disposeTutorial } = useGameTutorial();
+
+function getGameTutorialTargets() {
+  return {
+    deck: tableCardPilesRef.value?.getDeckElement?.() ?? null,
+    hand: playerHand.value?.getHandElement?.() ?? null,
+    discard: tableCardPilesRef.value?.getDiscardElement?.() ?? null,
+    opponents:
+      playerSeats.value?.getOpponentSeatElements?.(
+        resolvedCurrentPlayerId.value,
+      ) ?? [],
+  };
+}
 const animationRects = useGameAnimationRects({
   playerHand,
   playerSeats,
@@ -309,12 +323,31 @@ const activeProtectionAnimationPlayer = computed(() => {
   );
 });
 onBeforeUnmount(() => {
+  disposeTutorial();
   cleanupCardPlay();
   cardPlayAnimation.value?.stop?.();
   roundShowdownAnimation.value?.stop?.();
   stopEffectAnimation();
   cleanupNotices();
 });
+
+watch(
+  () => [
+    resolvedCurrentPlayerId.value,
+    props.players
+      .map((player) => `${player.id}:${Boolean(player.isComputer)}`)
+      .join("|"),
+  ],
+  async () => {
+    await nextTick();
+    await startTutorial({
+      players: props.players,
+      currentPlayerId: resolvedCurrentPlayerId.value,
+      targets: getGameTutorialTargets(),
+    });
+  },
+  { immediate: true, flush: "post" },
+);
 
 watch(
   () => [props.currentTurnPlayerId, resolvedCurrentPlayerId.value],
