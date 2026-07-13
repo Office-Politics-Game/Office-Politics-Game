@@ -326,13 +326,6 @@ function resolvePlayerName(playerId) {
     )?.name ?? "玩家"
   );
 }
-const activeCleanerSourcePlayerName = computed(() => {
-  if (activeEffectResult.value?.type !== "cleaner") {
-    return "玩家";
-  }
-
-  return resolvePlayerName(activeEffectResult.value.viewerPlayerId);
-});
 const activeCleanerTargetPlayerName = computed(() => {
   if (activeEffectResult.value?.type !== "cleaner") {
     return "玩家";
@@ -351,6 +344,27 @@ const activeInternTargetPlayerName = computed(() => {
         String(player.id) === String(activeEffectResult.value.targetPlayerId),
     )?.name ?? "玩家"
   );
+});
+const activeManagerTargetPlayerName = computed(() => {
+  if (activeEffectResult.value?.type !== "manager") {
+    return "玩家";
+  }
+
+  return resolvePlayerName(activeEffectResult.value.targetPlayerId);
+});
+const activePmTargetPlayerName = computed(() => {
+  if (activeEffectResult.value?.type !== "pm") {
+    return "玩家";
+  }
+
+  return resolvePlayerName(activeEffectResult.value.targetPlayerId);
+});
+const activeSwapTargetPlayerName = computed(() => {
+  if (activeEffectResult.value?.type !== "swap") {
+    return "玩家";
+  }
+
+  return resolvePlayerName(activeEffectResult.value.targetPlayerId);
 });
 const activeProtectionAnimationPlayer = computed(() => {
   if (activeEffectResult.value?.type !== "protection") {
@@ -586,6 +600,7 @@ defineExpose({
           v-if="activeProtectionAnimationPlayer"
           :key="`protection-block-${activeEffectResult.id}`"
           :success-key="activeEffectResult.id"
+          :show-success-label="Boolean(activeEffectResult.sourceType) && activeEffectResult.sourceType !== 'senior'"
           screen-anchored
           :position="activeProtectionAnimationPlayer.position"
         />
@@ -638,7 +653,6 @@ defineExpose({
       <CleanerAnimation
         v-if="activeEffectResult?.type === 'cleaner'"
         :result="activeEffectResult"
-        :source-player-name="activeCleanerSourcePlayerName"
         :target-player-name="activeCleanerTargetPlayerName"
         :get-player-hand-rect="animationRects.getPlayerHandRect"
         :is-self-player="animationRects.isSelfPlayer"
@@ -657,6 +671,7 @@ defineExpose({
       <ManagerAnimation
         v-if="activeEffectResult?.type === 'manager'"
         :result="activeEffectResult"
+        :target-player-name="activeManagerTargetPlayerName"
         :get-player-hand-rect="animationRects.getPlayerHandRect"
         :get-discard-rect="animationRects.getDiscardRect"
         :is-self-player="animationRects.isSelfPlayer"
@@ -666,6 +681,7 @@ defineExpose({
       <PMAnimation
         v-if="activeEffectResult?.type === 'pm'"
         :result="activeEffectResult"
+        :target-player-name="activePmTargetPlayerName"
         :get-player-hand-rect="animationRects.getPlayerHandRect"
         :get-discard-rect="animationRects.getDiscardRect"
         :get-deck-rect="animationRects.getDeckRect"
@@ -676,6 +692,7 @@ defineExpose({
       <CardSwapAnimation
         v-if="activeEffectResult?.type === 'swap'"
         :result="activeEffectResult"
+        :target-player-name="activeSwapTargetPlayerName"
         :get-player-hand-rect="animationRects.getPlayerHandRect"
         @complete="handleEffectAnimationComplete"
       />

@@ -91,30 +91,46 @@ test('cleaner keeps cards hidden when another player performs the viewing', asyn
   assert.match(demo, /targetPlayerId:\s*'player-top'/)
 })
 
-test('cleaner shows the public viewer and target prompt on the intern timeline', async () => {
+test('cleaner prompt shows only the target player', async () => {
   const source = await readSource('src/components/game/animations/CleanerAnimation.vue')
   const stage = await readSource('src/components/game/ui/GameStage.vue')
   const demo = await readSource('src/views/CardPlayTestView.vue')
 
-  assert.match(source, /sourcePlayerName:\s*\{ type: String, default: ['"]玩家['"] \}/)
   assert.match(source, /targetPlayerName:\s*\{ type: String, default: ['"]玩家['"] \}/)
+  assert.doesNotMatch(source, /sourcePlayerName/)
   assert.match(source, /const promptRef = ref\(null\)/)
   assert.match(source, /const CLEANER_PROMPT_HOLD_SECONDS = 1/)
   assert.match(source, /ref="promptRef" class="cleaner-animation__prompt"/)
-  assert.match(source, /cleaner-animation__prompt-value">[\s\S]*sourcePlayerName[\s\S]*<\/span>[\s\S]*查看[\s\S]*cleaner-animation__prompt-value">[\s\S]*targetPlayerName[\s\S]*<\/span>[\s\S]*手牌/)
+  assert.match(source, /偷看[\s\S]*cleaner-animation__prompt-value">[\s\S]*targetPlayerName[\s\S]*<\/span>[\s\S]*手牌/)
   assert.match(source, /\.to\(\{\}, \{ duration: CLEANER_PROMPT_HOLD_SECONDS \}\)[\s\S]*\.to\(\s*cardElement,/)
   assert.match(source, /\.to\(\{\}, \{ duration: 2 \}\)[\s\S]*\.set\(promptRef\.value, \{ opacity: 0 \}\)/)
   assert.match(source, /function getKillTargets\(\) \{[\s\S]*promptRef\.value/)
   assert.match(source, /\.cleaner-animation__prompt \{[\s\S]*top: 25%[\s\S]*width: min\(92vw, 900px\)[\s\S]*font-size: clamp\(14\.4px, 2\.7vw, 32\.4px\)/)
   assert.match(source, /\.cleaner-animation__prompt-value \{[\s\S]*color: #facc15/)
-  assert.match(stage, /const activeCleanerSourcePlayerName = computed/)
-  assert.match(stage, /activeEffectResult\.value\.viewerPlayerId/)
   assert.match(stage, /const activeCleanerTargetPlayerName = computed/)
   assert.match(stage, /activeEffectResult\.value\.targetPlayerId/)
-  assert.match(stage, /:source-player-name="activeCleanerSourcePlayerName"/)
   assert.match(stage, /:target-player-name="activeCleanerTargetPlayerName"/)
-  assert.match(demo, /:source-player-name="getPlayerName\(cleanerResult\.viewerPlayerId\)"/)
   assert.match(demo, /:target-player-name="getPlayerName\(cleanerResult\.targetPlayerId\)"/)
+})
+
+test('pm and hr prompts show only the yellow target player before their effects', async () => {
+  const pm = await readSource('src/components/game/animations/PMAnimation.vue')
+  const swap = await readSource('src/components/game/animations/CardSwapAnimation.vue')
+  const stage = await readSource('src/components/game/ui/GameStage.vue')
+  const demo = await readSource('src/views/CardPlayTestView.vue')
+
+  assert.match(pm, /指定[\s\S]*targetPlayerName[\s\S]*棄牌重抽/)
+  assert.match(pm, /duration: PM_PROMPT_HOLD_SECONDS/)
+  assert.match(pm, /pm-animation__prompt-value \{ color: #facc15; \}/)
+  assert.match(swap, /與[\s\S]*targetPlayerName[\s\S]*交換手牌/)
+  assert.match(swap, /duration: SWAP_PROMPT_HOLD_SECONDS/)
+  assert.match(swap, /card-swap-animation__prompt-value \{ color: #facc15; \}/)
+  assert.doesNotMatch(pm, /sourcePlayerName/)
+  assert.doesNotMatch(swap, /sourcePlayerName/)
+  assert.match(stage, /:target-player-name="activePmTargetPlayerName"/)
+  assert.match(stage, /:target-player-name="activeSwapTargetPlayerName"/)
+  assert.match(demo, /:target-player-name="getPlayerName\(pmResult\.targetPlayerId\)"/)
+  assert.match(demo, /:target-player-name="getPlayerName\(swapResult\.targetPlayerId\)"/)
 })
 
 test('cleaner flips the current player card from front to back without fading', async () => {
@@ -162,6 +178,21 @@ test('manager animation compares, emphasizes, returns the winner, and discards t
   assert.match(source, /loserGlowRef/)
   assert.match(source, /discardTranslation = getTranslation\(loserRect, discardRect\)/)
   assert.match(source, /winnerScale/)
+})
+
+test('manager animation shows only the target player in its comparison prompt', async () => {
+  const source = await readSource('src/components/game/animations/ManagerAnimation.vue')
+  const stage = await readSource('src/components/game/ui/GameStage.vue')
+  const demo = await readSource('src/views/CardPlayTestView.vue')
+
+  assert.match(source, /targetPlayerName: \{ type: String, default: '玩家' \}/)
+  assert.match(source, /與[\s\S]*targetPlayerName[\s\S]*比大小/)
+  assert.doesNotMatch(source, /sourcePlayerName/)
+  assert.match(source, /duration: MANAGER_PROMPT_HOLD_SECONDS/)
+  assert.match(source, /promptRef/)
+  assert.match(source, /manager-animation__prompt-value \{ color: #facc15; \}/)
+  assert.match(stage, /:target-player-name="activeManagerTargetPlayerName"/)
+  assert.match(demo, /:target-player-name="getPlayerName\(managerResult\.targetPlayerId\)"/)
 })
 
 test('manager reveals the opponent loser while shrinking, before it reaches discard', async () => {

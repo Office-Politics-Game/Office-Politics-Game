@@ -88,6 +88,7 @@ const deckCount = ref(INITIAL_DECK_COUNT)
 const isBusy = ref(false)
 const isSelfProtected = ref(true)
 const protectionSuccessKey = ref(0)
+const showProtectionSuccessLabel = ref(false)
 const activeDrawCard = ref(null)
 const cleanerResult = ref(null)
 const internResult = ref(null)
@@ -234,10 +235,14 @@ function releaseBusyState() {
 
 function toggleSelfProtection() {
   isSelfProtected.value = !isSelfProtected.value
+  if (!isSelfProtected.value) {
+    showProtectionSuccessLabel.value = false
+  }
 }
 
 function playProtectionSuccess() {
   isSelfProtected.value = true
+  showProtectionSuccessLabel.value = true
   protectionSuccessKey.value += 1
 }
 
@@ -596,6 +601,7 @@ onUnmounted(() => {
         <ProtectionAura
           v-if="isSelfProtected"
           :success-key="protectionSuccessKey"
+          :show-success-label="showProtectionSuccessLabel"
         />
       </Transition>
 
@@ -629,7 +635,6 @@ onUnmounted(() => {
     <CleanerAnimation
       v-if="cleanerResult"
       :result="cleanerResult"
-      :source-player-name="getPlayerName(cleanerResult.viewerPlayerId)"
       :target-player-name="getPlayerName(cleanerResult.targetPlayerId)"
       :get-player-hand-rect="getPlayerHandRect"
       :is-self-player="isSelfPlayer"
@@ -645,6 +650,7 @@ onUnmounted(() => {
     <ManagerAnimation
       v-if="managerResult"
       :result="managerResult"
+      :target-player-name="getPlayerName(managerResult.targetPlayerId)"
       :get-player-hand-rect="getPlayerHandRect"
       :get-discard-rect="getDiscardRect"
       :is-self-player="isSelfPlayer"
@@ -653,6 +659,7 @@ onUnmounted(() => {
     <PMAnimation
       v-if="pmResult"
       :result="pmResult"
+      :target-player-name="getPlayerName(pmResult.targetPlayerId)"
       :get-player-hand-rect="getPlayerHandRect"
       :get-discard-rect="getDiscardRect"
       :get-deck-rect="getDeckRect"
@@ -662,6 +669,7 @@ onUnmounted(() => {
     <CardSwapAnimation
       v-if="swapResult"
       :result="swapResult"
+      :target-player-name="getPlayerName(swapResult.targetPlayerId)"
       :get-player-hand-rect="getPlayerHandRect"
       @complete="(result) => clearEffectResult('swap', result)"
     />

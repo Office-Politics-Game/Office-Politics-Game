@@ -21,7 +21,6 @@ import EffectCardLayer from './EffectCardLayer.vue'
 
 const props = defineProps({
   result: { type: Object, default: null },
-  sourcePlayerName: { type: String, default: '玩家' },
   targetPlayerName: { type: String, default: '玩家' },
   getPlayerHandRect: { type: Function, default: null },
   isSelfPlayer: { type: Function, default: null },
@@ -201,16 +200,7 @@ onBeforeUnmount(stop)
         ref="veilRef"
         class="cleaner-animation__veil"
       ></div>
-      <div ref="promptRef" class="cleaner-animation__prompt">
-        <span class="cleaner-animation__prompt-value">{{
-          sourcePlayerName
-        }}</span>
-        查看
-        <span class="cleaner-animation__prompt-value">{{
-          targetPlayerName
-        }}</span>
-        手牌
-      </div>
+      <div ref="promptRef" class="cleaner-animation__prompt">偷看<span class="cleaner-animation__prompt-value">{{ targetPlayerName }}</span>手牌</div>
       <EffectCardLayer
         ref="cardLayerRef"
         class="cleaner-animation__card"
