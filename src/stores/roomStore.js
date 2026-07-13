@@ -6,6 +6,7 @@ import {
   getRoomGameState as getRoomGameStateRequest,
   updateRoomState as updateRoomStateRequest,
   addComputerPlayer as addComputerPlayerRequest,
+  removePlayer as removePlayerRequest,
   startRoom as startRoomRequest,
 } from "@/services/roomApi.js";
 import { connectSocket, emitWithAck } from "@/services/socketClient.js";
@@ -15,12 +16,49 @@ let activeRoomStore = null;
 let subscribedRoomCode = "";
 let subscribedPlayerId = null;
 
+function getRoomCodeFromPayload(payload) {
+  return payload?.room?.roomCode || payload?.room?.room_code || "";
+}
+
+function isCurrentRoomPayload(payload) {
+  const payloadRoomCode = getRoomCodeFromPayload(payload);
+  const currentRoomCode = subscribedRoomCode || activeRoomStore?.roomCode || "";
+
+  if (!payloadRoomCode || !currentRoomCode) {
+    return false;
+  }
+
+  return payloadRoomCode.toUpperCase() === currentRoomCode.toUpperCase();
+}
+
 function handleSocketRoomState(payload) {
+  if (!isCurrentRoomPayload(payload)) {
+    return;
+  }
+
   activeRoomStore?.applyRoomState(payload);
 }
 
 function handleSocketRoomStarted(payload) {
+  if (!isCurrentRoomPayload(payload)) {
+    return;
+  }
+
   activeRoomStore?.applyRoomState(payload);
+}
+
+function handleSocketConnect() {
+  if (!activeRoomStore || !subscribedRoomCode || !subscribedPlayerId) {
+    return;
+  }
+
+  activeRoomStore
+    .subscribeToRoom({
+      roomCode: subscribedRoomCode,
+      playerId: subscribedPlayerId,
+      force: true,
+    })
+    .catch(() => null);
 }
 
 function bindRoomSocketListeners(store) {
@@ -28,8 +66,10 @@ function bindRoomSocketListeners(store) {
   const socket = connectSocket();
   socket.off("room:state", handleSocketRoomState);
   socket.off("room:game-started", handleSocketRoomStarted);
+  socket.off("connect", handleSocketConnect);
   socket.on("room:state", handleSocketRoomState);
   socket.on("room:game-started", handleSocketRoomStarted);
+  socket.on("connect", handleSocketConnect);
 }
 
 function getErrorMessage(error, fallbackMessage) {
@@ -116,6 +156,8 @@ export const useRoomStore = defineStore("room", {
       const normalizedRoomCode = roomCode.trim().toUpperCase();
       const normalizedPlayerId = String(playerId);
 
+      bindRoomSocketListeners(this);
+
       if (
         !force &&
         subscribedRoomCode === normalizedRoomCode &&
@@ -123,8 +165,6 @@ export const useRoomStore = defineStore("room", {
       ) {
         return null;
       }
-
-      bindRoomSocketListeners(this);
 
       if (subscribedRoomCode && subscribedRoomCode !== normalizedRoomCode) {
         await emitWithAck("room:unsubscribe", {
@@ -208,13 +248,35 @@ export const useRoomStore = defineStore("room", {
       this.clearError();
 
       try {
-        const response = await joinRoomRequest(roomCode, payload);
-        this.roomCode = roomCode;
+        bindRoomSocketListeners(this);
+        const normalizedRoomCode = roomCode.trim().toUpperCase();
+        const normalizedPlayerId = String(payload?.playerId ?? "");
+        const response = await emitWithAck("room:join", {
+          roomCode: normalizedRoomCode,
+          playerId: normalizedPlayerId,
+        }).catch(async () => {
+          const fallbackResponse = await joinRoomRequest(normalizedRoomCode, payload);
+          const nextRoomState = fallbackResponse?.roomState ?? null;
+          if (nextRoomState?.room) {
+            this.applyRoomState(nextRoomState);
+            return nextRoomState;
+          }
+
+          await this.fetchRoomState(normalizedRoomCode);
+          return fallbackResponse;
+        });
+        this.roomCode = normalizedRoomCode;
         saveRoomCode(this.roomCode);
         this.gameState = null;
-        await this.fetchRoomState(roomCode);
+
+        if (response?.room) {
+          this.applyRoomState(response);
+        } else {
+          await this.fetchRoomState(normalizedRoomCode);
+        }
+
         await this.subscribeToRoom({
-          roomCode,
+          roomCode: normalizedRoomCode,
           playerId: payload?.playerId,
           force: true,
         }).catch(() => null);
@@ -275,6 +337,45 @@ export const useRoomStore = defineStore("room", {
         return response;
       } catch (error) {
         this.errorMessage = getErrorMessage(error, "Add computer player failed");
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async removePlayer(roomCode, payload) {
+      this.isLoading = true;
+      this.clearError();
+
+      try {
+        const response = await emitWithAck("room:remove-player", {
+          roomCode,
+          ...payload,
+        }).catch(async () => {
+          const fallbackResponse = await removePlayerRequest(
+            roomCode,
+            payload?.targetPlayerId,
+            {
+              requesterPlayerId: payload?.requesterPlayerId,
+            },
+          );
+          const nextRoomState = fallbackResponse?.roomState ?? fallbackResponse;
+          if (nextRoomState?.room) {
+            this.applyRoomState(nextRoomState);
+          } else {
+            await this.fetchRoomState(roomCode);
+          }
+          return nextRoomState;
+        });
+
+        this.roomCode = roomCode;
+        saveRoomCode(this.roomCode);
+        if (response?.room) {
+          this.applyRoomState(response);
+        }
+        return response;
+      } catch (error) {
+        this.errorMessage = getErrorMessage(error, "移出玩家失敗");
         throw error;
       } finally {
         this.isLoading = false;

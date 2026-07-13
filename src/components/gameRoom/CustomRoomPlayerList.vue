@@ -17,10 +17,7 @@ defineEmits(["add-computer", "invite-friend", "remove-player", "toggle-ready"]);
 </script>
 
 <template>
-  <section
-    class="pointer-events-none flex justify-center"
-    aria-label="玩家列表"
-  >
+  <section class="pointer-events-none flex justify-center" aria-label="等待房間玩家列表">
     <div
       class="flex h-[232px] w-[572px] items-center justify-center gap-5 lg:h-[420px] lg:w-[1034px] lg:gap-4"
     >
@@ -141,7 +138,7 @@ defineEmits(["add-computer", "invite-friend", "remove-player", "toggle-ready"]);
                 : $emit('remove-player', index)
             "
           >
-            {{ slot.canToggleReady ? (slot.isReady ? "取消準備" : "準備") : "踢除" }}
+            {{ slot.canToggleReady ? (slot.isReady ? "取消準備" : "準備") : "剔除" }}
           </button>
         </div>
       </article>

@@ -25,6 +25,8 @@ const { roomCode, players, errorMessage, isLoading, isRoomReadyToStart } =
 const showInviteFriendModal = ref(false);
 const invitingSlotIndex = ref(null);
 const isRestoringRoomState = ref(false);
+const hasJoinedCurrentRoom = ref(false);
+const kickedNotice = ref("");
 
 const requestedRoomCode = computed(() =>
   typeof route.query.roomCode === "string" ? route.query.roomCode.trim().toUpperCase() : "",
@@ -96,16 +98,20 @@ function createRestoringSlot(slot, index) {
 const playerSlots = computed(() =>
   emptyPlayerSlots.map((slot, index) => {
     const roomPlayer = players.value[index];
+    const displaySlot =
+      index === 0
+        ? { ...slot, option1: "等待玩家" }
+        : { ...slot, option1: "加入電腦", option2: "邀請好友" };
 
     if (roomPlayer) {
       return createRoomPlayerSlot(roomPlayer, index);
     }
 
     return {
-      ...slot,
+      ...displaySlot,
       canAddComputer: index !== 0 && Boolean(roomCode.value) && isHostPlayer.value,
       canInviteFriend:
-        Boolean(slot.option2) && Boolean(roomCode.value) && isHostPlayer.value,
+        Boolean(displaySlot.option2) && Boolean(roomCode.value) && isHostPlayer.value,
     };
   }),
 );
@@ -176,10 +182,21 @@ async function handleAddComputer(index) {
   });
 }
 
-function handleRemovePlayer(index) {
+async function handleRemovePlayer(index) {
   if (index === 0 || !isHostPlayer.value) {
     return;
   }
+
+  const targetPlayer = players.value[index];
+
+  if (!roomCode.value || !resolvedPlayerId.value || !targetPlayer?.playerId) {
+    return;
+  }
+
+  await roomStore.removePlayer(roomCode.value, {
+    requesterPlayerId: resolvedPlayerId.value,
+    targetPlayerId: targetPlayer.playerId,
+  });
 }
 
 async function handleStartRoom() {
@@ -248,6 +265,37 @@ async function copyRoomCode() {
   await navigator.clipboard.writeText(roomCode.value);
 }
 
+function isCurrentPlayerInRoom() {
+  if (!resolvedPlayerId.value) {
+    return false;
+  }
+
+  return players.value.some(
+    (player) => String(player.playerId) === String(resolvedPlayerId.value),
+  );
+}
+
+async function handleKickedFromRoom() {
+  if (kickedNotice.value) {
+    return;
+  }
+
+  kickedNotice.value = "你已被房主移出房間";
+  showInviteFriendModal.value = false;
+
+  const leavingRoomCode = roomCode.value || requestedRoomCode.value;
+
+  if (leavingRoomCode) {
+    roomStore.unsubscribeFromRoom(leavingRoomCode).catch(() => null);
+  }
+}
+
+function confirmKickedNotice() {
+  kickedNotice.value = "";
+  roomStore.resetRoom();
+  router.replace({ name: "LobbyHome" });
+}
+
 onMounted(async () => {
   const roomCodeToRestore = requestedRoomCode.value || roomCode.value;
 
@@ -285,6 +333,41 @@ onBeforeUnmount(() => {
     roomStore.unsubscribeFromRoom(subscribedRoom);
   }
 });
+
+watch(
+  [displayRoomCode, resolvedPlayerId],
+  ([nextRoomCode, nextPlayerId]) => {
+    if (!nextRoomCode || nextRoomCode === "------" || !nextPlayerId || kickedNotice.value) {
+      return;
+    }
+
+    roomStore.subscribeToRoom({
+      roomCode: nextRoomCode,
+      playerId: nextPlayerId,
+      force: true,
+    }).catch(() => null);
+  },
+  { immediate: true },
+);
+
+watch(
+  [players, resolvedPlayerId],
+  () => {
+    if (!resolvedPlayerId.value || isRestoringRoomState.value || kickedNotice.value) {
+      return;
+    }
+
+    if (isCurrentPlayerInRoom()) {
+      hasJoinedCurrentRoom.value = true;
+      return;
+    }
+
+    if (hasJoinedCurrentRoom.value && players.value.length > 0) {
+      handleKickedFromRoom();
+    }
+  },
+  { immediate: true },
+);
 
 watch(
   () => roomStore.room?.status,
@@ -397,10 +480,64 @@ watch(
         </button>
       </div>
     </section>
+
+    <div
+      v-if="kickedNotice"
+      class="kicked-modal-backdrop pointer-events-auto fixed inset-0 z-50 grid place-items-center px-5"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="kicked-modal-title"
+    >
+      <section class="kicked-modal-card w-full max-w-[460px] text-center">
+        <p class="kicked-modal-kicker m-0 text-xs font-black tracking-[0.24em]">
+          ROOM NOTICE
+        </p>
+        <h2
+          id="kicked-modal-title"
+          class="m-0 mt-3 text-3xl font-black tracking-[0.06em]"
+        >
+          已離開房間
+        </h2>
+        <p class="m-0 mt-5 text-lg font-bold leading-8">
+          {{ kickedNotice }}
+        </p>
+        <p class="m-0 mt-2 text-sm font-bold leading-6 text-slate-500">
+          按下確定後會返回大廳。
+        </p>
+        <button
+          class="btn-dark tap-pop mt-7 h-12 w-full cursor-pointer text-base font-black"
+          type="button"
+          @click="confirmKickedNotice"
+        >
+          確定
+        </button>
+      </section>
+    </div>
   </main>
 </template>
 
 <style scoped>
+.kicked-modal-backdrop {
+  background: rgba(0, 19, 50, 0.58);
+  backdrop-filter: blur(5px);
+}
+
+.kicked-modal-card {
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: var(--radius-md, 0);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(236, 242, 248, 0.94));
+  padding: 34px 32px 30px;
+  color: var(--brand-active, #465563);
+  box-shadow:
+    0 28px 70px rgba(0, 19, 50, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.kicked-modal-kicker {
+  color: var(--brand-hover, #0046f4);
+}
+
 @media (max-width: 900px) and (max-height: 520px) and (orientation: landscape) {
   .custom-room-status {
     position: relative;
