@@ -138,6 +138,8 @@ import ProfileShell from "@/components/profile/ProfileShell.vue";
 import bgPersonal from "@/assets/images/bg-personal.webp";
 import bgDashboard from "@/assets/images/bg-dashboard.webp";
 import paperBackground from "@/assets/images/waiting-room.webp";
+import ProfileEditModal from "@/components/profile/ProfileEditModal.vue";
+import ProfileMatchHistoryPanel from "@/components/profile/ProfileMatchHistoryPanel.vue";
 import { guestAvatars } from "@/constants/guestOptions.js";
 import {
   getPlayerEquippedItems,
@@ -184,7 +186,11 @@ const tabs = [
   {
     id: "badges",
     label: "成就徽章",
+<<<<<<< HEAD
     description: "查看你的辦公室生存里程碑。",
+=======
+    description: "成就牆即將開放，未來會展示你的辦公室生存里程碑。",
+>>>>>>> 8b39387 (feat: 優化對戰紀錄頁面呈現)
   },
 ];
 

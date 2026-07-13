@@ -42,4 +42,13 @@ test("profile personal area keeps expected fields and edit entry points", async 
   assert.match(matchPanelSource, /目前還沒有對戰紀錄/);
   assert.match(matchPanelSource, /勝者/);
   assert.match(matchPanelSource, /participants/);
+
+  assert.match(matchPanelSource, /Battle Log/);
+  assert.match(matchPanelSource, /WIN/);
+  assert.match(matchPanelSource, /LOSE/);
+  assert.match(matchPanelSource, /小局/);
+  assert.match(matchPanelSource, /XP/);
+  assert.doesNotMatch(matchPanelSource, /近20場/);
+  assert.doesNotMatch(matchPanelSource, /近期戰績/);
+  assert.doesNotMatch(matchPanelSource, /展開/);
 });
