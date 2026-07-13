@@ -99,6 +99,8 @@ const routes = [
     meta: {
       requiresAuth: true,
     },
+  },
+  {
     path: "/gacha",
     name: "Gacha",
     component: GachaView,
