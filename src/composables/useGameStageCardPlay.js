@@ -1,4 +1,4 @@
-import { computed, nextTick, ref } from "vue";
+import { computed, nextTick, ref, toRaw } from "vue";
 
 const DRAG_THRESHOLD_PX = 6;
 const HIDDEN_PLAYED_CARD_FALLBACK_MS = 5000;
@@ -45,6 +45,26 @@ function pointInsideRect(point, rect) {
   );
 }
 
+function filterVisibleHandCards(
+  handCards,
+  pendingCard = null,
+  hiddenPlayedCards = [],
+) {
+  const pendingCardInstance = pendingCard ? toRaw(pendingCard) : null;
+  const hiddenCardSet = new Set(hiddenPlayedCards.map((card) => toRaw(card)));
+
+  return handCards.filter(
+    (card) => {
+      const cardInstance = toRaw(card);
+
+      return (
+        cardInstance !== pendingCardInstance &&
+        !hiddenCardSet.has(cardInstance)
+      );
+    },
+  );
+}
+
 export function useGameStageCardPlay({
   props,
   emit,
@@ -63,10 +83,10 @@ export function useGameStageCardPlay({
   const dragPoint = ref(null);
   const playZoneRect = ref(null);
   const discardRect = ref(null);
-  const draggingCardId = ref(null);
+  const draggingHandCard = ref(null);
   const isDragging = ref(false);
   const isOverPlayZone = ref(false);
-  const locallyHiddenPlayedCardIds = ref([]);
+  const locallyHiddenPlayedCards = ref([]);
   const pendingPlay = ref(null);
   const stagedDiscardCard = ref(null);
   const selectedTargetPlayerId = ref(null);
@@ -135,13 +155,11 @@ export function useGameStageCardPlay({
       return [];
     }
 
-    const pendingCardId = pendingPlay.value?.card?.id;
-    const hiddenCardIds = new Set(locallyHiddenPlayedCardIds.value);
-    const cards = pendingCardId
-      ? props.handCards.filter((card) => card.id !== pendingCardId)
-      : props.handCards;
-
-    return cards.filter((card) => !hiddenCardIds.has(card.id));
+    return filterVisibleHandCards(
+      props.handCards,
+      pendingPlay.value?.card ?? null,
+      locallyHiddenPlayedCards.value,
+    );
   });
   const visiblePlayerHandCardCounts = computed(() => {
     const counts =
@@ -293,7 +311,7 @@ export function useGameStageCardPlay({
     dragPoint.value = null;
     playZoneRect.value = null;
     discardRect.value = null;
-    draggingCardId.value = null;
+    draggingHandCard.value = null;
     isDragging.value = false;
     isOverPlayZone.value = false;
     gestureCard = null;
@@ -321,52 +339,64 @@ export function useGameStageCardPlay({
     );
   }
 
-  function clearHiddenPlayedCard(cardId) {
-    const timer = hiddenPlayedCardTimers.get(cardId);
+  function clearHiddenPlayedCard(card) {
+    const cardInstance = toRaw(card);
+    const timer = hiddenPlayedCardTimers.get(cardInstance);
 
     if (timer) {
       window.clearTimeout(timer);
-      hiddenPlayedCardTimers.delete(cardId);
+      hiddenPlayedCardTimers.delete(cardInstance);
     }
 
-    locallyHiddenPlayedCardIds.value = locallyHiddenPlayedCardIds.value.filter(
-      (hiddenCardId) => hiddenCardId !== cardId,
+    locallyHiddenPlayedCards.value = locallyHiddenPlayedCards.value.filter(
+      (hiddenCard) => toRaw(hiddenCard) !== cardInstance,
     );
   }
 
   function scheduleHiddenPlayedCardCleanup(
-    cardId,
+    card,
     delay = HIDDEN_PLAYED_CARD_FALLBACK_MS,
   ) {
+    const cardInstance = toRaw(card);
     const timer = window.setTimeout(() => {
       if (
-        stagedDiscardCard.value?.id === cardId ||
+        stagedDiscardCard.value?.id === card.id ||
         Boolean(activeEffectResult.value)
       ) {
-        scheduleHiddenPlayedCardCleanup(cardId, HIDDEN_PLAYED_CARD_RETRY_MS);
+        scheduleHiddenPlayedCardCleanup(card, HIDDEN_PLAYED_CARD_RETRY_MS);
         return;
       }
 
-      clearHiddenPlayedCard(cardId);
+      clearHiddenPlayedCard(cardInstance);
     }, delay);
 
-    hiddenPlayedCardTimers.set(cardId, timer);
+    hiddenPlayedCardTimers.set(cardInstance, timer);
   }
 
-  function hideSubmittedCard(cardId) {
-    if (!cardId || locallyHiddenPlayedCardIds.value.includes(cardId)) {
+  function hideSubmittedCard(card) {
+    if (!card) {
       return;
     }
 
-    locallyHiddenPlayedCardIds.value = [
-      ...locallyHiddenPlayedCardIds.value,
-      cardId,
+    const cardInstance = toRaw(card);
+
+    if (
+      locallyHiddenPlayedCards.value.some(
+        (hiddenCard) => toRaw(hiddenCard) === cardInstance,
+      )
+    ) {
+      return;
+    }
+
+    locallyHiddenPlayedCards.value = [
+      ...locallyHiddenPlayedCards.value,
+      cardInstance,
     ];
-    scheduleHiddenPlayedCardCleanup(cardId);
+    scheduleHiddenPlayedCardCleanup(cardInstance);
   }
 
   function emitPlayCard(card, targetPlayerId = null, guessedRank = null) {
-    hideSubmittedCard(card.id);
+    hideSubmittedCard(card);
 
     emit("play-card", {
       card,
@@ -506,8 +536,8 @@ export function useGameStageCardPlay({
 
       activeCard.value = gestureCard;
       originRect.value = gestureOriginRect;
-      draggingCardId.value =
-        gestureSource === "hand" ? gestureCard.id : null;
+      draggingHandCard.value =
+        gestureSource === "hand" ? gestureCard : null;
       isDragging.value = true;
     }
 
@@ -656,24 +686,24 @@ export function useGameStageCardPlay({
     hiddenPlayedCardTimers.clear();
   }
 
-  function pruneHiddenPlayedCards(cardIds) {
-    const handCardIdSet = new Set(cardIds);
+  function pruneHiddenPlayedCards(handCards) {
+    const handCardSet = new Set(handCards.map((card) => toRaw(card)));
 
     if (
       inspectedCard.value &&
-      !handCardIdSet.has(inspectedCard.value.id)
+      !handCardSet.has(toRaw(inspectedCard.value))
     ) {
       inspectedCard.value = null;
     }
 
-    locallyHiddenPlayedCardIds.value
-      .filter((cardId) => !handCardIdSet.has(cardId))
+    locallyHiddenPlayedCards.value
+      .filter((card) => !handCardSet.has(toRaw(card)))
       .forEach(clearHiddenPlayedCard);
   }
 
   return {
     activeCard,
-    draggingCardId,
+    draggingHandCard,
     isDragging,
     isOverPlayZone,
     pendingPlay,
@@ -711,3 +741,5 @@ export function useGameStageCardPlay({
     pruneHiddenPlayedCards,
   };
 }
+
+export { filterVisibleHandCards };

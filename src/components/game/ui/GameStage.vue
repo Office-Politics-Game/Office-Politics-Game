@@ -270,7 +270,7 @@ const {
 
 const {
   activeCard,
-  draggingCardId,
+  draggingHandCard,
   isDragging,
   isOverPlayZone,
   pendingPlay,
@@ -507,9 +507,9 @@ watch(
 );
 
 watch(
-  () => props.handCards.map((card) => card.id),
-  (cardIds) => {
-    pruneHiddenPlayedCards(cardIds);
+  () => props.handCards,
+  (handCards) => {
+    pruneHiddenPlayedCards(handCards);
   },
 );
 
@@ -599,7 +599,7 @@ defineExpose({
         <PlayerHand
           ref="playerHand"
           :cards="visibleHandCards"
-          :dragging-card-id="draggingCardId"
+          :dragging-card="draggingHandCard"
           :disabled-card-ids="advisorRuleDisabledCardIds"
           :temporarily-hidden-card-ids="temporarilyHiddenCardIds"
           :is-interaction-disabled="isHandDrawRequired"

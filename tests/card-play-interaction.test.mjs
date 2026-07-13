@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { access, readFile } from 'node:fs/promises'
 import test from 'node:test'
+import { reactive, readonly } from 'vue'
+import { filterVisibleHandCards } from '../src/composables/useGameStageCardPlay.js'
 
 const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
@@ -74,10 +76,37 @@ test('game stage prunes hidden played cards through extracted card-play state', 
   const source = await readSource('src/components/game/ui/GameStage.vue')
   const cardPlaySource = await readSource('src/composables/useGameStageCardPlay.js')
 
-  assert.match(cardPlaySource, /function pruneHiddenPlayedCards\(cardIds\)/)
-  assert.match(source, /pruneHiddenPlayedCards\(cardIds\)/)
+  assert.match(cardPlaySource, /function pruneHiddenPlayedCards\(handCards\)/)
+  assert.match(source, /pruneHiddenPlayedCards\(handCards\)/)
   assert.doesNotMatch(source, /locallyHiddenPlayedCardIds/)
   assert.doesNotMatch(source, /clearHiddenPlayedCard/)
+})
+
+test('playing one of two equal cards hides only the selected card instance', () => {
+  const firstCard = { id: '1', name: 'Intern' }
+  const secondCard = { id: '1', name: 'Intern' }
+  const handCards = [firstCard, secondCard]
+
+  assert.deepEqual(
+    filterVisibleHandCards(handCards, secondCard, []),
+    [firstCard],
+  )
+  assert.deepEqual(
+    filterVisibleHandCards(handCards, null, [secondCard]),
+    [firstCard],
+  )
+})
+
+test('submitted card stays hidden when Vue wraps the same card with another proxy', () => {
+  const playedCard = { id: '1', name: 'Intern' }
+  const otherEqualCard = { id: '1', name: 'Intern' }
+  const handCards = reactive([playedCard, otherEqualCard])
+  const submittedCard = readonly(playedCard)
+
+  assert.deepEqual(
+    filterVisibleHandCards(handCards, null, [submittedCard]),
+    [handCards[1]],
+  )
 })
 
 test('submitted cards stay hidden while their effect or staged discard is active', async () => {
@@ -86,13 +115,13 @@ test('submitted cards stay hidden while their effect or staged discard is active
   assert.match(source, /const HIDDEN_PLAYED_CARD_FALLBACK_MS = 5000/)
   assert.match(source, /const HIDDEN_PLAYED_CARD_RETRY_MS = 250/)
   assert.match(source, /function scheduleHiddenPlayedCardCleanup/)
-  assert.match(source, /stagedDiscardCard\.value\?\.id === cardId/)
+  assert.match(source, /stagedDiscardCard\.value\?\.id === card\.id/)
   assert.match(source, /Boolean\(activeEffectResult\.value\)/)
   assert.match(
     source,
-    /scheduleHiddenPlayedCardCleanup\(cardId, HIDDEN_PLAYED_CARD_RETRY_MS\)/,
+    /scheduleHiddenPlayedCardCleanup\(card, HIDDEN_PLAYED_CARD_RETRY_MS\)/,
   )
-  assert.match(source, /scheduleHiddenPlayedCardCleanup\(cardId\)/)
+  assert.match(source, /scheduleHiddenPlayedCardCleanup\(cardInstance\)/)
 })
 
 test('remote players lose one visible hand card as soon as they play it', async () => {

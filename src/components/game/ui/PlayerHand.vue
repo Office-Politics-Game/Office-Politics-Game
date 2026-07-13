@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, toRaw } from 'vue'
 import cursorGrabUrl from '@/assets/icons/cursor-grab.svg'
 import cursorGrabbingUrl from '@/assets/icons/cursor-grabbing.svg'
 import cursorPointerUrl from '@/assets/icons/cursor-pointer.svg'
@@ -19,8 +19,8 @@ const props = defineProps({
           typeof card?.frameUrl === 'string',
       ),
   },
-  draggingCardId: {
-    type: String,
+  draggingCard: {
+    type: Object,
     default: null,
   },
   disabledCardIds: {
@@ -82,6 +82,10 @@ function isCardTemporarilyHidden(card) {
   return props.temporarilyHiddenCardIds.includes(card.id)
 }
 
+function isDraggingCard(card) {
+  return Boolean(props.draggingCard) && toRaw(card) === toRaw(props.draggingCard)
+}
+
 function getHandElement() {
   return handRoot.value
 }
@@ -114,11 +118,11 @@ defineExpose({
     aria-label="玩家手牌"
   >
     <div
-      v-for="card in cards"
-      :key="card.id"
+      v-for="(card, index) in cards"
+      :key="card.instanceId ?? `${card.id}-${index}`"
       class="game-card-arrangement absolute bottom-0 left-1/2 aspect-[3/4] h-[clamp(126px,31vh,230px)] origin-bottom select-none"
       :class="{
-        'game-card-arrangement--dragging': card.id === draggingCardId,
+        'game-card-arrangement--dragging': isDraggingCard(card),
         'game-card-arrangement--disabled': isCardDisabled(card),
         'game-card-arrangement--interaction-disabled': props.isInteractionDisabled,
         'game-card-arrangement--rule-disabled': isCardRuleDisabled(card),
