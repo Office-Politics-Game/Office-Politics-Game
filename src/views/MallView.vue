@@ -957,6 +957,7 @@ onBeforeUnmount(() => {
     border-color 0.18s ease,
     background 0.18s ease,
     box-shadow 0.18s ease;
+  cursor: pointer;
 }
 
 .category-card::before {
@@ -1075,6 +1076,7 @@ onBeforeUnmount(() => {
     transform 0.18s ease,
     color 0.18s ease,
     opacity 0.18s ease;
+  cursor: pointer;
 }
 
 .return-icon-button::before {
@@ -1459,6 +1461,7 @@ onBeforeUnmount(() => {
   border-color: rgba(0, 70, 244, 0.75);
   background: linear-gradient(180deg, rgba(0, 70, 244, 0.95), rgba(70, 85, 99, 0.95));
   color: white;
+  cursor: pointer;
 }
 
 .item-action--buy:hover {
@@ -1523,6 +1526,7 @@ onBeforeUnmount(() => {
     background 0.18s ease,
     border-color 0.18s ease,
     color 0.18s ease;
+  cursor: pointer;
 }
 
 .close-button:hover {
