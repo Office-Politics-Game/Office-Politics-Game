@@ -134,7 +134,7 @@ The friend page SHALL start realtime chat only for an authenticated member who c
 
 ### Requirement: Scrollable direct chat layout and speech bubble presentation
 
-The friend chat panel SHALL remain within the vertical space allocated by the friend page. The toolbar and message composer MUST remain visible while only the message body scrolls when message content exceeds the available height. Message bubbles SHALL retain square corners and use a maximum width of 62 percent on desktop and 82 percent on small screens. Current-player messages MUST align left, use a white bubble with a left-pointing CSS triangle tail, and display the label \"我\" above the bubble. Friend messages MUST align right, use a light-gray bubble with a right-pointing CSS triangle tail, and display only the selected friend's actual player ID above the bubble without a descriptive prefix.
+The friend chat panel SHALL remain within the vertical space allocated by the friend page. The toolbar and message composer MUST remain visible while only the message body scrolls when message content exceeds the available height. Message bubbles SHALL retain square corners and use a maximum width of 62 percent on desktop and 82 percent on small screens. Current-player messages MUST align left, use a white bubble with a left-pointing CSS triangle tail, and display the label \"我\" above the bubble. Friend messages MUST align right, use a light-gray bubble with a right-pointing CSS triangle tail, and display the selected friend's `name` above the bubble. The displayed friend name MUST derive from the existing friend API `username`, whose database source is `players.username`; the UI MUST NOT use the player ID as the friend message identity label or add nickname fields to the direct-message REST and Socket.IO payloads.
 
 #### Scenario: Long conversation remains usable
 
@@ -149,11 +149,12 @@ The friend chat panel SHALL remain within the vertical space allocated by the fr
 - **AND** friend bubbles align right and have a right-pointing triangle tail
 - **AND** both bubble variants retain square corners and wrap long text
 
-#### Scenario: Message ownership is visible through color and identity
+#### Scenario: Message ownership is visible through color and nickname
 
-- **WHEN** the conversation renders a current-player message and a friend message for friend player ID 123
+- **WHEN** the conversation renders a current-player message and a friend message whose selected friend data contains `name` \"bbb\" and player ID 123
 - **THEN** the current-player message uses a white bubble with the label \"我\" above it
-- **AND** the friend message uses a light-gray bubble with only \"123\" above it
+- **AND** the friend message uses a light-gray bubble with \"bbb\" above it
+- **AND** \"123\" is not used as that friend message's identity label
 - **AND** neither identity label is rendered inside the message bubble
 
 #### Scenario: Bubble width remains readable across screen sizes

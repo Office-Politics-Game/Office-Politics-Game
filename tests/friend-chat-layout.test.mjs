@@ -108,7 +108,11 @@ test("message ownership uses labels and source-specific bubble colors", async ()
 
   assert.match(
     source,
-    /<p class="message-author">\s*\{\{\s*isMine\(message\) \? "我" : friend\.playerId\s*\}\}\s*<\/p>\s*<div class="message-bubble">/,
+    /<p class="message-author">\s*\{\{\s*isMine\(message\) \? "我" : friend\.name\s*\}\}\s*<\/p>\s*<div class="message-bubble">/,
+  )
+  assert.doesNotMatch(
+    source,
+    /<p class="message-author">\s*\{\{\s*isMine\(message\) \? "我" : friend\.playerId\s*\}\}\s*<\/p>/,
   )
   assert.match(authorRule, /text-xs/)
   assert.match(mineBubbleRule, /bg-white/)

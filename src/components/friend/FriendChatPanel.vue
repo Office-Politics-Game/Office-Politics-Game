@@ -55,7 +55,7 @@
           :class="isMine(message) ? 'chat-message--mine' : 'chat-message--friend'"
         >
           <p class="message-author">
-            {{ isMine(message) ? "我" : friend.playerId }}
+            {{ isMine(message) ? "我" : friend.name }}
           </p>
           <div class="message-bubble">
             <p class="message-content">

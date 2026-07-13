@@ -15,7 +15,7 @@
 - Socket 重連後重新訂閱，並補載目前選取的 conversation。
 - Socket 推播失敗時仍維持已成功 REST 寫入的 201 回應。
 - 訊息增加時標題與輸入區維持可見，僅訊息內容區產生垂直捲動。
-- 訊息泡泡維持 Square UI 方形語言，以較窄比例與左右三角尾巴區分方向。
+- 訊息泡泡維持 Square UI 方形語言，以較窄比例與左右三角尾巴區分方向，並讓對方訊息顯示好友暱稱而非玩家編號。
 - 讓玩家可用 Enter 送出好友私訊，並保留 Shift+Enter 換行與中文輸入法組字安全性。
 - 讓目前對話在自己送出、收到訊息、切換好友與歷史載入完成後一律顯示最新一則訊息。
 
@@ -84,9 +84,9 @@ Alternative considered: 新增裝飾性 span 或使用 clip-path。前者增加�
 
 ### 以訊息擁有者控制視覺方向與身分標示
 
-FriendChatPanel 繼續以 `senderPlayerId === currentPlayerId` 判斷本人訊息，不改動訊息資料結構。每則訊息新增一個包含身分標示與泡泡的垂直容器：本人整組靠左、使用白色泡泡與左向尾巴，泡泡上方顯示小字「我」；對方整組靠右、使用 `--gray-100` 淺灰泡泡與右向尾巴，泡泡上方只顯示 `friend.playerId` 的實際值，不加「玩家 ID」或其他前綴。時間保留在泡泡內右下角。
+FriendChatPanel 繼續以 `senderPlayerId === currentPlayerId` 判斷本人訊息，不改動訊息資料結構。每則訊息使用包含身分標示與泡泡的垂直容器：本人整組靠左、使用白色泡泡與左向尾巴，泡泡上方顯示小字「我」；對方整組靠右、使用 `--gray-100` 淺灰泡泡與右向尾巴，泡泡上方顯示 `friend.name`。`friend.name` 沿用 friendStore 將好友 API 的 `username` 正規化後的既有欄位，而好友 API 已由 `players.username` 取得暱稱，因此不需要修改資料庫、REST、Socket 或 directMessage。時間保留在泡泡內右下角。
 
-Alternative considered: 將身分文字放入泡泡內。這不符合身分標示位於訊息框上方的需求，因此排除。使用 CSS `content` 產生身分文字也被排除，因動態玩家 ID 難以維護且無法提供可靠的可存取文字節點。
+Alternative considered: 將身分文字放入泡泡內。這不符合身分標示位於訊息框上方的需求，因此排除。使用 CSS `content` 產生身分文字也被排除，因動態暱稱難以維護且無法提供可靠的可存取文字節點。把 `username` 加入 directMessage 或 Socket payload 也被排除，因選取好友資料已提供同一暱稱，新增欄位會造成重複契約。
 
 ### 使用鍵盤事件區分送出、換行與輸入法組字
 
@@ -128,7 +128,7 @@ Alternative considered: 把 Socket 與 timer 直接放入 Pinia state。這會�
 - 離開好友頁、登出或清除聊天資料後，不再保留重複 listener 或聊天訂閱。
 - 同一個 raw Pinia store 經不同 Vue Proxy 包裝呼叫 `startRealtime()`、connect callback、`subscribeRealtime()` 或 `stopRealtime()` 時，必須共用同一個 generation、handlers 與 retry 資源，不得把有效訂閱誤判為過期。
 - 訊息數量超過可視高度時，標題與輸入區仍固定可見，使用者可在訊息內容區垂直捲動。
-- 本人訊息整組靠左，上方顯示「我」，使用白色方形泡泡與左向三角尾巴；對方訊息整組靠右，上方只顯示實際玩家 ID，使用淺灰色方形泡泡與右向三角尾巴。
+- 本人訊息整組靠左，上方顯示「我」，使用白色方形泡泡與左向三角尾巴；對方訊息整組靠右，上方顯示選取好友的暱稱，使用淺灰色方形泡泡與右向三角尾巴，不以玩家 ID 代替名稱。
 - 兩種泡泡在桌面維持最大寬度 62%、小螢幕維持最大寬度 82%，時間保留在泡泡內右下角。
 - 玩家在好友私訊輸入框按下無修飾鍵的 Enter 時會送出一次非空白訊息；Shift+Enter 會插入換行，輸入法組字期間按 Enter 只處理選字，不會送出。
 - 空白內容或訊息送出處理中按 Enter 時不會呼叫 REST 送出，也不會產生重複訊息。
@@ -155,6 +155,7 @@ Alternative considered: 把 Socket 與 timer 直接放入 Pinia state。這會�
 - FriendChatPanel 的 `handleMessageKeydown(event)` 只在 helper 回傳 true 時阻止預設行為，並沿用既有 `sendDisabled` 與 `submitMessage()`。
 - `scrollFriendChatToLatest(container)` 接受可讀寫 `scrollTop` 且具有 `scrollHeight` 的容器；容器存在時設定 `scrollTop = scrollHeight`，容器為 null 或 undefined 時不執行任何操作。
 - FriendChatPanel 監聽目前好友 ID、訊息數量與最後一則訊息 ID，等待 `nextTick()` 後將目前 `chat-body` 交給 `scrollFriendChatToLatest(container)`。
+- FriendChatPanel 的對方訊息身分標示讀取 `friend.name`；該欄位由 friendStore 使用好友 API 的 `username` 建立，資料來源為 `players.username`。聊天 API 與 `chat:message` payload 不新增暱稱欄位。
 
 #### Failure modes
 
@@ -177,7 +178,7 @@ Alternative considered: 把 Socket 與 timer 直接放入 Pinia state。這會�
 - tests/friend-chat-realtime.test.mjs 覆蓋訂閱生命週期、非目前好友訊息、訊息去重、重連補載與 listener 清理。
 - tests/friend-chat-realtime.test.mjs 覆蓋不同 Vue Proxy 指向同一 raw store 時，connect callback 仍可送出 chat:subscribe，且 stop 可清除同一組生命週期資源。
 - tests/friend-chat-layout.test.mjs 覆蓋有限高度、獨立捲動、固定輸入區、窄版泡泡與左右三角尾巴的樣式契約。
-- tests/friend-chat-layout.test.mjs 覆蓋本人靠左白色並顯示「我」，以及對方靠右淺灰色並只顯示實際玩家 ID。
+- tests/friend-chat-layout.test.mjs 覆蓋本人靠左白色並顯示「我」，以及對方靠右淺灰色並顯示 `friend.name`，不得以 `friend.playerId` 作為對方訊息的身分標示。
 - tests/friend-chat-keyboard.test.mjs 覆蓋純 Enter、Shift／Ctrl／Alt／Meta+Enter、中文輸入法組字事件，以及 FriendChatPanel 的 preventDefault、sendDisabled 與 submitMessage 接線。
 - tests/friend-chat-scroll.test.mjs 覆蓋捲動 helper、空容器安全性，以及 FriendChatPanel 在好友、訊息數量或最新訊息 ID 改變後等待 DOM 更新並捲到底部的接線。
 - npm test 在 server 目錄通過。
@@ -187,7 +188,7 @@ Alternative considered: 把 Socket 與 timer 直接放入 Pinia state。這會�
 
 #### Scope boundaries
 
-- In scope: 聊天 Socket handler、Socket server 註冊、REST 成功後推播、chatStore 即時同步、raw Pinia store 生命週期索引、FriendView 生命週期、好友聊天捲動高度、目前對話強制跟隨最新訊息、窄版方形泡泡、依訊息擁有者決定的左右方向、白色／淺灰色來源區分、身分標示、三角尾巴、Enter 送出、Shift+Enter 換行、輸入法組字保護與相關測試。
+- In scope: 聊天 Socket handler、Socket server 註冊、REST 成功後推播、chatStore 即時同步、raw Pinia store 生命週期索引、FriendView 生命週期、好友聊天捲動高度、目前對話強制跟隨最新訊息、窄版方形泡泡、依訊息擁有者決定的左右方向、白色／淺灰色來源區分、本人「我」與對方 `friend.name` 暱稱標示、三角尾巴、Enter 送出、Shift+Enter 換行、輸入法組字保護與相關測試。
 - Out of scope: Socket 寫入、全站 Socket auth、未讀／已讀／typing、分頁、附件、其他聊天種類、登入彈窗舊斷言、保留舊閱讀位置的條件判斷、平滑捲動動畫、「新訊息」按鈕與其他 UI polish。
 
 ## Risks / Trade-offs

@@ -45,7 +45,7 @@
 
 - [x] 9.1 先擴充 tests/friend-chat-layout.test.mjs 覆蓋 Scrollable direct chat layout and speech bubble presentation 與「以訊息擁有者控制視覺方向與身分標示」，驗證本人訊息整組靠左、白色泡泡、左向尾巴且泡泡上方顯示「我」，對方訊息整組靠右、`--gray-100` 淺灰泡泡、右向尾巴且泡泡上方只渲染 `friend.playerId`；執行 node tests/friend-chat-layout.test.mjs 並確認現有相反方向與顏色會產生預期失敗。
 - [x] 9.2 實作「以訊息擁有者控制視覺方向與身分標示」，在 src/components/friend/FriendChatPanel.vue 以語意文字節點將身分標示放在泡泡外上方，維持 `isMine(message)` 判斷與既有資料流程，讓本人靠左白色並顯示「我」、對方靠右淺灰色並只顯示實際玩家 ID，三角尾巴依所在側朝外且時間維持泡泡內右下角；執行 node tests/friend-chat-layout.test.mjs 驗證新的方向、顏色、標示與 Square UI 契約通過。
-- [ ] 9.3 執行 node tests/friend-chat-layout.test.mjs、node tests/friend-chat-realtime.test.mjs、npm.cmd run build 與 git diff --check，並人工確認本人／對方訊息在桌面與小螢幕都維持左白「我」／右灰玩家 ID、泡泡最大寬度 62%／82%、輸入區固定與訊息區可捲動；不得修改 Socket、REST 或 chatStore 資料結構，自動跟隨最新訊息另依 11.5 驗證。
+- [ ] 9.3 執行 node tests/friend-chat-layout.test.mjs、node tests/friend-chat-realtime.test.mjs、npm.cmd run build 與 git diff --check，並人工確認本人／對方訊息在桌面與小螢幕都維持左白「我」／右灰好友暱稱、泡泡最大寬度 62%／82%、輸入區固定與訊息區可捲動；不得修改 Socket、REST 或 chatStore 資料結構，自動跟隨最新訊息另依 11.5 驗證。
 
 ## 10. 好友私訊鍵盤送出
 
@@ -62,3 +62,9 @@
 - [x] 11.3 擴充 tests/friend-chat-scroll.test.mjs 覆蓋 FriendChatPanel 自動捲動接線，驗證 chat-body 綁定 `chatBodyRef`、元件監聽 `friend.playerId`、目前 conversation 訊息數量與最後一則訊息 ID、等待 `nextTick()` 後呼叫一次 `scrollFriendChatToLatest(chatBodyRef.value)`；執行 node tests/friend-chat-scroll.test.mjs 並確認尚未接線的 FriendChatPanel 產生預期失敗。
 - [x] 11.4 在 src/components/friend/FriendChatPanel.vue 實作「讓目前對話永遠跟隨最新訊息」，使自己送出、收到目前好友的即時訊息、切換好友或歷史載入完成後，一律等待 DOM 更新再將目前 chat-body 捲到底部，即使玩家正在閱讀舊訊息也強制顯示最新一則；執行 node tests/friend-chat-scroll.test.mjs、node tests/friend-chat-keyboard.test.mjs、node tests/friend-chat-layout.test.mjs 與 node tests/friend-chat-realtime.test.mjs 驗證不影響鍵盤、版面與即時同步。
 - [ ] 11.5 執行 node tests/friend-chat-scroll.test.mjs、node tests/friend-chat-keyboard.test.mjs、node tests/friend-chat-layout.test.mjs、node tests/friend-chat-realtime.test.mjs、npm.cmd run build、git diff --check 與 spectra validate "add-friend-direct-chat-realtime"；再以兩個已登入瀏覽器人工確認發送方與接收方都自動看到最新訊息、切換好友與歷史載入後位於底部，且手動上捲後收到新訊息會強制回到底部，不得修改 REST、Socket、chatStore 或 conversation 資料結構。
+
+## 12. 對方訊息暱稱標示
+
+- [x] 12.1 先擴充 tests/friend-chat-layout.test.mjs 覆蓋 Scrollable direct chat layout and speech bubble presentation 與「以訊息擁有者控制視覺方向與身分標示」的新暱稱契約，驗證本人訊息上方仍顯示「我」，對方訊息上方渲染 `friend.name` 且該身分標示不使用 `friend.playerId`；執行 node tests/friend-chat-layout.test.mjs 並確認現有玩家編號標示產生預期失敗。
+- [x] 12.2 在 src/components/friend/FriendChatPanel.vue 將對方訊息身分標示改為既有 `friend.name`，沿用 friendStore 由好友 API `username` 建立的暱稱，不修改資料庫、REST、Socket、directMessage 或本人「我」標示；執行 node tests/friend-chat-layout.test.mjs、node tests/friend-chat-realtime.test.mjs 與 npm.cmd run build 驗證暱稱顯示及既有聊天功能通過。
+- [ ] 12.3 執行 node tests/friend-chat-layout.test.mjs、node tests/friend-chat-realtime.test.mjs、npm.cmd run build、git diff --check 與 spectra validate "add-friend-direct-chat-realtime"，並人工確認好友暱稱為「bbb」、玩家 ID 為 446 時，對方訊息上方顯示「bbb」而非「446」，本人訊息仍顯示「我」，聊天標題下方仍保留玩家 ID 與在線狀態。
