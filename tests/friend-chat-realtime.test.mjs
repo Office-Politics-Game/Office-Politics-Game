@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test, { after, afterEach, before, beforeEach } from "node:test"
 import { createPinia, setActivePinia } from "pinia"
+import { shallowReactive, toRaw } from "vue"
 import { createServer } from "vite"
 
 let viteServer
@@ -52,9 +53,14 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  useChatStore?.().stopRealtime()
   restoreSocketHarness?.()
   restoreSocketHarness = null
 })
+
+function wait(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds))
+}
 
 function authenticatePlayer(playerId = 2) {
   const authStore = useAuthStore()
@@ -68,6 +74,7 @@ function installSocketHarness({
   autoAcknowledge = true,
   connected = true,
   subscribeResponse,
+  subscribeResponses = [],
 } = {}) {
   const socket = getSocket()
   const original = {
@@ -79,6 +86,7 @@ function installSocketHarness({
     timeout: socket.timeout,
   }
   const handlers = new Map()
+  const onRegistrations = []
   const acknowledgements = []
   const directEmits = []
   const pendingAcknowledgements = []
@@ -91,6 +99,7 @@ function installSocketHarness({
     return socket
   }
   socket.on = (eventName, handler) => {
+    onRegistrations.push(eventName)
     handlers.set(eventName, handler)
     return socket
   }
@@ -105,7 +114,9 @@ function installSocketHarness({
       acknowledgements.push({ eventName, payload })
       const response =
         eventName === "chat:subscribe"
-          ? subscribeResponse ?? { ok: true, data: { playerId: 2 } }
+          ? subscribeResponses.shift() ??
+            subscribeResponse ??
+            { ok: true, data: { playerId: 2 } }
           : { ok: true, data: { playerId: 2 } }
 
       if (shouldAutoAcknowledge) {
@@ -134,6 +145,7 @@ function installSocketHarness({
     acknowledgements,
     directEmits,
     handlers,
+    onRegistrations,
     pendingAcknowledgements,
     socket,
     get connectCalls() {
@@ -245,6 +257,39 @@ test("waits for the first socket connection before subscribing once", async () =
   )
 })
 
+test("shares realtime generation when an equivalent store Proxy subscribes", async () => {
+  const harness = installSocketHarness()
+  authenticatePlayer(2)
+  const store = useChatStore()
+  const equivalentStoreProxy = shallowReactive(toRaw(store))
+
+  assert.notEqual(equivalentStoreProxy, store)
+  assert.equal(toRaw(equivalentStoreProxy), toRaw(store))
+
+  await store.startRealtime()
+  await equivalentStoreProxy.subscribeRealtime()
+
+  assert.equal(
+    harness.acknowledgements.filter(({ eventName }) => eventName === "chat:subscribe").length,
+    2,
+  )
+})
+
+test("cleans realtime handlers when an equivalent store Proxy stops", async () => {
+  const harness = installSocketHarness()
+  authenticatePlayer(2)
+  const store = useChatStore()
+  const equivalentStoreProxy = shallowReactive(toRaw(store))
+
+  await store.startRealtime()
+  equivalentStoreProxy.stopRealtime()
+
+  assert.equal(harness.handlers.has("chat:message"), false)
+  assert.equal(harness.handlers.has("connect"), false)
+  assert.equal(harness.handlers.has("disconnect"), false)
+  assert.equal(harness.handlers.has("connect_error"), false)
+})
+
 test("reconnects, resubscribes, and reloads the selected conversation", async () => {
   const harness = installSocketHarness()
   authenticatePlayer(2)
@@ -333,6 +378,100 @@ test("subscription failure keeps REST actions available without duplicate listen
   assert.equal(harness.handlers.has("connect"), true)
 })
 
+test("automatically retries a temporary subscription failure without refreshing", async () => {
+  const harness = installSocketHarness({
+    subscribeResponses: [
+      {
+        ok: false,
+        error: { message: "即時訂閱暫時失敗" },
+      },
+      {
+        ok: true,
+        data: { playerId: 2 },
+      },
+    ],
+  })
+  authenticatePlayer(2)
+  const store = useChatStore()
+
+  await store.startRealtime()
+
+  assert.equal(store.isRealtimeSubscribed, false)
+  assert.equal(store.realtimeErrorMessage, "即時訂閱暫時失敗")
+
+  await wait(350)
+
+  assert.equal(
+    harness.acknowledgements.filter(({ eventName }) => eventName === "chat:subscribe").length,
+    2,
+  )
+  assert.equal(store.isRealtimeSubscribed, true)
+  assert.equal(store.realtimeErrorMessage, "")
+  assert.deepEqual(
+    harness.onRegistrations.filter((eventName) =>
+      ["chat:message", "connect", "disconnect", "connect_error"].includes(eventName),
+    ),
+    ["chat:message", "connect", "disconnect", "connect_error"],
+  )
+})
+
+test("repeated start retries immediately without waiting for the scheduled retry", async () => {
+  const harness = installSocketHarness({
+    subscribeResponses: [
+      {
+        ok: false,
+        error: { message: "即時訂閱暫時失敗" },
+      },
+      {
+        ok: true,
+        data: { playerId: 2 },
+      },
+    ],
+  })
+  authenticatePlayer(2)
+  const store = useChatStore()
+
+  await store.startRealtime()
+  await store.startRealtime()
+  await wait(350)
+
+  assert.equal(
+    harness.acknowledgements.filter(({ eventName }) => eventName === "chat:subscribe").length,
+    2,
+  )
+  assert.equal(store.isRealtimeSubscribed, true)
+  assert.equal(
+    harness.onRegistrations.filter((eventName) => eventName === "chat:message").length,
+    1,
+  )
+})
+
+test("stopRealtime cancels a scheduled subscription retry and all chat lifecycle listeners", async () => {
+  const harness = installSocketHarness({
+    subscribeResponse: {
+      ok: false,
+      error: { message: "即時訂閱暫時失敗" },
+    },
+  })
+  authenticatePlayer(2)
+  const store = useChatStore()
+
+  await store.startRealtime()
+  store.stopRealtime()
+  await wait(350)
+
+  assert.equal(
+    harness.acknowledgements.filter(({ eventName }) => eventName === "chat:subscribe").length,
+    1,
+  )
+  assert.equal(store.isRealtimeStarted, false)
+  assert.equal(store.isRealtimeSubscribed, false)
+  assert.equal(harness.handlers.has("chat:message"), false)
+  assert.equal(harness.handlers.has("connect"), false)
+  assert.equal(harness.handlers.has("disconnect"), false)
+  assert.equal(harness.handlers.has("connect_error"), false)
+})
+
 test("ignores a reconnect acknowledgement that arrives after realtime stops", async () => {
   const harness = installSocketHarness()
   authenticatePlayer(2)
@@ -413,4 +552,16 @@ test("FriendView owns realtime startup and teardown", async () => {
   assert.match(source, /chatStore\.startRealtime\(\)/)
   assert.match(source, /onUnmounted\(\(\) =>/)
   assert.match(source, /chatStore\.stopRealtime\(\)/)
+})
+
+test("FriendChatPanel exposes a non-blocking realtime warning and reconnect control", async () => {
+  const source = await readFile(
+    new URL("../src/components/friend/FriendChatPanel.vue", import.meta.url),
+    "utf8",
+  )
+
+  assert.match(source, /v-if="chatStore\.realtimeErrorMessage"/)
+  assert.match(source, /role="status"/)
+  assert.match(source, /@click="chatStore\.startRealtime"/)
+  assert.match(source, /即時連線/)
 })

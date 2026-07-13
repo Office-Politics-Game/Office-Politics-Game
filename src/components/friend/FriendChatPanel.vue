@@ -17,6 +17,23 @@
       ></span>
     </div>
 
+    <div
+      v-if="chatStore.realtimeErrorMessage"
+      class="realtime-status"
+      role="status"
+    >
+      <span class="min-w-0 flex-1">
+        即時連線異常：{{ chatStore.realtimeErrorMessage }}。仍可載入與送出訊息。
+      </span>
+      <button
+        type="button"
+        class="realtime-retry-button"
+        @click="chatStore.startRealtime"
+      >
+        重新連線
+      </button>
+    </div>
+
     <div class="chat-body">
       <div v-if="chatStore.isLoading" class="chat-state">
         聊天紀錄載入中...
@@ -147,6 +164,14 @@ watch(
 
 .status-dot {
   @apply h-2.5 w-2.5 shrink-0;
+}
+
+.realtime-status {
+  @apply flex shrink-0 items-center gap-3 border-b border-[var(--brand-hover)] bg-[rgba(0,70,244,0.08)] px-4 py-2 text-xs font-bold text-[var(--brand-active)] max-sm:flex-col max-sm:items-stretch;
+}
+
+.realtime-retry-button {
+  @apply min-h-12 shrink-0 border border-[var(--brand-active)] bg-white px-4 py-2 text-xs font-black text-[var(--brand-active)] transition-[border-color,background-color,color,box-shadow] duration-[180ms] hover:border-[var(--brand-hover)] hover:bg-[var(--brand-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-focus)];
 }
 
 .chat-body {

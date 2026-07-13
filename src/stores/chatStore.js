@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import { toRaw } from "vue";
 import {
   getDirectMessages as getDirectMessagesApi,
   sendDirectMessage as sendDirectMessageApi,
@@ -8,20 +9,90 @@ import { useAuthStore } from "@/stores/authStore.js";
 
 const CHAT_LOGIN_REQUIRED_MESSAGE = "登入後才能使用好友聊天";
 const CHAT_REALTIME_UNAVAILABLE_MESSAGE = "好友聊天即時連線失敗";
+const CHAT_REALTIME_DISCONNECTED_MESSAGE = "即時連線已中斷，正在重新連線";
+const CHAT_REALTIME_RETRY_DELAY_MS = 250;
+const CHAT_REALTIME_MAX_RETRIES = 3;
 const realtimeHandlersByStore = new WeakMap();
 const realtimeGenerationByStore = new WeakMap();
+const realtimeRetryTimersByStore = new WeakMap();
+const realtimeRetryCountsByStore = new WeakMap();
+
+function getRealtimeStoreKey(store) {
+  return toRaw(store);
+}
 
 function advanceRealtimeGeneration(store) {
-  const generation = (realtimeGenerationByStore.get(store) ?? 0) + 1;
-  realtimeGenerationByStore.set(store, generation);
+  const storeKey = getRealtimeStoreKey(store);
+  const generation = (realtimeGenerationByStore.get(storeKey) ?? 0) + 1;
+  realtimeGenerationByStore.set(storeKey, generation);
   return generation;
 }
 
 function isRealtimeGenerationActive(store, generation) {
   return (
     store.isRealtimeStarted &&
-    realtimeGenerationByStore.get(store) === generation
+    realtimeGenerationByStore.get(getRealtimeStoreKey(store)) === generation
   );
+}
+
+function clearRealtimeRetry(store, { resetCount = false } = {}) {
+  const storeKey = getRealtimeStoreKey(store);
+  const retryTimer = realtimeRetryTimersByStore.get(storeKey);
+
+  if (retryTimer) {
+    clearTimeout(retryTimer);
+    realtimeRetryTimersByStore.delete(storeKey);
+  }
+
+  if (resetCount) {
+    realtimeRetryCountsByStore.delete(storeKey);
+  }
+}
+
+function scheduleRealtimeRetry(store, generation) {
+  const storeKey = getRealtimeStoreKey(store);
+
+  if (
+    !isRealtimeGenerationActive(store, generation) ||
+    store.isRealtimeSubscribed ||
+    realtimeRetryTimersByStore.has(storeKey)
+  ) {
+    return;
+  }
+
+  const retryCount = realtimeRetryCountsByStore.get(storeKey) ?? 0;
+
+  if (retryCount >= CHAT_REALTIME_MAX_RETRIES) {
+    return;
+  }
+
+  const retryDelay = CHAT_REALTIME_RETRY_DELAY_MS * 2 ** retryCount;
+  realtimeRetryCountsByStore.set(storeKey, retryCount + 1);
+
+  const retryTimer = setTimeout(() => {
+    realtimeRetryTimersByStore.delete(storeKey);
+
+    if (
+      !isRealtimeGenerationActive(store, generation) ||
+      store.isRealtimeSubscribed
+    ) {
+      return;
+    }
+
+    const handlers = realtimeHandlersByStore.get(storeKey);
+
+    if (!handlers?.socket.connected) {
+      handlers?.socket.connect();
+      return;
+    }
+
+    store.subscribeRealtime({
+      recoverSelected: true,
+      generation,
+    });
+  }, retryDelay);
+
+  realtimeRetryTimersByStore.set(storeKey, retryTimer);
 }
 
 function toPositiveInteger(value) {
@@ -125,7 +196,7 @@ export const useChatStore = defineStore("chat", {
 
     async subscribeRealtime({
       recoverSelected = false,
-      generation = realtimeGenerationByStore.get(this),
+      generation = realtimeGenerationByStore.get(getRealtimeStoreKey(this)),
     } = {}) {
       const authStore = useAuthStore();
 
@@ -148,6 +219,7 @@ export const useChatStore = defineStore("chat", {
 
         this.isRealtimeSubscribed = true;
         this.realtimeErrorMessage = "";
+        clearRealtimeRetry(this, { resetCount: true });
 
         if (recoverSelected && this.selectedFriendId) {
           await this.loadMessages(this.selectedFriendId, {
@@ -164,28 +236,70 @@ export const useChatStore = defineStore("chat", {
         this.isRealtimeSubscribed = false;
         this.realtimeErrorMessage =
           error?.message || CHAT_REALTIME_UNAVAILABLE_MESSAGE;
+        scheduleRealtimeRetry(this, generation);
         return false;
       }
     },
 
     async startRealtime() {
       if (this.isRealtimeStarted) {
-        return this.isRealtimeSubscribed;
+        if (this.isRealtimeSubscribed) {
+          return true;
+        }
+
+        const storeKey = getRealtimeStoreKey(this);
+        const generation = realtimeGenerationByStore.get(storeKey);
+        const handlers = realtimeHandlersByStore.get(storeKey);
+        clearRealtimeRetry(this, { resetCount: true });
+
+        if (!handlers?.socket.connected) {
+          handlers?.socket.connect();
+          return false;
+        }
+
+        return this.subscribeRealtime({
+          recoverSelected: true,
+          generation,
+        });
       }
 
       const socket = getSocket();
+      const storeKey = getRealtimeStoreKey(this);
       const generation = advanceRealtimeGeneration(this);
       const handleMessage = (message) => this.handleRealtimeMessage(message);
-      const handleConnect = () =>
-        this.subscribeRealtime({ recoverSelected: true, generation });
+      const handleConnect = () => {
+        clearRealtimeRetry(this);
+        return this.subscribeRealtime({ recoverSelected: true, generation });
+      };
+      const handleDisconnect = () => {
+        if (!isRealtimeGenerationActive(this, generation)) {
+          return;
+        }
 
-      realtimeHandlersByStore.set(this, {
+        this.isRealtimeSubscribed = false;
+        this.realtimeErrorMessage = CHAT_REALTIME_DISCONNECTED_MESSAGE;
+      };
+      const handleConnectError = (error) => {
+        if (!isRealtimeGenerationActive(this, generation)) {
+          return;
+        }
+
+        this.isRealtimeSubscribed = false;
+        this.realtimeErrorMessage =
+          error?.message || CHAT_REALTIME_UNAVAILABLE_MESSAGE;
+      };
+
+      realtimeHandlersByStore.set(storeKey, {
         socket,
         handleMessage,
         handleConnect,
+        handleDisconnect,
+        handleConnectError,
       });
       socket.on("chat:message", handleMessage);
       socket.on("connect", handleConnect);
+      socket.on("disconnect", handleDisconnect);
+      socket.on("connect_error", handleConnectError);
       this.isRealtimeStarted = true;
 
       if (!socket.connected) {
@@ -198,12 +312,16 @@ export const useChatStore = defineStore("chat", {
 
     stopRealtime() {
       advanceRealtimeGeneration(this);
-      const handlers = realtimeHandlersByStore.get(this);
+      clearRealtimeRetry(this, { resetCount: true });
+      const storeKey = getRealtimeStoreKey(this);
+      const handlers = realtimeHandlersByStore.get(storeKey);
 
       if (handlers) {
         handlers.socket.off("chat:message", handlers.handleMessage);
         handlers.socket.off("connect", handlers.handleConnect);
-        realtimeHandlersByStore.delete(this);
+        handlers.socket.off("disconnect", handlers.handleDisconnect);
+        handlers.socket.off("connect_error", handlers.handleConnectError);
+        realtimeHandlersByStore.delete(storeKey);
 
         if (handlers.socket.connected) {
           handlers.socket.emit("chat:unsubscribe", {}, () => {});
@@ -213,6 +331,7 @@ export const useChatStore = defineStore("chat", {
       this.isRealtimeStarted = false;
       this.isRealtimeSubscribed = false;
       this.isLoading = false;
+      this.realtimeErrorMessage = "";
     },
 
     getCurrentPlayerId() {

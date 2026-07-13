@@ -155,3 +155,49 @@ The friend chat panel SHALL remain within the vertical space allocated by the fr
 - **THEN** each message bubble uses a maximum width of 62 percent
 - **AND WHEN** the chat panel is rendered on a small-screen viewport
 - **THEN** each message bubble uses a maximum width of 82 percent
+
+### Requirement: Recoverable realtime subscription
+
+While realtime chat remains active, the frontend chat store SHALL automatically retry a failed chat:subscribe acknowledgement up to three times without registering duplicate Socket.IO listeners. A repeated startRealtime call while the store is started but unsubscribed MUST immediately retry the subscription. Subscription or connection failure MUST be visible in the friend chat panel, and REST history loading and message sending MUST remain available.
+
+#### Scenario: Initial subscription fails temporarily
+
+- **WHEN** the first chat:subscribe acknowledgement fails while the socket remains connected
+- **THEN** the store automatically retries chat:subscribe without a page refresh
+- **AND** a later successful acknowledgement marks realtime chat as subscribed
+- **AND** exactly one handler remains registered for each chat lifecycle event
+
+#### Scenario: Player manually retries an unsubscribed realtime session
+
+- **WHEN** realtime chat is started but unsubscribed and the player activates the reconnect control
+- **THEN** startRealtime retries chat:subscribe immediately
+- **AND** the existing Socket.IO listeners are reused
+
+#### Scenario: Realtime failure remains non-blocking
+
+- **WHEN** chat:subscribe or the Socket.IO connection fails
+- **THEN** the friend chat panel displays a realtime connection warning and reconnect control
+- **AND** REST history loading and REST message sending remain available
+
+### Requirement: Stable realtime lifecycle identity
+
+The frontend chat store SHALL index its non-reactive realtime generation, Socket.IO handler bundle, retry timer, and retry count by the raw Pinia store identity. Equivalent Vue Proxy wrappers for the same raw store MUST share one realtime lifecycle, while callbacks from a stopped generation MUST remain inactive.
+
+#### Scenario: Reconnect callback enters through an equivalent store Proxy
+
+- **WHEN** startRealtime initializes a lifecycle through one Vue Proxy and the Socket.IO connect callback invokes subscribeRealtime through another Proxy for the same raw Pinia store
+- **THEN** the existing generation remains active
+- **AND** chat:subscribe is emitted with the current member token
+- **AND** the existing Socket.IO handlers are reused
+
+##### Example: two Proxies share one lifecycle
+
+- **GIVEN** Proxy A and Proxy B both resolve to raw chat store R, and Proxy A initializes generation 1 with one handler bundle
+- **WHEN** Proxy B handles the connect callback for generation 1
+- **THEN** Proxy B resolves generation 1 and the same handler bundle stored for R
+
+#### Scenario: Equivalent store Proxy stops realtime chat
+
+- **WHEN** stopRealtime is invoked through an equivalent Proxy for the active raw Pinia store
+- **THEN** the shared handlers and pending retry timer are removed
+- **AND** callbacks from the stopped generation cannot subscribe or merge recovered history

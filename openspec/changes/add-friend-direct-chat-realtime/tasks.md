@@ -29,3 +29,14 @@
 - [x] 6.1 先新增 tests/friend-chat-layout.test.mjs 覆蓋 Scrollable direct chat layout and speech bubble presentation，驗證 FriendView 與 FriendChatPanel 形成有限高度 flex 鏈、只有 chat-body 使用 overflow-y-auto、chat-composer 固定不縮小、桌面／小螢幕泡泡寬度與左右三角尾巴契約；執行 node tests/friend-chat-layout.test.mjs 並確認在版面修正前失敗。
 - [x] 6.2 實作「限制聊天高度並以訊息區獨立捲動」與「使用窄版方形泡泡與 CSS 三角尾巴」，讓長對話僅在 chat-body 捲動、toolbar 與 composer 固定可見，桌面泡泡最大寬度 62%、小螢幕 82%，好友／自己尾巴分別朝左／右且不新增裝飾性 DOM；執行 node tests/friend-chat-layout.test.mjs 與 npm.cmd run build 驗證通過。
 - [x] 6.3 進行好友聊天 UI 最終驗證，執行 node tests/friend-chat-layout.test.mjs、node tests/friend-chat-realtime.test.mjs 與 npm.cmd run build，並人工確認長訊息清單可捲動、輸入區不離開可視範圍、泡泡保持 Square UI 且沒有修改自動捲動或其他聊天功能。
+
+## 7. 即時訂閱失敗復原
+
+- [x] 7.1 先擴充 tests/friend-chat-realtime.test.mjs 覆蓋 Recoverable realtime subscription 與「讓未訂閱狀態自動重試並顯示即時狀態」，驗證首次 chat:subscribe 失敗後會自動重試、重複 startRealtime 會立即重試、stopRealtime 取消待執行重試，且 chat:message、connect、disconnect、connect_error 各只保留一個 listener；執行 node tests/friend-chat-realtime.test.mjs 並確認新案例在修正前失敗。
+- [x] 7.2 實作 Recoverable realtime subscription 與「讓未訂閱狀態自動重試並顯示即時狀態」，讓 chatStore 最多自動重試 3 次、成功或停止時清除重試狀態、斷線時更新訂閱狀態，並讓 FriendChatPanel 顯示非阻塞即時連線警告與重新連線按鈕；執行 node tests/friend-chat-realtime.test.mjs 與 node tests/friend-chat-layout.test.mjs 驗證通過。
+- [x] 7.3 執行 server 目錄的 npm.cmd test -- --runInBand --cacheDirectory=.jest-cache、根目錄的 node tests/friend-chat-realtime.test.mjs、node tests/friend-chat-layout.test.mjs 與 npm.cmd run build，並以 git diff --check 確認沒有格式錯誤；保留既有登入彈窗基線失敗於本 change 範圍外。
+
+## 8. Proxy 穩定即時生命週期
+
+- [x] 8.1 先擴充 tests/friend-chat-realtime.test.mjs 覆蓋 Stable realtime lifecycle identity，使用兩個等價 Vue Proxy 指向同一 raw Pinia store，驗證 startRealtime 建立的 generation 在另一個 Proxy 進入 subscribeRealtime 時仍可取回，且透過另一個 Proxy 呼叫 stopRealtime 可清除相同 handlers；執行 node tests/friend-chat-realtime.test.mjs，確認跨 Proxy 訂閱案例維持通過，但現有以 Proxy 為 WeakMap 鍵的實作無法在 stopRealtime 清除 chat listeners 而產生預期失敗。
+- [x] 8.2 實作「以 raw Pinia store 穩定索引即時生命週期」，讓 generation、handler bundle、retry timer 與 retry count 的所有 WeakMap 存取統一使用 `toRaw(store)`，移除 server/src/controllers/chatController.js、server/src/socket/chatHandlers.js、src/services/socketClient.js、src/stores/chatStore.js 與 src/views/FriendView.vue 的暫時診斷碼；執行 node tests/friend-chat-realtime.test.mjs、node tests/friend-chat-layout.test.mjs、server 目錄的 npm.cmd test -- --runInBand --cacheDirectory=.jest-cache、npm.cmd run build 與 git diff --check，並由兩個已登入瀏覽器確認接收者不重新整理即可看到新訊息。

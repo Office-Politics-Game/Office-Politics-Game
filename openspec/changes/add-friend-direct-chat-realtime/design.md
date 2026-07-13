@@ -80,6 +80,20 @@ Alternative considered: 在 message-list 外再新增一層捲動 div。父層�
 
 Alternative considered: 新增裝飾性 span 或使用 clip-path。前者增加無語意標記，後者會裁切既有邊框與陰影，因此排除。
 
+### 讓未訂閱狀態自動重試並顯示即時狀態
+
+chatStore 在聊天生命週期仍有效但 `chat:subscribe` 失敗時，使用單一重試計時器自動重試，最多重試 3 次，避免暫時性驗證或網路錯誤讓頁面永久停在「已啟動但未訂閱」狀態。重複呼叫 `startRealtime()` 時，若 listener 已存在但尚未訂閱，應重新嘗試訂閱；不得再次綁定 `chat:message`、`connect`、`disconnect` 或 `connect_error` listener。成功訂閱或停止聊天生命週期時必須清除重試計時器與次數。
+
+Socket 斷線或訂閱失敗時，chatStore 保留 REST 功能並設定可讀的 `realtimeErrorMessage`。FriendChatPanel 顯示 Square UI 的非阻塞狀態列與重新連線按鈕，讓使用者知道即時訊息暫停但仍可送出或載入訊息。重新連線按鈕只呼叫既有 `startRealtime()` 重試，不新增 Socket 訊息送出流程。
+
+Alternative considered: 讓使用者每次刷新頁面重新訂閱。這會保留目前缺陷，且無法處理短暫訂閱失敗，因此不採用。
+
+### 以 raw Pinia store 穩定索引即時生命週期
+
+chatStore 的 generation、Socket handler bundle、重試 timer 與重試次數屬於非響應式生命週期資源，繼續保存在模組層 WeakMap，但所有讀寫與刪除都先以 Vue `toRaw(store)` 取得穩定鍵。這讓 `startRealtime()` 的 Socket callback 與 callback 後呼叫的 `subscribeRealtime()` 即使取得同一 store 的不同 Proxy 包裝，仍能看到相同 generation 與 handlers；`stopRealtime()` 也能清除同一組資源。
+
+Alternative considered: 把 Socket 與 timer 直接放入 Pinia state。這會讓不可序列化物件進入響應式狀態與開發工具快照，增加追蹤成本並可能代理 Socket 物件，因此排除。
+
 ## Implementation Contract
 
 #### Observable behavior
@@ -90,6 +104,7 @@ Alternative considered: 新增裝飾性 span 或使用 clip-path。前者增加�
 - REST 回應、Socket 事件與歷史補載包含相同訊息時，conversation 只保留一筆。
 - Socket 重連後自動恢復訂閱，並補載目前選取好友的歷史。
 - 離開好友頁、登出或清除聊天資料後，不再保留重複 listener 或聊天訂閱。
+- 同一個 raw Pinia store 經不同 Vue Proxy 包裝呼叫 `startRealtime()`、connect callback、`subscribeRealtime()` 或 `stopRealtime()` 時，必須共用同一個 generation、handlers 與 retry 資源，不得把有效訂閱誤判為過期。
 - 訊息數量超過可視高度時，標題與輸入區仍固定可見，使用者可在訊息內容區垂直捲動。
 - 自己與好友的訊息分別顯示右向與左向三角尾巴；泡泡維持方形、桌面最大寬度 62%、小螢幕最大寬度 82%。
 
@@ -109,6 +124,7 @@ Alternative considered: 新增裝飾性 span 或使用 clip-path。前者增加�
 - 個人房間名稱固定為 chat:player:<playerId>。
 - 既有 POST /api/chats/direct/:friendId/messages request 與 response shape 不變。
 - chatStore 對外新增 startRealtime()、stopRealtime()、mergeMessages(friendId, messages)，並保留既有 loadMessages、sendMessage、clearChatData。
+- generation、handler bundle、retry timer 與 retry count 的內部索引鍵固定為 `toRaw(store)`；這不改變 chatStore 公開 API 或 Pinia state shape。
 
 #### Failure modes
 
@@ -119,12 +135,14 @@ Alternative considered: 新增裝飾性 span 或使用 clip-path。前者增加�
 - Socket server 不存在或 emit 失敗時記錄伺服器錯誤，但 REST 仍回傳 201。
 - 前端訂閱失敗時保留 REST 歷史與送出能力，並避免重複綁定 listeners。
 - 格式不完整的 chat:message 不寫入任何 conversation。
+- 等價 Vue Proxy 進入另一個 chatStore action 時不得遺失即時生命週期資源；若 raw store 已停止，舊 callback 仍必須被 generation 檢查拒絕。
 
 #### Acceptance criteria
 
 - server/tests/chatSocket.test.js 覆蓋有效 token、無效 token、重複訂閱換房與取消訂閱。
 - server/tests/chatController.test.js 覆蓋成功 REST 推播、service 失敗不推播，以及 Socket 不可用仍回傳 201。
 - tests/friend-chat-realtime.test.mjs 覆蓋訂閱生命週期、非目前好友訊息、訊息去重、重連補載與 listener 清理。
+- tests/friend-chat-realtime.test.mjs 覆蓋不同 Vue Proxy 指向同一 raw store 時，connect callback 仍可送出 chat:subscribe，且 stop 可清除同一組生命週期資源。
 - tests/friend-chat-layout.test.mjs 覆蓋有限高度、獨立捲動、固定輸入區、窄版泡泡與左右三角尾巴的樣式契約。
 - npm test 在 server 目錄通過。
 - node tests/friend-chat-realtime.test.mjs 通過。
@@ -133,7 +151,7 @@ Alternative considered: 新增裝飾性 span 或使用 clip-path。前者增加�
 
 #### Scope boundaries
 
-- In scope: 聊天 Socket handler、Socket server 註冊、REST 成功後推播、chatStore 即時同步、FriendView 生命週期、好友聊天捲動高度、窄版方形泡泡、左右三角尾巴與相關測試。
+- In scope: 聊天 Socket handler、Socket server 註冊、REST 成功後推播、chatStore 即時同步、raw Pinia store 生命週期索引、FriendView 生命週期、好友聊天捲動高度、窄版方形泡泡、左右三角尾巴與相關測試。
 - Out of scope: Socket 寫入、全站 Socket auth、未讀／已讀／typing、分頁、附件、其他聊天種類、登入彈窗舊斷言、自動捲動與其他 UI polish。
 
 ## Risks / Trade-offs
@@ -143,6 +161,7 @@ Alternative considered: 新增裝飾性 span 或使用 clip-path。前者增加�
 - [Risk] 重複 startRealtime 造成多重事件處理。→ Mitigation: store 使用啟動旗標與穩定 handler reference，stopRealtime 對稱移除。
 - [Risk] token 驗證增加 Supabase 查詢。→ Mitigation: 僅在首次訂閱與 Socket 重連時驗證，不在每則 chat:message 上驗證。
 - [Risk] 桌面窄版泡泡在小螢幕造成過度換行。→ Mitigation: 小螢幕最大寬度放寬為 82%，並保留 break-words。
+- [Risk] 將 Proxy 正規化為 raw store 後，停止流程若漏用相同鍵會殘留 listener 或 timer。→ Mitigation: 所有 WeakMap 存取集中經由同一個 key helper，並以等價 Proxy 的 start／connect／stop 測試覆蓋。
 
 ## Migration Plan
 
