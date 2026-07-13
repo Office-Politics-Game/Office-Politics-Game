@@ -93,6 +93,10 @@ const props = defineProps({
     type: [Number, String],
     default: null,
   },
+  hasAnyCardBeenPlayed: {
+    type: Boolean,
+    default: false,
+  },
   isLoading: {
     type: Boolean,
     default: false,
@@ -126,7 +130,11 @@ const resolvedCurrentPlayerId = computed(
     props.players.find((player) => player.isCurrentPlayer)?.id ??
     null,
 );
-const { startTutorial, disposeTutorial } = useGameTutorial();
+const {
+  startTutorial,
+  waitForTutorialSettlement,
+  disposeTutorial,
+} = useGameTutorial();
 
 function getGameTutorialTargets() {
   return {
@@ -236,6 +244,7 @@ const drawSequence = useGameStageDrawSequence({
   lastInitialRoundDealSignature,
   playRoundStartNotice,
   playTurnNotice,
+  waitForTutorialSettlement,
   resolveNoticeIdleIfIdle,
 });
 
@@ -334,6 +343,7 @@ onBeforeUnmount(() => {
 watch(
   () => [
     resolvedCurrentPlayerId.value,
+    props.hasAnyCardBeenPlayed,
     props.players
       .map((player) => `${player.id}:${Boolean(player.isComputer)}`)
       .join("|"),
@@ -343,6 +353,7 @@ watch(
     await startTutorial({
       players: props.players,
       currentPlayerId: resolvedCurrentPlayerId.value,
+      hasAnyCardBeenPlayed: props.hasAnyCardBeenPlayed,
       targets: getGameTutorialTargets(),
     });
   },

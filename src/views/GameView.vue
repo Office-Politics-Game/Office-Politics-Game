@@ -136,6 +136,7 @@ watch(
     :draw-player-id="resolvedCurrentPlayerId || null"
     :current-player-id="resolvedCurrentPlayerId"
     :current-turn-player-id="currentTurnPlayerId"
+    :has-any-card-been-played="Boolean(gameState?.hasAnyCardBeenPlayed)"
     :is-loading="isLoading || isDrawing || isSocketActionSubmitting || isPlayingSocketAction"
     @draw-request="handleDrawRequest"
     @play-card="handlePlayCard"

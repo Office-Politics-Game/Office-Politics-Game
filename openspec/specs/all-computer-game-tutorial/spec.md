@@ -1,12 +1,18 @@
-## ADDED Requirements
+# all-computer-game-tutorial Specification
+
+## Purpose
+
+TBD - created by archiving change 'add-all-computer-game-tutorial'. Update Purpose after archive.
+
+## Requirements
 
 ### Requirement: Tutorial eligibility for an all-computer-opponent game
 
-The /game table SHALL start the gameplay tutorial only when the current player exists, the current player is not a computer player, at least one other player exists, and every other player is a computer player.
+The /game table SHALL start the gameplay tutorial only when the game contains exactly one human player and three computer players, the current player is that human player, and the current game session has not completed a successful card play.
 
 #### Scenario: Human player faces only computer opponents
 
-- **WHEN** the current human player enters /game with one or more other players and every other player has isComputer equal to true
+- **WHEN** the current human player enters /game with exactly three other players, every other player has isComputer equal to true, and hasAnyCardBeenPlayed is false or absent
 - **THEN** the game SHALL start the tutorial after all required tutorial targets are available
 
 #### Scenario: A human opponent is present
@@ -16,12 +22,13 @@ The /game table SHALL start the gameplay tutorial only when the current player e
 
 #### Scenario: Current player is not eligible
 
-- **WHEN** the current player is missing, is a computer player, or has no opponents
+- **WHEN** the current player is missing, is a computer player, the game does not contain exactly three opponents, or hasAnyCardBeenPlayed is true
 - **THEN** the game SHALL NOT start the tutorial
 
+---
 ### Requirement: Tutorial starts once per game-page visit
 
-The game SHALL start at most one tutorial instance during a single mounted /game table visit, and SHALL allow a new tutorial to start after the player leaves and re-enters /game.
+The game SHALL start at most one tutorial instance during a single mounted /game table visit. The game SHALL allow a new tutorial after route re-entry only while the current game session has not completed a successful card play.
 
 #### Scenario: Game state updates after tutorial start
 
@@ -30,9 +37,81 @@ The game SHALL start at most one tutorial instance during a single mounted /game
 
 #### Scenario: Player re-enters the game route
 
-- **WHEN** an eligible human player leaves /game and later enters /game again
+- **WHEN** an eligible human player leaves /game and later enters /game before any successful card play
 - **THEN** the newly mounted game table SHALL start a new tutorial after its targets become available
 
+#### Scenario: Player re-enters after the first successful card play
+
+- **WHEN** the human player leaves and re-enters /game after hasAnyCardBeenPlayed became true
+- **THEN** the newly mounted game table SHALL NOT start a tutorial
+
+---
+### Requirement: Human player starts the first all-computer round
+
+When a game session starts with exactly one human player and three computer players, the game SHALL assign the human player as currentTurnPlayerId for the first round. Later rounds SHALL retain the existing random starting-player behavior.
+
+#### Scenario: Initial all-computer-opponent round starts
+
+- **WHEN** an initial game state is created for exactly one human player and three computer players
+- **THEN** currentTurnPlayerId SHALL equal the human player's playerId
+
+#### Scenario: A later round starts
+
+- **WHEN** the same game session starts a round after the first round
+- **THEN** the game SHALL select the starting player using the existing random selection behavior
+
+#### Scenario: Initial player composition is not the tutorial composition
+
+- **WHEN** an initial game state is created without exactly one human player and three computer players
+- **THEN** the game SHALL retain the existing random starting-player behavior
+
+---
+### Requirement: Successful card play permanently suppresses the session tutorial
+
+The game session state SHALL initialize hasAnyCardBeenPlayed to false, SHALL set it to true only after a card is successfully discarded by playCardAction, SHALL expose it in the public game state, and SHALL preserve the true value across later rounds. A missing value in an older state SHALL be exposed as false.
+
+#### Scenario: Session has not played a card
+
+- **WHEN** a new game session is created or an older state has no hasAnyCardBeenPlayed value
+- **THEN** the public game state SHALL expose hasAnyCardBeenPlayed as false
+
+#### Scenario: First card play succeeds
+
+- **WHEN** playCardAction successfully discards a card
+- **THEN** the persisted and public game state SHALL set hasAnyCardBeenPlayed to true
+
+#### Scenario: Card play fails validation
+
+- **WHEN** playCardAction fails before successfully discarding a card
+- **THEN** hasAnyCardBeenPlayed SHALL remain unchanged
+
+#### Scenario: Later round begins after a card was played
+
+- **WHEN** a later round resets the deck, hands, and discard pile after hasAnyCardBeenPlayed became true
+- **THEN** hasAnyCardBeenPlayed SHALL remain true
+
+---
+### Requirement: First-round notice waits for tutorial settlement
+
+The existing first-round start notice SHALL wait until the eligible tutorial completes, is skipped, is closed, is disposed, or determines that it cannot start. When the initial deal sequence begins waiting, the tutorial SHALL either already be active or starting, or SHALL finalize the current mount as skipped and prevent a later tutorial from starting after the notice. The game SHALL NOT add a separate game-start notice.
+
+#### Scenario: Eligible tutorial is active
+
+- **WHEN** the initial deal sequence reaches the first-round notice while the tutorial is active or starting
+- **THEN** the first-round notice SHALL remain closed until the tutorial settles
+
+#### Scenario: Tutorial completes or exits
+
+- **WHEN** the user completes, skips, or closes the tutorial
+- **THEN** the existing first-round notice SHALL become eligible to play before the current-player turn notice
+
+#### Scenario: Tutorial is ineligible or cannot start
+
+- **WHEN** the initial deal sequence requests tutorial settlement while the tutorial is suppressed by session state, lacks valid targets, fails to start, or is disposed during unmount
+- **THEN** tutorial settlement SHALL resolve without indefinitely blocking the notice sequence
+- **THEN** the same mounted game table SHALL NOT start a tutorial after the first-round notice becomes eligible to play
+
+---
 ### Requirement: Tutorial follows the gameplay-area sequence
 
 The tutorial SHALL present exactly four steps in this order: draw pile, current player's hand, discard pile, and other player positions. The first three steps SHALL anchor to one target element, and the fourth step SHALL simultaneously highlight exactly three opponent seat elements while the rest of the game table remains under the dark overlay.
@@ -46,6 +125,7 @@ The tutorial SHALL present exactly four steps in this order: draw pile, current 
 - **THEN** step 4 SHALL use a floating tooltip and simultaneously highlight the three opponent seats
 - **THEN** step 4 SHALL keep the current player's seat and the remaining table under the dark overlay
 
+---
 ### Requirement: Tutorial explains elimination and match victory
 
 The other-player step SHALL explain that the player pursues round victory by eliminating the other surviving players and wins the match by becoming the first player to accumulate 3 round wins.
@@ -55,6 +135,7 @@ The other-player step SHALL explain that the player pursues round victory by eli
 - **WHEN** the tutorial reaches the other-player seat layout
 - **THEN** the displayed Traditional Chinese content SHALL state the elimination objective and the 3-round-win match condition
 
+---
 ### Requirement: Tutorial fails safely when UI targets are unavailable
 
 The game SHALL resolve tutorial targets through component-owned element interfaces and SHALL NOT start Intro.js until the draw pile, hand, and discard targets are valid HTML elements and the opponents target contains exactly three valid HTML elements. The game MUST dispose the active tutorial and remove all temporary opponent-highlight classes when the game table unmounts.
@@ -70,6 +151,7 @@ The game SHALL resolve tutorial targets through component-owned element interfac
 - **WHEN** the active game table unmounts or the player leaves /game
 - **THEN** the game SHALL dispose the active Intro.js instance without throwing an error
 
+---
 ### Requirement: Tutorial presentation follows Square UI and responsive rules
 
 The tutorial tooltip and controls SHALL use square corners, project brand-derived colors, accessible interaction states, and fixed pixel dimensions for exactly two landscape breakpoints: below 1024px and at least 1024px. The skip label SHALL remain on one horizontal line and SHALL use the same font size as the tooltip title. The overlay SHALL use opacity 0.72, and visible target regions SHALL use a blue border and blue glow. The tutorial SHALL NOT scroll the game viewport to reveal an entire target.

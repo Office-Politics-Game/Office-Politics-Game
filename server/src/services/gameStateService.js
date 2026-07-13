@@ -15,6 +15,7 @@ function getPublicState(state, viewerPlayerId){
     phase: state.phase,
     deckCount: deck.length,
     discardPile,
+    hasAnyCardBeenPlayed: Boolean(state.hasAnyCardBeenPlayed),
     currentTurnPlayerId: state.currentTurnPlayerId,
     roundWinnerPlayerId: state.roundWinnerPlayerId,
     winnerPlayerId: state.winnerPlayerId,

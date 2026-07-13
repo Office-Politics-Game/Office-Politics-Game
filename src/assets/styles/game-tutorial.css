@@ -100,7 +100,7 @@
   height: 40px;
   border-radius: 0;
   color: var(--brand-active);
-  font-size: 14px;
+  font-size: 18px;
   line-height: 40px;
   white-space: nowrap;
   writing-mode: horizontal-tb;
@@ -162,7 +162,7 @@
   }
 
   .game-tutorial .introjs-tooltip-title {
-    font-size: 18px;
+    font-size: 22px;
   }
 
   .game-tutorial .introjs-tooltip-header {
@@ -180,7 +180,7 @@
   }
 
   .game-tutorial .introjs-skipbutton {
-    font-size: 18px;
+    font-size: 22px;
   }
 
   .game-tutorial .introjs-button {

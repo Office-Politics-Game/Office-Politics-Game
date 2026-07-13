@@ -1,6 +1,18 @@
 import { createDeck } from "./gameDeck.js"
 import { shuffleDeck } from "../services/deckService.js"
 
+function selectInitialTurnPlayerId(gamePlayers, random = Math.random){
+    const humanPlayers = gamePlayers.filter((player)=> !player.isComputer)
+    const computerPlayers = gamePlayers.filter((player)=> player.isComputer)
+
+    if (humanPlayers.length === 1 && computerPlayers.length === 3){
+        return humanPlayers[0].playerId
+    }
+
+    const randomIndex = Math.floor(random() * gamePlayers.length)
+    return gamePlayers[randomIndex].playerId
+}
+
 function createInitialState (players){
     const deck = shuffleDeck(createDeck())
 
@@ -24,13 +36,13 @@ function createInitialState (players){
         }
     })
 
-    const randomIndex = Math.floor(Math.random() * gamePlayers.length)
-    const currentTurnPlayerId = gamePlayers[randomIndex].playerId
+    const currentTurnPlayerId = selectInitialTurnPlayerId(gamePlayers)
 
     return {
         phase: "playing",
         deck,
         discardPile: [],
+        hasAnyCardBeenPlayed: false,
         currentTurnPlayerId,
         roundWinnerPlayerId: null,
         winnerPlayerId: null,
@@ -38,4 +50,4 @@ function createInitialState (players){
     }
 }
 
-export { createInitialState }
+export { createInitialState, selectInitialTurnPlayerId }

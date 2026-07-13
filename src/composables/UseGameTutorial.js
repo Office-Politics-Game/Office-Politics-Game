@@ -18,8 +18,17 @@ export const GAME_TUTORIAL_STEP_CONTENT = Object.freeze({
   },
 });
 
-export function isGameTutorialEligible(players, currentPlayerId) {
-  if (!Array.isArray(players) || currentPlayerId == null) {
+export function isGameTutorialEligible(
+  players,
+  currentPlayerId,
+  hasAnyCardBeenPlayed = false,
+) {
+  if (
+    !Array.isArray(players) ||
+    players.length !== 4 ||
+    currentPlayerId == null ||
+    hasAnyCardBeenPlayed
+  ) {
     return false;
   }
 
@@ -30,10 +39,15 @@ export function isGameTutorialEligible(players, currentPlayerId) {
     return false;
   }
 
+  const humanPlayers = players.filter((player) => !player?.isComputer);
   const opponents = players.filter(
     (player) => String(player?.id) !== String(currentPlayerId),
   );
-  return opponents.length > 0 && opponents.every((player) => player.isComputer);
+  return (
+    humanPlayers.length === 1 &&
+    opponents.length === 3 &&
+    opponents.every((player) => player.isComputer)
+  );
 }
 
 function isHtmlElement(value) {
@@ -89,7 +103,14 @@ export function useGameTutorial({
   let tour = null;
   let hasStarted = false;
   let isStarting = false;
+  let isFinalized = false;
   let highlightedTargets = null;
+  const settlementResolvers = new Set();
+
+  function settleTutorial(result = false) {
+    settlementResolvers.forEach((resolve) => resolve(result));
+    settlementResolvers.clear();
+  }
 
   function clearOpponentHighlights() {
     if (!highlightedTargets) {
@@ -134,13 +155,24 @@ export function useGameTutorial({
     if (tour === activeTour) {
       tour = null;
     }
+    settleTutorial(true);
   }
 
-  async function startTutorial({ players, currentPlayerId, targets }) {
+  async function startTutorial({
+    players,
+    currentPlayerId,
+    hasAnyCardBeenPlayed = false,
+    targets,
+  }) {
     if (
       hasStarted ||
+      isFinalized ||
       isStarting ||
-      !isGameTutorialEligible(players, currentPlayerId)
+      !isGameTutorialEligible(
+        players,
+        currentPlayerId,
+        hasAnyCardBeenPlayed,
+      )
     ) {
       return false;
     }
@@ -156,6 +188,11 @@ export function useGameTutorial({
     let nextTour = null;
     try {
       nextTour = await createTour();
+      if (isFinalized) {
+        Promise.resolve(nextTour.exit?.(true)).catch(() => {});
+        settleTutorial(false);
+        return false;
+      }
       tour = nextTour;
       nextTour.setOptions({
         steps,
@@ -202,10 +239,24 @@ export function useGameTutorial({
     }
   }
 
+  function waitForTutorialSettlement() {
+    if (!tour && !isStarting) {
+      isFinalized = true;
+      settleTutorial(false);
+      return Promise.resolve(false);
+    }
+
+    return new Promise((resolve) => {
+      settlementResolvers.add(resolve);
+    });
+  }
+
   function disposeTutorial() {
     const activeTour = tour;
     tour = null;
+    isFinalized = true;
     clearOpponentHighlights();
+    settleTutorial(false);
 
     if (activeTour) {
       Promise.resolve(activeTour.exit(true)).catch(() => {});
@@ -214,6 +265,7 @@ export function useGameTutorial({
 
   return {
     startTutorial,
+    waitForTutorialSettlement,
     disposeTutorial,
     get hasStarted() {
       return hasStarted;

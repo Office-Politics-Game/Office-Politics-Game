@@ -11,6 +11,7 @@ import {
 const human = { id: "human", isComputer: false };
 const computerOne = { id: "computer-1", isComputer: true };
 const computerTwo = { id: "computer-2", isComputer: true };
+const computerThree = { id: "computer-3", isComputer: true };
 const createClassList = () => {
   const classes = new Set();
   return {
@@ -101,7 +102,10 @@ function createTourHarness({ rejectStart = false } = {}) {
 
 test("tutorial eligibility requires one human current player and only computer opponents", () => {
   assert.equal(
-    isGameTutorialEligible([human, computerOne, computerTwo], human.id),
+    isGameTutorialEligible(
+      [human, computerOne, computerTwo, computerThree],
+      human.id,
+    ),
     true,
   );
   assert.equal(
@@ -112,7 +116,10 @@ test("tutorial eligibility requires one human current player and only computer o
     false,
   );
   assert.equal(
-    isGameTutorialEligible([human, computerOne], computerOne.id),
+    isGameTutorialEligible(
+      [human, computerOne, computerTwo, computerThree],
+      computerOne.id,
+    ),
     false,
   );
   assert.equal(
@@ -120,6 +127,14 @@ test("tutorial eligibility requires one human current player and only computer o
     false,
   );
   assert.equal(isGameTutorialEligible([human], human.id), false);
+  assert.equal(
+    isGameTutorialEligible(
+      [human, computerOne, computerTwo, computerThree],
+      human.id,
+      true,
+    ),
+    false,
+  );
 });
 
 test("tutorial steps require all targets and follow the specified gameplay order", () => {
@@ -158,7 +173,7 @@ test("tutorial starts once, exposes localized controls, and disposes safely", as
   const harness = createTourHarness();
   const tutorial = useGameTutorial({ createTour: harness.createTour });
   const input = {
-    players: [human, computerOne, computerTwo],
+    players: [human, computerOne, computerTwo, computerThree],
     currentPlayerId: human.id,
     targets,
   };
@@ -211,13 +226,74 @@ test("tutorial starts once, exposes localized controls, and disposes safely", as
   assert.equal(harness.tours[0].exitCount, 1);
 });
 
+test("tutorial settlement waits for exit and finalizes skipped mounts", async () => {
+  const harness = createTourHarness();
+  const tutorial = useGameTutorial({ createTour: harness.createTour });
+  const input = {
+    players: [human, computerOne, computerTwo, computerThree],
+    currentPlayerId: human.id,
+    targets,
+  };
+
+  assert.equal(await tutorial.startTutorial(input), true);
+  let didSettle = false;
+  const settlement = tutorial.waitForTutorialSettlement().then((result) => {
+    didSettle = true;
+    return result;
+  });
+  await Promise.resolve();
+  assert.equal(didSettle, false);
+
+  harness.tours[0].complete();
+  assert.equal(await settlement, true);
+
+  const skippedHarness = createTourHarness();
+  const skipped = useGameTutorial({ createTour: skippedHarness.createTour });
+  assert.equal(await skipped.waitForTutorialSettlement(), false);
+  assert.equal(await skipped.startTutorial(input), false);
+  assert.equal(skippedHarness.tours.length, 0);
+});
+
+test("tutorial start failures and disposal always release settlement", async () => {
+  const createRejectableTour = () => {
+    let rejectCreate;
+    const createTour = () =>
+      new Promise((_resolve, reject) => {
+        rejectCreate = reject;
+      });
+    return { createTour, reject: (error) => rejectCreate(error) };
+  };
+  const input = {
+    players: [human, computerOne, computerTwo, computerThree],
+    currentPlayerId: human.id,
+    targets,
+  };
+
+  const failedHarness = createRejectableTour();
+  const failed = useGameTutorial({ createTour: failedHarness.createTour });
+  const failedStart = failed.startTutorial(input);
+  const failedSettlement = failed.waitForTutorialSettlement();
+  failedHarness.reject(new Error("create failed"));
+  assert.equal(await failedStart, false);
+  assert.equal(await failedSettlement, true);
+
+  const disposedHarness = createRejectableTour();
+  const disposed = useGameTutorial({ createTour: disposedHarness.createTour });
+  const disposedStart = disposed.startTutorial(input);
+  const disposedSettlement = disposed.waitForTutorialSettlement();
+  disposed.disposeTutorial();
+  disposedHarness.reject(new Error("disposed"));
+  assert.equal(await disposedStart, false);
+  assert.equal(await disposedSettlement, false);
+});
+
 test("missing targets and failed starts remain retryable during the same mount", async () => {
   const missingTargetHarness = createTourHarness();
   const tutorial = useGameTutorial({
     createTour: missingTargetHarness.createTour,
   });
   const baseInput = {
-    players: [human, computerOne],
+    players: [human, computerOne, computerTwo, computerThree],
     currentPlayerId: human.id,
   };
 
@@ -248,7 +324,7 @@ test("compact landscape keeps forced side placement and moves opponents below ce
   try {
     assert.equal(
       await tutorial.startTutorial({
-        players: [human, computerOne, computerTwo],
+        players: [human, computerOne, computerTwo, computerThree],
         currentPlayerId: human.id,
         targets,
       }),

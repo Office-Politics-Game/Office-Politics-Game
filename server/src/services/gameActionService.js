@@ -135,6 +135,8 @@ async function playCardAction({
         throw createServiceError("玩家沒有此手牌")
     }
 
+    state.hasAnyCardBeenPlayed = true
+
     const effectAnimationContext = createCardEffectAnimationContext({
         state,
         card: discardedCard,
