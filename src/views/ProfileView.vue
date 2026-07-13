@@ -1,81 +1,51 @@
 <template>
-  <template v-if="profilePlayer">
-    <ProfileShell
-      :active-tab="activeTab"
+  <ProfileShell
+    v-if="profilePlayer"
+    v-model:active-tab="activeTab"
+    :player="profilePlayer"
+    :tabs="tabs"
+    :locked-tabs="lockedTabs"
+    :background-image="bgPersonal"
+    :exit-background-image="bgDashboard"
+    :paper-image="paperBackground"
+    :is-returning="isReturningToLobby"
+    @close="goLobby"
+    @edit-avatar="openAvatarEditor"
+  >
+    <ProfileInfoPanel
+      v-if="activeTab === 'profile'"
       :player="profilePlayer"
-      :tabs="tabs"
-      :locked-tabs="lockedTabs"
-      :background-image="bgPersonal"
-      :exit-background-image="bgDashboard"
-      :paper-image="paperBackground"
-      :is-returning="isReturningToLobby"
       :can-edit="profileStore.isMemberProfile"
-      @update:active-tab="activeTab = $event"
-      @close="goLobby"
-      @edit-avatar="openAvatarEditor"
-    >
-      <ProfileInfoPanel
-        v-if="activeTab === 'profile'"
-        :player="profilePlayer"
-        :can-edit="profileStore.isMemberProfile"
-        @edit="handleEditProfileField"
-      />
-
-      <ProfileEmptyPanel
-        v-else-if="isGuestLockedTab"
-        :title="activeTabMeta.label"
-        description="訪客可以查看基本資料；登入正式帳號後即可使用這個個人資料功能。"
-        action-label="前往登入"
-        :button-disabled="false"
-        @action="goLogin"
-      />
-
-      <ProfileMatchHistoryPanel
-        v-else-if="activeTab === 'matches' && profileStore.isMemberProfile"
-        :matches="profileStore.matchHistory"
-        :is-loading="profileStore.isMatchHistoryLoading"
-        :error-message="profileStore.matchHistoryErrorMessage"
-        @reload="profileStore.loadMatchHistory().catch(() => {})"
-      />
-
-      <AchievementPanel
-        v-else-if="activeTab === 'badges' && profileStore.isMemberProfile"
-        :achievements="achievementStore.achievements"
-        :is-loading="achievementStore.isLoading"
-        :error-message="achievementStore.errorMessage"
-        @retry="fetchAchievements"
-      />
-
-      <ProfileEmptyPanel
-        v-else
-        :title="activeTabMeta.label"
-        :description="activeTabMeta.description"
-      />
-    </ProfileShell>
-
-    <ProfileEditModal
-      v-if="editingField"
-      :field="editingField"
-      :initial-value="editingInitialValue"
-      :is-saving="profileStore.isUpdating"
-      :error-message="editErrorMessage"
-      @close="closeProfileEditor"
-      @save="saveProfileField"
+      @edit="handleEditProfileField"
     />
-
-    <ProfileAvatarModal
-      v-if="isAvatarEditorOpen"
-      :selected-avatar-id="profilePlayer?.avatarId"
-      :is-saving="profileStore.isUpdating"
-      :error-message="editErrorMessage"
-      @close="closeAvatarEditor"
-      @save="saveAvatar"
+    <ProfileMatchHistoryPanel
+      v-else-if="activeTab === 'matches' && profileStore.isMemberProfile"
+      :matches="profileStore.matchHistory"
+      :is-loading="profileStore.isMatchHistoryLoading"
+      :error-message="profileStore.matchHistoryErrorMessage"
+      @reload="profileStore.loadMatchHistory().catch(() => {})"
     />
-    <ProfilePasswordModal
-      v-if="isPasswordEditorOpen"
-      @close="closePasswordEditor"
+    <AchievementPanel
+      v-else-if="activeTab === 'badges' && profileStore.isMemberProfile"
+      :achievements="achievementStore.achievements"
+      :is-loading="achievementStore.isLoading"
+      :error-message="achievementStore.errorMessage"
+      @retry="fetchAchievements"
     />
-  </template>
+    <ProfileEmptyPanel
+      v-else-if="isGuestLockedTab"
+      :title="activeTabMeta.label"
+      description="訪客可以查看基本資料；登入正式帳號後即可使用這個個人資料功能。"
+      action-label="前往登入"
+      :button-disabled="false"
+      @action="goLogin"
+    />
+    <ProfileEmptyPanel
+      v-else
+      :title="activeTabMeta.label"
+      :description="activeTabMeta.description"
+    />
+  </ProfileShell>
 
   <main
     v-else
@@ -88,7 +58,6 @@
       :style="{ backgroundImage: `url(${bgDashboard})` }"
       aria-hidden="true"
     ></div>
-
     <section
       v-if="profileStore.isLoading || profileStore.errorMessage"
       class="profile-state-panel"
@@ -108,7 +77,6 @@
       <p v-if="!profileStore.isLoading" class="profile-state-panel__copy">
         {{ statePanel.description }}
       </p>
-
       <div v-if="showStateActions" class="profile-state-panel__actions">
         <button
           v-if="profileStore.errorMessage"
@@ -137,6 +105,27 @@
       </div>
     </section>
   </main>
+  <ProfileEditModal
+    v-if="editingField"
+    :field="editingField"
+    :initial-value="editingInitialValue"
+    :is-saving="profileStore.isUpdating"
+    :error-message="editErrorMessage"
+    @close="closeProfileEditor"
+    @save="saveProfileField"
+  />
+  <ProfileAvatarModal
+    v-if="isAvatarEditorOpen"
+    :selected-avatar-id="profilePlayer?.avatarId"
+    :is-saving="profileStore.isUpdating"
+    :error-message="editErrorMessage"
+    @close="closeAvatarEditor"
+    @save="saveAvatar"
+  />
+  <ProfilePasswordModal
+    v-if="isPasswordEditorOpen"
+    @close="closePasswordEditor"
+  />
 </template>
 
 <script setup>
@@ -175,7 +164,6 @@ const isReturningToLobby = ref(false);
 const equippedAvatarUrl = ref("");
 const hasResolvedEquippedAvatar = ref(false);
 const RETURN_ANIMATION_DURATION = 700;
-
 const editingField = ref(null)
 const editingInitialValue = ref("")
 const isAvatarEditorOpen = ref(false)
@@ -548,15 +536,6 @@ watch(
 );
 
 watch(
-  () => activeTab.value,
-  (tab) => {
-    if (tab === "matches" && profileStore.isMemberProfile) {
-      profileStore.loadMatchHistory().catch(() => {});
-    }
-  },
-);
-
-watch(
   () => [
     activeTab.value,
     profilePlayerId.value,
@@ -564,6 +543,19 @@ watch(
   ],
   () => {
     fetchAchievements();
+  },
+  { immediate: true },
+);
+
+watch(
+  () => [
+    activeTab.value,
+    profileStore.isMemberProfile,
+  ],
+  ([tab, isMemberProfile]) => {
+    if (tab === "matches" && isMemberProfile) {
+      profileStore.loadMatchHistory().catch(() => {});
+    }
   },
   { immediate: true },
 );

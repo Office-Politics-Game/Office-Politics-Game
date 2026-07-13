@@ -93,6 +93,27 @@ function normalizeProfile(player, identityType) {
   };
 }
 
+function normalizeMatchHistoryItem(match) {
+  return {
+    id: match.id,
+    roomId: match.roomId,
+    result: match.result,
+    winnerPlayerId: match.winnerPlayerId,
+    winnerUsername: match.winnerUsername || UNSET_TEXT,
+    startedAt: match.startedAt,
+    endedAt: match.endedAt,
+    participants: Array.isArray(match.participants)
+      ? match.participants.map((participant) => ({
+          playerId: participant.playerId,
+          username: participant.username || UNSET_TEXT,
+          avatarId: toNumber(participant.avatarId, DEFAULT_AVATAR_ID),
+          roundWins: toNumber(participant.roundWins, 0),
+          result: participant.result,
+        }))
+      : [],
+  };
+}
+
 export const useProfileStore = defineStore("profile", {
   state: () => ({
     profile: null,
@@ -159,7 +180,7 @@ export const useProfileStore = defineStore("profile", {
 
       try {
         const data = await getProfileMatches({ limit })
-        this.matchHistory = data.matches || []
+        this.matchHistory = (data.matches || []).map(normalizeMatchHistoryItem)
 
         return this.matchHistory
       } catch (error) {
