@@ -79,11 +79,11 @@ async function handleUpdatePlayerAvatar(req, res) {
     const avatarId = parsePositiveInteger(req.body?.avatarId)
 
     if (!playerId) {
-      return res.status(400).json({ message: "蝻箏??拙振ID" })
+      return res.status(400).json({ message: "缺少或無效的玩家ID" })
     }
 
     if (!avatarId) {
-      return res.status(400).json({ message: "蝻箏??辣ID" })
+      return res.status(400).json({ message: "缺少或無效的頭像ID" })
     }
 
     const player = await updatePlayerAvatar({ playerId, avatarId })
@@ -91,7 +91,7 @@ async function handleUpdatePlayerAvatar(req, res) {
     return res.status(200).json({ player })
   } catch (error) {
     return res.status(getErrorStatus(error)).json({
-      message: error.statusCode ? error.message : "蝔??辣憭望?",
+      message: error.statusCode ? error.message : "更新玩家頭像失敗",
       error: error.message,
     })
   }
