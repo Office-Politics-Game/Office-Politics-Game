@@ -117,9 +117,14 @@ function handlePrimaryAction() {
   openLoginModal();
 }
 
-function handleSecondaryAction() {
+async function handleSecondaryAction() {
   if (isMemberLoggedIn.value) {
-    authStore.logout();
+    const didLogout = await authStore.logout();
+
+    if (!didLogout) {
+      return;
+    }
+
     playerStore.resetPlayer();
     showLoginModal.value = false;
     showGuestLoginModal.value = false;
