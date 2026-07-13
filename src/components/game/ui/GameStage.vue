@@ -126,6 +126,7 @@ const cardDrawAnimation = ref(null);
 const cardPlayAnimation = ref(null);
 const cardShuffleAnimation = ref(null);
 const roundShowdownAnimation = ref(null);
+const roundShowdownHiddenPlayerIds = ref([]);
 const activeEffectResult = ref(null);
 const isInitialRoundDrawAnimating = ref(false);
 const initialRoundDealtPlayerIds = ref([]);
@@ -344,7 +345,14 @@ const {
   activeEffectResult,
   handCards: computed(() => props.handCards),
   isSelfPlayer: animationRects.isSelfPlayer,
+  roundShowdownHiddenPlayerIds,
 });
+
+function handleShowdownHiddenPlayerIdsChange(playerIds) {
+  roundShowdownHiddenPlayerIds.value = Array.isArray(playerIds)
+    ? playerIds.map(String)
+    : [];
+}
 const activeInternTargetPlayerName = computed(() => {
   if (activeEffectResult.value?.type !== "intern") {
     return "玩家";
@@ -715,6 +723,7 @@ defineExpose({
         ref="roundShowdownAnimation"
         :get-player-hand-rect="animationRects.getPlayerHandRect"
         :is-self-player="animationRects.isSelfPlayer"
+        @hidden-player-ids-change="handleShowdownHiddenPlayerIdsChange"
       />
     </section>
 

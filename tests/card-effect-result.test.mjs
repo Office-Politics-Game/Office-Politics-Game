@@ -135,6 +135,25 @@ test('pm and hr prompts show only the yellow target player before their effects'
   assert.match(demo, /:target-player-name="getPlayerName\(swapResult\.targetPlayerId\)"/)
 })
 
+test('hr swap reveals only the card owned by the viewer at each end of the exchange', async () => {
+  const source = await readSource('src/components/game/animations/CardSwapAnimation.vue')
+  const socketActions = await readSource('src/composables/useGameSocketActions.js')
+  const demo = await readSource('src/views/CardPlayTestView.vue')
+
+  assert.match(source, /sourceCardReveal === 'before-swap'/)
+  assert.match(source, /targetCardReveal === 'before-swap'/)
+  assert.match(source, /sourceCardReveal === 'after-swap'/)
+  assert.match(source, /targetCardReveal === 'after-swap'/)
+  assert.match(source, /getFlipVars\(sourceFinalRotation, timing\.flip\)/)
+  assert.match(source, /getFlipVars\(targetFinalRotation, timing\.flip\)/)
+  assert.doesNotMatch(source, /gsap\.set\(sourceFlipperElement, \{ rotationY: 0/)
+  assert.match(socketActions, /const SWAP_REVEAL_STAGES = new Set/)
+  assert.match(socketActions, /sourceCardReveal/)
+  assert.match(socketActions, /targetCardReveal/)
+  assert.match(demo, /sourceCardReveal: bystander \? 'never' : 'before-swap'/)
+  assert.match(demo, /targetCardReveal: bystander \? 'never' : 'after-swap'/)
+})
+
 test('cleaner keeps the current player card face up while moving it out and back', async () => {
   const source = await readSource('src/components/game/animations/CleanerAnimation.vue')
   const stage = await readSource('src/components/game/ui/GameStage.vue')
@@ -205,7 +224,7 @@ test('intern hides the original target card only after a correct guess', async (
   assert.match(stage, /temporarilyHiddenSeatHandPlayerIds/)
 })
 
-test('effect card visibility resolves cleaner, intern, and pm views without duplicate cards', () => {
+test('effect card visibility resolves cleaner, intern, pm, and hr views without duplicate cards', () => {
   const activeEffectResult = ref(null)
   const handCards = ref([{ id: '7', name: 'Manager' }])
   const {
@@ -281,6 +300,26 @@ test('effect card visibility resolves cleaner, intern, and pm views without dupl
   }
   assert.deepEqual(temporarilyHiddenCardIds.value, [])
   assert.deepEqual(temporarilyHiddenSeatHandPlayerIds.value, ['other'])
+
+  activeEffectResult.value = {
+    type: 'swap',
+    sourcePlayerId: 'self',
+    targetPlayerId: 'other',
+    sourceCard: { id: '7', name: 'Manager' },
+    targetCard: { id: '8', name: 'CEO' },
+  }
+  assert.deepEqual(temporarilyHiddenCardIds.value, ['7'])
+  assert.deepEqual(temporarilyHiddenSeatHandPlayerIds.value, ['other'])
+
+  activeEffectResult.value = {
+    type: 'swap',
+    sourcePlayerId: 'left',
+    targetPlayerId: 'right',
+    sourceCard: null,
+    targetCard: null,
+  }
+  assert.deepEqual(temporarilyHiddenCardIds.value, [])
+  assert.deepEqual(temporarilyHiddenSeatHandPlayerIds.value, ['left', 'right'])
 })
 
 test('manager animation compares, emphasizes, returns the winner, and discards the loser', async () => {

@@ -4,6 +4,7 @@ export function useGameStageCardVisibility({
   activeEffectResult,
   handCards,
   isSelfPlayer,
+  roundShowdownHiddenPlayerIds,
 } = {}) {
   const activeCleanerAnimationResult = computed(() => {
     const result = unref(activeEffectResult);
@@ -34,20 +35,36 @@ export function useGameStageCardVisibility({
     const shouldHidePmCard =
       result?.type === "pm" &&
       isSelfPlayer?.(result.targetPlayerId) === true;
+    const selfSwapCard = result?.type === "swap"
+      ? isSelfPlayer?.(result.sourcePlayerId) === true
+        ? result.sourceCard
+        : isSelfPlayer?.(result.targetPlayerId) === true
+          ? result.targetCard
+          : null
+      : null;
     const targetCard = shouldHideCleanerCard
       ? cleanerResult.targetCard
       : shouldHideInternCard
         ? result.targetCard
         : shouldHidePmCard
           ? result.discardedCard
-          : null;
+          : selfSwapCard;
 
     return targetCard?.id ? [String(targetCard.id)] : [];
   });
 
-  const temporarilyHiddenSeatHandPlayerIds = computed(() => {
+  const effectHiddenSeatHandPlayerIds = computed(() => {
     const result = unref(activeEffectResult);
     const cleanerResult = activeCleanerAnimationResult.value;
+    if (result?.type === "swap") {
+      return [result.sourcePlayerId, result.targetPlayerId]
+        .filter(
+          (playerId) =>
+            playerId && isSelfPlayer?.(playerId) !== true,
+        )
+        .map(String);
+    }
+
     const targetPlayerId =
       cleanerResult?.targetPlayerId ??
       ((result?.type === "intern" && result.outcome === "correct") ||
@@ -60,6 +77,14 @@ export function useGameStageCardVisibility({
     }
 
     return [String(targetPlayerId)];
+  });
+
+  const temporarilyHiddenSeatHandPlayerIds = computed(() => {
+    const effectPlayerIds = effectHiddenSeatHandPlayerIds.value;
+    const showdownPlayerIds = (unref(roundShowdownHiddenPlayerIds) ?? [])
+      .map(String);
+
+    return [...new Set([...effectPlayerIds, ...showdownPlayerIds])];
   });
 
   return {

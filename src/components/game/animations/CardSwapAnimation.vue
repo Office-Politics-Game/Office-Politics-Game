@@ -75,7 +75,7 @@ function getShowcaseTranslation(rect, offsetX) {
 async function play(result) {
   const sourceRect = props.getPlayerHandRect?.(result.sourcePlayerId)
   const targetRect = props.getPlayerHandRect?.(result.targetPlayerId)
-  if (!sourceRect || !targetRect || !result.sourceCard || !result.targetCard) {
+  if (!sourceRect || !targetRect) {
     finishAnimation(result)
     return
   }
@@ -113,24 +113,29 @@ async function play(result) {
 
   const reduced = isReducedMotion()
   const timing = getCardMotionTiming(reduced, { showcase: 0.48, exchange: 0.34, settle: 0.42 })
+  const sourceInitialRotation = result.sourceCardReveal === 'before-swap' ? 0 : 180
+  const targetInitialRotation = result.targetCardReveal === 'before-swap' ? 0 : 180
+  const sourceFinalRotation = result.sourceCardReveal === 'after-swap' ? 0 : 180
+  const targetFinalRotation = result.targetCardReveal === 'after-swap' ? 0 : 180
 
   gsap.set(exchangeLineRef.value, { autoAlpha: 0, xPercent: -50, yPercent: -50, scaleX: 0.42, transformOrigin: '50% 50%' })
   gsap.set(promptRef.value, { opacity: 1 })
   gsap.set([sourceElement, targetElement], { x: 0, y: 0, scale: 1, rotation: 0, autoAlpha: 1, transformOrigin: '50% 50%', transformPerspective: 1200 })
-  gsap.set(sourceFlipperElement, { rotationY: 0, transformStyle: 'preserve-3d' })
-  gsap.set(targetFlipperElement, { rotationY: 180, transformStyle: 'preserve-3d' })
+  gsap.set(sourceFlipperElement, { rotationY: sourceInitialRotation, transformStyle: 'preserve-3d' })
+  gsap.set(targetFlipperElement, { rotationY: targetInitialRotation, transformStyle: 'preserve-3d' })
 
   setTimeline(gsap.timeline({ onComplete: () => finishAnimation(result) }))
 
   if (reduced) {
     timeline.value
       .to({}, { duration: SWAP_PROMPT_HOLD_SECONDS })
+      .set([sourceFlipperElement, targetFlipperElement], { rotationY: 180 })
       .to(exchangeLineRef.value, { autoAlpha: 0.72, scaleX: 1, duration: timing.flash })
       .set(promptRef.value, { opacity: 0 })
       .set(sourceElement, getMoveVars(sourceTravel, { scale: sourceEndScale, duration: 0, reduced }))
       .set(targetElement, getMoveVars(targetTravel, { scale: targetEndScale, duration: 0, reduced }))
-      .set(sourceFlipperElement, { rotationY: 180 })
-      .set(targetFlipperElement, { rotationY: 0 })
+      .set(sourceFlipperElement, { rotationY: sourceFinalRotation })
+      .set(targetFlipperElement, { rotationY: targetFinalRotation })
       .to(exchangeLineRef.value, { autoAlpha: 0, duration: timing.flash })
       .to([sourceElement, targetElement], { autoAlpha: 0, duration: timing.travel }, '<')
     return
@@ -139,6 +144,7 @@ async function play(result) {
   timeline.value
     .to({}, { duration: SWAP_PROMPT_HOLD_SECONDS })
     .to(sourceFlipperElement, getFlipVars(180, timing.flip))
+    .to(targetFlipperElement, getFlipVars(180, timing.flip), '<')
     .to(sourceElement, getMoveVars(sourceShowcase, { scale: 1.24, duration: timing.showcase, ease: 'expo.out', extra: { rotation: -7 } }), '-=0.04')
     .to(targetElement, getMoveVars(targetShowcase, { scale: 1.24, duration: timing.showcase, ease: 'expo.out', extra: { rotation: 7 } }), '<')
     .to(exchangeLineRef.value, { autoAlpha: 0.8, scaleX: 1, duration: timing.flash, ease: 'power2.out' }, '-=0.16')
@@ -148,7 +154,8 @@ async function play(result) {
     .to(exchangeLineRef.value, { autoAlpha: 0, scaleX: 1.16, duration: timing.flash, ease: 'power2.in' })
     .to(sourceElement, getMoveVars(sourceTravel, { scale: sourceEndScale, duration: timing.settle, ease: 'power3.inOut', extra: { rotation: -8 } }), '<')
     .to(targetElement, getMoveVars(targetTravel, { scale: targetEndScale, duration: timing.settle, ease: 'power3.inOut', extra: { rotation: 3 } }), '<')
-    .to(targetFlipperElement, getFlipVars(0, timing.flip), '-=0.18')
+    .to(sourceFlipperElement, getFlipVars(sourceFinalRotation, timing.flip))
+    .to(targetFlipperElement, getFlipVars(targetFinalRotation, timing.flip), '<')
     .to([sourceElement, targetElement], { autoAlpha: 0, duration: timing.travel, ease: 'power1.in' })
 }
 
@@ -166,10 +173,10 @@ defineExpose({ stop })
       <div ref="exchangeLineRef" class="card-swap-animation__line"></div>
       <div ref="promptRef" class="card-swap-animation__prompt">與<span class="card-swap-animation__prompt-value">{{ targetPlayerName }}</span>交換手牌</div>
       <EffectCardLayer ref="sourceLayerRef" class="card-swap-animation__card" :card="activeResult.sourceCard" :style="sourceStyle" use-image-front overlay-behind-card>
-        <template #overlay><div class="card-swap-animation__glow" :style="{ '--accent': activeResult.sourceCard.color }"></div></template>
+        <template #overlay><div class="card-swap-animation__glow" :style="{ '--accent': activeResult.sourceCard?.color ?? 'var(--brand-primary)' }"></div></template>
       </EffectCardLayer>
       <EffectCardLayer ref="targetLayerRef" class="card-swap-animation__card" :card="activeResult.targetCard" :style="targetStyle" use-image-front overlay-behind-card>
-        <template #overlay><div class="card-swap-animation__glow" :style="{ '--accent': activeResult.targetCard.color }"></div></template>
+        <template #overlay><div class="card-swap-animation__glow" :style="{ '--accent': activeResult.targetCard?.color ?? 'var(--brand-primary)' }"></div></template>
       </EffectCardLayer>
     </div>
   </Teleport>

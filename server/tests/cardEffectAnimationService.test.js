@@ -112,3 +112,47 @@ describe('project manager card effect animation result', () => {
     })
   })
 })
+
+describe('hr card effect animation result privacy', () => {
+  const animationResult = {
+    type: 'swap',
+    sourcePlayerId: 1,
+    targetPlayerId: 2,
+    sourceCard: { id: 2, name: 'Cleaner', ownerPlayerId: 1 },
+    targetCard: { id: 8, name: 'CEO', ownerPlayerId: 2 },
+  }
+
+  test('reveals the old card before the swap and the incoming card after it', () => {
+    expect(
+      createCardEffectAnimationResultForViewer(animationResult, 1, 1),
+    ).toMatchObject({
+      sourceCardReveal: 'before-swap',
+      targetCardReveal: 'after-swap',
+      sourceCard: animationResult.sourceCard,
+      targetCard: animationResult.targetCard,
+    })
+
+    expect(
+      createCardEffectAnimationResultForViewer(animationResult, 2, 1),
+    ).toMatchObject({
+      sourceCardReveal: 'after-swap',
+      targetCardReveal: 'before-swap',
+      sourceCard: animationResult.sourceCard,
+      targetCard: animationResult.targetCard,
+    })
+  })
+
+  test('keeps both cards redacted and face down for bystanders', () => {
+    expect(
+      createCardEffectAnimationResultForViewer(animationResult, 3, 1),
+    ).toEqual({
+      type: 'swap',
+      sourcePlayerId: 1,
+      targetPlayerId: 2,
+      sourceCard: null,
+      targetCard: null,
+      sourceCardReveal: 'never',
+      targetCardReveal: 'never',
+    })
+  })
+})

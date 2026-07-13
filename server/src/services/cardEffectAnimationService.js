@@ -219,6 +219,37 @@ function createCardEffectAnimationResultForViewer(
     }
   }
 
+  if (animationResult.type === 'swap') {
+    const isSourcePlayer =
+      numericViewerPlayerId === Number(animationResult.sourcePlayerId)
+    const isTargetPlayer =
+      numericViewerPlayerId === Number(animationResult.targetPlayerId)
+
+    if (isSourcePlayer) {
+      return {
+        ...animationResult,
+        sourceCardReveal: 'before-swap',
+        targetCardReveal: 'after-swap',
+      }
+    }
+
+    if (isTargetPlayer) {
+      return {
+        ...animationResult,
+        sourceCardReveal: 'after-swap',
+        targetCardReveal: 'before-swap',
+      }
+    }
+
+    return {
+      ...animationResult,
+      sourceCard: null,
+      targetCard: null,
+      sourceCardReveal: 'never',
+      targetCardReveal: 'never',
+    }
+  }
+
   return animationResult
 }
 

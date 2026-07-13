@@ -139,6 +139,10 @@ const controls = computed(() => [
   },
   { label: 'Defense Success', action: playProtectionSuccess },
   { label: 'HR Swap', action: playSwapAnimation },
+  {
+    label: 'HR Swap (Opponents)',
+    action: () => playSwapAnimation({ bystander: true }),
+  },
   { label: 'Fly-in Text', action: playFlyInTextModal },
   { label: 'Round Winner', action: playRoundWinnerNotice },
   { label: '發牌', action: playDealAnimation },
@@ -446,15 +450,21 @@ function playPMAnimation() {
   return complete
 }
 
-function playSwapAnimation() {
+function playSwapAnimation({ bystander = false } = {}) {
   const id = uniqueId('swap')
   const complete = waitForEffectComplete('swap', id)
   swapResult.value = {
     id,
-    sourcePlayerId: SELF_PLAYER_ID,
-    targetPlayerId: 'player-top',
-    sourceCard: createCard('cleaner', uniqueId('swap-source')),
-    targetCard: createCard('ceo', uniqueId('swap-target')),
+    sourcePlayerId: bystander ? 'player-left' : SELF_PLAYER_ID,
+    targetPlayerId: bystander ? 'player-right' : 'player-top',
+    sourceCard: bystander
+      ? null
+      : createCard('cleaner', uniqueId('swap-source')),
+    targetCard: bystander
+      ? null
+      : createCard('ceo', uniqueId('swap-target')),
+    sourceCardReveal: bystander ? 'never' : 'before-swap',
+    targetCardReveal: bystander ? 'never' : 'after-swap',
   }
 
   return complete
