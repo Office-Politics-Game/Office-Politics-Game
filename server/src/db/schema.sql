@@ -5,9 +5,9 @@ CREATE TABLE players (
   avatar_id INTEGER,
   level INTEGER NOT NULL DEFAULT 1 CHECK (level >= 1),
   exp INTEGER NOT NULL DEFAULT 0 CHECK (exp >= 0),
-  coins INTEGER NOT NULL DEFAULT 0 CHECK (coins >= 0),
-  gems INTEGER NOT NULL DEFAULT 0 CHECK (gems >= 0),
-  tickets INTEGER NOT NULL DEFAULT 0 CHECK (tickets >= 0),
+  coins INTEGER NOT NULL DEFAULT 0 CHECK (coins >= 0 AND coins <= 99999),
+  gems INTEGER NOT NULL DEFAULT 0 CHECK (gems >= 0 AND gems <= 99999),
+  tickets INTEGER NOT NULL DEFAULT 0 CHECK (tickets >= 0 AND tickets <= 99999),
   win_count INTEGER NOT NULL DEFAULT 0 CHECK (win_count >= 0),
   lose_count INTEGER NOT NULL DEFAULT 0 CHECK (lose_count >= 0),
   total_games INTEGER NOT NULL DEFAULT 0 CHECK (total_games >= 0),
@@ -181,6 +181,7 @@ CREATE TABLE game_room_players (
   role VARCHAR(20),
   seat_order INTEGER,
   is_ready BOOLEAN DEFAULT false,
+  is_computer BOOLEAN NOT NULL DEFAULT false,
   is_alive BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

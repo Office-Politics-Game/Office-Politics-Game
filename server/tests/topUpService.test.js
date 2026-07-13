@@ -201,7 +201,7 @@ describe("topUpService", () => {
                 TotalAmount: 30,
                 TradeDesc: "Office Politics Game top up",
                 ItemName: "gems_60",
-                ReturnURL: "https://example.com/ecpay/return",
+                ReturnURL: "https://office-politics-game.onrender.com/api/top-ups/ecpay/return",
                 ChoosePayment: "ALL",
                 EncryptType: 1,
             },
@@ -224,6 +224,16 @@ describe("topUpService", () => {
 
         await expect(createEcpayCheckout(10)).rejects.toMatchObject({
             statusCode: 409,
+        })
+    })
+
+    test("createEcpayCheckout() rejects missing order", async () => {
+        queryMock.mockResolvedValueOnce({
+            rows: [],
+        })
+
+        await expect(createEcpayCheckout(999)).rejects.toMatchObject({
+            statusCode: 404,
         })
     })
 })

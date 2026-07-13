@@ -2,7 +2,8 @@ import {
   getTopUpPackages,
   createTopUpOrder,
   mockPayTopUpOrder,
-  createEcpayCheckout
+  createEcpayCheckout,
+  confirmEcpayReturn,
 } from "../services/topUpService.js"
 
 function handleTopUpError(res, error) {
@@ -67,9 +68,22 @@ async function handleCreateEcpayCheckout(req, res) {
   }
 }
 
+async function handleEcpayReturn(req, res) {
+  try {
+    await confirmEcpayReturn(req.body)
+
+    return res.status(200).send("1|OK")
+  } catch (error) {
+    console.error("處理綠界付款回傳失敗", error)
+
+    return res.status(200).send("0|Error")
+  }
+}
+
 export {
   handleGetTopUpPackages,
   handleCreateTopUpOrder,
   handleMockPayTopUpOrder,
-  handleCreateEcpayCheckout
+  handleCreateEcpayCheckout,
+  handleEcpayReturn,
 }

@@ -14,7 +14,10 @@ async function handleRegisterPlayer(req, res) {
     try {
         const player = await registerPlayer(req.body)
 
-        res.status(201).json({ player })
+        res.status(201).json({
+            player,
+            message: "註冊成功，請至信箱完成驗證後再登入"
+        })
     } catch (error) {
         res.status(error.statusCode || 500).json({
             message: error.message || "註冊失敗"

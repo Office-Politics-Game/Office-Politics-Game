@@ -1,0 +1,23 @@
+## 1. Module Extraction
+
+- [x] 1.1 Keep GameStage as the orchestration shell by leaving `src/components/game/ui/GameStage.vue` responsible for props, emits, child refs, template layout, `defineExpose`, and unmount cleanup coordination; verify with `npm run build` and by confirming `GameView.vue` still calls the same exposed method names.
+- [x] 1.2 Extract behavior by lifecycle and responsibility for notice idle/ACK state into `src/composables/useGameStageNotices.js`; deliver the same scheduled notice open count, post-close ACK buffer, manager ACK buffer hook, and `waitForNoticeIdle` behavior; verify with `node tests\computer-player-animation-ack.test.mjs`.
+- [x] 1.3 Extract behavior by lifecycle and responsibility for draw and initial round deal sequencing into `src/composables/useGameStageDrawSequence.js`; deliver the same initial shuffle, per-player draw animation, round-start notice call, turn notice call, and `round-sequence-complete` emission order; verify with `npm run build` and `node tests\computer-player-animation-ack.test.mjs`.
+- [x] 1.4 Extract behavior by lifecycle and responsibility for effect animation state into `src/composables/useGameStageEffectAnimation.js`; deliver the same `playEffectAnimation(result)` promise behavior, timeout settlement, protection shortcut, manager ACK buffer trigger, and stop cleanup; verify with `node tests\computer-player-animation-ack.test.mjs`.
+- [x] 1.5 Extract behavior by lifecycle and responsibility for card play state into `src/composables/useGameStageCardPlay.js`; deliver the same visible hand/discard derivation, advisor-rule disabled card ids, drag preview state, pending target/guess selection, local hidden played-card timers, emitted play-card payload, and `playRemoteCardPlayAnimation(action)` behavior; verify with `node tests\socket-game-animation.test.mjs`, `node tests\card-play-interaction.test.mjs`, and `node tests\cardplay-target-selection.test.mjs`.
+
+## 2. UI Extraction
+
+- [x] 2.1 Move the play confirmation panel into `src/components/game/ui/CardPlayConfirmPanel.vue`; deliver the same pending card summary, target text, guess selector rendering, hint text, confirm disabled state, cancel action, confirm action, and square UI styling; verify with `npm run build` and a source review that no button text or CSS radius behavior changed.
+- [x] 2.2 Wire `CardPlayConfirmPanel.vue` back into `GameStage.vue` without changing target selection ownership in `PlayerSeats`; deliver the same select-target-through-avatar flow and the same `select-guess`, `confirm`, and `cancel` outcomes; verify with `node tests\cardplay-target-selection.test.mjs`.
+
+## 3. Contract Preservation
+
+- [x] 3.1 Satisfy Game stage refactor preserves runtime contract for `GameView.vue` integration by keeping all `GameStage.vue` props, emits, exposed method names, and exposed method call shapes unchanged; verify with `npm run build` and `node tests\socket-game-animation.test.mjs`.
+- [x] 3.2 Preserve source-level contracts in tests by updating source-text assertions to inspect the new files that own each moved behavior while still checking remote opponent play skips self players, notice idle waits for pending open/ACK buffers, and manager/protection timing remains present; verify with `node tests\computer-player-animation-ack.test.mjs` and `node tests\socket-game-animation.test.mjs`.
+- [x] 3.3 Satisfy Game stage refactor preserves runtime contract for cleanup and failure modes by ensuring missing rects return `false` or reset state without throwing, pointer capture failures remain silent, and unmount cleanup clears listeners and timers; verify with `npm run build` plus source review of the cleanup functions called from `onBeforeUnmount`.
+
+## 4. Final Verification
+
+- [x] 4.1 Run the focused verification set and confirm all commands pass: `npm run build`, `node tests\computer-player-animation-ack.test.mjs`, `node tests\socket-game-animation.test.mjs`, `node tests\card-play-interaction.test.mjs`, and `node tests\cardplay-target-selection.test.mjs`.
+- [x] 4.2 Debug and fix the PVP post-animation state refresh regression by applying socket ACK game states immediately after draw/play actions and by routing hidden played-card pruning through `useGameStageCardPlay`; verify that draw updates, discard updates, and turn changes are not blocked after animations with `node tests\socket-game-animation.test.mjs`, `node tests\card-draw-animation.test.mjs`, `node tests\card-play-interaction.test.mjs`, `node tests\computer-player-animation-ack.test.mjs`, `node tests\cardplay-target-selection.test.mjs`, and `npm run build`.

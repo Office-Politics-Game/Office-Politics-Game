@@ -7,6 +7,7 @@ import GameView from "../views/GameView.vue";
 import FriendView from "@/views/FriendView.vue";
 import MallView from "@/views/MallView.vue";
 import ProfileView from "@/views/ProfileView.vue";
+import GachaView from "@/views/GachaView.vue";
 import Result from "@/views/Result.vue";
 import LoadingView from "@/views/LoadingView.vue";
 import GameMenuPanel from "@/components/gameRoom/GameMenuPanel.vue";
@@ -89,6 +90,11 @@ const routes = [
     path: "/profile",
     name: "Profile",
     component: ProfileView,
+  },
+  {
+    path: "/gacha",
+    name: "Gacha",
+    component: GachaView,
   },
   {
     path: "/game-menu",

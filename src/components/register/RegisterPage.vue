@@ -279,7 +279,7 @@ async function handleRegister() {
   authStore.clearError()
 
   try {
-    await authStore.register({
+    const data = await authStore.register({
       username: form.username.trim(),
       account: form.account.trim().toLowerCase(),
       password: form.password,
@@ -287,9 +287,11 @@ async function handleRegister() {
     })
 
     clearRegisterErrors()
-    showApiStatus("success", "註冊成功，正在返回登入頁面", () => {
-      emit("register-success")
-    })
+    showApiStatus(
+      "success",
+      data?.message || "註冊成功，請至信箱完成驗證後再登入",
+      () => { emit("register-success") }
+    )
   } catch (error) {
     showApiStatus(
       "error", error instanceof Error ? error.message : "註冊失敗，請稍後再試"

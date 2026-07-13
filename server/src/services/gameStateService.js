@@ -27,6 +27,7 @@ function getPublicState(state, viewerPlayerId){
         playerId: player.playerId,
         username: player.username,
         seatOrder: player.seatOrder,
+        isComputer: Boolean(player.isComputer),
         hand: isSelf ? hand : undefined,
         handCount: hand.length,
         isProtected: player.isProtected,
