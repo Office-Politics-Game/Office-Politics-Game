@@ -19,14 +19,6 @@ const achievementSeeds = [
         rewardAmount: 0,
     },
     {
-        code: "first_game_complete",
-        name: "完整出勤",
-        description: "第一次完成一局遊戲",
-        category: "game",
-        rewardCurrency: null,
-        rewardAmount: 0,
-    },
-    {
         code: "first_game_win",
         name: "初次勝利",
         description: "第一次遊戲勝利",

@@ -32,7 +32,6 @@ describe("seedAchievements", () => {
         expect(queryMock.mock.calls.map(([, values]) => values[0])).toEqual([
             "first_friend",
             "first_room_create",
-            "first_game_complete",
             "first_game_win",
             "first_top_up",
         ])

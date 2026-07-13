@@ -2,12 +2,12 @@
 
 ### Requirement: Achievement seed data
 
-The system SHALL provide an initial achievement catalog with unlockable achievements for friendship, room creation, completed game, game victory, and top-up actions.
+The system SHALL provide an initial achievement catalog with unlockable achievements for friendship, room creation, game victory, and top-up actions.
 
 #### Scenario: Initial achievements are seeded
 
 - **WHEN** the achievement seed is executed
-- **THEN** the system SHALL create achievement records for first_friend, first_room_create, first_game_complete, first_game_win, and first_top_up
+- **THEN** the system SHALL create achievement records for first_friend, first_room_create, first_game_win, and first_top_up
 - **AND** running the seed more than once SHALL NOT create duplicate achievement records
 
 ### Requirement: Achievement unlock service
@@ -44,11 +44,6 @@ The system SHALL check achievement unlocks from existing player action flows.
 
 - **WHEN** a player creates their first room
 - **THEN** the response SHALL include first_room_create in unlockedAchievements
-
-#### Scenario: Completed game unlocks first completed game achievement
-
-- **WHEN** a player completes their first game
-- **THEN** the response SHALL include first_game_complete in unlockedAchievements
 
 #### Scenario: Top-up unlocks first top-up achievement
 

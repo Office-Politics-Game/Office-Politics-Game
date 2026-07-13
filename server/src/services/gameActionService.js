@@ -32,20 +32,6 @@ async function unlockGameEndAchievements(state, viewerPlayerId) {
         return []
     }
 
-    const players = Array.isArray(state.players) ? state.players : []
-    const unlockedAchievements = []
-
-    for (const player of players) {
-        const unlockedAchievement = await unlockAchievement(
-            player.playerId,
-            "first_game_complete"
-        )
-
-        if (player.playerId === viewerPlayerId) {
-            unlockedAchievements.push(unlockedAchievement)
-        }
-    }
-
     if (state.winnerPlayerId) {
         const unlockedAchievement = await unlockAchievement(
             state.winnerPlayerId,
@@ -57,7 +43,7 @@ async function unlockGameEndAchievements(state, viewerPlayerId) {
         }
     }
 
-    return unlockedAchievements
+    return []
 }
 
 async function drawCardAction({ roomCode, playerId }) {

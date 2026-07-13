@@ -33,7 +33,13 @@
         class="achievement-card"
       >
         <span class="achievement-card__icon" aria-hidden="true">
-          ★
+          <img
+            v-if="getAchievementImage(achievement)"
+            class="achievement-card__image"
+            :src="getAchievementImage(achievement)"
+            alt=""
+          >
+          <span v-else>★</span>
         </span>
 
         <div class="achievement-card__content">
@@ -57,6 +63,10 @@
 
 <script setup>
 import { computed } from "vue"
+import roomFounderAchievementImage from "@/assets/images/achievement-room-founder.webp"
+import firstFriendAchievementImage from "@/assets/images/achievement-first-friend.webp"
+import topUpAchievementImage from "@/assets/images/achievement-top-up.webp"
+import firstGameWinAchievementImage from "@/assets/images/achievement-first-game-win.webp"
 
 const props = defineProps({
   achievements: {
@@ -78,6 +88,17 @@ const emit = defineEmits(["retry", "use-title"])
 const unlockedAchievements = computed(() => {
   return props.achievements.filter((achievement) => achievement.isUnlocked)
 })
+
+const achievementImages = {
+  first_room_create: roomFounderAchievementImage,
+  first_friend: firstFriendAchievementImage,
+  first_game_win: firstGameWinAchievementImage,
+  first_top_up: topUpAchievementImage,
+}
+
+function getAchievementImage(achievement) {
+  return achievementImages[achievement.code]
+}
 </script>
 
 <style scoped>
@@ -175,6 +196,14 @@ const unlockedAchievements = computed(() => {
   background: rgba(0, 42, 92, 0.08);
   color: var(--brand-navy);
   font-weight: 900;
+  overflow: hidden;
+}
+
+.achievement-card__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .achievement-card__content {
