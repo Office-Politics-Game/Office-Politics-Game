@@ -8,26 +8,94 @@ import { useGameRoomState } from '@/composables/useGameRoomState'
 import { useGameSocketActions } from '@/composables/useGameSocketActions'
 import { useGameViewModel } from '@/composables/useGameViewModel'
 import { cardAssetKeyByRank, cardAssetsByKey } from '@/constants/cardAssets'
+import { getCardSkinThemeSlotImage } from '@/constants/cardSkinThemes'
 import {
   drawCard as drawGameCard,
   getRoomGameState,
   playCard as playGameCard,
 } from '@/services/gameActionApi'
 import { connectSocket, emitWithAck } from '@/services/socketClient'
+import { useAppearanceStore } from '@/stores/appearanceStore'
 import { useGameStateStore } from '@/stores/gameStateStore'
 import { normalizeCard } from '@/utils/cardUtils'
 import { resolveAvatarUrl } from '@/utils/playerUtils'
 
 const route = useRoute()
+const appearanceStore = useAppearanceStore()
 const gameStateStore = useGameStateStore()
+const { gameState, currentPlayer, currentPlayerId, currentTurnPlayerId, isLoading } =
+  storeToRefs(gameStateStore)
 const {
-  gameState,
-  currentPlayer,
-  currentPlayerId,
-  currentTurnPlayerId,
-  isLoading,
-} = storeToRefs(gameStateStore)
+  cardSkinUrl,
+  cardSkinOverrides,
+  isHydrated: isAppearanceHydrated,
+} = storeToRefs(appearanceStore)
 const gameStage = ref(null)
+
+function getViewerCardSkinUrl(cardKey = '') {
+  const overrideUrl =
+    cardKey &&
+    cardSkinOverrides.value &&
+    typeof cardSkinOverrides.value === 'object'
+      ? cardSkinOverrides.value[cardKey]
+      : ''
+
+  if (typeof overrideUrl === 'string' && overrideUrl) {
+    const overrideThemeSlotUrl = getCardSkinThemeSlotImage(overrideUrl, cardKey)
+
+    if (overrideThemeSlotUrl) {
+      return overrideThemeSlotUrl
+    }
+
+    return overrideUrl
+  }
+
+  const themeSlotUrl = getCardSkinThemeSlotImage(cardSkinUrl.value, cardKey)
+
+  if (themeSlotUrl) {
+    return themeSlotUrl
+  }
+
+  return typeof cardSkinUrl.value === 'string' ? cardSkinUrl.value : ''
+}
+
+function normalizeCardForViewer(rawCard = {}, fallbackIndex = 0) {
+  const normalizedCard = normalizeCard(rawCard, fallbackIndex)
+  const viewerCardSkinUrl = getViewerCardSkinUrl(normalizedCard.assetKey)
+
+  if (!viewerCardSkinUrl) {
+    return normalizedCard
+  }
+
+  return {
+    ...normalizedCard,
+    backgroundUrl: viewerCardSkinUrl,
+  }
+}
+
+async function ensureViewerAppearanceHydrated(viewerPlayerId) {
+  const numericPlayerId = Number(viewerPlayerId ?? currentPlayerId.value)
+
+  if (!Number.isInteger(numericPlayerId) || numericPlayerId <= 0) {
+    return
+  }
+
+  if (
+    isAppearanceHydrated.value &&
+    String(appearanceStore.playerId ?? '') === String(numericPlayerId)
+  ) {
+    return
+  }
+
+  try {
+    await appearanceStore.hydrateForPlayer(numericPlayerId)
+  } catch (error) {
+    console.warn('[game:view] hydrate-viewer-appearance:failed', {
+      playerId: numericPlayerId,
+      error,
+    })
+  }
+}
 
 const {
   normalizedRoomCode,
@@ -45,6 +113,7 @@ const {
   gameStateStore,
   currentPlayerId,
   getRoomGameState,
+  beforeRefresh: ensureViewerAppearanceHydrated,
 })
 
 const {
@@ -67,7 +136,7 @@ const {
   emitWithAck,
   drawGameCard,
   playGameCard,
-  normalizeCard,
+  normalizeCard: normalizeCardForViewer,
   cardAssetKeyByRank,
   cardAssetsByKey,
 })
@@ -87,13 +156,13 @@ const {
   resolvedCurrentPlayerId,
   roomPlayerMetadata,
   isDrawing,
-  normalizeCard,
+  normalizeCard: normalizeCardForViewer,
   resolveAvatarUrl,
 })
 
 onMounted(() => {
-  loadInitialRoomState()
-  subscribeGameSocket()
+  void loadInitialRoomState()
+  void subscribeGameSocket()
 })
 
 onBeforeUnmount(() => {
@@ -107,8 +176,8 @@ watch(
       return
     }
 
-    loadInitialRoomState()
-    subscribeGameSocket()
+    void loadInitialRoomState()
+    void subscribeGameSocket()
   },
 )
 </script>

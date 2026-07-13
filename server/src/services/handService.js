@@ -1,56 +1,93 @@
 import { drawCard } from "./deckService.js"
 
-// 發初始手牌
-function dealCards (deck, players, cardsPerPlayer){
-    for(let round=0; round < cardsPerPlayer; round++){
-        for(let playerIndex=0; playerIndex < players.length; playerIndex++){
-            const card = drawCard(deck)
-            players[playerIndex].hand.push(card)
-        }
-    }
-    return {players, deck}
+function attachCardOwner(card, playerId) {
+  if (!card) {
+    return card
+  }
+
+  return {
+    ...card,
+    ownerPlayerId: Number(playerId),
+  }
 }
 
-// 加入手牌
+function dealCards(deck, players, cardsPerPlayer) {
+  for (let round = 0; round < cardsPerPlayer; round += 1) {
+    for (let playerIndex = 0; playerIndex < players.length; playerIndex += 1) {
+      const card = drawCard(deck)
+
+      if (!card) {
+        continue
+      }
+
+      if (!Array.isArray(players[playerIndex].hand)) {
+        players[playerIndex].hand = []
+      }
+
+      players[playerIndex].hand.push(
+        attachCardOwner(card, players[playerIndex].playerId),
+      )
+    }
+  }
+
+  return { players, deck }
+}
+
 function addHandCard(player, card) {
-    player.hand.push(card)
+  if (!player) {
     return player
+  }
+
+  if (!Array.isArray(player.hand)) {
+    player.hand = []
+  }
+
+  if (card) {
+    player.hand.push(attachCardOwner(card, player.playerId))
+  }
+
+  return player
 }
 
-// 移除手牌
-function removeHandCard(player, cardId){
-    const cardIndex = player.hand.findIndex((card) => card.id === cardId)
-    if ( cardIndex === -1 ){
-        return null
-    }
-    const removeCard = player.hand.splice(cardIndex, 1)[0]
-    return removeCard
+function removeHandCard(player, cardId) {
+  const cardIndex = player.hand.findIndex((card) => card.id === cardId)
+
+  if (cardIndex === -1) {
+    return null
+  }
+
+  return player.hand.splice(cardIndex, 1)[0]
 }
 
-// 指定玩家棄牌後重新抽牌
-function replaceCard(player, cardId, discardPile, deck){
-    if (deck.length === 0) {
-        return null
-    }
-    const discardedCard = removeHandCard(player, cardId, discardPile)
-    if (discardedCard === null) {
-        return null
-    }
-    discardPile.push(discardedCard)
-    const newCard = drawCard(deck)
-    if (newCard === null) {
-        return null
-    }
-    addHandCard(player, newCard)
-    return { discardedCard, newCard, player, deck, discardPile }
+function replaceCard(player, cardId, discardPile, deck) {
+  if (deck.length === 0) {
+    return null
+  }
+
+  const discardedCard = removeHandCard(player, cardId, discardPile)
+
+  if (discardedCard === null) {
+    return null
+  }
+
+  discardPile.push(discardedCard)
+
+  const newCard = drawCard(deck)
+
+  if (newCard === null) {
+    return null
+  }
+
+  addHandCard(player, newCard)
+
+  return { discardedCard, newCard, player, deck, discardPile }
 }
 
-// 交換手牌
-function swapHands(playerA, playerB){
-    const temp = playerA.hand
-    playerA.hand = playerB.hand
-    playerB.hand = temp
-    return {playerA, playerB}
+function swapHands(playerA, playerB) {
+  const temp = playerA.hand
+  playerA.hand = playerB.hand
+  playerB.hand = temp
+  return { playerA, playerB }
 }
 
 export {
@@ -58,5 +95,5 @@ export {
   addHandCard,
   removeHandCard,
   replaceCard,
-  swapHands
+  swapHands,
 }

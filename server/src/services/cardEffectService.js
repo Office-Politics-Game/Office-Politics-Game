@@ -2,6 +2,17 @@ import {findPlayer, protectPlayer, killPlayer} from "./playerStateService.js"
 import {addHandCard, removeHandCard, swapHands} from "./handService.js"
 import { drawCard } from "./deckService.js"
 
+function attachCardOwner(card, playerId) {
+    if (!card) {
+        return card
+    }
+
+    return {
+        ...card,
+        ownerPlayerId: Number(playerId),
+    }
+}
+
 function findTargetPlayer(state, targetPlayerId) {
     const targetPlayer = findPlayer(state, targetPlayerId)
     if (!canTargetPlayer(targetPlayer)) {
@@ -113,7 +124,10 @@ function usePm(state, targetPlayerId) {
     if (!targetCard) {
         return null
     }
-    const discardedCard = removeHandCard(targetPlayer, targetCard.id)
+    const discardedCard = attachCardOwner(
+        removeHandCard(targetPlayer, targetCard.id),
+        targetPlayer.playerId
+    )
 
     if (!discardedCard) {
         return null
@@ -149,9 +163,11 @@ function usePm(state, targetPlayerId) {
         return null
     }
 
-    addHandCard(targetPlayer, newCard)
+    const ownedNewCard = attachCardOwner(newCard, targetPlayer.playerId)
 
-    return createPmResult(newCard)
+    addHandCard(targetPlayer, ownedNewCard)
+
+    return createPmResult(ownedNewCard)
 }
 
 // 人資主管：與一名玩家秘密交換手牌

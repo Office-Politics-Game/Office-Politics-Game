@@ -29,6 +29,55 @@ function parsePositiveInteger(value, fieldName) {
   return parsedValue
 }
 
+function normalizeCardSkinOverrides(overrides) {
+  if (!overrides || typeof overrides !== "object" || Array.isArray(overrides)) {
+    return {}
+  }
+
+  return overrides
+}
+
+async function attachCardSkinOverrideUrls(rows = [], db = pool) {
+  const allOverrideIds = Array.from(
+    new Set(
+      rows
+        .flatMap((row) =>
+          Object.values(normalizeCardSkinOverrides(row.card_skin_overrides)).map((itemId) =>
+            Number(itemId),
+          ),
+        )
+        .filter((itemId) => Number.isInteger(itemId) && itemId > 0),
+    ),
+  )
+
+  if (allOverrideIds.length === 0) {
+    return rows.map((row) => ({
+      ...row,
+      card_skin_override_urls: {},
+    }))
+  }
+
+  const overrideItemResult = await db.query(
+    `SELECT id, image_url
+     FROM shop_items
+     WHERE id = ANY($1::int[])`,
+    [allOverrideIds],
+  )
+
+  const overrideImageById = Object.fromEntries(
+    overrideItemResult.rows.map((row) => [Number(row.id), row.image_url || ""]),
+  )
+
+  return rows.map((row) => ({
+    ...row,
+    card_skin_override_urls: Object.fromEntries(
+      Object.entries(normalizeCardSkinOverrides(row.card_skin_overrides))
+        .map(([slotKey, itemId]) => [slotKey, overrideImageById[Number(itemId)] || ""])
+        .filter(([, imageUrl]) => Boolean(imageUrl)),
+    ),
+  }))
+}
+
 function mapRoomPlayer(player) {
   const isComputer = Boolean(player.is_computer) || player.role === "computer"
 
@@ -36,6 +85,11 @@ function mapRoomPlayer(player) {
     playerId: player.player_id,
     username: player.username,
     avatarId: player.avatar_id,
+    avatarUrl: player.avatar_url || "",
+    cardSkinUrl: player.card_skin_url || "",
+    cardSkinOverrides:
+      player.card_skin_override_urls ??
+      normalizeCardSkinOverrides(player.card_skin_overrides),
     role: player.role,
     seatOrder: player.seat_order,
     isReady: isComputer ? true : player.is_ready,
@@ -54,7 +108,7 @@ async function findOrCreateComputerPlayer(client, index) {
      WHERE account = $1 OR username = $2
      ORDER BY id ASC
      LIMIT 1`,
-    [account, username]
+    [account, username],
   )
 
   if (existingResult.rows.length > 0) {
@@ -65,7 +119,7 @@ async function findOrCreateComputerPlayer(client, index) {
     `INSERT INTO players (username, account, avatar_id, is_online)
      VALUES ($1, $2, $3, false)
      RETURNING id, username, avatar_id`,
-    [username, account, index + 1]
+    [username, account, index + 1],
   )
 
   return playerResult.rows[0]
@@ -94,7 +148,7 @@ async function createRoom({ hostPlayerId }) {
       `INSERT INTO game_rooms (room_code, host_player_id, status)
        VALUES ($1, $2, 'waiting')
        RETURNING *`,
-      [roomCode, hostPlayerId]
+      [roomCode, hostPlayerId],
     )
 
     const room = roomResult.rows[0]
@@ -103,7 +157,7 @@ async function createRoom({ hostPlayerId }) {
       `INSERT INTO game_room_players
        (room_id, player_id, role, seat_order, is_ready)
        VALUES ($1, $2, 'host', 1, true)`,
-      [room.id, hostPlayerId]
+      [room.id, hostPlayerId],
     )
 
     await client.query("COMMIT")
@@ -124,7 +178,7 @@ async function joinRoom({ roomCode, playerId }) {
 
     const roomResult = await client.query(
       `SELECT * FROM game_rooms WHERE room_code = $1 FOR UPDATE`,
-      [roomCode]
+      [roomCode],
     )
 
     if (roomResult.rows.length === 0) {
@@ -139,7 +193,7 @@ async function joinRoom({ roomCode, playerId }) {
 
     const countResult = await client.query(
       `SELECT COUNT(*) FROM game_room_players WHERE room_id = $1`,
-      [room.id]
+      [room.id],
     )
 
     const playerCount = Number(countResult.rows[0].count)
@@ -153,7 +207,7 @@ async function joinRoom({ roomCode, playerId }) {
        (room_id, player_id, role, seat_order, is_ready)
        VALUES ($1, $2, 'player', $3, false)
        RETURNING *`,
-      [room.id, playerId, playerCount + 1]
+      [room.id, playerId, playerCount + 1],
     )
 
     await client.query("COMMIT")
@@ -168,7 +222,7 @@ async function joinRoom({ roomCode, playerId }) {
 async function updateReady({ roomCode, playerId, isReady }) {
   const roomResult = await pool.query(
     `SELECT * FROM game_rooms WHERE room_code = $1`,
-    [roomCode]
+    [roomCode],
   )
 
   if (roomResult.rows.length === 0) {
@@ -182,7 +236,7 @@ async function updateReady({ roomCode, playerId, isReady }) {
      SET is_ready = $1
      WHERE room_id = $2 AND player_id = $3
      RETURNING *`,
-    [isReady, room.id, playerId]
+    [isReady, room.id, playerId],
   )
 
   if (result.rows.length === 0) {
@@ -195,7 +249,7 @@ async function getRoomState({ roomCode }) {
     `SELECT id, room_code, host_player_id, status
      FROM game_rooms
      WHERE room_code = $1`,
-    [roomCode]
+    [roomCode],
   )
 
   if (roomResult.rows.length === 0) {
@@ -203,22 +257,64 @@ async function getRoomState({ roomCode }) {
   }
 
   const room = roomResult.rows[0]
-  const playerResult = await pool.query(
-    `SELECT
-       grp.player_id,
-       p.username,
-       p.avatar_id,
-       grp.role,
-       grp.seat_order,
-       grp.is_ready,
-       grp.is_alive,
-       grp.is_computer
-     FROM game_room_players grp
-     JOIN players p ON p.id = grp.player_id
-     WHERE grp.room_id = $1
-     ORDER BY grp.seat_order ASC`,
-    [room.id]
-  )
+  let playerResult
+
+  try {
+    playerResult = await pool.query(
+      `SELECT
+         grp.player_id,
+         p.username,
+         p.avatar_id,
+         avatar_item.image_url AS avatar_url,
+         card_skin_item.image_url AS card_skin_url,
+         pei.card_skin_overrides,
+         grp.role,
+         grp.seat_order,
+         grp.is_ready,
+         grp.is_alive,
+         (grp.is_computer OR grp.role = 'computer') AS is_computer
+       FROM game_room_players grp
+       JOIN players p ON p.id = grp.player_id
+       LEFT JOIN player_equipped_items pei ON pei.player_id = p.id
+       LEFT JOIN shop_items avatar_item
+         ON avatar_item.id = pei.avatar_item_id
+        AND avatar_item.type = 'avatar'
+       LEFT JOIN shop_items card_skin_item
+         ON card_skin_item.id = pei.card_skin_item_id
+        AND card_skin_item.type = 'card_skin'
+       WHERE grp.room_id = $1
+       ORDER BY grp.seat_order ASC`,
+      [room.id],
+    )
+  } catch {
+    playerResult = await pool.query(
+      `SELECT
+         grp.player_id,
+         p.username,
+         p.avatar_id,
+         avatar_item.image_url AS avatar_url,
+         card_skin_item.image_url AS card_skin_url,
+         grp.role,
+         grp.seat_order,
+         grp.is_ready,
+         grp.is_alive,
+         (grp.is_computer OR grp.role = 'computer') AS is_computer
+       FROM game_room_players grp
+       JOIN players p ON p.id = grp.player_id
+       LEFT JOIN player_equipped_items pei ON pei.player_id = p.id
+       LEFT JOIN shop_items avatar_item
+         ON avatar_item.id = pei.avatar_item_id
+        AND avatar_item.type = 'avatar'
+       LEFT JOIN shop_items card_skin_item
+         ON card_skin_item.id = pei.card_skin_item_id
+        AND card_skin_item.type = 'card_skin'
+       WHERE grp.room_id = $1
+       ORDER BY grp.seat_order ASC`,
+      [room.id],
+    )
+  }
+
+  const playerRows = await attachCardSkinOverrideUrls(playerResult.rows)
 
   return {
     room: {
@@ -227,7 +323,7 @@ async function getRoomState({ roomCode }) {
       hostPlayerId: room.host_player_id,
       status: room.status,
     },
-    players: playerResult.rows.map(mapRoomPlayer),
+    players: playerRows.map(mapRoomPlayer),
   }
 }
 
@@ -239,7 +335,7 @@ async function addComputerPlayer({ roomCode, hostPlayerId }) {
 
     const roomResult = await client.query(
       `SELECT * FROM game_rooms WHERE room_code = $1 FOR UPDATE`,
-      [roomCode]
+      [roomCode],
     )
 
     if (roomResult.rows.length === 0) {
@@ -260,11 +356,11 @@ async function addComputerPlayer({ roomCode, hostPlayerId }) {
       `SELECT
          grp.player_id,
          grp.seat_order,
-         grp.is_computer
+         (grp.is_computer OR grp.role = 'computer') AS is_computer
        FROM game_room_players grp
        WHERE grp.room_id = $1
        ORDER BY grp.seat_order ASC`,
-      [room.id]
+      [room.id],
     )
     const roomPlayers = playerResult.rows
 
@@ -289,7 +385,7 @@ async function addComputerPlayer({ roomCode, hostPlayerId }) {
        (room_id, player_id, role, seat_order, is_ready, is_computer)
        VALUES ($1, $2, 'computer', $3, true, true)
        RETURNING *`,
-      [room.id, computerPlayer.id, seatOrder]
+      [room.id, computerPlayer.id, seatOrder],
     )
 
     await client.query("COMMIT")
@@ -305,11 +401,11 @@ async function addComputerPlayer({ roomCode, hostPlayerId }) {
 async function kickPlayer({ roomCode, requesterPlayerId, targetPlayerId }) {
   const numericRequesterPlayerId = parsePositiveInteger(
     requesterPlayerId,
-    "requesterPlayerId"
+    "requesterPlayerId",
   )
   const numericTargetPlayerId = parsePositiveInteger(
     targetPlayerId,
-    "targetPlayerId"
+    "targetPlayerId",
   )
 
   if (numericRequesterPlayerId === numericTargetPlayerId) {
@@ -326,7 +422,7 @@ async function kickPlayer({ roomCode, requesterPlayerId, targetPlayerId }) {
        FROM game_rooms
        WHERE room_code = $1
        FOR UPDATE`,
-      [roomCode]
+      [roomCode],
     )
 
     if (roomResult.rows.length === 0) {
@@ -335,18 +431,22 @@ async function kickPlayer({ roomCode, requesterPlayerId, targetPlayerId }) {
 
     const room = roomResult.rows[0]
     const memberResult = await client.query(
-      `SELECT player_id, role, seat_order, is_computer
+      `SELECT
+         player_id,
+         role,
+         seat_order,
+         (is_computer OR role = 'computer') AS is_computer
        FROM game_room_players
        WHERE room_id = $1
        ORDER BY seat_order ASC
        FOR UPDATE`,
-      [room.id]
+      [room.id],
     )
     const requester = memberResult.rows.find(
-      (member) => Number(member.player_id) === numericRequesterPlayerId
+      (member) => Number(member.player_id) === numericRequesterPlayerId,
     )
     const target = memberResult.rows.find(
-      (member) => Number(member.player_id) === numericTargetPlayerId
+      (member) => Number(member.player_id) === numericTargetPlayerId,
     )
 
     if (!requester) {
@@ -372,11 +472,11 @@ async function kickPlayer({ roomCode, requesterPlayerId, targetPlayerId }) {
     await client.query(
       `DELETE FROM game_room_players
        WHERE room_id = $1 AND player_id = $2`,
-      [room.id, numericTargetPlayerId]
+      [room.id, numericTargetPlayerId],
     )
 
     const remainingMembers = memberResult.rows.filter(
-      (member) => Number(member.player_id) !== numericTargetPlayerId
+      (member) => Number(member.player_id) !== numericTargetPlayerId,
     )
 
     for (const [index, member] of remainingMembers.entries()) {
@@ -384,7 +484,7 @@ async function kickPlayer({ roomCode, requesterPlayerId, targetPlayerId }) {
         `UPDATE game_room_players
          SET seat_order = $1
          WHERE room_id = $2 AND player_id = $3`,
-        [index + 1, room.id, member.player_id]
+        [index + 1, room.id, member.player_id],
       )
     }
 
@@ -407,7 +507,7 @@ async function startGame({ roomCode, playerId }) {
 
     const roomResult = await client.query(
       `SELECT * FROM game_rooms WHERE room_code = $1 FOR UPDATE`,
-      [roomCode]
+      [roomCode],
     )
 
     if (roomResult.rows.length === 0) {
@@ -424,24 +524,66 @@ async function startGame({ roomCode, playerId }) {
       throw createServiceError("遊戲已開始")
     }
 
-    const playerResult = await client.query(
-      `SELECT grp.player_id, grp.seat_order, grp.is_ready, p.username
-       FROM game_room_players grp
-       JOIN players p ON p.id = grp.player_id
-       WHERE grp.room_id = $1
-       ORDER BY grp.seat_order ASC`,
-      [room.id]
-    )
+    let playerResult
 
-    const players = playerResult.rows
+    try {
+      playerResult = await client.query(
+        `SELECT
+           grp.player_id,
+           grp.seat_order,
+           grp.is_ready,
+           (grp.is_computer OR grp.role = 'computer') AS is_computer,
+           p.username,
+           p.avatar_id,
+           avatar_item.image_url AS avatar_url,
+           card_skin_item.image_url AS card_skin_url,
+           pei.card_skin_overrides
+         FROM game_room_players grp
+         JOIN players p ON p.id = grp.player_id
+         LEFT JOIN player_equipped_items pei ON pei.player_id = p.id
+         LEFT JOIN shop_items avatar_item
+           ON avatar_item.id = pei.avatar_item_id
+          AND avatar_item.type = 'avatar'
+         LEFT JOIN shop_items card_skin_item
+           ON card_skin_item.id = pei.card_skin_item_id
+          AND card_skin_item.type = 'card_skin'
+         WHERE grp.room_id = $1
+         ORDER BY grp.seat_order ASC`,
+        [room.id],
+      )
+    } catch {
+      playerResult = await client.query(
+        `SELECT
+           grp.player_id,
+           grp.seat_order,
+           grp.is_ready,
+           (grp.is_computer OR grp.role = 'computer') AS is_computer,
+           p.username,
+           p.avatar_id,
+           avatar_item.image_url AS avatar_url,
+           card_skin_item.image_url AS card_skin_url
+         FROM game_room_players grp
+         JOIN players p ON p.id = grp.player_id
+         LEFT JOIN player_equipped_items pei ON pei.player_id = p.id
+         LEFT JOIN shop_items avatar_item
+           ON avatar_item.id = pei.avatar_item_id
+          AND avatar_item.type = 'avatar'
+         LEFT JOIN shop_items card_skin_item
+           ON card_skin_item.id = pei.card_skin_item_id
+          AND card_skin_item.type = 'card_skin'
+         WHERE grp.room_id = $1
+         ORDER BY grp.seat_order ASC`,
+        [room.id],
+      )
+    }
+
+    const players = await attachCardSkinOverrideUrls(playerResult.rows, client)
 
     if (players.length !== MAX_ROOM_PLAYERS) {
       throw createServiceError("玩家人數需滿 4 人")
     }
 
-    const allReady = players.every((player) => {
-      return player.is_ready
-    })
+    const allReady = players.every((player) => player.is_ready)
 
     if (!allReady) {
       throw createServiceError("所有玩家都必須準備完成")
@@ -451,7 +593,7 @@ async function startGame({ roomCode, playerId }) {
       `INSERT INTO matches (room_id)
        VALUES ($1)
        RETURNING *`,
-      [room.id]
+      [room.id],
     )
 
     const match = matchResult.rows[0]
@@ -462,14 +604,14 @@ async function startGame({ roomCode, playerId }) {
        (room_id, match_id, status, current_turn_player_id, state_json)
        VALUES ($1, $2, 'playing', $3, $4)
        RETURNING *`,
-      [room.id, match.id, state.currentTurnPlayerId, state]
+      [room.id, match.id, state.currentTurnPlayerId, state],
     )
 
     await client.query(
       `UPDATE game_rooms
        SET status = 'playing'
        WHERE id = $1`,
-      [room.id]
+      [room.id],
     )
 
     await client.query("COMMIT")

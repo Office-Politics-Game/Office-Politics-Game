@@ -15,6 +15,7 @@ export function useGameRoomState({
   gameStateStore,
   currentPlayerId,
   getRoomGameState,
+  beforeRefresh,
 } = {}) {
   const roomPlayerMetadata = ref({})
   const hasLoadedInitialState = ref(false)
@@ -37,6 +38,8 @@ export function useGameRoomState({
           name: player.name,
           avatarId: player.avatarId ?? player.avatar_id,
           avatarUrl: player.avatarUrl,
+          cardSkinUrl: player.cardSkinUrl ?? '',
+          cardSkinOverrides: player.cardSkinOverrides ?? {},
         },
       ]),
     )
@@ -70,6 +73,10 @@ export function useGameRoomState({
   async function refreshRoomState({ onProgress } = {}) {
     if (!normalizedRoomCode.value || !requestedPlayerId.value) {
       throw new Error('Missing roomCode or playerId')
+    }
+
+    if (typeof beforeRefresh === 'function') {
+      await beforeRefresh(requestedPlayerId.value)
     }
 
     const roomStateResponse = await gameStateStore.fetchRoomState(

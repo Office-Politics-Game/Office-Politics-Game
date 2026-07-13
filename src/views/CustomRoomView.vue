@@ -10,6 +10,7 @@ import { useCurrentPlayerId } from "@/composables/useCurrentPlayerId.js";
 import { useFriendStore } from "@/stores/friendStore.js";
 import { useRoomInvitationStore } from "@/stores/roomInvitationStore.js";
 import { useRoomStore } from "@/stores/roomStore.js";
+import { resolveAvatarUrl } from "@/utils/playerUtils.js";
 
 const router = useRouter();
 const route = useRoute();
@@ -59,17 +60,15 @@ const emptyPlayerSlots = [
   },
 ];
 
-function createEmptySlot(index) {
-  return { ...emptyPlayerSlots[index] };
-}
-
-function createRoomPlayerSlot(player) {
+function createRoomPlayerSlot(player, index) {
   return {
     id: player.playerId,
     isHost: player.role === "host",
     isReady: Boolean(player.isReady),
     name: player.username,
-    avatar: null,
+    avatar: player.avatarUrl
+      ? player.avatarUrl
+      : resolveAvatarUrl(player.avatarId ?? player.avatar_id, index),
     isComputer: Boolean(player.isComputer),
     canToggleReady:
       !player.isComputer &&
@@ -84,12 +83,12 @@ function createRestoringSlot(slot, index) {
   return {
     id: `restoring-${index}`,
     isHost: index === 0,
-    name: index === 0 ? "房主連線中" : `等待玩家 ${index + 1}`,
+    name: index === 0 ? "房主載入中" : `等待玩家 ${index + 1}`,
     level: null,
     avatar: null,
     isReady: index === 0,
     isPlaceholder: true,
-    placeholderLabel: index === 0 ? "正在同步房間資訊" : "同步玩家席位中",
+    placeholderLabel: index === 0 ? "正在還原房間狀態" : "載入玩家資料中",
     ...slot,
   };
 }
@@ -99,7 +98,7 @@ const playerSlots = computed(() =>
     const roomPlayer = players.value[index];
 
     if (roomPlayer) {
-      return createRoomPlayerSlot(roomPlayer);
+      return createRoomPlayerSlot(roomPlayer, index);
     }
 
     return {
@@ -129,9 +128,7 @@ const currentPlayerEntry = computed(() =>
   ),
 );
 
-const isHostPlayer = computed(
-  () => currentPlayerEntry.value?.role === "host",
-);
+const isHostPlayer = computed(() => currentPlayerEntry.value?.role === "host");
 
 const occupiedSlotCount = computed(
   () => displayPlayerSlots.value.filter((slot) => slot.name && !slot.isPlaceholder).length,
@@ -187,7 +184,7 @@ function handleRemovePlayer(index) {
 
 async function handleStartRoom() {
   if (!roomCode.value) {
-    roomStore.errorMessage = "目前沒有房間可以開始。";
+    roomStore.errorMessage = "找不到房間，無法開始遊戲";
     return;
   }
 
@@ -206,12 +203,12 @@ async function handleStartRoom() {
 
 async function openInviteFriendModal(index) {
   if (!isHostPlayer.value) {
-    roomInvitationStore.sendErrorMessage = "只有房主可以邀請好友。";
+    roomInvitationStore.sendErrorMessage = "只有房主可以邀請好友";
     return;
   }
 
   if (!roomCode.value) {
-    roomInvitationStore.sendErrorMessage = "目前沒有房間可以邀請好友。";
+    roomInvitationStore.sendErrorMessage = "找不到房間，無法邀請好友";
     return;
   }
 
@@ -252,7 +249,6 @@ async function copyRoomCode() {
 }
 
 onMounted(async () => {
-  let hasRestoredRoomState = false;
   const roomCodeToRestore = requestedRoomCode.value || roomCode.value;
 
   if (roomCodeToRestore && !players.value.length) {
@@ -268,9 +264,7 @@ onMounted(async () => {
       } else {
         await roomStore.fetchRoomState(roomCodeToRestore);
       }
-      hasRestoredRoomState = roomStore.players.length > 0;
     } catch {
-      hasRestoredRoomState = false;
       await roomStore.fetchRoomState(roomCodeToRestore).catch(() => null);
     } finally {
       window.setTimeout(() => {
@@ -320,7 +314,7 @@ watch(
   >
     <section
       class="flex h-90 w-600 flex-col items-center overflow-hidden pt-5 lg:h-170 lg:w-400 lg:pt-14"
-      aria-label="自訂遊戲局"
+      aria-label="自訂房間大廳"
     >
       <div
         class="flex w-52 items-center justify-center gap-2 text-sm font-bold leading-none text-white lg:w-80 lg:text-2xl"
@@ -368,7 +362,7 @@ watch(
 
       <div class="custom-room-status mt-4 text-sm font-bold text-white">
         <template v-if="isRestoringRoomState">
-          正在同步房間玩家狀態
+          正在還原房間與玩家狀態
         </template>
         <template v-else>
           {{ occupiedSlotCount }}/4 players
@@ -399,7 +393,7 @@ watch(
             class="h-4 w-4 fill-current lg:h-5 lg:w-5"
             :stroke-width="2.4"
           />
-          {{ isLoading ? "處理中" : "開始遊戲" }}
+          {{ isLoading ? "載入中" : "開始遊戲" }}
         </button>
       </div>
     </section>
