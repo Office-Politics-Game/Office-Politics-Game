@@ -10,13 +10,10 @@
           <p class="m-0 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
             OFFICE POLITICS
           </p>
-          <div class="mt-0.5 flex items-center gap-2">
+          <div class="mt-0.5 flex items-center">
             <h1 class="font-display text-2xl font-black tracking-[0.05em] text-slate-900">
               商城
             </h1>
-            <span class="border border-slate-300 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-700">
-              {{ activeCategoryMeta.name }}
-            </span>
           </div>
         </div>
 
@@ -39,7 +36,8 @@
           />
           <button
             type="button"
-            class="btn-dark tablet-storebar-return h-11 translate-y-1 whitespace-nowrap px-4 py-2 text-sm font-bold"
+            class="return-icon-button tablet-storebar-return"
+            aria-label="返回大廳"
             @click="goLobby"
           >
             返回大廳
@@ -49,7 +47,7 @@
 
       <Transition name="drawer-fade">
         <div
-          v-if="isMenuOpen"
+          v-if="false && isMenuOpen"
           class="mobile-menu-layer xl:hidden"
           @click.self="isMenuOpen = false"
         >
@@ -152,6 +150,7 @@
               type="button"
               class="category-card text-left"
               :class="{ active: activeCategory === category.id }"
+              :style="getCategoryStyle(category.id)"
               @click="activeCategory = category.id"
             >
               <div class="flex items-start justify-between gap-3">
@@ -425,6 +424,43 @@ const selectedItem = ref(null);
 const isDetailModalOpen = ref(false);
 const isMenuOpen = ref(false);
 const isImagePreviewOpen = ref(false);
+
+const categoryThemeMap = {
+  "card-front": {
+    "--category-accent": "34 211 238",
+    "--category-accent-strong": "14 165 233",
+    "--category-bg": "8 47 73",
+  },
+  "card-back": {
+    "--category-accent": "168 85 247",
+    "--category-accent-strong": "126 34 206",
+    "--category-bg": "59 7 100",
+  },
+  ticket: {
+    "--category-accent": "251 191 36",
+    "--category-accent-strong": "217 119 6",
+    "--category-bg": "69 26 3",
+  },
+  board: {
+    "--category-accent": "52 211 153",
+    "--category-accent-strong": "5 150 105",
+    "--category-bg": "6 78 59",
+  },
+  avatar: {
+    "--category-accent": "244 114 182",
+    "--category-accent-strong": "219 39 119",
+    "--category-bg": "80 7 36",
+  },
+  "top-up": {
+    "--category-accent": "129 140 248",
+    "--category-accent-strong": "79 70 229",
+    "--category-bg": "49 46 129",
+  },
+};
+
+function getCategoryStyle(categoryId) {
+  return categoryThemeMap[categoryId] ?? categoryThemeMap["card-front"];
+}
 
 const topUpItems = [
   {
@@ -830,6 +866,10 @@ onBeforeUnmount(() => {
   color: white;
 }
 
+.mall-topbar h1 + p {
+  display: none !important;
+}
+
 .mall-topbar > div:nth-child(2) > div {
   border-color: rgba(148, 163, 184, 0.36);
   background: linear-gradient(180deg, rgba(71, 85, 105, 0.82), rgba(15, 23, 42, 0.9));
@@ -900,8 +940,10 @@ onBeforeUnmount(() => {
 }
 
 .category-card {
-  border: 1px solid rgba(71, 85, 105, 0.78);
-  background: linear-gradient(180deg, rgba(19, 51, 68, 0.92), rgba(12, 32, 48, 0.94));
+  border: 1px solid rgba(var(--category-accent), 0.45);
+  background:
+    linear-gradient(180deg, rgba(var(--category-bg), 0.82), rgba(12, 32, 48, 0.94)),
+    rgba(12, 32, 48, 0.94);
   padding: 14px;
   color: rgba(226, 232, 240, 0.92);
   transition:
@@ -913,17 +955,25 @@ onBeforeUnmount(() => {
 
 .category-card:hover {
   transform: translateY(-1px);
-  border-color: rgba(0, 70, 244, 0.72);
-  background: linear-gradient(180deg, rgba(30, 75, 90, 0.98), rgba(15, 46, 62, 0.98));
+  border-color: rgba(var(--category-accent), 0.85);
+  background:
+    linear-gradient(180deg, rgba(var(--category-bg), 0.96), rgba(var(--category-accent-strong), 0.38)),
+    rgba(15, 46, 62, 0.98);
 }
 
 .category-card.active {
-  border-color: rgba(0, 70, 244, 0.95);
-  background: linear-gradient(180deg, rgba(0, 70, 244, 0.92), rgba(70, 85, 99, 0.92));
+  border-color: rgba(var(--category-accent), 0.98);
+  background:
+    linear-gradient(180deg, rgba(var(--category-accent-strong), 0.96), rgba(var(--category-bg), 0.94)),
+    rgba(70, 85, 99, 0.92);
   box-shadow:
-    inset 4px 0 0 rgba(134, 179, 224, 0.98),
-    0 0 22px rgba(0, 70, 244, 0.34);
+    inset 4px 0 0 rgba(var(--category-accent), 0.98),
+    0 0 22px rgba(var(--category-accent), 0.3);
   color: white;
+}
+
+.category-card .hidden {
+  display: none !important;
 }
 
 .category-card span {
@@ -943,7 +993,7 @@ onBeforeUnmount(() => {
 }
 
 .featured-summary {
-  display: -webkit-box;
+  display: none !important;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -970,14 +1020,77 @@ onBeforeUnmount(() => {
   color: white;
 }
 
-.mobile-storebar span:not(.mobile-menu-button span) {
+.mobile-storebar__category-badge {
   border-color: rgba(0, 70, 244, 0.52);
   background: rgba(0, 70, 244, 0.16);
   color: rgb(134, 179, 224);
 }
 
 .tablet-storebar-actions {
-  display: none;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-self: end;
+  gap: 8px;
+}
+
+.return-icon-button {
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border: 1px solid rgba(0, 70, 244, 0.72);
+  background: linear-gradient(180deg, rgba(0, 70, 244, 0.95), rgba(30, 41, 59, 0.95));
+  color: white;
+  font-size: 0;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+.return-icon-button::before {
+  content: "←";
+  font-size: 20px;
+  line-height: 1;
+}
+
+.tablet-storebar-currency {
+  width: min(52vw, 260px);
+}
+
+.tablet-storebar-currency:deep(section) {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  gap: 5px;
+}
+
+.tablet-storebar-currency:deep(section > div) {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 24px !important;
+  padding: 0 4px !important;
+}
+
+.tablet-storebar-currency:deep(section > div > div) {
+  min-width: 0;
+  justify-content: center;
+  gap: 3px !important;
+}
+
+.tablet-storebar-currency:deep(section > div > div > span:first-child) {
+  width: 14px !important;
+  height: 14px !important;
+  flex: 0 0 14px !important;
+}
+
+.tablet-storebar-currency:deep(section > div > div > span:last-child) {
+  min-width: 0 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px !important;
 }
 
 .mobile-menu-button {
@@ -997,6 +1110,11 @@ onBeforeUnmount(() => {
   width: 16px;
   height: 2px;
   background: rgb(134, 179, 224);
+}
+
+.mobile-menu-button,
+.mobile-menu-layer {
+  display: none !important;
 }
 
 .mobile-menu-layer {
