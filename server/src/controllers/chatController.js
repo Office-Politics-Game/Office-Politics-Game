@@ -2,6 +2,7 @@ import {
   getDirectMessages,
   sendDirectMessage,
 } from "../services/chatService.js"
+import { getChatPlayerRoom, getSocketServer } from "../socket/index.js"
 
 function getErrorStatus(error) {
   return error.statusCode || 500
@@ -15,6 +16,23 @@ function parsePositiveInteger(value) {
   }
 
   return numberValue
+}
+
+function emitDirectMessage(directMessage) {
+  try {
+    const io = getSocketServer()
+
+    if (!io) {
+      return
+    }
+
+    io.to(getChatPlayerRoom(directMessage.receiverPlayerId)).emit(
+      "chat:message",
+      directMessage,
+    )
+  } catch (error) {
+    console.error("好友私訊即時推播失敗", error)
+  }
 }
 
 async function handleSendDirectMessage(req, res) {
@@ -32,6 +50,8 @@ async function handleSendDirectMessage(req, res) {
       friendId,
       content: body.content,
     })
+
+    emitDirectMessage(directMessage)
 
     return res.status(201).json({
       message: "訊息已送出",
