@@ -18,6 +18,10 @@
   --shadow: 0 20px 60px rgba(0, 19, 50, 0.14);
   --radius-md: 0;
   --radius-lg: 0;
+  --cursor-default: url("../icons/cursor.svg") 0 0, default;
+  --cursor-pointer: url("../icons/cursor-pointer.svg") 0 0, pointer;
+  --cursor-grab: url("../icons/cursor-grab.svg") 16 14, grab;
+  --cursor-grabbing: url("../icons/cursor-grabbing.svg") 16 14, grabbing;
   --text-xs: 12px;
   --text-sm: 14px;
   --text-md: 16px;
@@ -52,6 +56,7 @@ body {
   overflow: hidden;
   font-family: var(--font-sans);
   background: var(--brand-navy);
+  cursor: var(--cursor-default);
 }
 
 @keyframes drift {
@@ -101,6 +106,15 @@ select {
 
 button {
   -webkit-tap-highlight-color: transparent;
+}
+
+:where(
+  a[href],
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  .cursor-pointer
+) {
+  cursor: var(--cursor-pointer) !important;
 }
 
 @media (min-width: 768px) {

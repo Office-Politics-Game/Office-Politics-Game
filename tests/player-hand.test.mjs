@@ -32,12 +32,13 @@ test('player hand uses separate arrangement and future motion layers', async () 
 test('game view derives deck count, draw eligibility, and hand cards from game state', async () => {
   const gameViewSource = await readSource('src/views/GameView.vue')
   const gameStageSource = await readSource('src/components/game/ui/GameStage.vue')
+  const viewModelSource = await readSource('src/composables/useGameViewModel.js')
 
-  assert.match(gameViewSource, /const deckCount = computed\(\(\) => gameState\.value\?\.deckCount \?\? 0\)/)
-  assert.match(gameViewSource, /const handCards = computed\(/)
-  assert.match(gameViewSource, /selfPlayer\.value\?\.hand/)
-  assert.match(gameViewSource, /const canDraw = computed\(/)
-  assert.match(gameViewSource, /handCards\.value\.length < 2/)
+  assert.match(viewModelSource, /const deckCount = computed/)
+  assert.match(viewModelSource, /const handCards = computed/)
+  assert.match(viewModelSource, /selfPlayer\.value\?\.hand/)
+  assert.match(viewModelSource, /const canDraw = computed/)
+  assert.match(viewModelSource, /handCards\.value\.length < 2/)
   assert.match(gameViewSource, /:hand-cards="handCards"/)
   assert.match(gameViewSource, /:can-draw="canDraw"/)
   assert.match(gameViewSource, /@draw-request="handleDrawRequest"/)
@@ -60,13 +61,14 @@ test('discard pile reuses the layered game card', async () => {
   assert.match(source, /:frame-url="card\.frameUrl"/)
 })
 
-test('player hand exposes card pointer interaction without owning play logic', async () => {
+test('player hand exposes inspection pointer interaction without owning play logic', async () => {
   const source = await readSource('src/components/game/ui/PlayerHand.vue')
 
   assert.match(source, /defineEmits\(\['card-pointerdown'\]\)/)
   assert.match(source, /role="button"/)
-  assert.match(source, /:tabindex="isCardDisabled\(card\) \? -1 : 0"/)
-  assert.match(source, /@pointerdown="!isCardDisabled\(card\) && emit\('card-pointerdown', card, \$event\)"/)
+  assert.match(source, /tabindex="0"/)
+  assert.match(source, /:aria-label="`檢視卡牌：\$\{card\.name\}`"/)
+  assert.match(source, /@pointerdown="emit\('card-pointerdown', card, \$event\)"/)
   assert.match(source, /draggingCardId:/)
   assert.match(source, /game-card-arrangement--dragging/)
   assert.doesNotMatch(source, /gsap|<button|@click|@mouseenter|@mouseleave|draggable/)
@@ -76,6 +78,7 @@ test('player hand exposes card pointer interaction without owning play logic', a
 test('player hand supports shared hover message and prevents guarded pointer emit', async () => {
   const playerHandSource = await readSource('src/components/game/ui/PlayerHand.vue')
   const gameStageSource = await readSource('src/components/game/ui/GameStage.vue')
+  const cardPlaySource = await readSource('src/composables/useGameStageCardPlay.js')
   const hoverHintSource = await readSource('src/components/game/ui/HoverBlockHint.vue')
 
   assert.match(playerHandSource, /import HoverBlockHint from ["']\.\/HoverBlockHint\.vue["']/)
@@ -88,9 +91,9 @@ test('player hand supports shared hover message and prevents guarded pointer emi
   assert.match(playerHandSource, /:message="props\.disabledMessage"/)
   assert.doesNotMatch(playerHandSource, /game-card-arrangement__disabled-message/)
   assert.doesNotMatch(playerHandSource, /:title=/)
-  assert.match(playerHandSource, /@pointerdown="!isCardDisabled\(card\) && emit\('card-pointerdown', card, \$event\)"/)
+  assert.match(playerHandSource, /@pointerdown="emit\('card-pointerdown', card, \$event\)"/)
   assert.match(playerHandSource, /\.game-card-arrangement--rule-disabled,[\s\S]*cursor: not-allowed/)
-  assert.match(playerHandSource, /\.game-card-arrangement--interaction-disabled,[\s\S]*cursor: default/)
+  assert.match(playerHandSource, /\.game-card-arrangement--interaction-disabled,[\s\S]*cursor: var\(--cursor-pointer, pointer\)/)
 
   assert.match(hoverHintSource, /message:/)
   assert.match(hoverHintSource, /class="hover-block-hint"/)
@@ -101,11 +104,43 @@ test('player hand supports shared hover message and prevents guarded pointer emi
   assert.match(hoverHintSource, /padding:\s*4px 8px/)
   assert.doesNotMatch(hoverHintSource, /transition|animation|box-shadow|backdrop|modal/i)
 
-  assert.match(gameStageSource, /const isHandDrawRequired = computed\(\(\) => props\.canDraw\)/)
-  assert.match(gameStageSource, /isPlayInteractionLocked\.value \|\| isHandDrawRequired\.value/)
-  assert.match(gameStageSource, /isHandDrawRequired\.value \? ["'][^"']+["'] : ["']["']/)
+  assert.match(cardPlaySource, /const isHandDrawRequired = computed\(\(\) => props\.canDraw\)/)
+  assert.match(cardPlaySource, /isPlayInteractionLocked\.value \|\| isHandDrawRequired\.value/)
+  assert.match(cardPlaySource, /isHandDrawRequired\.value \? ["'][^"']+["'] : ["']["']/)
   assert.match(gameStageSource, /:is-interaction-disabled="isHandDrawRequired"/)
   assert.match(gameStageSource, /:disabled-message="handDisabledMessage"/)
+})
+
+test('centered inspection renders layered card depth and reduced motion fallback', async () => {
+  const overlaySource = await readSource('src/components/game/ui/CardInspectionOverlay.vue')
+  const cardSource = await readSource('src/components/game/ui/GameCard.vue')
+
+  assert.match(overlaySource, /function handlePointerMove\(event\)/)
+  assert.match(overlaySource, /--pointer-x/)
+  assert.match(overlaySource, /--pointer-y/)
+  assert.match(overlaySource, /rotateX/)
+  assert.match(overlaySource, /rotateY/)
+  assert.match(overlaySource, /prefers-reduced-motion: reduce/)
+  assert.match(cardSource, /game-card__background/)
+  assert.match(cardSource, /game-card__frame/)
+  assert.match(cardSource, /translate3d\([\s\S]*42px/)
+  assert.match(cardSource, /translateZ\(90px\)/)
+  assert.doesNotMatch(overlaySource, /border-radius|rounded-/)
+})
+
+test('player hand uses enlarged custom pointer and grab cursors without scaling cards', async () => {
+  const source = await readSource('src/components/game/ui/PlayerHand.vue')
+
+  assert.match(source, /cursor-pointer\.svg/)
+  assert.match(source, /cursor-grab\.svg/)
+  assert.match(source, /cursor-grabbing\.svg/)
+  assert.match(source, /--cursor-pointer.*pointer/)
+  assert.match(source, /--cursor-grab.*grab/)
+  assert.match(source, /--cursor-grabbing.*grabbing/)
+  assert.match(source, /cursor: var\(--cursor-grab, grab\)/)
+  assert.match(source, /cursor: var\(--cursor-grabbing, grabbing\)/)
+  assert.match(source, /cursor: var\(--cursor-pointer, pointer\)/)
+  assert.doesNotMatch(source, /game-card-motion[^}]*transform:\s*scale/s)
 })
 
 test('player hand exposes a draw target and renders its final cards from data', async () => {
