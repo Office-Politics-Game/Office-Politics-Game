@@ -1,5 +1,6 @@
 import pool from "../db/index.js"
 import { addCurrency } from "./currencyService.js"
+import crypto from "node:crypto"
 
 const topUpPackages = [
   {
@@ -119,4 +120,121 @@ async function mockPayTopUpOrder(orderId) {
   return paidResult.rows[0]
 }
 
-export { getTopUpPackages, createTopUpOrder, mockPayTopUpOrder }
+function formatEcpayDate(date = new Date()) {
+  const pad = (value) => String(value).padStart(2, "0")
+
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+  ].join("/") + " " + [
+    pad(date.getHours()),
+    pad(date.getMinutes()),
+    pad(date.getSeconds()),
+  ].join(":")
+}
+
+const ecpayHashKey = "pwFHCqoQZGmho4w6"
+const ecpayHashIv = "EkRm7iFT261dpevs"
+
+function encodeEcpayValue(value) {
+  return encodeURIComponent(value)
+    .toLowerCase()
+    .replace(/%20/g, "+")
+    .replace(/%2d/g, "-")
+    .replace(/%5f/g, "_")
+    .replace(/%2e/g, ".")
+    .replace(/%21/g, "!")
+    .replace(/%2a/g, "*")
+    .replace(/%28/g, "(")
+    .replace(/%29/g, ")")
+}
+
+function createCheckMacValue(params) {
+  const sortedParams = Object.keys(params)
+    .sort((keyA, keyB) => keyA.localeCompare(keyB))
+    .map((key) => `${key}=${params[key]}`)
+    .join("&")
+
+  const rawValue = `HashKey=${ecpayHashKey}&${sortedParams}&HashIV=${ecpayHashIv}`
+  const encodedValue = encodeEcpayValue(rawValue)
+
+  return crypto
+    .createHash("sha256")
+    .update(encodedValue)
+    .digest("hex")
+    .toUpperCase()
+}
+
+async function createEcpayCheckout(orderId) {
+  const orderResult = await pool.query(
+    `SELECT *
+     FROM top_up_orders
+     WHERE id = $1`,
+    [Number(orderId)]
+  )
+
+  const order = orderResult.rows[0]
+
+  if (!order) {
+    throw createServiceError("找不到儲值訂單", 404)
+  }
+
+  const params = {
+    MerchantID: "3002607",
+    MerchantTradeNo: `TOPUP${order.id}`,
+    MerchantTradeDate: formatEcpayDate(),
+    PaymentType: "aio",
+    TotalAmount: order.price,
+    TradeDesc: "Office Politics Game top up",
+    ItemName: order.package_id,
+    ReturnURL: "https://office-politics-game.onrender.com/api/top-ups/ecpay/return",
+    ClientBackURL: "https://office-politics-game.vercel.app/mall",
+    ChoosePayment: "ALL",
+    EncryptType: 1,
+  }
+  params.CheckMacValue = createCheckMacValue(params)
+
+  if (!order) {
+    throw createServiceError("找不到儲值訂單", 404)
+  }
+
+  if (order.status !== "pending") {
+    throw createServiceError("只有 pending 訂單可以建立付款", 409)
+  }
+
+  return {
+    orderId: order.id,
+    actionUrl: "https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5",
+    params,
+  }
+}
+
+async function confirmEcpayReturn(payload) {
+  const tradeNo = payload?.MerchantTradeNo
+  const rtnCode = String(payload?.RtnCode || "")
+
+  if (rtnCode !== "1") {
+    throw createServiceError("綠界付款未成功", 400)
+  }
+
+  if (!tradeNo || !tradeNo.startsWith("TOPUP")) {
+    throw createServiceError("綠界訂單編號錯誤", 400)
+  }
+
+  const orderId = Number(tradeNo.replace("TOPUP", ""))
+
+  if (!Number.isInteger(orderId)) {
+    throw createServiceError("綠界訂單編號錯誤", 400)
+  }
+
+  return mockPayTopUpOrder(orderId)
+}
+
+export {
+  getTopUpPackages,
+  createTopUpOrder,
+  mockPayTopUpOrder,
+  createEcpayCheckout,
+  confirmEcpayReturn,
+}

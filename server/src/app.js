@@ -1,18 +1,21 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
 import { createServer } from "node:http";
 import { router as roomRouter } from "./routes/roomRoutes.js";
 import { router as gameStateRouter } from "./routes/gameSessionRoutes.js";
 import { router as playerRouter } from "./routes/playerRoutes.js";
+import { router as achievementRouter } from "./routes/achievementRoutes.js";
 import { router as actionRouter, roomActionRouter } from "./routes/actionRoutes.js";
 import { router as friendRouter } from "./routes/friendRoutes.js";
 import { router as roomInvitationRouter } from "./routes/roomInvitationRoutes.js";
 import { initializeSocket } from "./socket/index.js";
 import { router as authRouter } from "./routes/authRoutes.js";
 import { router as shopRouter } from "./routes/shopRoutes.js";
+import { router as profileRouter } from "./routes/profileRoutes.js";
 import { router as chatRouter } from "./routes/chatRoutes.js";
-import topUpRoutes from "./routes/topUpRoutes.js"
+import topUpRoutes from "./routes/topUpRoutes.js";
 
 dotenv.config();
 
@@ -26,13 +29,16 @@ app.use(
     credentials: true
   })
 );
+app.use(cookieParser())
 app.use(express.json())
 
 app.use("/api/auth", authRouter)
+app.use("/api/profile", profileRouter)
 app.use("/api/rooms", roomRouter)
 app.use("/api/rooms", roomActionRouter)
 app.use("/api/game-states", gameStateRouter)
 app.use("/api/players", playerRouter)
+app.use("/api/players", achievementRouter)
 app.use("/api/actions", actionRouter)
 app.use("/api/friends", friendRouter)
 app.use("/api/chats", chatRouter)

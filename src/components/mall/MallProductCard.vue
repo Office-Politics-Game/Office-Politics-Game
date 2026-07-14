@@ -10,6 +10,7 @@
         :src="item.previewImage"
         :alt="`${item.name} 預覽圖`"
         class="item-card__preview-image"
+        :class="item.previewImageClass"
       />
       <div class="item-card__preview-overlay"></div>
     </div>
@@ -111,6 +112,21 @@ defineEmits(["purchase", "select"]);
   object-fit: contain;
   display: block;
   padding: 8px;
+}
+
+.item-card__preview-image--stock-single {
+  padding: 12px;
+  transform: scale(1.08);
+}
+
+.item-card__preview-image--stock-stack {
+  padding: 10px;
+  transform: translateX(2px) scale(1.16);
+}
+
+.item-card__preview-image--stock-bundle {
+  padding: 8px;
+  transform: translate(10px, 8px) scale(1.18);
 }
 
 .item-card__preview-overlay {

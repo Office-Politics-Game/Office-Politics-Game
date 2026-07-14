@@ -47,7 +47,8 @@ describe("currencyService", () => {
                 rows: [
                     {
                         id: 1,
-                        coins: 150,
+                        balance_before: 100,
+                        balance_after: 150,
                     },
                 ],
             })
@@ -71,6 +72,7 @@ describe("currencyService", () => {
         })
 
         expect(queryMock).toHaveBeenCalledTimes(2)
+        expect(queryMock.mock.calls[0][1]).toEqual([50, 1, 99999])
         expect(queryMock.mock.calls[1][1]).toEqual([
             1,
             "coin",
@@ -151,5 +153,89 @@ describe("currencyService", () => {
         ).rejects.toThrow()
 
         expect(queryMock).not.toHaveBeenCalled()
+    })
+
+    test("addCurrency() caps balance at 99999", async () => {
+        queryMock
+            .mockResolvedValueOnce({
+                rows: [
+                    {
+                        id: 1,
+                        balance_before: 99990,
+                        balance_after: 99999,
+                    },
+                ],
+            })
+            .mockResolvedValueOnce({
+                rows: [],
+            })
+
+        const result = await addCurrency(
+            1,
+            "coin",
+            50,
+            "match_reward",
+            "test"
+        )
+
+        expect(result).toEqual({
+            playerId: 1,
+            currency: "coin",
+            amount: 9,
+            balanceAfter: 99999,
+        })
+
+        expect(queryMock).toHaveBeenCalledTimes(2)
+        expect(queryMock.mock.calls[0][1]).toEqual([50, 1, 99999])
+        expect(queryMock.mock.calls[1][1]).toEqual([
+            1,
+            "coin",
+            9,
+            99999,
+            "match_reward",
+            "test",
+        ])
+    })
+
+    test("getPlayerCurrency() caps returned balances at 99999", async () => {
+        queryMock.mockResolvedValueOnce({
+            rows: [
+                {
+                    id: 1,
+                    coins: 99999,
+                    gems: 99999,
+                    tickets: 99999,
+                },
+            ],
+        })
+
+        const result = await getPlayerCurrency(1)
+
+        expect(result).toEqual({
+            playerId: 1,
+            coins: 99999,
+            gems: 99999,
+            tickets: 99999,
+        })
+
+        expect(queryMock.mock.calls[0][1]).toEqual([1, 99999])
+    })
+
+    test("addCurrency() rejects when balance is already capped", async () => {
+        queryMock.mockResolvedValueOnce({
+            rows: [
+                {
+                    id: 1,
+                    balance_before: 99999,
+                    balance_after: 99999,
+                },
+            ],
+        })
+
+        await expect(
+            addCurrency(1, "coin", 50, "match_reward", "test")
+        ).rejects.toThrow()
+
+        expect(queryMock).toHaveBeenCalledTimes(1)
     })
 })

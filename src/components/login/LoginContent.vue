@@ -12,7 +12,7 @@
       type="button"
       class="btn-dark tap-pop absolute right-3 top-3 grid h-9 w-9 place-items-center"
       aria-label="關閉登入視窗"
-      @click="emit('close')"
+      @click="closeLogin"
     >
       <span aria-hidden="true">×</span>
     </button>
@@ -61,7 +61,7 @@
           class="password-toggle"
           :aria-label="showPassword ? '隱藏密碼' : '顯示密碼'"
           :disabled="authStore.isLoading"
-          @click="showPassword = !showPassword"
+          @click="togglePasswordVisibility"
         >
           <EyeOff v-if="showPassword" class="password-toggle__icon" />
           <Eye v-else class="password-toggle__icon" />
@@ -101,14 +101,15 @@
         class="login-link inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0"
         type="button"
         :disabled="authStore.isLoading"
-        @click="emit('open-guest')"
+        @click="openGuest"
       >
         訪客遊玩 <span aria-hidden="true">›</span>
       </button>
       <button
-        class="login-link inline-flex items-center gap-1 border-0 bg-transparent p-0"
+        class="login-link inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0"
         type="button"
-        disabled
+        :disabled="authStore.isLoading"
+        @click="goForgotPassword"
       >
         忘記密碼 <span aria-hidden="true">›</span>
       </button>
@@ -170,11 +171,13 @@ import { useRouter } from "vue-router"
 import { useAuthStore } from "../../stores/authStore.js"
 import { Eye, EyeOff } from "lucide-vue-next"
 import { usePlayerStore } from "@/stores/playerStore.js"
+import { usePreGameAudio } from "@/composables/UsePreGameAudio"
 
-const emit = defineEmits(["close", "open-guest", "open-register"])
+const emit = defineEmits(["close", "open-guest", "open-register", "open-forgot-password"])
 const authStore = useAuthStore()
 const playerStore = usePlayerStore()
 const router = useRouter()
+const { playPreGameSound, startPreGameBackground } = usePreGameAudio()
 
 const account = ref("")
 const password = ref("")
@@ -184,16 +187,24 @@ const showPassword = ref(false)
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+function playLoginClick() {
+  playPreGameSound("login-button-click")
+}
+
+function closeLogin() {
+  playLoginClick()
+  emit("close")
+}
+
+function togglePasswordVisibility() {
+  playLoginClick()
+  showPassword.value = !showPassword.value
+}
+
 function clearLoginError() {
+  accountError.value = ""
+  passwordError.value = ""
   authStore.clearError()
-
-  if (account.value.trim()) {
-    accountError.value = ""
-  }
-
-  if (password.value.trim()) {
-    passwordError.value = ""
-  }
 }
 
 function validateLoginForm() {
@@ -219,6 +230,8 @@ async function handleLogin() {
     return
   }
 
+  playLoginClick()
+
   if (!validateLoginForm()) {
     return
   }
@@ -233,6 +246,8 @@ async function handleLogin() {
       playerStore.setCurrentPlayer(authStore.currentPlayer)
     }
 
+    startPreGameBackground({ fadeIn: true, userInitiated: true })
+
     emit("close")
     await router.push("/lobby")
   } catch {
@@ -241,8 +256,20 @@ async function handleLogin() {
 }
 
 function goRegister() {
+  playLoginClick()
   authStore.clearError()
   emit("open-register")
+}
+
+function openGuest() {
+  playLoginClick()
+  emit("open-guest")
+}
+
+function goForgotPassword() {
+  playLoginClick()
+  authStore.clearError()
+  emit("open-forgot-password")
 }
 </script>
 
@@ -287,6 +314,20 @@ function goRegister() {
   @apply m-0 text-sm font-bold text-[var(--brand-hover)];
 }
 
+.login-input[type="password"]::-ms-reveal,
+.login-input[type="password"]::-ms-clear {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.login-input::-webkit-credentials-auto-fill-button,
+.login-input::-webkit-contacts-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
+}
+
 .login-input::placeholder {
   @apply font-semibold text-[var(--brand-disabled)];
 }
@@ -298,7 +339,7 @@ function goRegister() {
 }
 
 .password-toggle {
-  @apply absolute right-3 top-6 grid h-8 w-8 -translate-y-1/2 place-items-center border-0 bg-transparent text-[var(--brand-active)] transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+  @apply absolute right-2 top-6 z-10 grid h-8 w-10 -translate-y-1/2 place-items-center border-0 bg-transparent text-[var(--brand-active)] transition-colors disabled:cursor-not-allowed disabled:opacity-60;
 }
 
 .password-toggle:hover:not(:disabled) {
@@ -414,8 +455,8 @@ function goRegister() {
 
   .password-toggle {
     top: 20px;
-    right: 8px;
-    width: 32px;
+    right: 6px;
+    width: 40px;
     height: 32px;
   }
 

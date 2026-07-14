@@ -2,6 +2,7 @@
   <main
     class="mall-view relative flex min-h-screen w-screen items-center justify-center overflow-hidden bg-[#1e1e1e] px-1 py-1 md:px-5 md:py-4"
     :style="{ backgroundImage: `url(${bgDashboard})` }"
+    @click.capture="handleButtonClick"
   >
     <div class="absolute inset-0 bg-[rgba(0,19,50,0.36)]"></div>
     <section class="mall-shell relative z-10 flex h-[98svh] w-[98vw] max-w-[1360px] flex-col overflow-hidden border border-white/25 bg-white/82 shadow-2xl backdrop-blur-md md:h-[92vh] md:w-[95vw]">
@@ -35,10 +36,11 @@
           <CurrencyBar
             class="tablet-storebar-currency"
             :items="['coins', 'gems', 'tickets']"
+            tooltip-size="small"
           />
           <button
             type="button"
-            class="btn-dark tablet-storebar-return h-11 whitespace-nowrap px-4 py-2 text-sm font-bold"
+            class="btn-dark tablet-storebar-return h-11 translate-y-1 whitespace-nowrap px-4 py-2 text-sm font-bold"
             @click="goLobby"
           >
             返回大廳
@@ -79,6 +81,7 @@
             <CurrencyBar
               class="mobile-menu-currencybar mt-3"
               :items="['coins', 'gems', 'tickets']"
+              tooltip-size="small"
             />
 
             <div class="mt-3 border border-slate-300 bg-[linear-gradient(180deg,#f9fbfd,#eef4f9)] p-3">
@@ -116,16 +119,17 @@
 
         <div class="order-3 col-span-2 grid grid-cols-3 gap-1 self-center xl:order-none xl:col-span-1 xl:gap-2 xl:self-start xl:pt-2">
           <CurrencyBar
-            class="col-span-3 justify-self-end"
+            class="mall-topbar-currency col-span-3 mt-2 justify-self-end"
             :items="['coins', 'gems', 'tickets']"
+            tooltip-size="small"
           />
 
         </div>
 
         <button
           type="button"
-          class="btn-dark order-2 h-8 whitespace-nowrap px-2.5 py-1 text-xs font-bold xl:order-none xl:h-11 xl:px-4 xl:py-2 xl:text-sm"
-          @click="router.push('/lobby')"
+          class="btn-dark order-2 h-8 translate-y-1 whitespace-nowrap px-2.5 py-1 text-xs font-bold xl:order-none xl:h-11 xl:px-4 xl:py-2 xl:text-sm"
+          @click="goLobby"
         >
           返回大廳
         </button>
@@ -375,7 +379,12 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import CurrencyBar from "@/components/common/CurrencyBar.vue";
 import MallProductCard from "@/components/mall/MallProductCard.vue";
+import { useButtonClickAudio } from "@/composables/UseButtonClickAudio";
+import { usePreGameAudio } from "@/composables/UsePreGameAudio";
 import bgDashboard from "@/assets/images/bg-dashboard.webp";
+import stockToken from "@/assets/images/stock-token.webp";
+import stockTokenBundle from "@/assets/images/stock-token-bundle.webp";
+import stockTokenStack from "@/assets/images/stock-token-stack.webp";
 import {
   mallCategories,
   mallItems,
@@ -395,12 +404,20 @@ import {
 import { useAuthStore } from "@/stores/authStore.js";
 import { useCurrencyStore } from "@/stores/currencyStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
+import {
+  createEcpayCheckout,
+  createTopUpOrder,
+} from "@/services/topUpApi.js";
 
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const currencyStore = useCurrencyStore();
 const playerStore = usePlayerStore();
+const { handleButtonClick } = useButtonClickAudio();
+const { playPreGameSound } = usePreGameAudio();
+const MALL_ENTRANCE_BELL_DELAY_MS = 200;
+let mallEntranceBellTimerId = null;
 
 const categories = mallCategories;
 const fallbackItems = mallItems;
@@ -415,6 +432,54 @@ const selectedItem = ref(null);
 const isDetailModalOpen = ref(false);
 const isMenuOpen = ref(false);
 const isImagePreviewOpen = ref(false);
+
+const topUpItems = [
+  {
+    id: "gems_60",
+    category: "top-up",
+    categoryLabel: "購買股份",
+    name: "60 股份",
+    description: "小額股份方案，適合先試用儲值流程。",
+    summary: "取得 60 股份。",
+    price: "NT$ 30",
+    rawPrice: 30,
+    currency: "diamond",
+    actionLabel: "前往儲值",
+    actionState: "buy",
+    previewImage: stockToken,
+    previewImageClass: "item-card__preview-image--stock-single",
+  },
+  {
+    id: "gems_300",
+    category: "top-up",
+    categoryLabel: "購買股份",
+    name: "300 股份",
+    description: "標準股份方案，取得更多商城可用股份。",
+    summary: "取得 300 股份。",
+    price: "NT$ 150",
+    rawPrice: 150,
+    currency: "diamond",
+    actionLabel: "前往儲值",
+    actionState: "buy",
+    previewImage: stockTokenStack,
+    previewImageClass: "item-card__preview-image--stock-stack",
+  },
+  {
+    id: "gems_680",
+    category: "top-up",
+    categoryLabel: "購買股份",
+    name: "680 股份",
+    description: "大量股份方案，適合一次補足商城購買額度。",
+    summary: "取得 680 股份。",
+    price: "NT$ 330",
+    rawPrice: 330,
+    currency: "diamond",
+    actionLabel: "前往儲值",
+    actionState: "buy",
+    previewImage: stockTokenBundle,
+    previewImageClass: "item-card__preview-image--stock-bundle",
+  },
+];
 
 function getStoredGuestPlayer() {
   if (typeof localStorage === "undefined") {
@@ -457,8 +522,8 @@ const fallbackImageByCategory = computed(() =>
 
 const ownedShopItemIds = computed(() => getOwnedShopItemIdSet(playerItems.value));
 
-const normalizedItems = computed(() =>
-  shopItems.value.map((item) => {
+const normalizedItems = computed(() => [
+  ...shopItems.value.map((item) => {
     const category = shopTypeCategoryMap[item.type];
 
     return normalizeShopItem(item, {
@@ -468,7 +533,8 @@ const normalizedItems = computed(() =>
       ownedShopItemIds: ownedShopItemIds.value,
     });
   }),
-);
+  ...topUpItems,
+]);
 
 const categoriesWithCount = computed(() =>
   categories.map((category) => ({
@@ -556,7 +622,55 @@ function goLobby() {
   router.push("/lobby");
 }
 
+function submitEcpayForm(checkout) {
+  const form = document.createElement("form");
+
+  form.method = "POST";
+  form.action = checkout.actionUrl;
+  form.target = "_blank";
+
+  Object.entries(checkout.params).forEach(([name, value]) => {
+    const input = document.createElement("input");
+
+    input.type = "hidden";
+    input.name = name;
+    input.value = value;
+
+    form.appendChild(input);
+  });
+
+  document.body.appendChild(form);
+  form.submit();
+}
+
 async function purchaseItem(item) {
+  if (item.category === "top-up") {
+    if (!currentPlayerId.value) {
+      statusMessage.value = "尚未取得玩家 ID，請重新登入後再購買股份。";
+      return;
+    }
+
+    isPurchasing.value = true;
+    statusMessage.value = "";
+
+    try {
+      const orderResult = await createTopUpOrder({
+        playerId: currentPlayerId.value,
+        packageId: item.id,
+      });
+
+      const checkoutResult = await createEcpayCheckout(orderResult.order.id);
+
+      submitEcpayForm(checkoutResult.checkout);
+    } catch (error) {
+      statusMessage.value = getErrorMessage(error, "建立儲值訂單失敗，請稍後再試。");
+    } finally {
+      isPurchasing.value = false;
+    }
+
+    return;
+  }
+
   if (!currentPlayerId.value) {
     statusMessage.value = "尚未取得玩家 ID，請重新登入後再購買商品。";
     return;
@@ -657,10 +771,19 @@ watch(
 
 onMounted(() => {
   window.addEventListener("keydown", handleEscape);
+  mallEntranceBellTimerId = window.setTimeout(() => {
+    mallEntranceBellTimerId = null;
+    playPreGameSound("mall-entrance-bell");
+  }, MALL_ENTRANCE_BELL_DELAY_MS);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", handleEscape);
+
+  if (mallEntranceBellTimerId !== null) {
+    window.clearTimeout(mallEntranceBellTimerId);
+    mallEntranceBellTimerId = null;
+  }
 });
 </script>
 
@@ -961,6 +1084,52 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 8px !important;
+}
+
+.mobile-menu-currencybar:deep(section > div > div:last-child),
+.tablet-storebar-currency:deep(section > div > div:last-child),
+.mall-topbar-currency:deep(section > div > div:last-child) {
+  top: 100% !important;
+  bottom: auto !important;
+  margin-top: 8px !important;
+  margin-bottom: 0 !important;
+}
+
+.mall-topbar-currency {
+  width: min(100%, 300px);
+}
+
+.mall-topbar-currency:deep(section) {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  gap: 6px;
+}
+
+.mall-topbar-currency:deep(section > div) {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 24px !important;
+  padding: 0 5px !important;
+}
+
+.mall-topbar-currency:deep(section > div > div:first-child) {
+  min-width: 0;
+  gap: 4px !important;
+}
+
+.mall-topbar-currency:deep(section > div > div:first-child > span:first-child) {
+  width: 15px !important;
+  height: 15px !important;
+  flex: 0 0 15px !important;
+}
+
+.mall-topbar-currency:deep(section > div > div:first-child > span:last-child) {
+  min-width: 0 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px !important;
 }
 
 .modal-detail-card {

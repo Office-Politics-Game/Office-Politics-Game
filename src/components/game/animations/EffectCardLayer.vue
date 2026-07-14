@@ -1,7 +1,9 @@
 <script setup>
 import { ref } from 'vue'
-import cardBackUrl from '@/assets/images/card-bg-back.webp'
+import { storeToRefs } from 'pinia'
+import defaultCardBackUrl from '@/assets/images/card-bg-back.webp'
 import GameCard from '../ui/GameCard.vue'
+import { useAppearanceStore } from '@/stores/appearanceStore.js'
 
 defineProps({
   card: {
@@ -28,6 +30,8 @@ defineProps({
 
 const cardElement = ref(null)
 const flipperElement = ref(null)
+const appearanceStore = useAppearanceStore()
+const { cardBackUrl } = storeToRefs(appearanceStore)
 
 defineExpose({
   getCardElement() {
@@ -70,7 +74,7 @@ defineExpose({
         </template>
       </div>
       <div class="effect-card-layer__face effect-card-layer__face--back">
-        <img :src="cardBackUrl" alt="" draggable="false" />
+        <img :src="cardBackUrl || defaultCardBackUrl" alt="" draggable="false" />
       </div>
     </div>
   </div>

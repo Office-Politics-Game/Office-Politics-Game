@@ -1,4 +1,4 @@
-import { createGuest, searchPlayers } from "../services/playerService.js"
+import { createGuest, searchPlayers, updatePlayerAvatar } from "../services/playerService.js"
 import { getPlayerCurrency } from "../services/currencyService.js"
 
 function getErrorStatus(error) {
@@ -73,8 +73,33 @@ async function handleGetPlayerCurrency(req, res) {
   }
 }
 
+async function handleUpdatePlayerAvatar(req, res) {
+  try {
+    const playerId = parsePositiveInteger(req.params.playerId)
+    const avatarId = parsePositiveInteger(req.body?.avatarId)
+
+    if (!playerId) {
+      return res.status(400).json({ message: "缺少或無效的玩家ID" })
+    }
+
+    if (!avatarId) {
+      return res.status(400).json({ message: "缺少或無效的頭像ID" })
+    }
+
+    const player = await updatePlayerAvatar({ playerId, avatarId })
+
+    return res.status(200).json({ player })
+  } catch (error) {
+    return res.status(getErrorStatus(error)).json({
+      message: error.statusCode ? error.message : "更新玩家頭像失敗",
+      error: error.message,
+    })
+  }
+}
+
 export {
   handleCreateGuest,
   handleSearchPlayers,
   handleGetPlayerCurrency,
+  handleUpdatePlayerAvatar,
 }

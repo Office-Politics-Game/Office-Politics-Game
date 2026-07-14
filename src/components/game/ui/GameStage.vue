@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { storeToRefs } from "pinia";
 import gameTableBackgroundUrl from "@/assets/images/bg-game-table.webp";
 import gameLogoUrl from "@/assets/images/logo-en-white.png";
 import { useAudioSettings } from "@/composables/UseAudioSettings";
@@ -14,24 +15,25 @@ import {
 } from "@/composables/useGameStageNotices";
 import { useGameAnimationRects } from "@/composables/useGameAnimationRects";
 import { useGameTutorial } from "@/composables/UseGameTutorial";
+import { useAppearanceStore } from "@/stores/appearanceStore.js";
 import CardDrawAnimation from "../animations/CardDrawAnimation.vue";
 import CardPlayAnimation from "../animations/CardPlayAnimation.vue";
 import CardShuffleAnimation from "../animations/CardShuffleAnimation.vue";
 import CardSwapAnimation from "../animations/CardSwapAnimation.vue";
-import CardPlayConfirmPanel from "./CardPlayConfirmPanel.vue";
-import CardInspectionOverlay from "./CardInspectionOverlay.vue";
 import CleanerAnimation from "../animations/CleanerAnimation.vue";
 import FlyInTextModal from "../animations/FlyInTextModal.vue";
-import GameCard from "./GameCard.vue";
-import GameSettingsIcon from "./GameSettingsIcon.vue";
-import GameSettingsModal from "./GameSettingsModal.vue";
 import InternAnimation from "../animations/InternAnimation.vue";
 import ManagerAnimation from "../animations/ManagerAnimation.vue";
 import PMAnimation from "../animations/PMAnimation.vue";
-import PlayerHand from "./PlayerHand.vue";
-import PlayerSeats from "./PlayerSeats.vue";
 import ProtectionAura from "../animations/ProtectionAura.vue";
 import RoundShowdownAnimation from "../animations/RoundShowdownAnimation.vue";
+import CardInspectionOverlay from "./CardInspectionOverlay.vue";
+import CardPlayConfirmPanel from "./CardPlayConfirmPanel.vue";
+import GameCard from "./GameCard.vue";
+import GameSettingsIcon from "./GameSettingsIcon.vue";
+import GameSettingsModal from "./GameSettingsModal.vue";
+import PlayerHand from "./PlayerHand.vue";
+import PlayerSeats from "./PlayerSeats.vue";
 import RotateDeviceNotice from "./RotateDeviceNotice.vue";
 import TableCardPiles from "./TableCardPiles.vue";
 import TurnStatus from "./TurnStatus.vue";
@@ -110,6 +112,9 @@ const emit = defineEmits([
   "play-card",
   "round-sequence-complete",
 ]);
+
+const appearanceStore = useAppearanceStore();
+const { boardSkinUrl } = storeToRefs(appearanceStore);
 const isSettingsOpen = ref(false);
 const isDrawAnimating = ref(false);
 const activeDrawCard = ref(null);
@@ -147,6 +152,9 @@ function getGameTutorialTargets() {
       ) ?? [],
   };
 }
+const resolvedTableBackgroundUrl = computed(
+  () => boardSkinUrl.value || gameTableBackgroundUrl,
+);
 const animationRects = useGameAnimationRects({
   playerHand,
   playerSeats,
@@ -304,6 +312,7 @@ const {
   isDrawAnimating,
   activeEffectResult,
 });
+
 const protectedPlayers = computed(() =>
   props.players.filter((player) => player.isProtected),
 );
@@ -331,6 +340,7 @@ const activeProtectionAnimationPlayer = computed(() => {
     ) ?? null
   );
 });
+
 onBeforeUnmount(() => {
   disposeTutorial();
   cleanupCardPlay();
@@ -461,8 +471,8 @@ defineExpose({
   >
     <section
       class="game-stage relative hidden h-[100dvh] w-[100dvw] overflow-hidden bg-cover bg-center bg-no-repeat"
-      :style="{ backgroundImage: `url(${gameTableBackgroundUrl})` }"
-      aria-label="Office Politics 遊戲舞台"
+      :style="{ backgroundImage: `url(${resolvedTableBackgroundUrl})` }"
+      aria-label="Office Politics 遊戲桌面"
     >
       <div
         v-if="pendingPlay"
@@ -672,13 +682,13 @@ defineExpose({
 
     <FlyInTextModal
       :is-open="isTurnNoticeOpen"
-      text="輪到你的回合"
+      text="你的回合"
       @close="closeTurnNotice"
     />
 
     <FlyInTextModal
       :is-open="isRoundWinnerNoticeOpen"
-      text="回合勝利"
+      text="回合獲勝"
       :player-name="roundWinnerNotice?.name ?? ''"
       :avatar-url="roundWinnerNotice?.avatarUrl ?? ''"
       :duration="2400"

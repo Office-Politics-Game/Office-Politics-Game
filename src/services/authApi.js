@@ -10,12 +10,20 @@ function login(payload) {
   return apiClient.post(`${AUTH_API_PATH}/login`, payload);
 }
 
-function verifyToken(token) {
-  return apiClient.get(`${AUTH_API_PATH}/verify`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+function verifyToken() {
+  return apiClient.get(`${AUTH_API_PATH}/verify`);
 }
 
-export { register, login, verifyToken };
+function logout() {
+  return apiClient.post(`${AUTH_API_PATH}/logout`);
+}
+
+function forgotPassword(payload) {
+  return apiClient.post(`${AUTH_API_PATH}/forgot-password`, payload);
+}
+
+function resetPassword(payload) {
+  return apiClient.post(`${AUTH_API_PATH}/reset-password`, payload);
+}
+
+export { register, login, verifyToken, logout, forgotPassword, resetPassword };

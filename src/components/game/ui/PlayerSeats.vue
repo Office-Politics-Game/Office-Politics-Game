@@ -1,7 +1,9 @@
 <script setup>
 import { computed, ref } from "vue";
-import cardBackUrl from "@/assets/images/card-bg-back.webp";
+import { storeToRefs } from "pinia";
+import defaultCardBackUrl from "@/assets/images/card-bg-back.webp";
 import PlayerAvatar from "./PlayerAvatar.vue";
+import { useAppearanceStore } from "@/stores/appearanceStore.js";
 
 const props = defineProps({
   players: {
@@ -63,6 +65,8 @@ const props = defineProps({
 
 const emit = defineEmits(["target-select"]);
 const seatsRoot = ref(null);
+const appearanceStore = useAppearanceStore();
+const { cardBackUrl } = storeToRefs(appearanceStore);
 const seatElements = ref({});
 const handTargetElements = ref({});
 const dealtPlayerIdSet = computed(() => new Set(props.dealtPlayerIds));
@@ -128,6 +132,10 @@ function getHandCardBacks(playerId) {
     zIndex: index + 1,
   }));
 }
+
+const resolvedCardBackUrl = computed(
+  () => cardBackUrl.value || defaultCardBackUrl,
+);
 
 function isSelectableTarget(playerId) {
   return (
@@ -225,7 +233,7 @@ defineExpose({
         <img
           v-for="cardBack in getHandCardBacks(player.id)"
           :key="cardBack.id"
-          :src="cardBackUrl"
+          :src="resolvedCardBackUrl"
           alt=""
           class="player-seat-hand-target__card block size-full select-none object-contain"
           :style="{

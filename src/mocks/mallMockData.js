@@ -35,6 +35,11 @@ export const mallCategories = [
     name: "頭像",
     description: "用頭像展現你的職場人設。",
   },
+  {
+    id: "top-up",
+    name: "購買股份",
+    description: "購買股份，取得更多股票。",
+  },
 ];
 
 export const mallItems = [
