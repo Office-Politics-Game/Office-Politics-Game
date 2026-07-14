@@ -29,6 +29,8 @@ test('game socket handlers broadcast animation actions before private state upda
   assert.match(playHandler, /type: "play-card"/)
   assert.match(playHandler, /discardedCard: result\.discardedCard/)
   assert.match(playHandler, /animationResult: result\.animationResult/)
+  assert.match(playHandler, /showdownResult: result\.showdownResult/)
+  assert.match(playHandler, /afterActionId: playActionId/)
   assert.ok(
     playHandler.indexOf('emitPlayCardActionToPlayers') <
       playHandler.indexOf('await emitGameStateAfterActionToPlayers'),
@@ -49,16 +51,21 @@ test('game view subscribes to socket actions and defers state while animations r
   assert.match(source, /playDrawAnimation\?\.\(drawnCard, playerId\)/)
   assert.match(source, /const discardedCard = event\.discardedCard[\s\S]*normalizeCard\(event\.discardedCard\)/)
   assert.match(source, /playRemoteCardPlayAnimation\?\.\(\{[\s\S]*discardedCard/)
+  assert.match(source, /stageDiscardedCard\?\.\(discardedCard\)/)
   assert.match(source, /playEffectAnimation\?\.\(animationResult\)/)
+  assert.match(source, /playRoundShowdownAnimation\?\.\(showdownResult\)/)
   assert.ok(
     source.indexOf('playRemoteCardPlayAnimation') <
+      source.indexOf('stageDiscardedCard?.(discardedCard)') &&
+      source.indexOf('stageDiscardedCard?.(discardedCard)') <
       source.indexOf('playEffectAnimation?.(animationResult)'),
   )
+  assert.match(source, /applyGameStatePayload\(data\)[\s\S]*clearStagedDiscardCard/)
   assert.match(source, /function cleanupGameSocket\(\)[\s\S]*off\('game:action'/)
   assert.match(source, /function cleanupGameSocket\(\)[\s\S]*off\('game:state'/)
 })
 
-test('game view applies acknowledged draw and play states immediately', async () => {
+test('game view defers action-bound draw and play states until their animations complete', async () => {
   const source = await readSource('src/composables/useGameSocketActions.js')
   const drawHandler = source.slice(
     source.indexOf('async function handleDrawRequest'),
@@ -70,10 +77,10 @@ test('game view applies acknowledged draw and play states immediately', async ()
   )
 
   assert.match(drawHandler, /const data = await emitWithAck\('game:draw-card'/)
-  assert.match(drawHandler, /applyGameStatePayload\(data\)/)
+  assert.match(drawHandler, /if \(data\?\.afterActionId\)[\s\S]*handleSocketGameState\(data\)[\s\S]*else[\s\S]*applyGameStatePayload\(data\)/)
   assert.doesNotMatch(drawHandler, /void data/)
   assert.match(playHandler, /const data = await emitWithAck\('game:play-card'/)
-  assert.match(playHandler, /applyGameStatePayload\(data\)/)
+  assert.match(playHandler, /if \(data\?\.afterActionId\)[\s\S]*handleSocketGameState\(data\)[\s\S]*else[\s\S]*applyGameStatePayload\(data\)/)
   assert.doesNotMatch(playHandler, /void data/)
 })
 
@@ -86,6 +93,8 @@ test('game stage exposes remote opponent play animation for socket play-card act
   )
 
   assert.match(source, /playRemoteCardPlayAnimation,/)
+  assert.match(source, /stageDiscardedCard,/)
+  assert.match(source, /clearStagedDiscardCard,/)
   assert.match(remotePlayFunction, /animationRects\.isSelfPlayer\(playerId\)/)
   assert.match(remotePlayFunction, /return false/)
   assert.match(remotePlayFunction, /animationRects\.getPlayerHandRect\(playerId\)/)
@@ -93,6 +102,25 @@ test('game stage exposes remote opponent play animation for socket play-card act
   assert.match(remotePlayFunction, /cardPlayAnimation\.value\?\.play/)
   assert.match(remotePlayFunction, /position: player\?\.position \?\? ["']top["']/)
   assert.match(remotePlayFunction, /faceUp: false/)
+})
+
+test('discard pile stages the played card before effect playback and clears it with settled state', async () => {
+  const source = await readSource('src/composables/useGameStageCardPlay.js')
+  const visibleDiscardSource = source.slice(
+    source.indexOf('const visibleDiscardCards'),
+    source.indexOf('const selectedTargetPlayer = computed'),
+  )
+  const stageFunction = source.slice(
+    source.indexOf('async function stageDiscardedCard'),
+    source.indexOf('function clearStagedDiscardCard'),
+  )
+
+  assert.match(source, /const stagedDiscardCard = ref\(null\)/)
+  assert.match(visibleDiscardSource, /stagedDiscardCard\.value \?\? pendingCard/)
+  assert.match(visibleDiscardSource, /return \[\.\.\.props\.discardCards, temporaryTopCard\]/)
+  assert.match(stageFunction, /setStagedDiscardCard\(card\)/)
+  assert.match(stageFunction, /await nextTick\(\)/)
+  assert.match(source, /function clearStagedDiscardCard\(\)[\s\S]*stagedDiscardCard\.value = null/)
 })
 
 test('socket client exposes a timeout ack helper for game actions', async () => {

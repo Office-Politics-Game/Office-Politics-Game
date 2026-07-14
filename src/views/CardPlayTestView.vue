@@ -88,6 +88,7 @@ const deckCount = ref(INITIAL_DECK_COUNT)
 const isBusy = ref(false)
 const isSelfProtected = ref(true)
 const protectionSuccessKey = ref(0)
+const showProtectionSuccessLabel = ref(false)
 const activeDrawCard = ref(null)
 const cleanerResult = ref(null)
 const internResult = ref(null)
@@ -138,6 +139,10 @@ const controls = computed(() => [
   },
   { label: 'Defense Success', action: playProtectionSuccess },
   { label: 'HR Swap', action: playSwapAnimation },
+  {
+    label: 'HR Swap (Opponents)',
+    action: () => playSwapAnimation({ bystander: true }),
+  },
   { label: 'Fly-in Text', action: playFlyInTextModal },
   { label: 'Round Winner', action: playRoundWinnerNotice },
   { label: '發牌', action: playDealAnimation },
@@ -216,6 +221,13 @@ function isSelfPlayer(playerId) {
   return String(playerId) === SELF_PLAYER_ID
 }
 
+function getPlayerName(playerId) {
+  return (
+    players.find((player) => String(player.id) === String(playerId))?.name ??
+    '玩家'
+  )
+}
+
 function setBusyState(label) {
   isBusy.value = true
   lastAction.value = label
@@ -227,10 +239,14 @@ function releaseBusyState() {
 
 function toggleSelfProtection() {
   isSelfProtected.value = !isSelfProtected.value
+  if (!isSelfProtected.value) {
+    showProtectionSuccessLabel.value = false
+  }
 }
 
 function playProtectionSuccess() {
   isSelfProtected.value = true
+  showProtectionSuccessLabel.value = true
   protectionSuccessKey.value += 1
 }
 
@@ -434,15 +450,21 @@ function playPMAnimation() {
   return complete
 }
 
-function playSwapAnimation() {
+function playSwapAnimation({ bystander = false } = {}) {
   const id = uniqueId('swap')
   const complete = waitForEffectComplete('swap', id)
   swapResult.value = {
     id,
-    sourcePlayerId: SELF_PLAYER_ID,
-    targetPlayerId: 'player-top',
-    sourceCard: createCard('cleaner', uniqueId('swap-source')),
-    targetCard: createCard('ceo', uniqueId('swap-target')),
+    sourcePlayerId: bystander ? 'player-left' : SELF_PLAYER_ID,
+    targetPlayerId: bystander ? 'player-right' : 'player-top',
+    sourceCard: bystander
+      ? null
+      : createCard('cleaner', uniqueId('swap-source')),
+    targetCard: bystander
+      ? null
+      : createCard('ceo', uniqueId('swap-target')),
+    sourceCardReveal: bystander ? 'never' : 'before-swap',
+    targetCardReveal: bystander ? 'never' : 'after-swap',
   }
 
   return complete
@@ -589,6 +611,7 @@ onUnmounted(() => {
         <ProtectionAura
           v-if="isSelfProtected"
           :success-key="protectionSuccessKey"
+          :show-success-label="showProtectionSuccessLabel"
         />
       </Transition>
 
@@ -622,6 +645,7 @@ onUnmounted(() => {
     <CleanerAnimation
       v-if="cleanerResult"
       :result="cleanerResult"
+      :target-player-name="getPlayerName(cleanerResult.targetPlayerId)"
       :get-player-hand-rect="getPlayerHandRect"
       :is-self-player="isSelfPlayer"
       @complete="(result) => clearEffectResult('cleaner', result)"
@@ -636,6 +660,7 @@ onUnmounted(() => {
     <ManagerAnimation
       v-if="managerResult"
       :result="managerResult"
+      :target-player-name="getPlayerName(managerResult.targetPlayerId)"
       :get-player-hand-rect="getPlayerHandRect"
       :get-discard-rect="getDiscardRect"
       :is-self-player="isSelfPlayer"
@@ -644,6 +669,7 @@ onUnmounted(() => {
     <PMAnimation
       v-if="pmResult"
       :result="pmResult"
+      :target-player-name="getPlayerName(pmResult.targetPlayerId)"
       :get-player-hand-rect="getPlayerHandRect"
       :get-discard-rect="getDiscardRect"
       :get-deck-rect="getDeckRect"
@@ -653,6 +679,7 @@ onUnmounted(() => {
     <CardSwapAnimation
       v-if="swapResult"
       :result="swapResult"
+      :target-player-name="getPlayerName(swapResult.targetPlayerId)"
       :get-player-hand-rect="getPlayerHandRect"
       @complete="(result) => clearEffectResult('swap', result)"
     />

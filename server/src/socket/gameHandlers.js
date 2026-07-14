@@ -1,6 +1,7 @@
 import { getState, getPublicState } from "../services/gameStateService.js"
 import { drawCardAction, playCardAction } from "../services/gameActionService.js"
 import { runComputerTurn } from "../services/computerPlayerService.js"
+import { createCardEffectAnimationResultForViewer } from "../services/cardEffectAnimationService.js"
 
 const activeComputerTurnRooms = new Set()
 
@@ -27,30 +28,6 @@ function getPlayerId(player) {
     return Number(player?.playerId ?? player?.id)
 }
 
-function createAnimationResultForViewer(animationResult, viewerPlayerId, sourcePlayerId) {
-    if (animationResult?.type !== "cleaner") {
-        return animationResult
-    }
-
-    const numericViewerPlayerId = Number(viewerPlayerId)
-    const numericSourcePlayerId = Number(sourcePlayerId)
-
-    if (numericViewerPlayerId === numericSourcePlayerId) {
-        return {
-            ...animationResult,
-            viewerPlayerId: numericSourcePlayerId,
-            revealCard: true,
-        }
-    }
-
-    return {
-        type: "cleaner",
-        targetPlayerId: animationResult.targetPlayerId,
-        viewerPlayerId: numericSourcePlayerId,
-        revealCard: false,
-    }
-}
-
 function emitPlayCardActionToPlayers(io, roomCode, state, action) {
     const players = Array.isArray(state?.players) ? state.players : []
 
@@ -63,7 +40,7 @@ function emitPlayCardActionToPlayers(io, roomCode, state, action) {
 
         emitGameAction(io.to(`game:${roomCode}:player:${viewerPlayerId}`), roomCode, {
             ...action,
-            animationResult: createAnimationResultForViewer(
+            animationResult: createCardEffectAnimationResultForViewer(
                 action.animationResult,
                 viewerPlayerId,
                 action.playerId,
@@ -167,6 +144,7 @@ async function emitComputerTurnResult(io, roomCode, result) {
                 : null,
             discardedCard: result.playResult.discardedCard,
             animationResult: result.playResult.animationResult,
+            showdownResult: result.playResult.showdownResult,
         }
 
         emitPlayCardActionToPlayers(io, roomCode, result.playResult.state, playAction)
@@ -272,10 +250,12 @@ function registerGameHandlers(io, socket) {
             if (typeof callback === "function") {
                 callback({
                     ok: true,
-                    data: {
-                        drawnCard: result.drawnCard,
-                        state: gameState,
-                    },
+                        data: {
+                            drawnCard: result.drawnCard,
+                            state: gameState.state,
+                            afterActionId: drawAction.id,
+                            readyForComputerTurn: false,
+                        },
                 })
             }
         } catch (error) {
@@ -323,6 +303,7 @@ function registerGameHandlers(io, socket) {
                 targetPlayerId: targetPlayerId ? Number(targetPlayerId) : null,
                 discardedCard: result.discardedCard,
                 animationResult: result.animationResult,
+                showdownResult: result.showdownResult,
             }
 
             emitPlayCardActionToPlayers(io, roomCode, result.state, playAction)
@@ -340,10 +321,16 @@ function registerGameHandlers(io, socket) {
                     ok: true,
                     data: {
                         result: result.result,
-                        animationResult: result.animationResult,
+                        animationResult: createCardEffectAnimationResultForViewer(
+                            result.animationResult,
+                            playerId,
+                            playerId,
+                        ),
+                        showdownResult: result.showdownResult,
                         discardedCard: result.discardedCard,
                         actionLog: result.actionLog,
-                        state: gameState,
+                        state: gameState.state,
+                        afterActionId: playActionId,
                     },
                 })
             }

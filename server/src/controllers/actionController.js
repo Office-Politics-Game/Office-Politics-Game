@@ -1,4 +1,5 @@
 import { drawCardAction, playCardAction } from "../services/gameActionService.js"
+import { createCardEffectAnimationResultForViewer } from "../services/cardEffectAnimationService.js"
 
 async function handlePlayCard(req, res) {
     try {
@@ -33,7 +34,12 @@ async function handlePlayCard(req, res) {
         return res.status(200).json({
             message: "卡牌效果已執行",
             result: result.result,
-            animationResult: result.animationResult,
+            animationResult: createCardEffectAnimationResultForViewer(
+                result.animationResult,
+                playerId,
+                playerId,
+            ),
+            showdownResult: result.showdownResult,
             discardedCard: result.discardedCard,
             actionLog: result.actionLog,
             state: result.publicState,

@@ -1,5 +1,7 @@
 import { nextTick, ref } from 'vue'
 
+const SWAP_REVEAL_STAGES = new Set(['before-swap', 'after-swap', 'never'])
+
 export function useGameSocketActions({
   normalizedRoomCode,
   resolvedCurrentPlayerId,
@@ -74,9 +76,13 @@ export function useGameSocketActions({
       case 'intern': {
         const targetPlayerId = normalizeAnimationPlayerId(result.targetPlayerId)
         const targetCard = result.targetCard ? normalizeCard(result.targetCard) : null
+        const guessedCardName = typeof result.guessedCardName === 'string'
+          ? result.guessedCardName.trim()
+          : ''
 
-        return targetPlayerId && targetCard && ['correct', 'incorrect'].includes(result.outcome)
-          ? { ...result, id, targetPlayerId, targetCard }
+        return targetPlayerId && targetCard && guessedCardName &&
+          ['correct', 'incorrect'].includes(result.outcome)
+          ? { ...result, id, targetPlayerId, targetCard, guessedCardName }
           : null
       }
       case 'protection': {
@@ -108,6 +114,8 @@ export function useGameSocketActions({
         const discardedCard = result.discardedCard
           ? normalizeCard(result.discardedCard)
           : null
+        const newCard = result.newCard ? normalizeCard(result.newCard) : null
+        const newCardDrawn = result.newCardDrawn === true || Boolean(newCard)
 
         return targetPlayerId && discardedCard
           ? {
@@ -115,7 +123,8 @@ export function useGameSocketActions({
               id,
               targetPlayerId,
               discardedCard,
-              newCard: result.newCard ? normalizeCard(result.newCard) : null,
+              newCardDrawn,
+              newCard,
             }
           : null
       }
@@ -125,12 +134,82 @@ export function useGameSocketActions({
         const sourceCard = result.sourceCard ? normalizeCard(result.sourceCard) : null
         const targetCard = result.targetCard ? normalizeCard(result.targetCard) : null
 
-        return sourcePlayerId && targetPlayerId && sourceCard && targetCard
-          ? { ...result, id, sourcePlayerId, targetPlayerId, sourceCard, targetCard }
+        const normalizeRevealStage = (stage, card) =>
+          card && SWAP_REVEAL_STAGES.has(stage) ? stage : 'never'
+        const sourceCardReveal = normalizeRevealStage(
+          result.sourceCardReveal,
+          sourceCard,
+        )
+        const targetCardReveal = normalizeRevealStage(
+          result.targetCardReveal,
+          targetCard,
+        )
+
+        return sourcePlayerId && targetPlayerId
+          ? {
+              ...result,
+              id,
+              sourcePlayerId,
+              targetPlayerId,
+              sourceCard,
+              targetCard,
+              sourceCardReveal,
+              targetCardReveal,
+            }
           : null
       }
       default:
         return null
+    }
+  }
+
+  function normalizeShowdownResult(result) {
+    if (result === null || result === undefined) {
+      return null
+    }
+
+    const rejectInvalidResult = () => {
+      console.warn('[game:view] invalid-showdown-result', { result })
+      return null
+    }
+
+    if (
+      result.reason !== 'deck-empty' ||
+      result.winnerPlayerId === null ||
+      result.winnerPlayerId === undefined ||
+      !Array.isArray(result.players) ||
+      result.players.length === 0 ||
+      result.players.length > 4
+    ) {
+      return rejectInvalidResult()
+    }
+
+    const winnerPlayerId = normalizeAnimationPlayerId(result.winnerPlayerId)
+    const players = result.players.map((player, index) => {
+      const playerId = normalizeAnimationPlayerId(player?.playerId)
+
+      if (!playerId || !player?.card) {
+        return null
+      }
+
+      return {
+        playerId,
+        card: normalizeCard(player.card, index),
+      }
+    })
+
+    if (
+      !winnerPlayerId ||
+      players.some((player) => !player) ||
+      !players.some((player) => player.playerId === winnerPlayerId)
+    ) {
+      return rejectInvalidResult()
+    }
+
+    return {
+      ...result,
+      winnerPlayerId,
+      players,
     }
   }
 
@@ -160,6 +239,7 @@ export function useGameSocketActions({
       return
     }
 
+    gameStage.value?.clearStagedDiscardCard?.()
     await nextTick()
     await nextTick()
     await gameStage.value?.waitForNoticeIdle?.()
@@ -173,7 +253,9 @@ export function useGameSocketActions({
     const afterActionId = data?.afterActionId
 
     if (!afterActionId) {
-      applyGameStatePayload(data)
+      if (applyGameStatePayload(data)) {
+        gameStage.value?.clearStagedDiscardCard?.()
+      }
       return
     }
 
@@ -242,13 +324,20 @@ export function useGameSocketActions({
 
     if (event.type === 'play-card') {
       const animationResult = normalizeEffectAnimationResult(event.animationResult)
+      const showdownResult = normalizeShowdownResult(event.showdownResult)
       const discardedCard = event.discardedCard
         ? normalizeCard(event.discardedCard)
         : null
 
       await gameStage.value?.playRemoteCardPlayAnimation?.({ ...event, discardedCard })
+      if (discardedCard) {
+        await gameStage.value?.stageDiscardedCard?.(discardedCard)
+      }
       if (animationResult) {
         await gameStage.value?.playEffectAnimation?.(animationResult)
+      }
+      if (showdownResult) {
+        await gameStage.value?.playRoundShowdownAnimation?.(showdownResult)
       }
     }
   }
@@ -322,7 +411,11 @@ export function useGameSocketActions({
         roomCode: normalizedRoomCode.value,
         playerId: resolvedCurrentPlayerId.value,
       })
-      applyGameStatePayload(data)
+      if (data?.afterActionId) {
+        handleSocketGameState(data)
+      } else {
+        applyGameStatePayload(data)
+      }
     } catch (error) {
       console.warn('[game:view] draw-card:socket-failed', {
         roomCode: normalizedRoomCode.value,
@@ -378,7 +471,13 @@ export function useGameSocketActions({
         roomCode: normalizedRoomCode.value,
         ...playPayload,
       })
-      applyGameStatePayload(data)
+      if (data?.afterActionId) {
+        handleSocketGameState(data)
+      } else {
+        if (applyGameStatePayload(data)) {
+          gameStage.value?.clearStagedDiscardCard?.()
+        }
+      }
     } catch (error) {
       console.warn('[game:view] play-card:socket-failed', {
         roomCode: normalizedRoomCode.value,
@@ -390,6 +489,13 @@ export function useGameSocketActions({
       try {
         const data = await playGameCard(normalizedRoomCode.value, playPayload)
         const animationResult = normalizeEffectAnimationResult(data?.animationResult)
+        const showdownResult = normalizeShowdownResult(data?.showdownResult)
+        const discardedCard = data?.discardedCard
+          ? normalizeCard(data.discardedCard)
+          : null
+        if (discardedCard) {
+          await gameStage.value?.stageDiscardedCard?.(discardedCard)
+        }
         if (animationResult && gameStage.value?.playEffectAnimation) {
           try {
             await gameStage.value.playEffectAnimation(animationResult)
@@ -400,7 +506,20 @@ export function useGameSocketActions({
             })
           }
         }
-        await refreshRoomState()
+        if (showdownResult && gameStage.value?.playRoundShowdownAnimation) {
+          try {
+            await gameStage.value.playRoundShowdownAnimation(showdownResult)
+          } catch (animationError) {
+            console.warn('[game:view] play-card:showdown-animation-failed', {
+              showdownResult,
+              error: animationError,
+            })
+          }
+        }
+        if (!applyGameStatePayload(data)) {
+          await refreshRoomState()
+        }
+        gameStage.value?.clearStagedDiscardCard?.()
       } catch (fallbackError) {
         console.warn('[game:view] play-card:fallback-failed', {
           roomCode: normalizedRoomCode.value,
@@ -409,6 +528,7 @@ export function useGameSocketActions({
           errorData: fallbackError?.data,
         })
         await refreshRoomState()
+        gameStage.value?.clearStagedDiscardCard?.()
       }
     } finally {
       isSocketActionSubmitting.value = false

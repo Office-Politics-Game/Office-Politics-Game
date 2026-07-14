@@ -4,6 +4,7 @@ import { getPublicState } from "./gameStateService.js"
 import { runCardEffect, checkGuess } from "./cardEffectService.js"
 import {
     buildCardEffectAnimationResult,
+    createCardEffectAnimationResultForViewer,
     createCardEffectAnimationContext,
 } from "./cardEffectAnimationService.js"
 import { addLog } from "./actionLogService.js"
@@ -135,6 +136,8 @@ async function playCardAction({
         throw createServiceError("玩家沒有此手牌")
     }
 
+    state.hasAnyCardBeenPlayed = true
+
     const effectAnimationContext = createCardEffectAnimationContext({
         state,
         card: discardedCard,
@@ -155,7 +158,7 @@ async function playCardAction({
         effectResult,
     )
 
-    finishTurn(state, numericPlayerId)
+    const { showdownResult } = finishTurn(state, numericPlayerId)
 
     await pool.query(
         `UPDATE game_sessions
@@ -175,7 +178,11 @@ async function playCardAction({
             targetPlayerId,
             guessedCardName,
             result: effectResult,
-            animationResult,
+            animationResult: createCardEffectAnimationResultForViewer(
+                animationResult,
+                numericPlayerId,
+                numericPlayerId,
+            ),
             discardedCard,
             nextTurnPlayerId: state.currentTurnPlayerId,
         })
@@ -187,6 +194,7 @@ async function playCardAction({
         gameSession,
         result: effectResult,
         animationResult,
+        showdownResult,
         discardedCard,
         actionLog,
         state,

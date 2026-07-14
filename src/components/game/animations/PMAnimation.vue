@@ -21,6 +21,7 @@ import EffectCardLayer from './EffectCardLayer.vue'
 
 const props = defineProps({
   result: { type: Object, default: null },
+  targetPlayerName: { type: String, default: '玩家' },
   getPlayerHandRect: { type: Function, default: null },
   getDiscardRect: { type: Function, default: null },
   getDeckRect: { type: Function, default: null },
@@ -30,9 +31,11 @@ const emit = defineEmits(['complete'])
 
 const cardLayerRef = ref(null)
 const drawRef = ref(null)
+const promptRef = ref(null)
 const drawCard = ref(null)
 const showDiscardCard = ref(false)
 const cardStyle = ref({ display: 'none' })
+const PM_PROMPT_HOLD_SECONDS = 1
 
 function getCardElement() {
   return cardLayerRef.value?.getCardElement?.() ?? null
@@ -43,7 +46,7 @@ function getFlipperElement() {
 }
 
 function getKillTargets() {
-  return [getCardElement(), getFlipperElement()]
+  return [getCardElement(), getFlipperElement(), promptRef.value]
 }
 
 const {
@@ -84,7 +87,8 @@ async function play(result) {
   const originRect = props.getPlayerHandRect?.(result.targetPlayerId)
   const discardRect = props.getDiscardRect?.()
   const deckRect = props.getDeckRect?.()
-  if (!originRect || !discardRect || !result.discardedCard || (result.newCard && !deckRect)) {
+  const shouldDrawNewCard = result.newCardDrawn === true || Boolean(result.newCard)
+  if (!originRect || !discardRect || !result.discardedCard || (shouldDrawNewCard && !deckRect)) {
     finishAnimation(result)
     return
   }
@@ -101,20 +105,23 @@ async function play(result) {
   await nextTick()
   const cardElement = getCardElement()
   const flipperElement = getFlipperElement()
-  if (isStale(result) || !cardElement || !flipperElement) {
+  if (isStale(result) || !cardElement || !flipperElement || !promptRef.value) {
     finishAnimation(result)
     return
   }
 
   gsap.set(cardElement, { x: 0, y: 0, scale: getScaleForHeight(originRect, height), transformPerspective: 1200 })
   gsap.set(flipperElement, { rotationY: 180, transformPerspective: 1200, transformStyle: 'preserve-3d' })
+  gsap.set(promptRef.value, { opacity: 1 })
 
   await new Promise((resolve) => {
     const nextTimeline = setTimeline(gsap.timeline({ onComplete: () => { setTimeline(null); resolve() } }))
     nextTimeline
+      .to({}, { duration: PM_PROMPT_HOLD_SECONDS })
       .to(cardElement, getMoveToCenterVars(centerTranslation, height, { duration: timing.travel, reduced }))
       .to(flipperElement, getFlipVars(0, timing.flip))
       .to({}, { duration: 0.35 })
+      .set(promptRef.value, { opacity: 0 })
       .to(cardElement, getDiscardVars(discardTranslation, discardRect, height, { duration: timing.travel, reduced }))
   })
 
@@ -129,7 +136,7 @@ async function play(result) {
   })
   if (isStale(result)) return
 
-  if (result.newCard) {
+  if (shouldDrawNewCard) {
     const options = { startRect: deckRect, targetRect: originRect, onLanded: () => {} }
     if (props.isSelfPlayer?.(result.targetPlayerId)) await drawRef.value?.selfDraw(options)
     else await drawRef.value?.othersDraw(options)
@@ -147,6 +154,7 @@ onBeforeUnmount(stop)
 <template>
   <Teleport to="body">
     <div v-if="activeResult" class="pm-animation" aria-hidden="true">
+      <div ref="promptRef" class="pm-animation__prompt">指定<span class="pm-animation__prompt-value">{{ targetPlayerName }}</span>棄牌重抽</div>
       <EffectCardLayer
         v-if="showDiscardCard"
         ref="cardLayerRef"
@@ -162,4 +170,28 @@ onBeforeUnmount(stop)
 <style scoped>
 .pm-animation { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
 .pm-animation__card { z-index: 2; --effect-card-face-filter: drop-shadow(0 20px 28px rgba(0,0,0,.48)); }
+.pm-animation__prompt {
+  position: fixed;
+  top: 135px;
+  left: 50%;
+  z-index: 4;
+  width: 920px;
+  color: var(--gray-100);
+  font-size: var(--text-xl);
+  font-weight: 900;
+  line-height: 1.3;
+  letter-spacing: 0.04em;
+  text-align: center;
+  overflow-wrap: anywhere;
+  text-shadow: 0 2px 16px rgba(0, 19, 50, 0.88);
+  transform: translateX(-50%);
+}
+.pm-animation__prompt-value { color: #facc15; }
+
+@media (min-width: 1024px) {
+  .pm-animation__prompt {
+    top: 180px;
+    width: 1180px;
+  }
+}
 </style>
