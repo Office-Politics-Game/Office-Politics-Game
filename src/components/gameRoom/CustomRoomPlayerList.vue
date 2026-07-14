@@ -124,12 +124,15 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
           </div>
 
           <div
-            v-if="slot.name && !slot.isHost && slot.isReady && !slot.isPlaceholder"
+            v-if="slot.name && !slot.isHost && !slot.isPlaceholder"
             class="room-ready-stamp mt-3 lg:mt-6"
-            aria-label="已打卡"
+            :class="{ 'room-ready-stamp--pending': !slot.isReady }"
+            :aria-label="slot.isReady ? '已打卡' : '未打卡'"
           >
-            <span class="room-ready-stamp-icon">✓</span>
-            已打卡
+            <span class="room-ready-stamp-icon">
+              {{ slot.isReady ? "✓" : "×" }}
+            </span>
+            {{ slot.isReady ? "已打卡" : "未打卡" }}
           </div>
         </div>
       </article>
@@ -290,6 +293,23 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
   color: #f6fff8;
   font-size: 0.78em;
   line-height: 1;
+}
+
+.room-ready-stamp--pending {
+  transform: rotate(0deg);
+  border-color: #8b4c48;
+  color: #8b4c48;
+  background:
+    linear-gradient(135deg, rgba(139, 76, 72, 0.08), rgba(255, 255, 255, 0.16));
+  box-shadow:
+    inset 0 0 0 1px rgba(139, 76, 72, 0.18),
+    0 4px 8px rgba(0, 19, 50, 0.1);
+  opacity: 0.82;
+}
+
+.room-ready-stamp--pending .room-ready-stamp-icon {
+  background: #8b4c48;
+  color: #fff8f7;
 }
 
 .room-player-level {
