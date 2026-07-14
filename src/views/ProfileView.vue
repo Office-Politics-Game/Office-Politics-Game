@@ -305,7 +305,7 @@ const profilePlayer = computed(() => {
     totalGames,
     winRate: getWinRate(winCount, totalGames),
     playerCode: `CEO_${String(playerId).padStart(4, "0")}`,
-    createdAtDisplay: formatDate(player.createdAt ?? player.created_at),
+    createdAtDisplay: player.createdAtDisplay || formatDate(player.createdAt ?? player.created_at),
     bio: player.bio || "尚未設定",
   };
 });
