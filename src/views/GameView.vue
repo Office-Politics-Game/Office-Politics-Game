@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import LoadingScreen from '@/components/common/LoadingScreen.vue'
 import GameStage from '@/components/game/ui/GameStage.vue'
+import { useGameTableAudio } from '@/composables/UseGameTableAudio'
 import { useGameRoomState } from '@/composables/useGameRoomState'
 import { useGameSocketActions } from '@/composables/useGameSocketActions'
 import { useGameViewModel } from '@/composables/useGameViewModel'
@@ -116,6 +117,9 @@ const {
   beforeRefresh: ensureViewerAppearanceHydrated,
 })
 
+const { startGameTableBackground, stopGameTableBackground } =
+  useGameTableAudio()
+
 const {
   isDrawing,
   isSocketActionSubmitting,
@@ -166,8 +170,19 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  stopGameTableBackground()
   cleanupGameSocket()
 })
+
+watch(
+  hasLoadedInitialState,
+  (isGameStageReady) => {
+    if (isGameStageReady) {
+      startGameTableBackground()
+    }
+  },
+  { flush: 'post' },
+)
 
 watch(
   () => [normalizedRoomCode.value, requestedPlayerId.value],

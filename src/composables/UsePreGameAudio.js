@@ -1,5 +1,9 @@
 import { watch } from "vue";
 import { useAudioSettings } from "@/composables/UseAudioSettings";
+import lobbyFootstepsHeels01Url from "@/assets/audio/lobby-footsteps-heels-01.mp3";
+import lobbyFootstepsHeels02Url from "@/assets/audio/lobby-footsteps-heels-02.mp3";
+import lobbyFootstepsHeels03Url from "@/assets/audio/lobby-footsteps-heels-03.mp3";
+import lobbyFootstepsHeels04Url from "@/assets/audio/lobby-footsteps-heels-04.mp3";
 import lobbyMoneyChantThemeUrl from "@/assets/audio/lobby-money-chant-theme.mp3";
 import preGameLobbyThemeUrl from "@/assets/audio/pre-game-lobby-theme.mp3";
 import lobbyNavigationWhooshUrl from "@/assets/audio/lobby-navigation-whoosh.mp3";
@@ -18,7 +22,6 @@ export const PRE_GAME_AUDIO_ROUTE_NAMES = Object.freeze([
   "Matching",
   "JoinRoom",
   "CustomRoom",
-  "Loading",
   "Profile",
   "Friend",
   "Gacha",
@@ -26,12 +29,44 @@ export const PRE_GAME_AUDIO_ROUTE_NAMES = Object.freeze([
 
 const PRE_LOGIN_ROUTE_NAME_SET = new Set(PRE_LOGIN_AUDIO_ROUTE_NAMES);
 const PRE_GAME_ROUTE_NAME_SET = new Set(PRE_GAME_AUDIO_ROUTE_NAMES);
+const AUDIO_UNLOCK_EVENTS = ["pointerdown", "keydown", "touchstart"];
 const PRE_LOGIN_MUSIC_GAIN = 1.0;
 const PRE_GAME_MUSIC_GAIN = 0.2;
+const LOBBY_DETAIL_GAIN = 0.2;
 const LOBBY_MUSIC_FADE_IN_MS = 900;
 const LOBBY_MUSIC_FADE_OUT_MS = 900;
+const LOADING_MUSIC_FADE_OUT_MS = 4000;
 const LOBBY_MUSIC_FADE_INTERVAL_MS = 30;
 const SOUND_EFFECT_GAIN = 0.78;
+const FOOTSTEP_INITIAL_DELAY_MS = 1800;
+const FOOTSTEP_DELAY_MIN_MS = 10000;
+const FOOTSTEP_DELAY_RANGE_MS = 14000;
+const LOBBY_FOOTSTEP_LAYERS = Object.freeze([
+  {
+    url: lobbyFootstepsHeels01Url,
+    pan: -0.62,
+    delayMs: 0,
+    gain: 1.05,
+  },
+  {
+    url: lobbyFootstepsHeels02Url,
+    pan: 0.58,
+    delayMs: 180,
+    gain: 0.92,
+  },
+  {
+    url: lobbyFootstepsHeels03Url,
+    pan: -0.12,
+    delayMs: 360,
+    gain: 0.95,
+  },
+  {
+    url: lobbyFootstepsHeels04Url,
+    pan: 0.28,
+    delayMs: 540,
+    gain: 0.94,
+  },
+]);
 
 const soundEffectUrls = {
   "login-button-click": loginButtonClickUrl,
@@ -42,12 +77,17 @@ const soundEffectUrls = {
 let loginLobbyMusicAudio = null;
 let preGameLobbyMusicAudio = null;
 let lobbyMusicFadeTimerId = null;
+let footstepLayers = [];
 let soundEffectAudios = new Map();
 let currentPreLoginRouteActive = false;
 let currentPreGameRouteActive = false;
 let preGameBackgroundStarted = false;
 let audioUnlocked = false;
+let unlockListenersInstalled = false;
+let footstepTimerId = null;
+let footstepLayerTimerIds = new Set();
 let settingsStopHandle = null;
+let audioContext = null;
 
 function canUseAudio() {
   return typeof window !== "undefined" && typeof Audio !== "undefined";
@@ -82,6 +122,71 @@ function getAudioSettings() {
   return useAudioSettings();
 }
 
+function getAudioContext() {
+  if (!canUseAudio()) {
+    return null;
+  }
+
+  const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+
+  if (!AudioContextConstructor) {
+    return null;
+  }
+
+  if (!audioContext) {
+    audioContext = new AudioContextConstructor();
+  }
+
+  return audioContext;
+}
+
+function resumeAudioContext() {
+  const context = getAudioContext();
+
+  if (!context || context.state !== "suspended") {
+    return;
+  }
+
+  const resumeResult = context.resume();
+
+  if (resumeResult && typeof resumeResult.catch === "function") {
+    resumeResult.catch(() => {});
+  }
+}
+
+function connectFootstepLayer(layer) {
+  const context = getAudioContext();
+
+  if (!context || typeof context.createStereoPanner !== "function") {
+    return;
+  }
+
+  if (layer.pannerNode) {
+    layer.pannerNode.pan.value = layer.pan;
+    return;
+  }
+
+  try {
+    layer.sourceNode = context.createMediaElementSource(layer.audio);
+    layer.pannerNode = context.createStereoPanner();
+    layer.pannerNode.pan.value = layer.pan;
+    layer.sourceNode.connect(layer.pannerNode);
+    layer.pannerNode.connect(context.destination);
+  } catch {
+    layer.sourceNode = null;
+    layer.pannerNode = null;
+  }
+}
+
+function prepareFootstepSpatialLayers() {
+  if (!canUseAudio()) {
+    return;
+  }
+
+  ensureFootstepAudios().forEach(connectFootstepLayer);
+  resumeAudioContext();
+}
+
 function updateAudioVolumes() {
   const { musicVolume, soundVolume } = getAudioSettings();
 
@@ -98,6 +203,13 @@ function updateAudioVolumes() {
       PRE_GAME_MUSIC_GAIN,
     );
   }
+
+  footstepLayers.forEach((layer) => {
+    layer.audio.volume = getBoundedVolume(
+      musicVolume.value,
+      LOBBY_DETAIL_GAIN * layer.gain,
+    );
+  });
 
   soundEffectAudios.forEach((audio) => {
     audio.volume = getBoundedVolume(soundVolume.value, SOUND_EFFECT_GAIN);
@@ -128,7 +240,7 @@ function clearLobbyMusicFade() {
   lobbyMusicFadeTimerId = null;
 }
 
-function fadeOutAudio(audio) {
+function fadeOutAudio(audio, fadeOutMs = LOBBY_MUSIC_FADE_OUT_MS) {
   if (!audio) {
     return;
   }
@@ -150,7 +262,7 @@ function fadeOutAudio(audio) {
   lobbyMusicFadeTimerId = window.setInterval(() => {
     const progress = Math.min(
       1,
-      (Date.now() - fadeStartedAt) / LOBBY_MUSIC_FADE_OUT_MS,
+      (Date.now() - fadeStartedAt) / fadeOutMs,
     );
 
     audio.volume = initialVolume * (1 - progress);
@@ -237,6 +349,19 @@ function ensurePreGameLobbyMusicAudio() {
   return preGameLobbyMusicAudio;
 }
 
+function ensureFootstepAudios() {
+  if (!footstepLayers.length) {
+    footstepLayers = LOBBY_FOOTSTEP_LAYERS.map((layer) => ({
+      ...layer,
+      audio: createAudio(layer.url),
+      sourceNode: null,
+      pannerNode: null,
+    }));
+  }
+
+  return footstepLayers;
+}
+
 function ensureSoundEffectAudio(soundName) {
   const soundUrl = soundEffectUrls[soundName];
 
@@ -251,10 +376,97 @@ function ensureSoundEffectAudio(soundName) {
   return soundEffectAudios.get(soundName);
 }
 
-function playLoginLobbyMusic() {
+function clearFootstepTimer() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (footstepTimerId !== null) {
+    window.clearTimeout(footstepTimerId);
+    footstepTimerId = null;
+  }
+
+  footstepLayerTimerIds.forEach((timerId) => {
+    window.clearTimeout(timerId);
+  });
+  footstepLayerTimerIds.clear();
+}
+
+function stopLobbyFootsteps() {
+  clearFootstepTimer();
+  footstepLayers.forEach((layer) => pauseAudio(layer.audio, { reset: true }));
+}
+
+function scheduleFootstepLayer({ initial = false } = {}) {
+  if (!canUseAudio() || footstepTimerId !== null) {
+    return;
+  }
+
+  const { musicEnabled } = getAudioSettings();
+
+  if (!currentPreLoginRouteActive || !audioUnlocked || !musicEnabled.value) {
+    return;
+  }
+
+  const delay = initial
+    ? FOOTSTEP_INITIAL_DELAY_MS
+    : FOOTSTEP_DELAY_MIN_MS + Math.random() * FOOTSTEP_DELAY_RANGE_MS;
+
+  footstepTimerId = window.setTimeout(() => {
+    footstepTimerId = null;
+    playLobbyFootstep();
+    scheduleFootstepLayer();
+  }, delay);
+}
+
+function playFootstepLayer(layer) {
   const { musicEnabled } = getAudioSettings();
 
   if (!canUseAudio() || !currentPreLoginRouteActive || !musicEnabled.value) {
+    return;
+  }
+
+  connectFootstepLayer(layer);
+  resumeAudioContext();
+  updateAudioVolumes();
+  layer.audio.currentTime = 0;
+  playAudio(layer.audio);
+}
+
+function playLobbyFootstep() {
+  const { musicEnabled } = getAudioSettings();
+
+  if (!canUseAudio() || !currentPreLoginRouteActive || !musicEnabled.value) {
+    return;
+  }
+
+  const layers = ensureFootstepAudios();
+  updateAudioVolumes();
+
+  layers.forEach((layer) => {
+    if (!layer.delayMs) {
+      playFootstepLayer(layer);
+      return;
+    }
+
+    const timerId = window.setTimeout(() => {
+      footstepLayerTimerIds.delete(timerId);
+      playFootstepLayer(layer);
+    }, layer.delayMs);
+
+    footstepLayerTimerIds.add(timerId);
+  });
+}
+
+function playLoginLobbyMusic() {
+  const { musicEnabled } = getAudioSettings();
+
+  if (
+    !canUseAudio() ||
+    !currentPreLoginRouteActive ||
+    !audioUnlocked ||
+    !musicEnabled.value
+  ) {
     return;
   }
 
@@ -295,24 +507,38 @@ function startPreLoginBackground() {
   clearLobbyMusicFade();
   pauseAudio(preGameLobbyMusicAudio, { reset: true });
   ensureSettingsWatcher();
+  updateAudioVolumes();
 
   const { musicEnabled } = getAudioSettings();
 
   if (!musicEnabled.value) {
     pauseAudio(loginLobbyMusicAudio, { reset: true });
+    stopLobbyFootsteps();
     return;
   }
 
+  installAudioUnlockListeners();
+
+  if (!audioUnlocked) {
+    return;
+  }
+
+  prepareFootstepSpatialLayers();
   playLoginLobbyMusic();
+  scheduleFootstepLayer({ initial: true });
 }
 
-function stopPreGameBackground({ fadeOut = true, preserveActivation = false } = {}) {
+function stopPreGameBackground({
+  fadeOut = true,
+  preserveActivation = false,
+  fadeOutMs = LOBBY_MUSIC_FADE_OUT_MS,
+} = {}) {
   currentPreGameRouteActive = false;
   if (!preserveActivation) {
     preGameBackgroundStarted = false;
   }
   if (fadeOut) {
-    fadeOutAudio(preGameLobbyMusicAudio);
+    fadeOutAudio(preGameLobbyMusicAudio, fadeOutMs);
   } else {
     clearLobbyMusicFade();
     pauseAudio(preGameLobbyMusicAudio, { reset: true });
@@ -329,12 +555,14 @@ function startPreGameBackground({ fadeIn = false, userInitiated = false } = {}) 
   if (userInitiated) {
     audioUnlocked = true;
     preGameBackgroundStarted = true;
+    removeAudioUnlockListeners();
   }
 
   currentPreGameRouteActive = true;
   currentPreLoginRouteActive = false;
   clearLobbyMusicFade();
   pauseAudio(loginLobbyMusicAudio, { reset: true });
+  stopLobbyFootsteps();
   ensureSettingsWatcher();
   updateAudioVolumes();
 
@@ -351,6 +579,50 @@ function startPreGameBackground({ fadeIn = false, userInitiated = false } = {}) 
   playPreGameLobbyMusic({ fadeIn });
 }
 
+function removeAudioUnlockListeners() {
+  if (!canUseAudio() || !unlockListenersInstalled) {
+    return;
+  }
+
+  AUDIO_UNLOCK_EVENTS.forEach((eventName) => {
+    window.removeEventListener(eventName, unlockAudio, true);
+  });
+
+  unlockListenersInstalled = false;
+}
+
+function unlockAudio() {
+  audioUnlocked = true;
+  removeAudioUnlockListeners();
+
+  if (currentPreLoginRouteActive) {
+    prepareFootstepSpatialLayers();
+    playLoginLobbyMusic();
+    scheduleFootstepLayer({ initial: true });
+    return;
+  }
+
+  if (currentPreGameRouteActive && preGameBackgroundStarted) {
+    startPreGameBackground();
+  }
+}
+
+function installAudioUnlockListeners() {
+  if (!canUseAudio() || unlockListenersInstalled || audioUnlocked) {
+    return;
+  }
+
+  unlockListenersInstalled = true;
+
+  AUDIO_UNLOCK_EVENTS.forEach((eventName) => {
+    window.addEventListener(eventName, unlockAudio, {
+      capture: true,
+      once: true,
+      passive: true,
+    });
+  });
+}
+
 function ensureSettingsWatcher() {
   if (settingsStopHandle) {
     return;
@@ -365,10 +637,11 @@ function ensureSettingsWatcher() {
 
       if (currentPreLoginRouteActive) {
         if (musicEnabled.value) {
-          playLoginLobbyMusic();
+          startPreLoginBackground();
         } else {
           clearLobbyMusicFade();
           pauseAudio(loginLobbyMusicAudio, { reset: true });
+          stopLobbyFootsteps();
         }
         return;
       }
@@ -377,6 +650,7 @@ function ensureSettingsWatcher() {
         if (!musicEnabled.value) {
           clearLobbyMusicFade();
           pauseAudio(loginLobbyMusicAudio, { reset: true });
+          stopLobbyFootsteps();
           pauseAudio(preGameLobbyMusicAudio, { reset: true });
         }
         return;
@@ -400,16 +674,27 @@ function ensureSettingsWatcher() {
 export function usePreGameAudio() {
   ensureSettingsWatcher();
 
-  function syncPreGameRouteAudio(routeName, { fadeIn = false } = {}) {
+  function syncPreGameRouteAudio(
+    routeName,
+    { fadeIn = false, suppressBackground = false } = {},
+  ) {
     if (isPreLoginAudioRoute(routeName)) {
       startPreLoginBackground();
       return;
     }
 
     if (isPreGameAudioRoute(routeName)) {
-      currentPreGameRouteActive = true;
       currentPreLoginRouteActive = false;
       pauseAudio(loginLobbyMusicAudio, { reset: true });
+      stopLobbyFootsteps();
+
+      if (suppressBackground) {
+        stopPreGameBackground({ fadeOut: false });
+        currentPreGameRouteActive = true;
+        return;
+      }
+
+      currentPreGameRouteActive = true;
       if (preGameBackgroundStarted) {
         startPreGameBackground({ fadeIn });
       }
@@ -418,8 +703,13 @@ export function usePreGameAudio() {
 
     currentPreLoginRouteActive = false;
     pauseAudio(loginLobbyMusicAudio, { reset: true });
+    stopLobbyFootsteps();
     stopPreGameBackground({
       fadeOut: true,
+      fadeOutMs:
+        routeName === "Loading"
+          ? LOADING_MUSIC_FADE_OUT_MS
+          : LOBBY_MUSIC_FADE_OUT_MS,
       preserveActivation: routeName === "Mall",
     });
   }

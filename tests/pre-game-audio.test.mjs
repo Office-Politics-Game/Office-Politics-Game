@@ -87,6 +87,21 @@ test('pre-game lobby music fades out when leaving the auth flow', async () => {
   )
 })
 
+test('loading route uses an extended pre-game lobby fade out', async () => {
+  const source = await readSource('src/composables/UsePreGameAudio.js')
+
+  assert.match(source, /LOADING_MUSIC_FADE_OUT_MS = 4000/)
+  assert.match(
+    source,
+    /function stopPreGameBackground\(\{[\s\S]*?fadeOutMs = LOBBY_MUSIC_FADE_OUT_MS/,
+  )
+  assert.match(source, /fadeOutAudio\(preGameLobbyMusicAudio, fadeOutMs\)/)
+  assert.match(
+    source,
+    /fadeOutMs:\s*routeName === "Loading"\s*\? LOADING_MUSIC_FADE_OUT_MS\s*:\s*LOBBY_MUSIC_FADE_OUT_MS/,
+  )
+})
+
 test('pre-game lobby music fades in when explicitly started', async () => {
   const source = await readSource('src/composables/UsePreGameAudio.js')
 
@@ -130,30 +145,43 @@ test('pre-game background audio separates login-before and post-login routes', a
     "Matching",
     "JoinRoom",
     "CustomRoom",
-    "Loading",
     "Profile",
     "Friend",
     "Gacha",
   ])
 })
 
-test('post-login lobby audio does not schedule footsteps', async () => {
+test('pre-login lobby audio retries after user interaction and schedules footsteps', async () => {
   const source = await readSource('src/composables/UsePreGameAudio.js')
 
-  assert.doesNotMatch(source, /LOBBY_FOOTSTEP_LAYERS/)
-  assert.doesNotMatch(source, /scheduleFootstepLayer/)
-  assert.doesNotMatch(source, /playLobbyFootstep/)
-  assert.doesNotMatch(source, /connectFootstepLayer/)
-  assert.doesNotMatch(source, /lobbyFootstepsHeels\d\dUrl/)
+  assert.match(source, /AUDIO_UNLOCK_EVENTS/)
+  assert.match(source, /function unlockAudio/)
+  assert.match(source, /function installAudioUnlockListeners/)
+  assert.match(
+    source,
+    /if \(currentPreLoginRouteActive\) \{[\s\S]*?playLoginLobbyMusic\(\);[\s\S]*?scheduleFootstepLayer\(\{ initial: true \}\)/,
+  )
+  assert.match(source, /LOBBY_FOOTSTEP_LAYERS/)
+  assert.match(source, /function scheduleFootstepLayer/)
+  assert.match(source, /function playLobbyFootstep/)
+  assert.match(source, /function connectFootstepLayer/)
+  assert.match(source, /lobbyFootstepsHeels01Url/)
+  assert.match(source, /lobbyFootstepsHeels02Url/)
+  assert.match(source, /lobbyFootstepsHeels03Url/)
+  assert.match(source, /lobbyFootstepsHeels04Url/)
 })
 
-test('pre-game audio mix excludes footsteps', async () => {
+test('pre-login lobby audio mix includes footsteps and clears them on route exit', async () => {
   const source = await readSource('src/composables/UsePreGameAudio.js')
 
   assert.match(source, /PRE_LOGIN_MUSIC_GAIN/)
   assert.match(source, /PRE_GAME_MUSIC_GAIN/)
-  assert.doesNotMatch(source, /LOBBY_DETAIL_GAIN/)
-  assert.doesNotMatch(source, /gain:/)
+  assert.match(source, /LOBBY_DETAIL_GAIN/)
+  assert.match(source, /clearFootstepTimer/)
+  assert.match(
+    source,
+    /pauseAudio\(loginLobbyMusicAudio, \{ reset: true \}\);\s*stopLobbyFootsteps\(\)/,
+  )
 })
 
 test('login page actions trigger the shared click sound, including close controls', async () => {
@@ -339,14 +367,35 @@ test('returning from mall preserves activation and fades the pre-game theme in',
 
   assert.match(appSource, /\(routeName, previousRouteName\) =>/)
   assert.match(appSource, /previousRouteName === "Mall"/)
-  assert.match(appSource, /syncPreGameRouteAudio\(routeName, \{ fadeIn \}\)/)
+  assert.match(
+    appSource,
+    /syncPreGameRouteAudio\(routeName, \{ fadeIn, suppressBackground \}\)/,
+  )
   assert.match(
     audioSource,
-    /function syncPreGameRouteAudio\(routeName, \{ fadeIn = false \} = \{\}\)/,
+    /function syncPreGameRouteAudio\([\s\S]*?suppressBackground = false[\s\S]*?\) \{/,
   )
   assert.match(audioSource, /startPreGameBackground\(\{ fadeIn \}\)/)
   assert.match(
     audioSource,
     /preserveActivation: routeName === "Mall"/,
+  )
+})
+
+test('returning from Game keeps the pre-game lobby theme stopped', async () => {
+  const appSource = await readSource('src/App.vue')
+  const audioSource = await readSource('src/composables/UsePreGameAudio.js')
+
+  assert.match(
+    appSource,
+    /const suppressBackground = previousRouteName === "Game"/,
+  )
+  assert.match(
+    appSource,
+    /syncPreGameRouteAudio\(routeName, \{ fadeIn, suppressBackground \}\)/,
+  )
+  assert.match(
+    audioSource,
+    /if \(suppressBackground\) \{[\s\S]*?stopPreGameBackground\(\{ fadeOut: false \}\);[\s\S]*?currentPreGameRouteActive = true;[\s\S]*?return;/,
   )
 })
