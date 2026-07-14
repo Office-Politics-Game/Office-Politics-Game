@@ -1,115 +1,87 @@
-import {
-  buildCloudinaryImageUrl,
-  resolveImageAssetUrl,
-} from "@/utils/assetUrlResolver.js";
+import { resolveImageAssetUrl } from "@/utils/assetUrlResolver.js";
 
-function themeAssetUrl({ publicId, fallbackBasePath, fallbackFileName }) {
-  return buildCloudinaryImageUrl(publicId) || `${fallbackBasePath}/${fallbackFileName}`;
+const CARD_SKIN_ROLE_KEYS = [
+  "intern",
+  "cleaner",
+  "manager",
+  "senior",
+  "pm",
+  "hr",
+  "advisor",
+  "ceo",
+];
+
+function localShopAsset(folder, fileName) {
+  return `/images/shop/${folder}/${fileName}`;
+}
+
+function createRoleAssetMap({ folder, prefix, suffix }) {
+  return Object.fromEntries(
+    CARD_SKIN_ROLE_KEYS.map((roleKey) => [
+      roleKey,
+      localShopAsset(folder, `${prefix}-${roleKey}-${suffix}.webp`),
+    ]),
+  );
+}
+
+function createTheme({
+  key,
+  aliases = [],
+  folder,
+  prefix,
+  logoFileName,
+  hasFrames = false,
+}) {
+  return {
+    key,
+    aliases: [key, `${key}-style`, folder, ...aliases],
+    logoUrl: localShopAsset(folder, logoFileName),
+    slotImages: createRoleAssetMap({ folder, prefix, suffix: "card-skin" }),
+    slotFrames: hasFrames
+      ? createRoleAssetMap({ folder, prefix, suffix: "card-frame" })
+      : {},
+  };
 }
 
 const CARD_SKIN_THEMES = {
-  "neon-hustle": {
+  "neon-hustle": createTheme({
     key: "neon-hustle",
-    aliases: ["neon-hustle", "霓虹風格", "霓虹風格卡面"],
-    logoUrl: themeAssetUrl({
-      publicId: "office-politics-game/shop/neon-hustle-style/neon-hustle-logo",
-      fallbackBasePath: "/images/shop/neon-hustle-style",
-      fallbackFileName: "neon-hustle-logo.webp",
-    }),
-    slotImages: {
-      intern: themeAssetUrl({
-        publicId: "neon-hustle-intern-card-skin.png_tucpe4",
-        fallbackBasePath: "/images/shop/neon-hustle-style",
-        fallbackFileName: "neon-hustle-intern-card-skin.webp",
-      }),
-      cleaner: themeAssetUrl({
-        publicId: "neon-hustle-cleaner-card-skin.png_wuac5g",
-        fallbackBasePath: "/images/shop/neon-hustle-style",
-        fallbackFileName: "neon-hustle-cleaner-card-skin.webp",
-      }),
-      manager: themeAssetUrl({
-        publicId: "neon-hustle-manager-card-skin_b8y38o",
-        fallbackBasePath: "/images/shop/neon-hustle-style",
-        fallbackFileName: "neon-hustle-manager-card-skin.webp",
-      }),
-      senior: themeAssetUrl({
-        publicId: "neon-hustle-senior-card-skin.png_dyqrzv",
-        fallbackBasePath: "/images/shop/neon-hustle-style",
-        fallbackFileName: "neon-hustle-senior-card-skin.webp",
-      }),
-      pm: themeAssetUrl({
-        publicId: "neon-hustle-pm-card-skin_slejup",
-        fallbackBasePath: "/images/shop/neon-hustle-style",
-        fallbackFileName: "neon-hustle-pm-card-skin.webp",
-      }),
-      hr: themeAssetUrl({
-        publicId: "neon-hustle-hr-card-skin_gylcqi",
-        fallbackBasePath: "/images/shop/neon-hustle-style",
-        fallbackFileName: "neon-hustle-hr-card-skin.webp",
-      }),
-      advisor: themeAssetUrl({
-        publicId: "neon-hustle-advisor-card-skin_ujucmz",
-        fallbackBasePath: "/images/shop/neon-hustle-style",
-        fallbackFileName: "neon-hustle-advisor-card-skin.webp",
-      }),
-      ceo: themeAssetUrl({
-        publicId: "neon-hustle-ceo-card-skin.png_pqfvog",
-        fallbackBasePath: "/images/shop/neon-hustle-style",
-        fallbackFileName: "neon-hustle-ceo-card-skin.webp",
-      }),
-    },
-  },
-  "beach": {
+    aliases: ["neon", "neon hustle", "霓虹"],
+    folder: "neon-hustle-style",
+    prefix: "neon-hustle",
+    logoFileName: "neon-hustle-logo.webp",
+    hasFrames: true,
+  }),
+  beach: createTheme({
     key: "beach",
-    aliases: ["beach", "夏日風格", "夏日風格卡面"],
-    logoUrl: themeAssetUrl({
-      publicId: "beach-Logo",
-      fallbackBasePath: "/images/shop/beach-style",
-      fallbackFileName: "beach-logo.webp",
-    }),
-    slotImages: {
-      intern: themeAssetUrl({
-        publicId: "beach-intern-card-skin_gxe0ej",
-        fallbackBasePath: "/images/shop/beach-style",
-        fallbackFileName: "beach-intern-card-skin.webp",
-      }),
-      cleaner: themeAssetUrl({
-        publicId: "beach-cleaner-card-skin_fyd64r",
-        fallbackBasePath: "/images/shop/beach-style",
-        fallbackFileName: "beach-cleaner-card-skin.webp",
-      }),
-      manager: themeAssetUrl({
-        publicId: "beach-manager-card-skin_sdcjso",
-        fallbackBasePath: "/images/shop/beach-style",
-        fallbackFileName: "beach-manager-card-skin.webp",
-      }),
-      senior: themeAssetUrl({
-        publicId: "beach-senior-card-skin_nn2onj",
-        fallbackBasePath: "/images/shop/beach-style",
-        fallbackFileName: "beach-senior-card-skin.webp",
-      }),
-      pm: themeAssetUrl({
-        publicId: "beach-pm-card-skin_zil33h",
-        fallbackBasePath: "/images/shop/beach-style",
-        fallbackFileName: "beach-pm-card-skin.webp",
-      }),
-      hr: themeAssetUrl({
-        publicId: "beach-hr-card-skin_buspol",
-        fallbackBasePath: "/images/shop/beach-style",
-        fallbackFileName: "beach-hr-card-skin.webp",
-      }),
-      advisor: themeAssetUrl({
-        publicId: "beach-advisor-card-skin_cvrocj",
-        fallbackBasePath: "/images/shop/beach-style",
-        fallbackFileName: "beach-advisor-card-skin.webp",
-      }),
-      ceo: themeAssetUrl({
-        publicId: "beach-ceo-card-skin_pvo9pf",
-        fallbackBasePath: "/images/shop/beach-style",
-        fallbackFileName: "beach-ceo-card-skin.webp",
-      }),
-    },
-  },
+    aliases: ["summer", "beach style", "夏日", "海灘"],
+    folder: "beach-style",
+    prefix: "beach",
+    logoFileName: "beach-theme.webp",
+  }),
+  lego: createTheme({
+    key: "lego",
+    aliases: ["brick", "樂高", "積木"],
+    folder: "lego-style",
+    prefix: "lego",
+    logoFileName: "lego-theme.webp",
+    hasFrames: true,
+  }),
+  mario: createTheme({
+    key: "mario",
+    aliases: ["super mario", "瑪利歐", "瑪力歐", "馬力歐", "超級瑪利歐"],
+    folder: "mario-style",
+    prefix: "mario",
+    logoFileName: "mario-logo.webp",
+  }),
+  ukiyo: createTheme({
+    key: "ukiyo",
+    aliases: ["ukiyo-e", "japanese", "浮世繪", "浮世絵", "和風"],
+    folder: "ukiyo-style",
+    prefix: "ukiyo",
+    logoFileName: "ukiyo-theme.webp",
+    hasFrames: true,
+  }),
 };
 
 function normalizeThemeKey(value) {
@@ -120,34 +92,21 @@ function normalizeThemeKey(value) {
 }
 
 function resolveCardSkinThemeKey(source) {
-  const themeKeyEntries = Object.entries(CARD_SKIN_THEMES).map(([themeKey, theme]) => ({
-    themeKey,
-    matchers: [themeKey, ...(Array.isArray(theme.aliases) ? theme.aliases : [])]
-      .map((value) => normalizeThemeKey(value))
-      .filter(Boolean),
-  }));
-
   const candidates = [
     source?.themeKey,
     source?.key,
     source?.name,
+    source?.description,
     source?.previewImage,
     source?.imageUrl,
     source?.image_url,
     source,
-  ];
+  ].map((value) => normalizeThemeKey(value));
 
-  for (const candidate of candidates.map((value) => normalizeThemeKey(value))) {
-    if (!candidate) {
-      continue;
-    }
-
-    const matchedThemeKey = themeKeyEntries.find(({ matchers }) =>
-      matchers.some((matcher) => candidate.includes(matcher)),
-    )?.themeKey;
-
-    if (matchedThemeKey) {
-      return matchedThemeKey;
+  for (const [themeKey, theme] of Object.entries(CARD_SKIN_THEMES)) {
+    const matchers = theme.aliases.map((value) => normalizeThemeKey(value));
+    if (candidates.some((candidate) => matchers.some((matcher) => candidate.includes(matcher)))) {
+      return themeKey;
     }
   }
 
@@ -155,9 +114,7 @@ function resolveCardSkinThemeKey(source) {
 }
 
 function getCardSkinTheme(themeSource) {
-  const themeKey = resolveCardSkinThemeKey(themeSource);
-
-  return CARD_SKIN_THEMES[themeKey] ?? null;
+  return CARD_SKIN_THEMES[resolveCardSkinThemeKey(themeSource)] ?? null;
 }
 
 function getCardSkinThemeLogo(themeSource) {
@@ -172,14 +129,32 @@ function getCardSkinThemeSlotImage(themeSource, slotKey) {
   return getCardSkinTheme(themeSource)?.slotImages?.[slotKey] || "";
 }
 
+function getCardSkinThemeSlotFrame(themeSource, slotKey) {
+  return getCardSkinTheme(themeSource)?.slotFrames?.[slotKey] || "";
+}
+
+function getCardSkinThemeSlotAsset(themeSource, slotKey) {
+  return {
+    backgroundUrl: getCardSkinThemeSlotImage(themeSource, slotKey),
+    frameUrl: getCardSkinThemeSlotFrame(themeSource, slotKey),
+  };
+}
+
 function getCardSkinThemeSlotImages(themeSource) {
   return getCardSkinTheme(themeSource)?.slotImages || {};
+}
+
+function getCardSkinThemeSlotFrames(themeSource) {
+  return getCardSkinTheme(themeSource)?.slotFrames || {};
 }
 
 export {
   CARD_SKIN_THEMES,
   getCardSkinTheme,
   getCardSkinThemeLogo,
+  getCardSkinThemeSlotAsset,
+  getCardSkinThemeSlotFrame,
+  getCardSkinThemeSlotFrames,
   getCardSkinThemeSlotImage,
   getCardSkinThemeSlotImages,
   resolveCardSkinThemeKey,
