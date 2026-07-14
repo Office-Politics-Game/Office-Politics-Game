@@ -41,7 +41,7 @@
       <div
         v-if="showLoginModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-        @click.self="closeAuthModal"
+        @click.self="handleAuthOverlayClose"
       >
         <LoginContent
           v-if="authModalMode === 'login'"
@@ -72,10 +72,10 @@
       <div
         v-if="showGuestLoginModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-        @click.self="showGuestLoginModal = false"
+        @click.self="handleGuestOverlayClose"
       >
         <GuestLoginModal
-          @close="showGuestLoginModal = false"
+          @close="closeGuestLoginModal"
           @success="handleGuestCreated"
         />
       </div>
@@ -92,6 +92,7 @@ import RegisterPage from "@/components/register/RegisterPage.vue";
 import { usePlayerStore } from "@/stores/playerStore.js";
 import { useAuthStore } from "@/stores/authStore.js";
 import bgEntryVideo from "@/assets/videos/EntryPage_BgVideo.mp4";
+import { usePreGameAudio } from "@/composables/UsePreGameAudio";
 import ForgotPasswordContent from "@/components/login/ForgotPasswordContent.vue";
 import ResetPasswordContent from "@/components/login/ResetPasswordContent.vue";
 
@@ -99,6 +100,11 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const playerStore = usePlayerStore();
+const {
+  playPreGameSound,
+  startPreGameBackground,
+  stopPreGameBackground,
+} = usePreGameAudio();
 const showLoginModal = ref(false);
 const showGuestLoginModal = ref(false);
 const authModalMode = ref("login");
@@ -108,8 +114,15 @@ const isMemberLoggedIn = computed(
   () => authStore.isLoggedIn && Boolean(authStore.currentPlayer),
 );
 
+function playLoginClick() {
+  playPreGameSound("login-button-click");
+}
+
 function handlePrimaryAction() {
+  playLoginClick();
+
   if (isMemberLoggedIn.value) {
+    startPreGameBackground({ fadeIn: true, userInitiated: true });
     router.push("/lobby");
     return;
   }
@@ -118,6 +131,8 @@ function handlePrimaryAction() {
 }
 
 async function handleSecondaryAction() {
+  playLoginClick();
+
   if (isMemberLoggedIn.value) {
     const didLogout = await authStore.logout();
 
@@ -125,6 +140,7 @@ async function handleSecondaryAction() {
       return;
     }
 
+    stopPreGameBackground({ fadeOut: false });
     playerStore.resetPlayer();
     showLoginModal.value = false;
     showGuestLoginModal.value = false;
@@ -195,6 +211,20 @@ function closeAuthModal() {
   authModalMode.value = "login";
   resetPasswordToken.value = "";
   clearAuthQuery();
+}
+
+function handleAuthOverlayClose() {
+  playLoginClick();
+  closeAuthModal();
+}
+
+function closeGuestLoginModal() {
+  showGuestLoginModal.value = false;
+}
+
+function handleGuestOverlayClose() {
+  playLoginClick();
+  closeGuestLoginModal();
 }
 
 function handleRegisterSuccess() {
