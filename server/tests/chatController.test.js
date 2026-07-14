@@ -2,10 +2,16 @@ import { jest } from "@jest/globals"
 
 const getDirectMessagesMock = jest.fn()
 const sendDirectMessageMock = jest.fn()
+const getSocketServerMock = jest.fn()
 
 jest.unstable_mockModule("../src/services/chatService.js", () => ({
   getDirectMessages: getDirectMessagesMock,
   sendDirectMessage: sendDirectMessageMock,
+}))
+
+jest.unstable_mockModule("../src/socket/index.js", () => ({
+  getChatPlayerRoom: (playerId) => `chat:player:${playerId}`,
+  getSocketServer: getSocketServerMock,
 }))
 
 const {
@@ -28,6 +34,8 @@ function createMockResponse() {
 beforeEach(() => {
   getDirectMessagesMock.mockReset()
   sendDirectMessageMock.mockReset()
+  getSocketServerMock.mockReset()
+  getSocketServerMock.mockReturnValue(null)
 })
 
 describe("chatController", () => {
@@ -62,6 +70,93 @@ describe("chatController", () => {
       message: "訊息已送出",
       directMessage,
     })
+  })
+
+  test("handleSendDirectMessage() emits the persisted message to the receiver room", async () => {
+    const directMessage = {
+      id: 99,
+      senderPlayerId: 1,
+      receiverPlayerId: 2,
+      content: "hello",
+      createdAt: "2026-07-06T10:00:00.000Z",
+    }
+    const emitMock = jest.fn()
+    const toMock = jest.fn(() => ({ emit: emitMock }))
+    getSocketServerMock.mockReturnValueOnce({ to: toMock })
+    sendDirectMessageMock.mockResolvedValueOnce(directMessage)
+    const req = {
+      params: { friendId: "2" },
+      body: { playerId: 1, content: "hello" },
+    }
+    const res = createMockResponse()
+
+    await handleSendDirectMessage(req, res)
+
+    expect(toMock).toHaveBeenCalledWith("chat:player:2")
+    expect(emitMock).toHaveBeenCalledWith("chat:message", directMessage)
+    expect(res.status).toHaveBeenCalledWith(201)
+  })
+
+  test("handleSendDirectMessage() keeps the REST success when no socket server exists", async () => {
+    const directMessage = {
+      id: 100,
+      senderPlayerId: 1,
+      receiverPlayerId: 2,
+      content: "stored",
+      createdAt: "2026-07-06T10:01:00.000Z",
+    }
+    sendDirectMessageMock.mockResolvedValueOnce(directMessage)
+    const req = {
+      params: { friendId: "2" },
+      body: { playerId: 1, content: "stored" },
+    }
+    const res = createMockResponse()
+
+    await handleSendDirectMessage(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(201)
+    expect(res.json).toHaveBeenCalledWith({
+      message: "訊息已送出",
+      directMessage,
+    })
+  })
+
+  test("handleSendDirectMessage() keeps the REST success when socket emit throws", async () => {
+    const directMessage = {
+      id: 101,
+      senderPlayerId: 1,
+      receiverPlayerId: 2,
+      content: "stored once",
+      createdAt: "2026-07-06T10:02:00.000Z",
+    }
+    const emitError = new Error("socket unavailable")
+    const emitMock = jest.fn(() => {
+      throw emitError
+    })
+    getSocketServerMock.mockReturnValueOnce({
+      to: jest.fn(() => ({ emit: emitMock })),
+    })
+    sendDirectMessageMock.mockResolvedValueOnce(directMessage)
+    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {})
+    const req = {
+      params: { friendId: "2" },
+      body: { playerId: 1, content: "stored once" },
+    }
+    const res = createMockResponse()
+
+    await handleSendDirectMessage(req, res)
+
+    expect(sendDirectMessageMock).toHaveBeenCalledTimes(1)
+    expect(res.status).toHaveBeenCalledWith(201)
+    expect(res.json).toHaveBeenCalledWith({
+      message: "訊息已送出",
+      directMessage,
+    })
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "好友私訊即時推播失敗",
+      emitError,
+    )
+    consoleErrorSpy.mockRestore()
   })
 
   test("handleSendDirectMessage() rejects invalid request payload", async () => {
@@ -147,5 +242,6 @@ describe("chatController", () => {
       message: "只能和好友傳送訊息",
       error: "只能和好友傳送訊息",
     })
+    expect(getSocketServerMock).not.toHaveBeenCalled()
   })
 })

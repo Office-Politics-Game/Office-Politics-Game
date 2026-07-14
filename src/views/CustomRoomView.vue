@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
-import { Copy, Play } from "@lucide/vue";
+import { CheckCircle, Copy, Play } from "@lucide/vue";
 import { useRoute, useRouter } from "vue-router";
 import InviteFriendModal from "@/components/gameRoom/InviteFriendModal.vue";
 import PlayerList from "@/components/gameRoom/CustomRoomPlayerList.vue";
@@ -72,10 +72,6 @@ function createRoomPlayerSlot(player, index) {
       ? player.avatarUrl
       : resolveAvatarUrl(player.avatarId ?? player.avatar_id, index),
     isComputer: Boolean(player.isComputer),
-    canToggleReady:
-      !player.isComputer &&
-      String(player.playerId) === String(resolvedPlayerId.value) &&
-      player.role !== "host",
     canRemovePlayer:
       isHostPlayer.value && String(player.playerId) !== String(resolvedPlayerId.value),
   };
@@ -135,6 +131,35 @@ const currentPlayerEntry = computed(() =>
 );
 
 const isHostPlayer = computed(() => currentPlayerEntry.value?.role === "host");
+const canCurrentPlayerToggleReady = computed(
+  () =>
+    Boolean(currentPlayerEntry.value) &&
+    !isHostPlayer.value &&
+    !currentPlayerEntry.value?.isComputer,
+);
+const isCurrentPlayerReady = computed(() => Boolean(currentPlayerEntry.value?.isReady));
+const primaryActionLabel = computed(() => {
+  if (isLoading.value) {
+    return "載入中";
+  }
+
+  if (isHostPlayer.value) {
+    return "開始遊戲";
+  }
+
+  return isCurrentPlayerReady.value ? "取消準備" : "準備";
+});
+const isPrimaryActionDisabled = computed(() => {
+  if (isRestoringRoomState.value || isLoading.value) {
+    return true;
+  }
+
+  if (isHostPlayer.value) {
+    return !isRoomReadyToStart.value;
+  }
+
+  return !canCurrentPlayerToggleReady.value;
+});
 
 const occupiedSlotCount = computed(
   () => displayPlayerSlots.value.filter((slot) => slot.name && !slot.isPlaceholder).length,
@@ -166,6 +191,28 @@ async function toggleReady(slot) {
     playerId: slot.id,
     isReady: !slot.isReady,
   });
+}
+
+async function toggleCurrentPlayerReady() {
+  if (!currentPlayerEntry.value) {
+    return;
+  }
+
+  await toggleReady({
+    id: currentPlayerEntry.value.playerId,
+    isHost: isHostPlayer.value,
+    isComputer: Boolean(currentPlayerEntry.value.isComputer),
+    isReady: Boolean(currentPlayerEntry.value.isReady),
+  });
+}
+
+async function handlePrimaryRoomAction() {
+  if (isHostPlayer.value) {
+    await handleStartRoom();
+    return;
+  }
+
+  await toggleCurrentPlayerReady();
 }
 
 async function handleAddComputer(index) {
@@ -426,7 +473,6 @@ watch(
         @add-computer="handleAddComputer"
         @invite-friend="openInviteFriendModal"
         @remove-player="handleRemovePlayer"
-        @toggle-ready="toggleReady"
         class="mt-3 lg:mt-5"
       />
 
@@ -449,7 +495,7 @@ watch(
         </template>
         <template v-else>
           {{ occupiedSlotCount }}/4 players
-          <span class="ml-3">{{ readySlotCount }} ready</span>
+          <span class="ml-3">{{ readySlotCount }} 已打卡</span>
         </template>
       </div>
       <div
@@ -465,18 +511,20 @@ watch(
         <button
           class="btn-dark tap-pop pointer-events-auto flex h-9 cursor-pointer items-center justify-center gap-2 overflow-hidden text-sm font-bold lg:h-12 lg:text-base"
           type="button"
-          :disabled="
-            isRestoringRoomState ||
-            isLoading ||
-            (!isHostPlayer || !isRoomReadyToStart)
-          "
-          @click="handleStartRoom"
+          :disabled="isPrimaryActionDisabled"
+          @click="handlePrimaryRoomAction"
         >
           <Play
+            v-if="isHostPlayer"
             class="h-4 w-4 fill-current lg:h-5 lg:w-5"
             :stroke-width="2.4"
           />
-          {{ isLoading ? "載入中" : "開始遊戲" }}
+          <CheckCircle
+            v-else
+            class="h-4 w-4 lg:h-5 lg:w-5"
+            :stroke-width="2.4"
+          />
+          {{ primaryActionLabel }}
         </button>
       </div>
     </section>

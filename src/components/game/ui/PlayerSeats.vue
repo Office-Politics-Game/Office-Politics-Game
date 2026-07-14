@@ -64,6 +64,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["target-select"]);
+const seatsRoot = ref(null);
 const appearanceStore = useAppearanceStore();
 const { cardBackUrl } = storeToRefs(appearanceStore);
 const seatElements = ref({});
@@ -155,6 +156,15 @@ function handleTargetSelect(player) {
 }
 
 defineExpose({
+  getOpponentSeatsElement() {
+    return seatsRoot.value;
+  },
+  getOpponentSeatElements(currentPlayerId) {
+    return props.players
+      .filter((player) => String(player.id) !== String(currentPlayerId))
+      .map((player) => seatElements.value[player.id])
+      .filter(Boolean);
+  },
   getSeatRect(playerId) {
     return seatElements.value[playerId]?.getBoundingClientRect() ?? null;
   },
@@ -164,6 +174,7 @@ defineExpose({
 
 <template>
   <div
+    ref="seatsRoot"
     class="player-seats pointer-events-none absolute inset-0 z-10"
     :class="{
       'player-seats--target-selection-active': isTargetSelectionActive,

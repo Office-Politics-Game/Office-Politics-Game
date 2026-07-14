@@ -135,6 +135,8 @@ async function playCardAction({
         throw createServiceError("玩家沒有此手牌")
     }
 
+    state.hasAnyCardBeenPlayed = true
+
     const effectAnimationContext = createCardEffectAnimationContext({
         state,
         card: discardedCard,
@@ -155,7 +157,7 @@ async function playCardAction({
         effectResult,
     )
 
-    finishTurn(state, numericPlayerId)
+    const { showdownResult } = finishTurn(state, numericPlayerId)
 
     await pool.query(
         `UPDATE game_sessions
@@ -187,6 +189,7 @@ async function playCardAction({
         gameSession,
         result: effectResult,
         animationResult,
+        showdownResult,
         discardedCard,
         actionLog,
         state,

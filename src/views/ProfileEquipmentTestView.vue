@@ -172,7 +172,12 @@ import CardSkinLoadoutEditor from "@/components/profile/CardSkinLoadoutEditor.vu
 import ProfileEquipmentSwitcher from "@/components/profile/ProfileEquipmentSwitcher.vue";
 import { cardAssetsByKey } from "@/constants/cardAssets.js";
 import { CARD_SKIN_SLOT_LABELS, CARD_SKIN_SLOT_ORDER } from "@/constants/cardSkinSlots.js";
-import { getCardSkinThemeLogo, getCardSkinThemeSlotImage } from "@/constants/cardSkinThemes.js";
+import {
+  getCardSkinThemeLogo,
+  getCardSkinThemeSlotFrame,
+  getCardSkinThemeSlotImage,
+  resolveCardSkinThemeKey,
+} from "@/constants/cardSkinThemes.js";
 import { guestAvatars } from "@/constants/guestOptions.js";
 import {
   buildEquipmentSections,
@@ -320,6 +325,17 @@ const cardSkinPreviewByItemId = computed(() =>
   ),
 );
 
+const cardSkinSourceByItemId = computed(() =>
+  Object.fromEntries(
+    cardSkinInventoryItems.value.map((item) => [
+      Number(item.shopItemId),
+      resolveCardSkinThemeKey(item.shopItem || item) ||
+        cardSkinPreviewByItemId.value[Number(item.shopItemId)] ||
+        "",
+    ]),
+  ),
+);
+
 function buildCardSkinSlotRows(baseItemId, overrides = {}) {
   const basePreviewImage = cardSkinPreviewByItemId.value[Number(baseItemId)] || "";
   const baseSourceItem = cardSkinInventoryItems.value.find(
@@ -328,25 +344,31 @@ function buildCardSkinSlotRows(baseItemId, overrides = {}) {
 
   return CARD_SKIN_SLOT_ORDER.map((slotKey) => {
     const overrideItemId = Number(overrides[slotKey]);
+    const isOverridden = Number.isInteger(overrideItemId) && overrideItemId > 0;
     const overrideSourceItem = cardSkinInventoryItems.value.find(
       (item) => Number(item.shopItemId) === overrideItemId,
     );
-    const overridePreviewImage =
-      getCardSkinThemeSlotImage(overrideSourceItem?.shopItem || overrideSourceItem, slotKey) ||
-      cardSkinPreviewByItemId.value[overrideItemId] ||
-      "";
+    const effectiveSourceItem = isOverridden ? overrideSourceItem : baseSourceItem;
+    const effectiveThemeSource = effectiveSourceItem?.shopItem || effectiveSourceItem;
     const defaultPreviewImage =
       cardAssetsByKey[slotKey]?.backgroundUrl || cardAssetsByKey.intern.backgroundUrl;
-    const baseSlotPreviewImage =
-      getCardSkinThemeSlotImage(baseSourceItem?.shopItem || baseSourceItem, slotKey) ||
-      basePreviewImage;
+    const defaultFrameImage =
+      cardAssetsByKey[slotKey]?.frameUrl || cardAssetsByKey.intern.frameUrl;
+    const fallbackPreviewImage = isOverridden
+      ? cardSkinPreviewByItemId.value[overrideItemId]
+      : basePreviewImage;
 
     return {
       key: slotKey,
       label: CARD_SKIN_SLOT_LABELS[slotKey] || slotKey,
-      isOverridden: Number.isInteger(overrideItemId) && overrideItemId > 0,
-      previewImage: overridePreviewImage || baseSlotPreviewImage || defaultPreviewImage,
-      overrideItemId: Number.isInteger(overrideItemId) && overrideItemId > 0 ? overrideItemId : null,
+      isOverridden,
+      previewImage:
+        getCardSkinThemeSlotImage(effectiveThemeSource, slotKey) ||
+        fallbackPreviewImage ||
+        defaultPreviewImage,
+      frameImage:
+        getCardSkinThemeSlotFrame(effectiveThemeSource, slotKey) || defaultFrameImage,
+      overrideItemId: isOverridden ? overrideItemId : null,
     };
   });
 }
@@ -502,10 +524,10 @@ watch(
 );
 
 function applyCardSkinAppearance(baseItemId, overrides = {}) {
-  const baseUrl = cardSkinPreviewByItemId.value[Number(baseItemId)] || "";
+  const baseUrl = cardSkinSourceByItemId.value[Number(baseItemId)] || "";
   const overrideUrls = Object.fromEntries(
     Object.entries(overrides)
-      .map(([slotKey, itemId]) => [slotKey, cardSkinPreviewByItemId.value[Number(itemId)] || ""])
+      .map(([slotKey, itemId]) => [slotKey, cardSkinSourceByItemId.value[Number(itemId)] || ""])
       .filter(([, imageUrl]) => Boolean(imageUrl)),
   );
 
