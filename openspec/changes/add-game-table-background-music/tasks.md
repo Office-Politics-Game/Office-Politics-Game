@@ -24,3 +24,15 @@
 - [x] 5.1 依照 **Returning from Game keeps the pre-game lobby theme stopped**，先擴充 `tests/pre-game-audio.test.mjs`，要求根路由同步能辨識 `previousRouteName === "Game"` 並傳遞抑制旗標，且 pre-game 控制器在該轉場 pause、重設並停止自動啟動；執行 `node tests/pre-game-audio.test.mjs`，確認測試因目前尚未提供此轉場契約而失敗。
 - [x] 5.2 實作 **Game 返回大廳時明確抑制 pre-game-lobby-theme**：讓根路由 watcher 對 `Game` 來源傳遞 `suppressBackground`，並讓 `syncPreGameRouteAudio` 只對 `pre-game-lobby-theme.mp3` 執行停止、重設與清除 activation，不改變共享音樂設定或其他音訊；執行 `node tests/pre-game-audio.test.mjs`，確認牌桌返回大廳不播放此主題，且其他 pre-game 音訊 assertions 全部通過。
 - [x] 5.3 重新驗證修正沒有破壞牌桌音樂與畫面流程：依序執行 `node tests/pre-game-audio.test.mjs`、`node tests/game-table-audio.test.mjs`、`node tests/game-view-refactor.test.mjs` 與 `npm run build`，確認測試零失敗且 Vite production build 成功。
+
+## 6. Game 返回大廳恢復音樂
+
+- [x] 6.1 依照 **Returning from Game resumes the pre-game lobby theme**，先把 `tests/pre-game-audio.test.mjs` 中相反的停止測試改為要求 Loading／Game 保留 activation、`previousRouteName === "Game"` 使用 900ms 淡入且不再傳遞 `suppressBackground`；執行 `node tests/pre-game-audio.test.mjs`，確認測試因目前程式仍明確抑制並清除 activation 而失敗。
+- [x] 6.2 實作 **Game 返回大廳時保留 activation 並淡入 pre-game-lobby-theme**：根路由 watcher 對 Mall 或 Game 來源傳遞 `fadeIn: true`，移除 `suppressBackground` 介面與停止分支，並讓 `UsePreGameAudio` 只在 `Mall`、`Loading`、`Game` 保留已存在的 activation；執行 `node tests/pre-game-audio.test.mjs`，確認返回大廳以 900ms 恢復主題、Loading／Game 不播放大廳主題、未啟用或音量為 0 時不強制播放，且其他 pre-game assertions 全部通過。
+- [x] 6.3 重新驗證恢復播放沒有破壞牌桌主題與畫面生命週期：依序執行 `node tests/pre-game-audio.test.mjs`、`node tests/game-table-audio.test.mjs`、`node tests/game-view-refactor.test.mjs` 與 `npm run build`，確認測試零失敗且 Vite production build 成功。
+
+## 7. 兩層短洗牌音效
+
+- [x] 7.1 依照 **Game card shuffle sound uses two short low-gain layers** 與 **兩層洗牌音效以短裁切與低增益建立層次**，先擴充 `tests/game-table-audio.test.mjs`，要求兩個 `game-card-shuffle.ogg` Audio 實例、1200ms 單層裁切、100ms 第二層延遲、0.25／0.15 增益、三個 timeout 與新一輪播放前的清理；執行 `node --test --test-name-pattern="two short low-gain layers" tests/game-table-audio.test.mjs`，確認測試因目前仍為單層完整播放而失敗。
+- [x] 7.2 實作 **兩層洗牌音效以短裁切與低增益建立層次**：只調整 `playGameCardShuffleSound()` 的內部音效管理，主層立即播放、第二層延遲 100ms，兩層各播放 1200ms 並套用共享 `soundVolume` 的 0.25／0.15 增益；每輪開始先清除舊 timeout、pause 並歸零兩層，且 `soundEnabled === false`、`soundVolume === 0`、Audio 不可用或 play Promise 拒絕時維持安靜 no-op；執行 `node tests/game-table-audio.test.mjs`，確認兩層參數、排程、清理、設定與動畫觸發 assertions 全部通過。
+- [x] 7.3 重新驗證兩層洗牌音效沒有破壞背景音樂與 pre-game 音訊：執行 `node tests/game-table-audio.test.mjs`、`node tests/pre-game-audio.test.mjs` 與 `npm run build`，確認測試零失敗、Vite production build 成功且輸出包含 `game-card-shuffle-*.ogg`。

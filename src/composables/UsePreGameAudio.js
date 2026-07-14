@@ -29,6 +29,11 @@ export const PRE_GAME_AUDIO_ROUTE_NAMES = Object.freeze([
 
 const PRE_LOGIN_ROUTE_NAME_SET = new Set(PRE_LOGIN_AUDIO_ROUTE_NAMES);
 const PRE_GAME_ROUTE_NAME_SET = new Set(PRE_GAME_AUDIO_ROUTE_NAMES);
+const PRESERVE_PRE_GAME_ACTIVATION_ROUTE_NAMES = new Set([
+  "Mall",
+  "Loading",
+  "Game",
+]);
 const AUDIO_UNLOCK_EVENTS = ["pointerdown", "keydown", "touchstart"];
 const PRE_LOGIN_MUSIC_GAIN = 1.0;
 const PRE_GAME_MUSIC_GAIN = 0.2;
@@ -550,7 +555,7 @@ function startPreGameBackground({ fadeIn = false, userInitiated = false } = {}) 
     return;
   }
 
-  const { musicEnabled } = getAudioSettings();
+  const { musicEnabled, musicVolume } = getAudioSettings();
 
   if (userInitiated) {
     audioUnlocked = true;
@@ -566,7 +571,10 @@ function startPreGameBackground({ fadeIn = false, userInitiated = false } = {}) 
   ensureSettingsWatcher();
   updateAudioVolumes();
 
-  if (!musicEnabled.value) {
+  if (
+    !musicEnabled.value ||
+    getBoundedVolume(musicVolume.value, PRE_GAME_MUSIC_GAIN) <= 0
+  ) {
     stopPreGameBackground({ fadeOut: false, preserveActivation: true });
     currentPreGameRouteActive = true;
     return;
@@ -674,10 +682,7 @@ function ensureSettingsWatcher() {
 export function usePreGameAudio() {
   ensureSettingsWatcher();
 
-  function syncPreGameRouteAudio(
-    routeName,
-    { fadeIn = false, suppressBackground = false } = {},
-  ) {
+  function syncPreGameRouteAudio(routeName, { fadeIn = false } = {}) {
     if (isPreLoginAudioRoute(routeName)) {
       startPreLoginBackground();
       return;
@@ -687,12 +692,6 @@ export function usePreGameAudio() {
       currentPreLoginRouteActive = false;
       pauseAudio(loginLobbyMusicAudio, { reset: true });
       stopLobbyFootsteps();
-
-      if (suppressBackground) {
-        stopPreGameBackground({ fadeOut: false });
-        currentPreGameRouteActive = true;
-        return;
-      }
 
       currentPreGameRouteActive = true;
       if (preGameBackgroundStarted) {
@@ -710,7 +709,8 @@ export function usePreGameAudio() {
         routeName === "Loading"
           ? LOADING_MUSIC_FADE_OUT_MS
           : LOBBY_MUSIC_FADE_OUT_MS,
-      preserveActivation: routeName === "Mall",
+      preserveActivation:
+        PRESERVE_PRE_GAME_ACTIVATION_ROUTE_NAMES.has(routeName),
     });
   }
 

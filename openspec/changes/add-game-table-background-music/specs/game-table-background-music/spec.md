@@ -92,18 +92,58 @@ The game table audio controller MUST no-op when the browser Audio API is unavail
 - **WHEN** the game table audio controller runs in an environment without the Audio API
 - **THEN** start and stop operations complete without throwing
 
-### Requirement: Returning from Game keeps the pre-game lobby theme stopped
+### Requirement: Returning from Game resumes the pre-game lobby theme
 
-When navigation changes from `Game` to a pre-game lobby route, the frontend MUST keep `pre-game-lobby-theme.mp3` paused and reset its playback position to zero. The frontend MUST NOT start or fade in this theme as part of that route transition. This suppression MUST NOT change shared music settings, other background music, sound effects, or the existing behavior for navigation from non-Game routes.
+When `pre-game-lobby-theme.mp3` was explicitly activated before game entry, the frontend MUST preserve that activation while navigating through `Loading` and `Game` without playing the pre-game theme on either route. When navigation changes from `Game` to a pre-game lobby route while shared music remains enabled and its volume is greater than zero, the frontend MUST restart the pre-game theme at zero volume and linearly fade it to the configured target volume over 900 milliseconds. This transition MUST NOT change shared music settings, other background music, sound effects, or the existing behavior for navigation from non-Game routes.
 
 #### Scenario: Return to the lobby from an active game
 
-- **WHEN** the previous route is `Game` and navigation changes to a pre-game lobby route
-- **THEN** `pre-game-lobby-theme.mp3` is paused and its playback position is reset to zero
-- **AND** the pre-game lobby theme does not start or fade in during that transition
+- **WHEN** the pre-game lobby theme was explicitly activated before game entry, shared music is enabled with volume greater than zero, the previous route is `Game`, and navigation changes to a pre-game lobby route
+- **THEN** `pre-game-lobby-theme.mp3` starts at zero volume
+- **AND** it linearly fades to the current shared music volume multiplied by 0.2 over 900 milliseconds
 - **AND** shared music settings and other audio players remain unchanged
+
+#### Scenario: Loading and Game preserve activation without playing the lobby theme
+
+- **WHEN** the pre-game lobby theme was explicitly activated and navigation proceeds through `Loading` to `Game`
+- **THEN** the pre-game lobby activation remains available for a later lobby return
+- **AND** `pre-game-lobby-theme.mp3` remains paused on `Loading` and `Game`
+
+#### Scenario: Return while pre-game playback is not allowed
+
+- **WHEN** navigation changes from `Game` to a pre-game lobby route while shared music is disabled, its volume is zero, or the pre-game theme was never explicitly activated
+- **THEN** the frontend does not force `pre-game-lobby-theme.mp3` to play
 
 #### Scenario: Enter the lobby from a non-Game route
 
 - **WHEN** navigation changes to a pre-game lobby route and the previous route is not `Game`
 - **THEN** the existing pre-game route audio behavior remains in effect
+
+### Requirement: Game card shuffle sound uses two short low-gain layers
+
+The frontend SHALL play `game-card-shuffle.ogg` as two independently controlled HTML Audio layers when a valid card shuffle animation starts. The primary layer MUST start immediately at the bounded shared sound volume multiplied by 0.25 and MUST stop after 1200 milliseconds. The secondary layer MUST start after 100 milliseconds at the bounded shared sound volume multiplied by 0.15 and MUST stop 1200 milliseconds after its own start. Stopping a layer MUST pause it and reset its playback position to zero.
+
+#### Scenario: Valid shuffle animation starts
+
+- **WHEN** a card shuffle animation has a valid deck position, a positive deck count, `soundEnabled` is true, and `soundVolume` is greater than zero
+- **THEN** the primary shuffle layer starts immediately at the bounded shared sound volume multiplied by 0.25
+- **AND** the secondary shuffle layer starts 100 milliseconds later at the bounded shared sound volume multiplied by 0.15
+- **AND** each layer is paused and reset to zero after 1200 milliseconds of its own playback
+
+#### Scenario: Another shuffle starts before the previous layers finish
+
+- **WHEN** a valid shuffle animation starts while either shuffle layer or any shuffle timeout from the previous animation remains active
+- **THEN** every previous shuffle timeout is cleared
+- **AND** both previous shuffle layers are paused and reset to zero
+- **AND** exactly one new primary layer and one new secondary layer are scheduled
+
+#### Scenario: Shuffle sound playback is disabled
+
+- **WHEN** a valid shuffle animation starts while `soundEnabled` is false or `soundVolume` is zero
+- **THEN** no shuffle layer is played or scheduled
+
+#### Scenario: Browser rejects a shuffle layer
+
+- **WHEN** the browser rejects either shuffle layer's `play()` Promise
+- **THEN** the rejection is handled silently
+- **AND** the card shuffle animation continues without interruption

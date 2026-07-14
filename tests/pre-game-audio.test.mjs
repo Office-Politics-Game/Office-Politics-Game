@@ -367,35 +367,50 @@ test('returning from mall preserves activation and fades the pre-game theme in',
 
   assert.match(appSource, /\(routeName, previousRouteName\) =>/)
   assert.match(appSource, /previousRouteName === "Mall"/)
-  assert.match(
-    appSource,
-    /syncPreGameRouteAudio\(routeName, \{ fadeIn, suppressBackground \}\)/,
-  )
+  assert.match(appSource, /syncPreGameRouteAudio\(routeName, \{ fadeIn \}\)/)
   assert.match(
     audioSource,
-    /function syncPreGameRouteAudio\([\s\S]*?suppressBackground = false[\s\S]*?\) \{/,
+    /function syncPreGameRouteAudio\(routeName, \{ fadeIn = false \} = \{\}\)/,
   )
   assert.match(audioSource, /startPreGameBackground\(\{ fadeIn \}\)/)
   assert.match(
     audioSource,
-    /preserveActivation: routeName === "Mall"/,
+    /preserveActivation:\s*PRESERVE_PRE_GAME_ACTIVATION_ROUTE_NAMES\.has\(routeName\)/,
   )
 })
 
-test('returning from Game keeps the pre-game lobby theme stopped', async () => {
+test('returning from Game preserves activation and fades the pre-game theme in', async () => {
   const appSource = await readSource('src/App.vue')
   const audioSource = await readSource('src/composables/UsePreGameAudio.js')
+  const preserveRouteNamesMatch = audioSource.match(
+    /PRESERVE_PRE_GAME_ACTIVATION_ROUTE_NAMES = new Set\(\[([\s\S]*?)\]\)/,
+  )
+  const startPreGameSource = audioSource.slice(
+    audioSource.indexOf('function startPreGameBackground'),
+    audioSource.indexOf('function removeAudioUnlockListeners'),
+  )
 
   assert.match(
     appSource,
-    /const suppressBackground = previousRouteName === "Game"/,
+    /const fadeIn =\s*previousRouteName === "Mall" \|\|\s*previousRouteName === "Game"/,
   )
-  assert.match(
-    appSource,
-    /syncPreGameRouteAudio\(routeName, \{ fadeIn, suppressBackground \}\)/,
-  )
+  assert.match(appSource, /syncPreGameRouteAudio\(routeName, \{ fadeIn \}\)/)
+  assert.doesNotMatch(appSource, /suppressBackground/)
+  assert.doesNotMatch(audioSource, /suppressBackground/)
+
+  assert.ok(preserveRouteNamesMatch)
+  const preserveRouteNames = Array.from(
+    preserveRouteNamesMatch[1].matchAll(/"([^"]+)"/g),
+  ).map(([, routeName]) => routeName)
+  assert.deepEqual(preserveRouteNames, ["Mall", "Loading", "Game"])
   assert.match(
     audioSource,
-    /if \(suppressBackground\) \{[\s\S]*?stopPreGameBackground\(\{ fadeOut: false \}\);[\s\S]*?currentPreGameRouteActive = true;[\s\S]*?return;/,
+    /preserveActivation:\s*PRESERVE_PRE_GAME_ACTIVATION_ROUTE_NAMES\.has\(routeName\)/,
+  )
+
+  assert.match(startPreGameSource, /const \{ musicEnabled, musicVolume \} = getAudioSettings\(\)/)
+  assert.match(
+    startPreGameSource,
+    /!musicEnabled\.value \|\|[\s\S]*?getBoundedVolume\(musicVolume\.value, PRE_GAME_MUSIC_GAIN\) <= 0/,
   )
 })
