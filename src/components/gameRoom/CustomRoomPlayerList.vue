@@ -125,24 +125,17 @@ defineEmits(["add-computer", "invite-friend", "remove-player", "toggle-ready"]);
             </button>
           </div>
 
-          <button
-            v-if="slot.name && !slot.isPlaceholder"
-            class="btn-dark tap-pop room-ready-button relative z-[1] mt-3 self-center rounded px-3 py-[5px] text-[11px] font-black leading-none lg:mt-[30px] lg:px-5 lg:py-2 lg:text-[15px]"
-            :class="{
-              invisible: !slot.canToggleReady && !slot.canRemovePlayer,
-            }"
-            type="button"
-            :disabled="!slot.canToggleReady && !slot.canRemovePlayer"
-            :tabindex="!slot.canToggleReady && !slot.canRemovePlayer ? -1 : 0"
-            :aria-hidden="!slot.canToggleReady && !slot.canRemovePlayer"
-            @click="
-              slot.canToggleReady
-                ? $emit('toggle-ready', slot)
-                : $emit('remove-player', index)
-            "
+          <div
+            v-if="slot.name && !slot.isHost && !slot.isPlaceholder"
+            class="room-ready-stamp mt-3 lg:mt-6"
+            :class="{ 'room-ready-stamp--pending': !slot.isReady }"
+            :aria-label="slot.isReady ? '已打卡' : '未打卡'"
           >
-            {{ slot.canToggleReady ? (slot.isReady ? "取消準備" : "準備") : "踢除" }}
-          </button>
+            <span class="room-ready-stamp-icon">
+              {{ slot.isReady ? "✓" : "×" }}
+            </span>
+            {{ slot.isReady ? "已打卡" : "未打卡" }}
+          </div>
         </div>
       </article>
     </div>
@@ -212,9 +205,56 @@ defineEmits(["add-computer", "invite-friend", "remove-player", "toggle-ready"]);
   box-shadow: 0 0 0 4px var(--brand-focus, rgba(0, 70, 244, 0.24));
 }
 
-.room-ready-button {
-  pointer-events: auto;
-  cursor: pointer;
+.room-ready-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32em;
+  width: max-content;
+  max-width: 92%;
+  transform: rotate(-6deg);
+  border: 2px solid #28733f;
+  border-radius: 6px;
+  padding: 0.2em 0.48em;
+  color: #28733f;
+  background:
+    linear-gradient(135deg, rgba(40, 115, 63, 0.1), rgba(255, 255, 255, 0.18));
+  box-shadow:
+    inset 0 0 0 1px rgba(40, 115, 63, 0.2),
+    0 4px 8px rgba(0, 19, 50, 0.12);
+  font-size: 14px;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.room-ready-stamp-icon {
+  display: grid;
+  place-items: center;
+  width: 1.15em;
+  height: 1.15em;
+  border-radius: 999px;
+  background: #28733f;
+  color: #f6fff8;
+  font-size: 0.78em;
+  line-height: 1;
+}
+
+.room-ready-stamp--pending {
+  transform: rotate(0deg);
+  border-color: #8b4c48;
+  color: #8b4c48;
+  background:
+    linear-gradient(135deg, rgba(139, 76, 72, 0.08), rgba(255, 255, 255, 0.16));
+  box-shadow:
+    inset 0 0 0 1px rgba(139, 76, 72, 0.18),
+    0 4px 8px rgba(0, 19, 50, 0.1);
+  opacity: 0.82;
+}
+
+.room-ready-stamp--pending .room-ready-stamp-icon {
+  background: #8b4c48;
+  color: #fff8f7;
 }
 
 .room-player-level {
@@ -223,11 +263,6 @@ defineEmits(["add-computer", "invite-friend", "remove-player", "toggle-ready"]);
 
 .room-player-level--restoring {
   color: rgba(70, 85, 99, 0.72);
-}
-
-.room-ready-button:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 4px var(--brand-focus, rgba(0, 70, 244, 0.24));
 }
 
 @keyframes room-slot-breathe {
