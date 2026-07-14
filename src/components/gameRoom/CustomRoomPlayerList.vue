@@ -130,7 +130,7 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
             :aria-label="slot.isReady ? '已打卡' : '未打卡'"
           >
             <span class="room-ready-stamp-icon">
-              {{ slot.isReady ? "已" : "未" }}
+              {{ slot.isReady ? "✓" : "×" }}
             </span>
             {{ slot.isReady ? "已打卡" : "未打卡" }}
           </div>
