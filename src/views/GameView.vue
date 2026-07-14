@@ -1,6 +1,6 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from "vue-router"
 import { storeToRefs } from 'pinia'
 import LoadingScreen from '@/components/common/LoadingScreen.vue'
 import GameStage from '@/components/game/ui/GameStage.vue'
@@ -21,6 +21,8 @@ import { normalizeCard } from '@/utils/cardUtils'
 import { resolveAvatarUrl } from '@/utils/playerUtils'
 
 const route = useRoute()
+const router = useRouter()
+const hasNavigatedToResult = ref(false)
 const appearanceStore = useAppearanceStore()
 const gameStateStore = useGameStateStore()
 const { gameState, currentPlayer, currentPlayerId, currentTurnPlayerId, isLoading } =
@@ -177,6 +179,25 @@ watch(
 
     void loadInitialRoomState()
     void subscribeGameSocket()
+  },
+)
+
+watch(
+  () => gameState.value?.phase,
+  (phase) => {
+    if (phase !== "finished" || hasNavigatedToResult.value) {
+      return
+    }
+
+    hasNavigatedToResult.value = true
+
+    void router.push({
+      name: "Result",
+      query: {
+        roomCode: normalizedRoomCode.value,
+        playerId: resolvedCurrentPlayerId.value || requestedPlayerId.value || undefined,
+      },
+    })
   },
 )
 </script>

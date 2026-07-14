@@ -1,30 +1,99 @@
 <script setup>
-import { ref, computed, onMounted } from "vue";
-import { getRankingList } from "@/services/rankingService.js";
 import Crown from "@/assets/images/crown.png";
-const rankingList = ref([]);
-const champion = computed(() => rankingList.value[0]);
-onMounted(async () => {
-  rankingList.value = await getRankingList();
-});
+
+defineProps({
+  champion: {
+    type: Object,
+    default: null,
+  },
+})
 </script>
 
 <template>
-  <div v-if="champion" class="relative flex flex-col items-center">
-    <div>
-      <img
-        :src="Crown"
-        class="absolute h-10 w-10 mt-3 -top-3 -left-2 -rotate-12 lg:h-16 lg:w-16"
-      />
-      <img
-        :src="champion.avatar"
-        :alt="champion.name"
-        class="h-20 w-20 rounded-full mt-5 object-cover left-0 top-0 lg:h-32 lg:w-32 lg:mt-10"
-      />
+  <section v-if="champion" class="champion-card" aria-label="最終獲勝者">
+    <div class="champion-card__portrait">
+      <img class="champion-card__crown" :src="Crown" alt="" />
+      <img class="champion-card__avatar" :src="champion.avatar" :alt="champion.name" />
     </div>
-
-    <div class="mt-2 text-lg font-bold text-slate-600 lg:mt-4 lg:text-3xl">
-      {{ champion.name }}
-    </div>
-  </div>
+    <h2 class="champion-card__name">{{ champion.name }}</h2>
+  </section>
 </template>
+
+<style scoped>
+.champion-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5%;
+  width: 100%;
+  height: 100%;
+  color: var(--brand-navy);
+  opacity: 0;
+  transform: translateY(-90px) rotate(-2deg);
+  animation: champion-drop-in 1.45s cubic-bezier(.18, .95, .32, 1.2) forwards;
+  animation-delay: 2.9s;
+}
+
+.champion-card__portrait {
+  position: relative;
+  width: 48%;
+  aspect-ratio: 1;
+}
+
+.champion-card__crown {
+  position: absolute;
+  top: -28%;
+  left: -22%;
+  z-index: 2;
+  width: 58%;
+  transform: rotate(-16deg);
+  filter: drop-shadow(0 3px 0 rgba(10, 37, 78, .18));
+}
+
+.champion-card__avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: 4px solid #1459a6;
+  border-radius: 50%;
+  box-shadow: 0 8px 0 rgba(10, 37, 78, 0.12);
+}
+
+.champion-card__name {
+  margin: 0;
+  max-width: 95%;
+  overflow: hidden;
+  color: var(--brand-navy);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(20px, 2.9cqw, 40px);
+  font-weight: 900;
+}
+
+@keyframes champion-drop-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-90px) rotate(-2deg);
+  }
+
+  72% {
+    opacity: 1;
+    transform: translateY(10px) rotate(1deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotate(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .champion-card {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
+</style>

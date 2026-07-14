@@ -1,24 +1,37 @@
 <script setup >
-import { ref, onMounted } from "vue";
 import RankingItem from "./RankingItem.vue";
-import { getRankingList } from "@/services/rankingService.js";
 
-const rankingList = ref([]);
-
-onMounted(async () => {
-  rankingList.value = await getRankingList();
-});
+defineProps({
+  players: {
+    type: Array,
+    default: () => [],
+  },
+})
 </script>
 
 <template>
-  <div class="flex flex-col">
+  <section class="result-ranking" aria-label="排行榜">
     <RankingItem
-      v-for="player in rankingList"
+      v-for="(player, index) in players"
       :key="player.id"
-      :name="player.name"
-      :level="player.level"
-      :score="player.stars"
-      :avatar="player.avatar"
+      :player="player"
+      :rank="index + 1"
+      :delay="`${0.85 + index * 0.45}s`"
     />
-  </div>
+  </section>
 </template>
+
+<style scoped>
+.result-ranking {
+  display: grid;
+  grid-template-rows: repeat(4, 1fr);
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  color: var(--brand-navy);
+}
+
+.result-ranking :deep(.ranking-item:nth-child(4)) {
+  --item-offset-y: 2px;
+}
+</style>
