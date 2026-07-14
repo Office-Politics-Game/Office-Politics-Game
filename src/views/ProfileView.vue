@@ -1,43 +1,81 @@
 <template>
-  <ProfileShell
-    v-if="profilePlayer"
-    v-model:active-tab="activeTab"
-    :player="profilePlayer"
-    :tabs="tabs"
-    :locked-tabs="lockedTabs"
-    :background-image="bgPersonal"
-    :exit-background-image="bgDashboard"
-    :paper-image="paperBackground"
-    :is-returning="isReturningToLobby"
-    @close="goLobby"
-  >
-    <ProfileInfoPanel
-      v-if="activeTab === 'profile'"
+  <template v-if="profilePlayer">
+    <ProfileShell
+      :active-tab="activeTab"
       :player="profilePlayer"
+      :tabs="tabs"
+      :locked-tabs="lockedTabs"
+      :background-image="bgPersonal"
+      :exit-background-image="bgDashboard"
+      :paper-image="paperBackground"
+      :is-returning="isReturningToLobby"
       :can-edit="profileStore.isMemberProfile"
-      @edit="handleEditProfileField"
+      @update:active-tab="activeTab = $event"
+      @close="goLobby"
+      @edit-avatar="openAvatarEditor"
+    >
+      <ProfileInfoPanel
+        v-if="activeTab === 'profile'"
+        :player="profilePlayer"
+        :can-edit="profileStore.isMemberProfile"
+        @edit="handleEditProfileField"
+      />
+
+      <ProfileEmptyPanel
+        v-else-if="isGuestLockedTab"
+        :title="activeTabMeta.label"
+        description="訪客可以查看基本資料；登入正式帳號後即可使用這個個人資料功能。"
+        action-label="前往登入"
+        :button-disabled="false"
+        @action="goLogin"
+      />
+
+      <ProfileMatchHistoryPanel
+        v-else-if="activeTab === 'matches' && profileStore.isMemberProfile"
+        :matches="profileStore.matchHistory"
+        :is-loading="profileStore.isMatchHistoryLoading"
+        :error-message="profileStore.matchHistoryErrorMessage"
+        @reload="profileStore.loadMatchHistory().catch(() => {})"
+      />
+
+      <AchievementPanel
+        v-else-if="activeTab === 'badges' && profileStore.isMemberProfile"
+        :achievements="achievementStore.achievements"
+        :is-loading="achievementStore.isLoading"
+        :error-message="achievementStore.errorMessage"
+        @retry="fetchAchievements"
+      />
+
+      <ProfileEmptyPanel
+        v-else
+        :title="activeTabMeta.label"
+        :description="activeTabMeta.description"
+      />
+    </ProfileShell>
+
+    <ProfileEditModal
+      v-if="editingField"
+      :field="editingField"
+      :initial-value="editingInitialValue"
+      :is-saving="profileStore.isUpdating"
+      :error-message="editErrorMessage"
+      @close="closeProfileEditor"
+      @save="saveProfileField"
     />
-    <AchievementPanel
-      v-else-if="activeTab === 'badges' && profileStore.isMemberProfile"
-      :achievements="achievementStore.achievements"
-      :is-loading="achievementStore.isLoading"
-      :error-message="achievementStore.errorMessage"
-      @retry="fetchAchievements"
+
+    <ProfileAvatarModal
+      v-if="isAvatarEditorOpen"
+      :selected-avatar-id="profilePlayer?.avatarId"
+      :is-saving="profileStore.isUpdating"
+      :error-message="editErrorMessage"
+      @close="closeAvatarEditor"
+      @save="saveAvatar"
     />
-    <ProfileEmptyPanel
-      v-else-if="isGuestLockedTab"
-      :title="activeTabMeta.label"
-      description="訪客可以查看基本資料；登入正式帳號後即可使用這個個人資料功能。"
-      action-label="前往登入"
-      :button-disabled="false"
-      @action="goLogin"
+    <ProfilePasswordModal
+      v-if="isPasswordEditorOpen"
+      @close="closePasswordEditor"
     />
-    <ProfileEmptyPanel
-      v-else
-      :title="activeTabMeta.label"
-      :description="activeTabMeta.description"
-    />
-  </ProfileShell>
+  </template>
 
   <main
     v-else
@@ -46,7 +84,7 @@
     :style="{ backgroundImage: `url(${bgPersonal})` }"
   >
     <div
-      class="profile-state-exit-layer absolute inset-0 z-0 bg-center bg-cover opacity-0"
+      class="profile-state-exit-layer pointer-events-none absolute inset-0 z-0 bg-center bg-cover opacity-0"
       :style="{ backgroundImage: `url(${bgDashboard})` }"
       aria-hidden="true"
     ></div>
@@ -121,6 +159,10 @@ import { useAuthStore } from "@/stores/authStore.js";
 import { useAchievementStore } from "@/stores/achievementStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
 import { useProfileStore } from "@/stores/profileStore.js";
+import ProfileAvatarModal from "@/components/profile/ProfileAvatarModal.vue";
+import ProfileEditModal from "@/components/profile/ProfileEditModal.vue";
+import ProfileMatchHistoryPanel from "@/components/profile/ProfileMatchHistoryPanel.vue";
+import ProfilePasswordModal from "@/components/profile/ProfilePasswordModal.vue";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -134,6 +176,12 @@ const equippedAvatarUrl = ref("");
 const hasResolvedEquippedAvatar = ref(false);
 const RETURN_ANIMATION_DURATION = 700;
 
+const editingField = ref(null)
+const editingInitialValue = ref("")
+const isAvatarEditorOpen = ref(false)
+const editErrorMessage = ref("")
+const isPasswordEditorOpen = ref(false)
+
 const tabs = [
   {
     id: "profile",
@@ -143,25 +191,20 @@ const tabs = [
   {
     id: "matches",
     label: "對戰紀錄",
-    description: "完整對戰紀錄正在整理中，之後會顯示近期牌局與勝負結果。",
+    description: "查看近期牌局與勝負結果。",
   },
   {
     id: "badges",
     label: "成就徽章",
-    description: "成就牆即將開放，未來會展示你的辦公室生存里程碑。",
-  },
-  {
-    id: "collection",
-    label: "造型收藏",
-    description: "收藏櫃正在佈置中，之後可查看已取得的頭像、牌背與桌面造型。",
+    description: "查看你的辦公室生存里程碑。",
   },
 ];
 
-const memberOnlyTabIds = ["matches", "badges", "collection"];
+const memberOnlyTabIds = ["matches", "badges"];
 
 const sourcePlayer = computed(
   () =>
-    profileStore.profilePlayer ||
+    profileStore.profile ||
     authStore.currentPlayer ||
     playerStore.currentPlayer ||
     null,
@@ -196,18 +239,17 @@ function formatDate(value) {
 
 function getNextExp(level) {
   const safeLevel = Math.max(1, toNumber(level, 1));
-  return safeLevel * 1000;
+  return Math.max(safeLevel * 400 + 200, 1000);
 }
 
 function getWinRate(winCount, totalGames) {
   const safeTotalGames = Math.max(0, toNumber(totalGames, 0));
 
   if (safeTotalGames === 0) {
-    return "0%";
+    return 0;
   }
 
-  const rate = Math.round((toNumber(winCount, 0) / safeTotalGames) * 100);
-  return `${rate}%`;
+  return Math.round((toNumber(winCount, 0) / safeTotalGames) * 100);
 }
 
 const activeTabMeta = computed(
@@ -224,6 +266,11 @@ const isGuestLockedTab = computed(
 
 const profilePlayer = computed(() => {
   const player = sourcePlayer.value;
+
+  if (!player) {
+    return null;
+  }
+
   const level = toNumber(player.level, 12);
   const exp = toNumber(player.exp, 3250);
   const nextExp = getNextExp(level);
@@ -365,13 +412,89 @@ async function fetchAchievements() {
     .catch(() => {});
 }
 
-function handleEditProfileField() {
+function handleEditProfileField(item) {
   if (!profileStore.isMemberProfile) {
     goLogin();
     return;
   }
 
-  window.alert("個人資料編輯尚未開放。");
+  if (item.id === "password") {
+    openPasswordEditor();
+    return;
+  }
+
+  if (!["username", "bio"].includes(item.id)) {
+    return
+  }
+
+  editingField.value = item
+  editingInitialValue.value = item.id === "bio" ? profilePlayer.value.bio : profilePlayer.value.username
+  editErrorMessage.value = ""
+}
+
+function closeProfileEditor() {
+  editingField.value = null
+  editingInitialValue.value = ""
+  editErrorMessage.value = ""
+}
+
+async function saveProfileField(value) {
+  if (!editingField.value) {
+    return
+  }
+
+  try {
+    const updatedProfile = await profileStore.updateMemberProfile({
+      [editingField.value.id]: value,
+    })
+
+    authStore.currentPlayer = {
+      ...authStore.currentPlayer,
+      ...updatedProfile,
+    }
+
+    closeProfileEditor()
+  } catch (error) {
+    editErrorMessage.value = error?.data?.message || error?.message || "個人資料更新失敗"
+  }
+}
+
+function openAvatarEditor() {
+  if (!profileStore.isMemberProfile) {
+    goLogin()
+    return
+  }
+
+  isAvatarEditorOpen.value = true
+  editErrorMessage.value = ""
+}
+
+function closeAvatarEditor() {
+  isAvatarEditorOpen.value = false
+  editErrorMessage.value = ""
+}
+
+async function saveAvatar(avatarId) {
+  try {
+    const updatedProfile = await profileStore.updateMemberProfile({ avatarId })
+
+    authStore.currentPlayer = {
+      ...authStore.currentPlayer,
+      ...updatedProfile,
+    }
+
+    closeAvatarEditor()
+  } catch (error) {
+    editErrorMessage.value = error?.data?.message || error?.message || "頭像更新失敗"
+  }
+}
+
+function openPasswordEditor() {
+  isPasswordEditorOpen.value = true;
+}
+
+function closePasswordEditor() {
+  isPasswordEditorOpen.value = false;
 }
 
 function goLogin() {
@@ -414,12 +537,22 @@ onMounted(() => {
 
 watch(
   () => [
-    authStore.token,
     authStore.isLoggedIn,
     playerStore.currentPlayer?.id,
+    authStore.hasVerifiedToken,
+    authStore.currentPlayer?.id
   ],
   () => {
     initializeProfile();
+  }
+);
+
+watch(
+  () => activeTab.value,
+  (tab) => {
+    if (tab === "matches" && profileStore.isMemberProfile) {
+      profileStore.loadMatchHistory().catch(() => {});
+    }
   },
 );
 
@@ -532,8 +665,17 @@ watch(
 }
 
 .profile-state-panel__button {
+  cursor: pointer;
   min-height: 48px;
   min-width: 144px;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.profile-state-panel__button:hover {
+  transform: translateY(-1px);
 }
 
 .profile-page-state.is-returning .profile-state-exit-layer {

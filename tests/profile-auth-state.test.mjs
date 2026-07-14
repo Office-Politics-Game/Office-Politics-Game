@@ -8,7 +8,6 @@ test("profile initializer keeps member, guest, anonymous, and auth-failed states
   const initializerSource = await readSource("src/composables/useProfileInitializer.js");
   const profileViewSource = await readSource("src/views/ProfileView.vue");
 
-  assert.match(initializerSource, /const hadAuthToken = Boolean\(authStore\.token\)/);
   assert.match(initializerSource, /const isVerified = await authStore\.verifyToken\(\)/);
   assert.match(initializerSource, /if \(!isVerified\)\s*{\s*profileStore\.clearProfile\("anonymous"\)/);
   assert.match(initializerSource, /status:\s*"auth_failed"/);
@@ -17,7 +16,12 @@ test("profile initializer keeps member, guest, anonymous, and auth-failed states
   assert.match(initializerSource, /status:\s*"anonymous"/);
   assert.match(
     initializerSource,
-    /if \(hadAuthToken\)\s*{\s*profileStore\.clearProfile\("anonymous"\)/,
+    /if \(!authStore\.hasVerifiedToken\)\s*{\s*const isVerified = await authStore\.verifyToken\(\)/,
+  );
+
+  assert.match(
+    initializerSource,
+    /if \(authStore\.isLoggedIn\)\s*{\s*const profile = await profileStore\.loadMemberProfile\(\)/,
   );
 
   const authFailedIndex = initializerSource.indexOf('status: "auth_failed"');
