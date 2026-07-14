@@ -3,6 +3,7 @@ CREATE TABLE players (
   auth_user_id UUID UNIQUE,
   username VARCHAR(50) NOT NULL UNIQUE,
   avatar_id INTEGER,
+  bio TEXT DEFAULT '',
   level INTEGER NOT NULL DEFAULT 1 CHECK (level >= 1),
   exp INTEGER NOT NULL DEFAULT 0 CHECK (exp >= 0),
   coins INTEGER NOT NULL DEFAULT 0 CHECK (coins >= 0 AND coins <= 99999),
@@ -19,6 +20,13 @@ CREATE TABLE players (
 
 ALTER TABLE players
 ADD COLUMN IF NOT EXISTS account VARCHAR(255) UNIQUE;
+
+ALTER TABLE players
+ADD COLUMN IF NOT EXISTS bio TEXT DEFAULT '';
+
+UPDATE players
+SET bio = ''
+WHERE bio IS NULL;
 
 ALTER TABLE players
 ALTER COLUMN avatar_id SET DEFAULT 1;

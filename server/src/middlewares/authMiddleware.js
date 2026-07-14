@@ -1,18 +1,14 @@
 import { verifyToken } from "../services/authService.js"
 
-function getBearerToken(req) {
-    const authorization = req.headers.authorization || ""
+const AUTH_COOKIE_NAME = "officePoliticsAuthToken"
 
-    if (!authorization.startsWith("Bearer ")) {
-        return ""
-    }
-
-    return authorization.replace("Bearer ", "").trim()
+function getCookieToken(req) {
+    return req.cookies?.[AUTH_COOKIE_NAME] || ""
 }
 
 async function requireAuth(req, res, next) {
     try {
-        const token = getBearerToken(req)
+        const token = getCookieToken(req)
         const player = await verifyToken(token)
 
         req.player = player
