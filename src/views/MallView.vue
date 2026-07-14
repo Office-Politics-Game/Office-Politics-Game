@@ -2,6 +2,7 @@
   <main
     class="mall-view relative flex min-h-screen w-screen items-center justify-center overflow-hidden bg-[#1e1e1e] px-1 py-1 md:px-5 md:py-4"
     :style="{ backgroundImage: `url(${bgDashboard})` }"
+    @click.capture="handleButtonClick"
   >
     <div class="absolute inset-0 bg-[rgba(0,19,50,0.36)]"></div>
     <section class="mall-shell relative z-10 flex h-[98svh] w-[98vw] max-w-[1360px] flex-col overflow-hidden border border-white/25 bg-white/82 shadow-2xl backdrop-blur-md md:h-[92vh] md:w-[95vw]">
@@ -10,13 +11,10 @@
           <p class="m-0 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
             OFFICE POLITICS
           </p>
-          <div class="mt-0.5 flex items-center gap-2">
+          <div class="mt-0.5 flex items-center">
             <h1 class="font-display text-2xl font-black tracking-[0.05em] text-slate-900">
               商城
             </h1>
-            <span class="border border-slate-300 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-700">
-              {{ activeCategoryMeta.name }}
-            </span>
           </div>
         </div>
 
@@ -39,7 +37,8 @@
           />
           <button
             type="button"
-            class="btn-dark tablet-storebar-return h-11 translate-y-1 whitespace-nowrap px-4 py-2 text-sm font-bold"
+            class="return-icon-button tablet-storebar-return"
+            aria-label="返回大廳"
             @click="goLobby"
           >
             返回大廳
@@ -49,7 +48,7 @@
 
       <Transition name="drawer-fade">
         <div
-          v-if="isMenuOpen"
+          v-if="false && isMenuOpen"
           class="mobile-menu-layer xl:hidden"
           @click.self="isMenuOpen = false"
         >
@@ -116,9 +115,9 @@
           </p>
         </div>
 
-        <div class="order-3 col-span-2 grid grid-cols-3 gap-1 self-center xl:order-none xl:col-span-1 xl:gap-2 xl:self-start xl:pt-2">
+        <div class="mall-topbar-tools order-3 col-span-2 grid grid-cols-3 gap-1 self-center xl:order-none xl:col-span-1 xl:gap-2 xl:self-center">
           <CurrencyBar
-            class="mall-topbar-currency col-span-3 mt-2 justify-self-end"
+            class="mall-topbar-currency col-span-3 justify-self-end"
             :items="['coins', 'gems', 'tickets']"
             tooltip-size="small"
           />
@@ -128,7 +127,7 @@
         <button
           type="button"
           class="btn-dark order-2 h-8 translate-y-1 whitespace-nowrap px-2.5 py-1 text-xs font-bold xl:order-none xl:h-11 xl:px-4 xl:py-2 xl:text-sm"
-          @click="router.push('/lobby')"
+          @click="goLobby"
         >
           返回大廳
         </button>
@@ -152,6 +151,7 @@
               type="button"
               class="category-card text-left"
               :class="{ active: activeCategory === category.id }"
+              :style="getCategoryStyle(category.id)"
               @click="activeCategory = category.id"
             >
               <div class="flex items-start justify-between gap-3">
@@ -378,6 +378,8 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import CurrencyBar from "@/components/common/CurrencyBar.vue";
 import MallProductCard from "@/components/mall/MallProductCard.vue";
+import { useButtonClickAudio } from "@/composables/UseButtonClickAudio";
+import { usePreGameAudio } from "@/composables/UsePreGameAudio";
 import bgDashboard from "@/assets/images/bg-dashboard.webp";
 import stockToken from "@/assets/images/stock-token.webp";
 import stockTokenBundle from "@/assets/images/stock-token-bundle.webp";
@@ -411,6 +413,10 @@ const router = useRouter();
 const authStore = useAuthStore();
 const currencyStore = useCurrencyStore();
 const playerStore = usePlayerStore();
+const { handleButtonClick } = useButtonClickAudio();
+const { playPreGameSound } = usePreGameAudio();
+const MALL_ENTRANCE_BELL_DELAY_MS = 200;
+let mallEntranceBellTimerId = null;
 
 const categories = mallCategories;
 const fallbackItems = mallItems;
@@ -425,6 +431,43 @@ const selectedItem = ref(null);
 const isDetailModalOpen = ref(false);
 const isMenuOpen = ref(false);
 const isImagePreviewOpen = ref(false);
+
+const categoryThemeMap = {
+  "card-front": {
+    "--category-accent": "34 211 238",
+    "--category-accent-strong": "14 165 233",
+    "--category-bg": "8 47 73",
+  },
+  "card-back": {
+    "--category-accent": "168 85 247",
+    "--category-accent-strong": "126 34 206",
+    "--category-bg": "59 7 100",
+  },
+  ticket: {
+    "--category-accent": "251 191 36",
+    "--category-accent-strong": "217 119 6",
+    "--category-bg": "69 26 3",
+  },
+  board: {
+    "--category-accent": "52 211 153",
+    "--category-accent-strong": "5 150 105",
+    "--category-bg": "6 78 59",
+  },
+  avatar: {
+    "--category-accent": "244 114 182",
+    "--category-accent-strong": "219 39 119",
+    "--category-bg": "80 7 36",
+  },
+  "top-up": {
+    "--category-accent": "129 140 248",
+    "--category-accent-strong": "79 70 229",
+    "--category-bg": "49 46 129",
+  },
+};
+
+function getCategoryStyle(categoryId) {
+  return categoryThemeMap[categoryId] ?? categoryThemeMap["card-front"];
+}
 
 const topUpItems = [
   {
@@ -764,10 +807,19 @@ watch(
 
 onMounted(() => {
   window.addEventListener("keydown", handleEscape);
+  mallEntranceBellTimerId = window.setTimeout(() => {
+    mallEntranceBellTimerId = null;
+    playPreGameSound("mall-entrance-bell");
+  }, MALL_ENTRANCE_BELL_DELAY_MS);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", handleEscape);
+
+  if (mallEntranceBellTimerId !== null) {
+    window.clearTimeout(mallEntranceBellTimerId);
+    mallEntranceBellTimerId = null;
+  }
 });
 </script>
 
@@ -828,6 +880,10 @@ onBeforeUnmount(() => {
 .mall-topbar h1,
 .mall-topbar p {
   color: white;
+}
+
+.mall-topbar h1 + p {
+  display: none !important;
 }
 
 .mall-topbar > div:nth-child(2) > div {
@@ -900,34 +956,66 @@ onBeforeUnmount(() => {
 }
 
 .category-card {
-  border: 1px solid rgba(71, 85, 105, 0.78);
-  background: linear-gradient(180deg, rgba(19, 51, 68, 0.92), rgba(12, 32, 48, 0.94));
-  padding: 14px;
+  position: relative;
+  min-height: 52px;
+  border: 1px solid rgba(0, 70, 244, 0.56);
+  border-radius: var(--radius-md);
+  background: rgba(12, 32, 48, 0.94);
+  padding: 12px 14px 12px 16px;
   color: rgba(226, 232, 240, 0.92);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 10px 24px rgba(0, 19, 50, 0.12);
   transition:
     transform 0.18s ease,
     border-color 0.18s ease,
     background 0.18s ease,
     box-shadow 0.18s ease;
+  cursor: pointer;
 }
 
-.category-card:hover {
-  transform: translateY(-1px);
-  border-color: rgba(0, 70, 244, 0.72);
-  background: linear-gradient(180deg, rgba(30, 75, 90, 0.98), rgba(15, 46, 62, 0.98));
+.category-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  content: "";
+  background: rgba(0, 70, 244, 0.95);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .category-card:hover {
+    transform: translateY(-1px);
+    border-color: rgba(0, 70, 244, 0.85);
+    background: var(--brand-hover);
+    color: white;
+  }
 }
 
 .category-card.active {
+  transform: translateY(1px);
   border-color: rgba(0, 70, 244, 0.95);
-  background: linear-gradient(180deg, rgba(0, 70, 244, 0.92), rgba(70, 85, 99, 0.92));
+  background: rgba(0, 70, 244, 0.92);
   box-shadow:
-    inset 4px 0 0 rgba(134, 179, 224, 0.98),
-    0 0 22px rgba(0, 70, 244, 0.34);
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 4px 0 0 var(--brand-primary),
+    0 0 0 3px rgba(0, 70, 244, 0.1);
   color: white;
+}
+
+.category-card:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 5px var(--brand-focus),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
+}
+
+.category-card .hidden {
+  display: none !important;
 }
 
 .category-card span {
   border-color: rgba(0, 70, 244, 0.32);
+  border-radius: var(--radius-md);
   background: rgba(2, 6, 23, 0.42);
   color: currentColor;
 }
@@ -943,7 +1031,7 @@ onBeforeUnmount(() => {
 }
 
 .featured-summary {
-  display: -webkit-box;
+  display: none !important;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -970,14 +1058,119 @@ onBeforeUnmount(() => {
   color: white;
 }
 
-.mobile-storebar span:not(.mobile-menu-button span) {
+.mobile-storebar__category-badge {
   border-color: rgba(0, 70, 244, 0.52);
   background: rgba(0, 70, 244, 0.16);
   color: rgb(134, 179, 224);
 }
 
 .tablet-storebar-actions {
-  display: none;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-self: end;
+  gap: 8px;
+}
+
+.return-icon-button {
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: white;
+  font-size: 0;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: none;
+  transition:
+    transform 0.18s ease,
+    color 0.18s ease,
+    opacity 0.18s ease;
+  cursor: pointer;
+}
+
+.return-icon-button::before {
+  width: 30px;
+  height: 30px;
+  content: "";
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'%3E%3Cpath d='M576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576C461.4 576 576 461.4 576 320zM188.7 308.7L292.7 204.7C297.3 200.1 304.2 198.8 310.1 201.2C316 203.6 320 209.5 320 216L320 272L416 272C433.7 272 448 286.3 448 304L448 336C448 353.7 433.7 368 416 368L320 368L320 424C320 430.5 316.1 436.3 310.1 438.8C304.1 441.3 297.2 439.9 292.7 435.3L188.7 331.3C182.5 325.1 182.5 314.9 188.7 308.7z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.return-icon-button:hover {
+  transform: translateY(-1px);
+  color: var(--brand-hover);
+}
+
+.return-icon-button:active {
+  transform: translateY(1px);
+  color: var(--brand-active);
+}
+
+.return-icon-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 5px var(--brand-focus);
+}
+
+.mall-topbar > .return-icon-button {
+  align-self: center;
+  justify-self: end;
+  width: 34px;
+  height: 34px;
+  flex-basis: 34px;
+}
+
+.mall-topbar > .return-icon-button::before {
+  width: 30px;
+  height: 30px;
+}
+
+.mall-topbar-tools {
+  align-items: center;
+  justify-items: end;
+  line-height: 1;
+}
+
+.tablet-storebar-currency {
+  width: min(52vw, 260px);
+}
+
+.tablet-storebar-currency:deep(section) {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  gap: 5px;
+}
+
+.tablet-storebar-currency:deep(section > div) {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 24px !important;
+  padding: 0 4px !important;
+}
+
+.tablet-storebar-currency:deep(section > div > div) {
+  min-width: 0;
+  justify-content: center;
+  gap: 3px !important;
+}
+
+.tablet-storebar-currency:deep(section > div > div > span:first-child) {
+  width: 14px !important;
+  height: 14px !important;
+  flex: 0 0 14px !important;
+}
+
+.tablet-storebar-currency:deep(section > div > div > span:last-child) {
+  min-width: 0 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px !important;
 }
 
 .mobile-menu-button {
@@ -997,6 +1190,11 @@ onBeforeUnmount(() => {
   width: 16px;
   height: 2px;
   background: rgb(134, 179, 224);
+}
+
+.mobile-menu-button,
+.mobile-menu-layer {
+  display: none !important;
 }
 
 .mobile-menu-layer {
@@ -1277,6 +1475,7 @@ onBeforeUnmount(() => {
   border-color: rgba(0, 70, 244, 0.75);
   background: linear-gradient(180deg, rgba(0, 70, 244, 0.95), rgba(70, 85, 99, 0.95));
   color: white;
+  cursor: pointer;
 }
 
 .item-action--buy:hover {
@@ -1341,6 +1540,7 @@ onBeforeUnmount(() => {
     background 0.18s ease,
     border-color 0.18s ease,
     color 0.18s ease;
+  cursor: pointer;
 }
 
 .close-button:hover {
@@ -1420,22 +1620,19 @@ onBeforeUnmount(() => {
 
   .category-list {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     overflow-x: auto;
     overscroll-behavior-inline: contain;
     scroll-snap-type: x proximity;
-    padding: 8px 10px;
+    padding: 8px;
   }
 
   .category-card {
-    width: clamp(112px, 22vw, 160px);
+    width: clamp(104px, 22vw, 152px);
+    min-height: 44px;
     flex: 0 0 auto;
     scroll-snap-align: start;
-    padding: 8px 10px;
-  }
-
-  .category-card:hover {
-    transform: none;
+    padding: 8px 10px 8px 12px;
   }
 
   .featured-panel {
@@ -1574,7 +1771,7 @@ onBeforeUnmount(() => {
 
   .category-list {
     display: grid;
-    gap: 7px;
+    gap: 8px;
     overflow-x: hidden;
     overflow-y: auto;
     padding: 10px;
@@ -1583,7 +1780,8 @@ onBeforeUnmount(() => {
 
   .category-card {
     width: auto;
-    padding: 9px;
+    min-height: 48px;
+    padding: 10px 12px 10px 14px;
   }
 
   .product-area {
@@ -1638,8 +1836,9 @@ onBeforeUnmount(() => {
   }
 
   .category-card {
-    width: min(42vw, 132px);
-    padding: 8px;
+    width: min(40vw, 124px);
+    min-height: 42px;
+    padding: 8px 9px 8px 11px;
   }
 
   .scroll-area::-webkit-scrollbar {

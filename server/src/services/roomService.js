@@ -272,7 +272,7 @@ async function getRoomState({ roomCode }) {
          grp.seat_order,
          grp.is_ready,
          grp.is_alive,
-         (grp.role = 'computer') AS is_computer
+         (grp.is_computer OR grp.role = 'computer') AS is_computer
        FROM game_room_players grp
        JOIN players p ON p.id = grp.player_id
        LEFT JOIN player_equipped_items pei ON pei.player_id = p.id
@@ -298,7 +298,7 @@ async function getRoomState({ roomCode }) {
          grp.seat_order,
          grp.is_ready,
          grp.is_alive,
-         (grp.role = 'computer') AS is_computer
+         (grp.is_computer OR grp.role = 'computer') AS is_computer
        FROM game_room_players grp
        JOIN players p ON p.id = grp.player_id
        LEFT JOIN player_equipped_items pei ON pei.player_id = p.id
@@ -356,7 +356,7 @@ async function addComputerPlayer({ roomCode, hostPlayerId }) {
       `SELECT
          grp.player_id,
          grp.seat_order,
-         (grp.role = 'computer') AS is_computer
+         (grp.is_computer OR grp.role = 'computer') AS is_computer
        FROM game_room_players grp
        WHERE grp.room_id = $1
        ORDER BY grp.seat_order ASC`,
@@ -431,7 +431,11 @@ async function kickPlayer({ roomCode, requesterPlayerId, targetPlayerId }) {
 
     const room = roomResult.rows[0]
     const memberResult = await client.query(
-      `SELECT player_id, role, seat_order, (role = 'computer') AS is_computer
+      `SELECT
+         player_id,
+         role,
+         seat_order,
+         (is_computer OR role = 'computer') AS is_computer
        FROM game_room_players
        WHERE room_id = $1
        ORDER BY seat_order ASC
@@ -528,7 +532,7 @@ async function startGame({ roomCode, playerId }) {
            grp.player_id,
            grp.seat_order,
            grp.is_ready,
-           (grp.role = 'computer') AS is_computer,
+           (grp.is_computer OR grp.role = 'computer') AS is_computer,
            p.username,
            p.avatar_id,
            avatar_item.image_url AS avatar_url,
@@ -553,7 +557,7 @@ async function startGame({ roomCode, playerId }) {
            grp.player_id,
            grp.seat_order,
            grp.is_ready,
-           (grp.role = 'computer') AS is_computer,
+           (grp.is_computer OR grp.role = 'computer') AS is_computer,
            p.username,
            p.avatar_id,
            avatar_item.image_url AS avatar_url,
