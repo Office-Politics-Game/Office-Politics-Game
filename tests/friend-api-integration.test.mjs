@@ -18,6 +18,18 @@ test('friend api wrapper targets the backend friend routes', async () => {
   assert.match(source, /blocks\/\$\{blockId\}\/unblock/)
 })
 
+test('chat api wrapper targets the backend direct chat routes', async () => {
+  const source = await readSource('src/services/chatApi.js')
+
+  assert.match(source, /const CHAT_API_PATH = "\/chats"/)
+  assert.match(source, /getDirectMessages\(\{ playerId, friendId \}\)/)
+  assert.match(source, /apiClient\.get\(`\$\{CHAT_API_PATH\}\/direct\/\$\{friendId\}\/messages`/)
+  assert.match(source, /params: \{ playerId \}/)
+  assert.match(source, /sendDirectMessage\(\{ playerId, friendId, content \}\)/)
+  assert.match(source, /apiClient\.post\(`\$\{CHAT_API_PATH\}\/direct\/\$\{friendId\}\/messages`/)
+  assert.match(source, /playerId,\s*content,/)
+})
+
 test('friend store uses real api data instead of friend mock data', async () => {
   const source = await readSource('src/stores/friendStore.js')
 
@@ -34,7 +46,7 @@ test('friend store uses real api data instead of friend mock data', async () => 
   assert.match(source, /canUseFriendSystem/)
   assert.match(source, /friendLoginRequiredMessage/)
   assert.match(source, /authStore\.isLoggedIn/)
-  assert.match(source, /authStore\.token/)
+  assert.match(source, /authStore\.currentPlayer/)
   assert.match(source, /removeFriend\(friendshipId\)/)
   assert.match(source, /blockPlayer\(targetPlayerId\)/)
   assert.match(source, /unblockPlayer\(blockId\)/)
@@ -48,12 +60,54 @@ test('friend store uses real api data instead of friend mock data', async () => 
   assert.doesNotMatch(source, /selectedFriendMessages/)
 })
 
-test('friend view removes chat mock flow and shows friend details', async () => {
+test('chat store manages direct chat state through real api data', async () => {
+  const source = await readSource('src/stores/chatStore.js')
+
+  assert.match(source, /from "@\/services\/chatApi\.js"/)
+  assert.match(source, /getDirectMessages as getDirectMessagesApi/)
+  assert.match(source, /sendDirectMessage as sendDirectMessageApi/)
+  assert.match(source, /conversations: \{\}/)
+  assert.match(source, /selectedFriendId: null/)
+  assert.match(source, /isLoading: false/)
+  assert.match(source, /isSending: false/)
+  assert.match(source, /errorMessage: ""/)
+  assert.match(source, /loadMessages\(friendId\)/)
+  assert.match(source, /sendMessage\(\{ friendId, content \}\)/)
+  assert.match(source, /clearChatData\(\)/)
+  assert.match(source, /請輸入訊息內容/)
+  assert.match(source, /登入後才能使用好友聊天/)
+  assert.doesNotMatch(source, /socket/)
+  assert.doesNotMatch(source, /unread/)
+  assert.doesNotMatch(source, /typing/)
+  assert.doesNotMatch(source, /readAt/)
+})
+
+test('friend chat panel renders direct messages and send controls', async () => {
+  const source = await readSource('src/components/friend/FriendChatPanel.vue')
+
+  assert.match(source, /defineProps/)
+  assert.match(source, /friend/)
+  assert.match(source, /currentPlayerId/)
+  assert.match(source, /useChatStore/)
+  assert.match(source, /chatStore\.loadMessages/)
+  assert.match(source, /chatStore\.sendMessage/)
+  assert.match(source, /v-model="messageText"/)
+  assert.match(source, /輸入訊息/)
+  assert.match(source, /送出/)
+  assert.match(source, /目前沒有聊天紀錄/)
+  assert.match(source, /chat-message--mine/)
+  assert.match(source, /chat-message--friend/)
+  assert.match(source, /:disabled="sendDisabled"/)
+})
+
+test('friend view wires selected friends into the direct chat panel', async () => {
   const source = await readSource('src/views/FriendView.vue')
 
   assert.match(source, /friendStore\.loadFriendData\(\)/)
-  assert.match(source, /selectedFriendDetails/)
-  assert.match(source, /好友聊天尚未串接/)
+  assert.match(source, /FriendChatPanel/)
+  assert.match(source, /:friend="friendStore\.selectedFriend"/)
+  assert.match(source, /:current-player-id="friendStore\.currentPlayerId"/)
+  assert.match(source, /選擇一位好友開始聊天/)
   assert.match(source, /activeTab === 'blocks'/)
   assert.match(source, /BlockedPlayerList/)
   assert.match(source, /confirmRemoveFriend/)
@@ -61,10 +115,12 @@ test('friend view removes chat mock flow and shows friend details', async () => 
   assert.match(source, /FriendAuthRequiredState/)
   assert.match(source, /friendStore\.canUseFriendSystem/)
   assert.match(source, /:disabled="!friendStore\.canUseFriendSystem"/)
-  assert.doesNotMatch(source, /v-model="messageText"/)
-  assert.doesNotMatch(source, /輸入訊息/)
+  assert.doesNotMatch(source, /好友聊天尚未串接/)
+  assert.doesNotMatch(source, /selectedFriendDetails/)
   assert.doesNotMatch(source, /selectedFriendMessages/)
-  assert.doesNotMatch(source, /sendMessage/)
+  assert.doesNotMatch(source, /socket/)
+  assert.doesNotMatch(source, /unread/)
+  assert.doesNotMatch(source, /typing/)
 })
 
 test('add friend form searches players before sending invites', async () => {
@@ -111,5 +167,7 @@ test('friend page and panel expose locked login-only state', async () => {
   assert.match(friendPanelSource, /:disabled="!friendStore\.canUseFriendSystem"/)
   assert.match(friendPanelSource, /name: "Entry"/)
   assert.match(entryPageSource, /route\.query\.auth/)
-  assert.match(entryPageSource, /<LoginContent @close="closeLoginModal" \/>/)
+  assert.match(entryPageSource, /<LoginContent/)
+  assert.match(entryPageSource, /@close="closeAuthModal"/)
+  assert.match(entryPageSource, /@open-guest="openGuestModal"/)
 })

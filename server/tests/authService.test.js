@@ -634,7 +634,7 @@ describe("登入玩家服務", () => {
         })
     })
 
-    test("登入成功時，回傳會員資料與token", async () => {
+    test("登入成功時，回傳會員資料與設定 Cookie 所需 token", async () => {
         mockQuery
             .mockResolvedValueOnce({
                 rows: [createPlayerRow()]
@@ -656,6 +656,7 @@ describe("登入玩家服務", () => {
                 },
                 session: {
                     access_token: "mock-access-token",
+                    expires_in: 3600,
                 },
             },
             error: null
@@ -691,7 +692,8 @@ describe("登入玩家服務", () => {
                 createdAt: "2026-07-01T00:00:00.000Z",
                 updatedAt: "2026-07-01T03:30:00.000Z",
             },
-            token: "mock-access-token"
+            token: "mock-access-token",
+            expiresIn: 3600
         })
 
         expect(result.player.password).toBeUndefined()

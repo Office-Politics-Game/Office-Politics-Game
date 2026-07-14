@@ -223,6 +223,7 @@ async function loginPlayer({ account, password } = {}) {
 
     const authUserId = data.user?.id
     const token = data.session?.access_token
+    const expiresIn = data.session?.expires_in
 
     if (!authUserId || !token) {
         throw createAuthError(500, "登入失敗")
@@ -244,7 +245,8 @@ async function loginPlayer({ account, password } = {}) {
 
     return {
         player: formatPlayer(updatedPlayerResult.rows[0]),
-        token
+        token,
+        expiresIn
     }
 }
 

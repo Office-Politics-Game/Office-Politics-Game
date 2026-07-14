@@ -74,7 +74,9 @@ function readAudioSettings() {
   }
 }
 
-export function useAudioSettings() {
+let audioSettingsState = null
+
+function createAudioSettingsState() {
   const initialSettings = readAudioSettings()
   const musicEnabled = ref(initialSettings.musicEnabled)
   const musicVolume = ref(initialSettings.musicVolume)
@@ -135,4 +137,12 @@ export function useAudioSettings() {
     setSoundEnabled,
     setSoundVolume,
   }
+}
+
+export function useAudioSettings() {
+  if (!audioSettingsState) {
+    audioSettingsState = createAudioSettingsState()
+  }
+
+  return audioSettingsState
 }
