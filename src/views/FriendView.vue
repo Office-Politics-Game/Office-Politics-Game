@@ -3,6 +3,7 @@
     class="friend-page-shell flex min-h-screen w-screen items-center justify-center overflow-hidden bg-cover bg-center p-3 md:p-4"
     :class="{ 'is-returning': isReturningToLobby }"
     :style="{ backgroundImage: `url(${BG_FriendView})` }"
+    @click.capture="handleButtonClick"
   >
     <div
       class="friend-exit-layer"
@@ -187,12 +188,14 @@ import FriendList from "@/components/friend/FriendList.vue";
 import FriendRequestList from "@/components/friend/FriendRequestList.vue";
 import BG_FriendView from "@/assets/images/bg-friend-view.webp";
 import bgDashboard from "@/assets/images/bg-dashboard.webp";
+import { useButtonClickAudio } from "@/composables/UseButtonClickAudio";
 import { useChatStore } from "@/stores/chatStore.js";
 import { useFriendStore } from "@/stores/friendStore.js";
 
 const router = useRouter();
 const chatStore = useChatStore();
 const friendStore = useFriendStore();
+const { handleButtonClick } = useButtonClickAudio();
 const activeTab = ref("friends");
 const isReturningToLobby = ref(false);
 const RETURN_ANIMATION_DURATION = 520;
