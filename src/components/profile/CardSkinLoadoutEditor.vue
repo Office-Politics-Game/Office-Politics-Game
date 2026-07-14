@@ -23,7 +23,17 @@
           class="card-skin-loadout__card"
         >
           <div class="card-skin-loadout__preview">
-            <img :src="slot.previewImage" :alt="slot.label" />
+            <img
+              class="card-skin-loadout__preview-layer"
+              :src="slot.previewImage"
+              :alt="slot.label"
+            />
+            <img
+              v-if="slot.frameImage"
+              class="card-skin-loadout__preview-layer"
+              :src="slot.frameImage"
+              alt=""
+            />
           </div>
 
           <div class="card-skin-loadout__body">
@@ -63,7 +73,17 @@
         class="card-skin-loadout__card"
       >
         <div class="card-skin-loadout__preview">
-          <img :src="slot.previewImage" :alt="slot.label" />
+          <img
+            class="card-skin-loadout__preview-layer"
+            :src="slot.previewImage"
+            :alt="slot.label"
+          />
+          <img
+            v-if="slot.frameImage"
+            class="card-skin-loadout__preview-layer"
+            :src="slot.frameImage"
+            alt=""
+          />
         </div>
 
         <div class="card-skin-loadout__body">
@@ -211,15 +231,19 @@ defineEmits(["apply-theme", "assign-slot", "clear-slot"]);
 }
 
 .card-skin-loadout__preview {
+  position: relative;
   aspect-ratio: 3 / 4;
+  overflow: hidden;
   background: #dbe4f0;
 }
 
-.card-skin-loadout__preview img {
+.card-skin-loadout__preview-layer {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .card-skin-loadout__body {
