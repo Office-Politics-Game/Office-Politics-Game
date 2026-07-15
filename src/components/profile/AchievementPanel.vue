@@ -22,42 +22,53 @@
       <button type="button" @click="emit('retry')">再試一次</button>
     </div>
 
-    <p v-else-if="achievements.length === 0" class="achievement-panel__state">
+    <p v-else-if="unlockedAchievements.length === 0" class="achievement-panel__state">
       尚未建立成就資料。
     </p>
 
     <ul v-else class="achievement-panel__list">
       <li
-        v-for="achievement in achievements"
+        v-for="achievement in unlockedAchievements"
         :key="achievement.code"
         class="achievement-card"
-        :class="{ 'achievement-card--locked': !achievement.isUnlocked }"
       >
         <span class="achievement-card__icon" aria-hidden="true">
-          {{ achievement.isUnlocked ? "★" : "?" }}
+          <img
+            v-if="getAchievementImage(achievement)"
+            class="achievement-card__image"
+            :src="getAchievementImage(achievement)"
+            alt=""
+          >
+          <span v-else>★</span>
         </span>
 
         <div class="achievement-card__content">
           <div class="achievement-card__topline">
             <h3>{{ achievement.name }}</h3>
-            <span>{{ achievement.category }}</span>
           </div>
           <p>{{ achievement.description }}</p>
-          <small>
-            {{ getRewardText(achievement) }}
-          </small>
         </div>
 
-        <span class="achievement-card__status">
-          {{ achievement.isUnlocked ? "已解鎖" : "未解鎖" }}
-        </span>
+        <button
+          type="button"
+          class="achievement-card__use-title"
+          @click="emit('use-title', achievement)"
+        >
+          使用稱號
+        </button>
       </li>
     </ul>
   </section>
 </template>
 
 <script setup>
-defineProps({
+import { computed } from "vue"
+import roomFounderAchievementImage from "@/assets/images/achievement-room-founder.webp"
+import firstFriendAchievementImage from "@/assets/images/achievement-first-friend.webp"
+import topUpAchievementImage from "@/assets/images/achievement-top-up.webp"
+import firstGameWinAchievementImage from "@/assets/images/achievement-first-game-win.webp"
+
+const props = defineProps({
   achievements: {
     type: Array,
     default: () => [],
@@ -72,22 +83,21 @@ defineProps({
   },
 })
 
-const emit = defineEmits(["retry"])
+const emit = defineEmits(["retry", "use-title"])
 
-const rewardLabels = {
-  coin: "金幣",
-  diamond: "股票",
-  ticket: "抽卡券",
+const unlockedAchievements = computed(() => {
+  return props.achievements.filter((achievement) => achievement.isUnlocked)
+})
+
+const achievementImages = {
+  first_room_create: roomFounderAchievementImage,
+  first_friend: firstFriendAchievementImage,
+  first_game_win: firstGameWinAchievementImage,
+  first_top_up: topUpAchievementImage,
 }
 
-function getRewardText(achievement) {
-  if (!achievement.rewardCurrency || !achievement.rewardAmount) {
-    return "無獎勵"
-  }
-
-  const rewardName = rewardLabels[achievement.rewardCurrency] ?? achievement.rewardCurrency
-
-  return `獎勵 ${achievement.rewardAmount} ${rewardName}`
+function getAchievementImage(achievement) {
+  return achievementImages[achievement.code]
 }
 </script>
 
@@ -186,6 +196,14 @@ function getRewardText(achievement) {
   background: rgba(0, 42, 92, 0.08);
   color: var(--brand-navy);
   font-weight: 900;
+  overflow: hidden;
+}
+
+.achievement-card__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .achievement-card__content {
@@ -206,14 +224,6 @@ function getRewardText(achievement) {
   font-weight: 900;
 }
 
-.achievement-card__topline span,
-.achievement-card__content small,
-.achievement-card__status {
-  color: var(--gray-500);
-  font-size: var(--text-xs);
-  font-weight: 800;
-}
-
 .achievement-card__content p {
   margin: 4px 0;
   color: var(--gray-500);
@@ -222,8 +232,37 @@ function getRewardText(achievement) {
   line-height: 1.55;
 }
 
-.achievement-card__status {
-  white-space: nowrap;
+.achievement-card__use-title {
+  min-height: 34px;
+  border: 1px solid rgba(0, 19, 50, 0.22);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--brand-navy);
+  font-size: var(--text-xs);
+  font-weight: 900;
+  padding: 0 12px;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.achievement-card__use-title:hover {
+  border-color: var(--brand-hover);
+  background: var(--brand-hover);
+  color: white;
+  transform: translateY(-1px);
+}
+
+.achievement-card__use-title:active {
+  border-color: var(--brand-active);
+  background: var(--brand-active);
+  transform: translateY(1px);
+}
+
+.achievement-card__use-title:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--brand-focus);
 }
 
 @media (max-width: 760px) {
@@ -241,8 +280,9 @@ function getRewardText(achievement) {
     grid-template-columns: 38px minmax(0, 1fr);
   }
 
-  .achievement-card__status {
+  .achievement-card__use-title {
     grid-column: 2;
+    justify-self: start;
   }
 }
 </style>

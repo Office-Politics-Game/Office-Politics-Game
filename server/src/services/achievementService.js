@@ -16,6 +16,14 @@ function parsePlayerId(playerId) {
     return parsedPlayerId
 }
 
+function parseAchievementCode(code) {
+    if (typeof code !== "string" || code.trim() === "") {
+        throw createServiceError("Invalid achievement code", 400)
+    }
+
+    return code.trim()
+}
+
 function formatAchievement(row) {
     return {
         id: row.id,
@@ -30,6 +38,19 @@ function formatAchievement(row) {
     }
 }
 
+function appendUnlockedAchievements(payload, achievements) {
+    const unlockedAchievements = achievements.filter(Boolean)
+
+    if (unlockedAchievements.length === 0) {
+        return payload
+    }
+
+    return {
+        ...payload,
+        unlockedAchievements,
+    }
+}
+
 async function ensurePlayerExists(playerId) {
     const result = await pool.query(
         `SELECT id
@@ -41,6 +62,29 @@ async function ensurePlayerExists(playerId) {
     if (result.rows.length === 0) {
         throw createServiceError("找不到玩家", 404)
     }
+}
+
+async function getAchievementByCode(code) {
+    const result = await pool.query(
+        `SELECT
+            id,
+            code,
+            name,
+            description,
+            category,
+            reward_currency,
+            reward_amount,
+            NULL AS unlocked_at
+         FROM achievements
+         WHERE code = $1`,
+        [code]
+    )
+
+    if (result.rows.length === 0) {
+        throw createServiceError("Achievement not found", 404)
+    }
+
+    return result.rows[0]
 }
 
 async function getPlayerAchievements(playerIdValue) {
@@ -71,4 +115,33 @@ async function getPlayerAchievements(playerIdValue) {
     }
 }
 
-export { getPlayerAchievements }
+async function unlockAchievement(playerIdValue, codeValue) {
+    const playerId = parsePlayerId(playerIdValue)
+    const code = parseAchievementCode(codeValue)
+
+    await ensurePlayerExists(playerId)
+
+    const achievement = await getAchievementByCode(code)
+    const result = await pool.query(
+        `INSERT INTO player_achievements (player_id, achievement_id)
+         VALUES ($1, $2)
+         ON CONFLICT (player_id, achievement_id) DO NOTHING
+         RETURNING unlocked_at`,
+        [playerId, achievement.id]
+    )
+
+    if (result.rows.length === 0) {
+        return null
+    }
+
+    return formatAchievement({
+        ...achievement,
+        unlocked_at: result.rows[0].unlocked_at,
+    })
+}
+
+export {
+    getPlayerAchievements,
+    unlockAchievement,
+    appendUnlockedAchievements,
+}

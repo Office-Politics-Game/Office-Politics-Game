@@ -1,4 +1,8 @@
 import pool from "../db/index.js"
+import {
+  appendUnlockedAchievements,
+  unlockAchievement,
+} from "./achievementService.js"
 
 function createServiceError(message, statusCode = 400){
   const error = new Error(message)
@@ -260,7 +264,10 @@ async function acceptFriendRequest({ requestId, playerId }){
     throw createServiceError("找不到可接受的好友邀請", 404)
   }
 
-  return mapFriendship(result.rows[0])
+  const friendship = mapFriendship(result.rows[0])
+  const unlockedAchievement = await unlockAchievement(playerId, "first_friend")
+
+  return appendUnlockedAchievements(friendship, [unlockedAchievement])
 }
 
 async function rejectFriendRequest({ requestId, playerId }){
