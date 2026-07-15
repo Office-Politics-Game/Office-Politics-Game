@@ -1,9 +1,11 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { gsap } from "gsap";
-import cardBackUrl from "@/assets/images/card-bg-back.webp";
+import { storeToRefs } from "pinia";
+import defaultCardBackUrl from "@/assets/images/card-bg-back.webp";
 import GameCard from "./GameCard.vue";
 import HoverBlockHint from "./HoverBlockHint.vue";
+import { useAppearanceStore } from "@/stores/appearanceStore.js";
 
 const props = defineProps({
   deckCount: {
@@ -49,6 +51,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["draw"]);
+const appearanceStore = useAppearanceStore();
+const { cardBackUrl } = storeToRefs(appearanceStore);
 
 const pileArea = ref(null);
 const deckPile = ref(null);
@@ -89,6 +93,9 @@ const isDrawBlockedWithMessage = computed(
     props.isDrawDisabled &&
     Boolean(props.drawDisabledMessage) &&
     !props.isDeckHidden,
+);
+const resolvedCardBackUrl = computed(
+  () => cardBackUrl.value || defaultCardBackUrl,
 );
 
 function getDeckRect() {
@@ -274,6 +281,12 @@ watch(
 defineExpose({
   getDeckRect,
   getDeckAnimationPose,
+  getDeckElement() {
+    return deckPile.value;
+  },
+  getDiscardElement() {
+    return discardPile.value;
+  },
   getDiscardRect() {
     const topDiscardCard = discardPile.value?.querySelector(
       ".table-card-pile__card:last-child",
@@ -371,7 +384,7 @@ onUnmounted(() => {
           <img
             v-for="layer in 3"
             :key="layer"
-            :src="cardBackUrl"
+            :src="resolvedCardBackUrl"
             alt=""
             aria-hidden="true"
             class="absolute inset-0 block size-full select-none object-contain"

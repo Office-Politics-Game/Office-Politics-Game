@@ -1,12 +1,12 @@
 import pool from "../db/index.js"
 
-function createServiceError(message, statusCode = 400){
+function createServiceError(message, statusCode = 400) {
   const error = new Error(message)
   error.statusCode = statusCode
   return error
 }
 
-function mapPlayerSearchResult(row){
+function mapPlayerSearchResult(row) {
   return {
     id: row.id,
     username: row.username,
@@ -19,7 +19,22 @@ function mapPlayerSearchResult(row){
   }
 }
 
-async function createGuest({ username, avatarId }){
+function mapPlayer(row) {
+  return {
+    id: row.id,
+    username: row.username,
+    avatarId: row.avatar_id,
+    level: row.level,
+    exp: row.exp,
+    winCount: row.win_count,
+    loseCount: row.lose_count,
+    totalGames: row.total_games,
+    createdAt: row.created_at,
+    isOnline: row.is_online,
+  }
+}
+
+async function createGuest({ username, avatarId }) {
   let result
 
   try {
@@ -29,9 +44,9 @@ async function createGuest({ username, avatarId }){
        RETURNING *`,
       [username, avatarId ?? null]
     )
-  } catch (error){
-    if (error.code === "23505"){
-      throw createServiceError("暱稱已被使用，請換一個暱稱", 409)
+  } catch (error) {
+    if (error.code === "23505") {
+      throw createServiceError("Username already exists", 409)
     }
 
     throw error
@@ -40,15 +55,63 @@ async function createGuest({ username, avatarId }){
   return result.rows[0]
 }
 
-async function searchPlayers({ keyword, viewerPlayerId }){
-  const normalizedKeyword = String(keyword ?? "").trim()
+async function updatePlayerAvatar({ playerId, avatarId }) {
+  const numericPlayerId = Number(playerId)
+  const numericAvatarId = Number(avatarId)
 
-  if (!normalizedKeyword){
-    throw createServiceError("請輸入玩家暱稱或玩家ID")
+  if (!Number.isInteger(numericPlayerId) || numericPlayerId <= 0) {
+    throw createServiceError("Invalid player ID")
   }
 
-  if (!Number.isInteger(viewerPlayerId) || viewerPlayerId <= 0){
-    throw createServiceError("缺少玩家ID")
+  if (!Number.isInteger(numericAvatarId) || numericAvatarId < 1 || numericAvatarId > 4) {
+    throw createServiceError("Invalid avatar ID")
+  }
+
+  const client = await pool.connect()
+
+  try {
+    await client.query("BEGIN")
+
+    const playerResult = await client.query(
+      `UPDATE players
+       SET avatar_id = $2
+       WHERE id = $1
+       RETURNING *`,
+      [numericPlayerId, numericAvatarId]
+    )
+
+    if (playerResult.rows.length === 0) {
+      throw createServiceError("Player not found", 404)
+    }
+
+    await client.query(
+      `UPDATE player_equipped_items
+       SET avatar_item_id = NULL,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE player_id = $1`,
+      [numericPlayerId]
+    )
+
+    await client.query("COMMIT")
+
+    return mapPlayer(playerResult.rows[0])
+  } catch (error) {
+    await client.query("ROLLBACK")
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+async function searchPlayers({ keyword, viewerPlayerId }) {
+  const normalizedKeyword = String(keyword ?? "").trim()
+
+  if (!normalizedKeyword) {
+    throw createServiceError("Keyword is required")
+  }
+
+  if (!Number.isInteger(viewerPlayerId) || viewerPlayerId <= 0) {
+    throw createServiceError("Invalid player ID")
   }
 
   const numericKeyword = Number(normalizedKeyword)
@@ -89,4 +152,4 @@ async function searchPlayers({ keyword, viewerPlayerId }){
   return result.rows.map(mapPlayerSearchResult)
 }
 
-export { createGuest, searchPlayers }
+export { createGuest, searchPlayers, updatePlayerAvatar }

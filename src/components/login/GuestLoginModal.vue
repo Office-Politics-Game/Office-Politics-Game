@@ -4,7 +4,7 @@
       type="button"
       class="btn-dark tap-pop absolute right-3 top-3 grid h-9 w-9 place-items-center"
       aria-label="關閉訪客登入彈窗"
-      @click="emit('close')"
+      @click="closeGuest"
     >
       <span aria-hidden="true">×</span>
     </button>
@@ -97,7 +97,7 @@
           type="button"
           class="guest-button is-secondary btn-glass tap-pop"
           :disabled="isSubmitting"
-          @click="emit('close')"
+          @click="closeGuest"
         >
           返回
         </button>
@@ -118,8 +118,10 @@ import { computed, ref } from "vue";
 import { ChevronLeft, ChevronRight, Dice5 } from "lucide-vue-next";
 import { createGuestNickname, guestAvatars } from "@/constants/guestOptions";
 import { createGuestPlayer } from "@/services/playerService";
+import { usePreGameAudio } from "@/composables/UsePreGameAudio";
 
 const emit = defineEmits(["close", "success"]);
+const { playPreGameSound, startPreGameBackground } = usePreGameAudio();
 
 const selectedAvatarIndex = ref(0);
 const nickname = ref(createGuestNickname());
@@ -128,22 +130,40 @@ const isSubmitting = ref(false);
 
 const selectedAvatar = computed(() => guestAvatars[selectedAvatarIndex.value]);
 
+function playGuestClick() {
+  playPreGameSound("login-button-click");
+}
+
+function closeGuest() {
+  playGuestClick();
+  emit("close");
+}
+
 function selectPreviousAvatar() {
+  playGuestClick();
   selectedAvatarIndex.value =
     (selectedAvatarIndex.value - 1 + guestAvatars.length) % guestAvatars.length;
 }
 
 function selectNextAvatar() {
+  playGuestClick();
   selectedAvatarIndex.value =
     (selectedAvatarIndex.value + 1) % guestAvatars.length;
 }
 
 function rollNickname() {
+  playGuestClick();
   nickname.value = createGuestNickname();
   errorMessage.value = "";
 }
 
 async function submitGuest() {
+  if (isSubmitting.value) {
+    return;
+  }
+
+  playGuestClick();
+
   const username = nickname.value.trim();
 
   if (!username) {
@@ -160,6 +180,7 @@ async function submitGuest() {
       avatarId: selectedAvatar.value.id,
     });
 
+    startPreGameBackground({ fadeIn: true, userInitiated: true });
     emit("success", player);
   } catch (error) {
     errorMessage.value = error.message || "建立訪客資料失敗，請稍後再試";

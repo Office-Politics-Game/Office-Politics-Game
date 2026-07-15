@@ -6,6 +6,17 @@ function findPlayerById(state, playerId) {
   )
 }
 
+function attachCardOwner(card, playerId) {
+  if (!card) {
+    return card
+  }
+
+  return {
+    ...card,
+    ownerPlayerId: Number(playerId),
+  }
+}
+
 function createCardEffectAnimationContext({
   state,
   card,
@@ -21,8 +32,8 @@ function createCardEffectAnimationContext({
     playerId,
     targetPlayerId,
     guessedCardName,
-    sourceCard: sourcePlayer?.hand?.[0] ?? null,
-    targetCard: targetPlayer?.hand?.[0] ?? null,
+    sourceCard: attachCardOwner(sourcePlayer?.hand?.[0] ?? null, playerId),
+    targetCard: attachCardOwner(targetPlayer?.hand?.[0] ?? null, targetPlayerId),
     targetProtected: Boolean(targetPlayer?.isProtected),
   }
 }
@@ -76,6 +87,7 @@ function buildCardEffectAnimationResult(context, effectResult) {
             type: 'intern',
             targetPlayerId,
             targetCard,
+            guessedCardName,
             outcome: targetCard.name === guessedCardName ? 'correct' : 'incorrect',
           }
         : null

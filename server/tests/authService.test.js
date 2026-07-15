@@ -636,7 +636,7 @@ describe("登入玩家服務", () => {
         })
     })
 
-    test("登入成功時，回傳會員資料與token", async () => {
+    test("登入成功時，回傳會員資料與設定 Cookie 所需 token", async () => {
         mockQuery
             .mockResolvedValueOnce({
                 rows: [createPlayerRow()]
@@ -658,6 +658,7 @@ describe("登入玩家服務", () => {
                 },
                 session: {
                     access_token: "mock-access-token",
+                    expires_in: 3600,
                 },
             },
             error: null
@@ -694,7 +695,8 @@ describe("登入玩家服務", () => {
                 createdAt: "2026-07-01T00:00:00.000Z",
                 updatedAt: "2026-07-01T03:30:00.000Z",
             },
-            token: "mock-access-token"
+            token: "mock-access-token",
+            expiresIn: 3600
         })
 
         expect(result.player.password).toBeUndefined()
@@ -751,7 +753,7 @@ describe("忘記密碼服務", () => {
 
     test("有設定PASSWORD_RESET_REDIRECT_URL時，使用指定的重設密碼網址", async () => {
         process.env.PASSWORD_RESET_REDIRECT_URL =
-            "https://office-politics-game.vercel.app/?auth=reset-password"
+            "https://office-politics-game-fawn.vercel.app/?auth=reset-password"
 
         mockResetPasswordForEmail.mockResolvedValueOnce({
             data: {},
@@ -765,7 +767,7 @@ describe("忘記密碼服務", () => {
         expect(mockResetPasswordForEmail).toHaveBeenCalledWith(
             "test@example.com",
             {
-                redirectTo: "https://office-politics-game.vercel.app/?auth=reset-password"
+                redirectTo: "https://office-politics-game-fawn.vercel.app/?auth=reset-password"
             }
         )
     })

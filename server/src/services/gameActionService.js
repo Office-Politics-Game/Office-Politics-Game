@@ -9,6 +9,7 @@ import {
 import { addLog } from "./actionLogService.js"
 import { discardCard } from "./discardService.js"
 import { finishTurn } from "./roundFlowService.js"
+import { finalizeMatchProgress } from "./playerProgressService.js"
 import {
     appendUnlockedAchievements,
     unlockAchievement,
@@ -158,6 +159,8 @@ async function playCardAction({
         throw createServiceError("玩家沒有此手牌")
     }
 
+    state.hasAnyCardBeenPlayed = true
+
     const effectAnimationContext = createCardEffectAnimationContext({
         state,
         card: discardedCard,
@@ -178,7 +181,7 @@ async function playCardAction({
         effectResult,
     )
 
-    finishTurn(state, numericPlayerId)
+    const { showdownResult } = finishTurn(state, numericPlayerId)
 
     await pool.query(
         `UPDATE game_sessions
@@ -189,6 +192,14 @@ async function playCardAction({
         WHERE id = $4`,
         [state, state.phase, state.currentTurnPlayerId, gameSession.id]
     )
+
+    const matchProgress = state.phase === "finished"
+        ? await finalizeMatchProgress({
+            matchId: gameSession.match_id,
+            state,
+        })
+        : { finalized: false }
+
     const actionLog = await addLog(
         gameSession.room_id,
         numericPlayerId,
@@ -215,8 +226,10 @@ async function playCardAction({
         gameSession,
         result: effectResult,
         animationResult,
+        showdownResult,
         discardedCard,
         actionLog,
+        matchProgress,
         state,
         publicState,
     }, unlockedAchievements)

@@ -18,6 +18,7 @@ import InviteFriendModal from "@/components/gameRoom/InviteFriendModal.vue";
 import CardDealDemoView from "@/views/CardDealDemoView.vue";
 import AnimationDemoView from "@/views/AnimationDemoView.vue";
 import CardPlayTestView from "@/views/CardPlayTestView.vue";
+import ProfileEquipmentTestView from "@/views/ProfileEquipmentTestView.vue";
 import NotFoundView from "@/views/NotFoundView.vue";
 import { useAuthStore } from "../stores/authStore.js";
 
@@ -90,6 +91,14 @@ const routes = [
     path: "/profile",
     name: "Profile",
     component: ProfileView,
+  },
+  {
+    path: "/profile-equipment-test",
+    name: "ProfileEquipmentTest",
+    component: ProfileEquipmentTestView,
+    meta: {
+      requiresAuth: true,
+    },
   },
   {
     path: "/gacha",

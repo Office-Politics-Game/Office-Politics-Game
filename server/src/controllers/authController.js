@@ -1,13 +1,42 @@
 import { registerPlayer, loginPlayer, verifyToken, requestPasswordReset, resetPlayerPassword } from "../services/authService.js"
 
-function getBearerToken(req) {
-    const authorization = req.headers.authorization || ""
+const AUTH_COOKIE_NAME = "officePoliticsAuthToken"
+const DEFAULT_AUTH_COOKIE_MAX_AGE = 60 * 60 * 1000
 
-    if (!authorization.startsWith("Bearer ")) {
-        return ""
+function getBooleanEnv(value, fallback = false) {
+    if (value === "true") return true
+    if (value === "false") return false
+    return fallback
+}
+
+function getAuthCookieOptions(maxAge = DEFAULT_AUTH_COOKIE_MAX_AGE) {
+    const sameSite = process.env.AUTH_COOKIE_SAME_SITE || "lax"
+    const secure = getBooleanEnv(process.env.AUTH_COOKIE_SECURE, sameSite === "none")
+
+    return {
+        httpOnly: true,
+        secure,
+        sameSite,
+        path: "/",
+        maxAge
     }
+}
 
-    return authorization.replace("Bearer ", "").trim()
+function getCookieToken(req) {
+    return req.cookies?.[AUTH_COOKIE_NAME] || ""
+}
+
+function setAuthCookie(res, token, expiresIn) {
+    const maxAge = Number.isFinite(Number(expiresIn))
+        ? Number(expiresIn) * 1000
+        : DEFAULT_AUTH_COOKIE_MAX_AGE
+
+    res.cookie(AUTH_COOKIE_NAME, token, getAuthCookieOptions(maxAge))
+}
+
+function clearAuthCookie(res) {
+    const { maxAge, ...cookieOptions } = getAuthCookieOptions()
+    res.clearCookie(AUTH_COOKIE_NAME, cookieOptions)
 }
 
 async function handleRegisterPlayer(req, res) {
@@ -27,12 +56,11 @@ async function handleRegisterPlayer(req, res) {
 
 async function handleLoginPlayer(req, res) {
     try {
-        const { player, token } = await loginPlayer(req.body)
+        const { player, token, expiresIn } = await loginPlayer(req.body)
 
-        res.status(200).json({
-            player,
-            token
-        })
+        setAuthCookie(res, token, expiresIn)
+
+        res.status(200).json({ player })
     } catch (error) {
         res.status(error.statusCode || 500).json({
             message: error.message || "登入失敗"
@@ -42,7 +70,7 @@ async function handleLoginPlayer(req, res) {
 
 async function handleVerifyToken(req, res) {
     try {
-        const token = getBearerToken(req)
+        const token = getCookieToken(req)
         const player = await verifyToken(token)
 
         res.status(200).json({ player })
@@ -51,6 +79,14 @@ async function handleVerifyToken(req, res) {
             message: error.message || "登入驗證失敗"
         })
     }
+}
+
+async function handleLogoutPlayer(req, res) {
+    clearAuthCookie(res)
+
+    res.status(200).json({
+        message: "登出成功"
+    })
 }
 
 async function handleForgotPassword(req, res) {
@@ -77,4 +113,4 @@ async function handleResetPassword(req, res) {
     }
 }
 
-export { handleRegisterPlayer, handleLoginPlayer, handleVerifyToken, handleForgotPassword, handleResetPassword }
+export { handleRegisterPlayer, handleLoginPlayer, handleVerifyToken, handleLogoutPlayer, handleForgotPassword, handleResetPassword }

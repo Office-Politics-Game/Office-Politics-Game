@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import { getCardInfo } from "@/constants/cardInfo";
 import CardGuessSelector from "./CardGuessSelector.vue";
 
 const props = defineProps({
@@ -41,13 +42,16 @@ const selectedGuessOption = computed(
       (option) => option.rank === props.selectedGuessRank,
     ) ?? null,
 );
+
+const pendingCardAction = computed(
+  () => getCardInfo(props.pendingPlay?.card)?.action ?? "確認出牌",
+);
 </script>
 
 <template>
   <section class="play-confirm-panel" aria-label="出牌確認">
     <div class="play-confirm-panel__summary">
-      <span>準備出牌</span>
-      <strong>{{ pendingPlay.card.name }}</strong>
+      <strong>{{ pendingCardAction }}</strong>
       <small>
         {{
           pendingRequiresTarget
@@ -71,7 +75,7 @@ const selectedGuessOption = computed(
       {{
         selectedGuessOption
           ? `猜測：${selectedGuessOption.name}`
-          : "實習生不能猜實習生，請選擇 2-8 的牌。"
+          : "請選擇 2-8 的牌  ※實習生不能猜實習生"
       }}
     </p>
 
@@ -98,8 +102,7 @@ const selectedGuessOption = computed(
   z-index: 78;
   display: grid;
   gap: 12px;
-  width: min(340px, calc(100vw - 32px));
-  max-height: min(420px, calc(100dvh - 224px));
+  min-width: 440px;
   overflow: auto;
   border: 1px solid rgba(250, 204, 21, 0.58);
   border-radius: var(--radius-md, 0);
@@ -115,29 +118,23 @@ const selectedGuessOption = computed(
 }
 
 .play-confirm-panel__summary {
-  display: grid;
-  gap: 4px;
-}
-
-.play-confirm-panel__summary span {
-  color: #facc15;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
 }
 
 .play-confirm-panel__summary strong {
-  font-size: 24px;
+  font-size: 20px;
   line-height: 1.05;
 }
 
 .play-confirm-panel__summary small,
 .play-confirm-panel__hint {
-  color: #cbd5e1;
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.35;
+  color: rgba(250, 204, 21);
+  letter-spacing: 1px;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .play-confirm-panel__hint {
@@ -146,11 +143,12 @@ const selectedGuessOption = computed(
 
 .play-confirm-panel__actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 8px;
 }
 
 .play-confirm-panel__actions button {
+  flex: 1;
   min-height: 38px;
   border: 1px solid rgba(148, 163, 184, 0.48);
   border-radius: var(--radius-md, 0);
@@ -158,7 +156,7 @@ const selectedGuessOption = computed(
   cursor: pointer;
   background: rgba(15, 23, 42, 0.72);
   color: #f8fafc;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 900;
 }
 

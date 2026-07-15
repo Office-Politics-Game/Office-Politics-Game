@@ -35,6 +35,8 @@ const {
     createTopUpOrder,
     mockPayTopUpOrder,
     createEcpayCheckout,
+    confirmEcpayReturn,
+    createCheckMacValue,
 } = await import("../src/services/topUpService.js")
 
 beforeEach(() => {
@@ -201,7 +203,8 @@ describe("topUpService", () => {
                 TotalAmount: 30,
                 TradeDesc: "Office Politics Game top up",
                 ItemName: "gems_60",
-                ReturnURL: "https://office-politics-game.onrender.com/api/top-ups/ecpay/return",
+                ReturnURL: "https://35.212.213.247.sslip.io/api/top-ups/ecpay/return",
+                ClientBackURL: "https://office-politics-game-fawn.vercel.app/mall",
                 ChoosePayment: "ALL",
                 EncryptType: 1,
             },
@@ -235,5 +238,92 @@ describe("topUpService", () => {
         await expect(createEcpayCheckout(999)).rejects.toMatchObject({
             statusCode: 404,
         })
+    })
+
+    test("confirmEcpayReturn() confirms paid callback and adds currency", async () => {
+        const payload = {
+            MerchantID: "3002607",
+            MerchantTradeNo: "TOPUP10",
+            RtnCode: "1",
+            RtnMsg: "Succeeded",
+            TradeNo: "2301011234567890",
+            TradeAmt: "30",
+            PaymentDate: "2026/07/15 12:30:00",
+            PaymentType: "Credit_CreditCard",
+        }
+        payload.CheckMacValue = createCheckMacValue(payload)
+
+        queryMock
+            .mockResolvedValueOnce({
+                rows: [
+                    {
+                        id: 10,
+                        player_id: 1,
+                        currency: "diamond",
+                        amount: 60,
+                        status: "pending",
+                    },
+                ],
+            })
+            .mockResolvedValueOnce({
+                rows: [
+                    {
+                        id: 10,
+                        player_id: 1,
+                        currency: "diamond",
+                        amount: 60,
+                        status: "paid",
+                    },
+                ],
+            })
+
+        const order = await confirmEcpayReturn(payload)
+
+        expect(order.status).toBe("paid")
+        expect(addCurrencyMock).toHaveBeenCalledWith(
+            1,
+            "diamond",
+            60,
+            "top_up",
+            expect.any(String)
+        )
+    })
+
+    test("confirmEcpayReturn() accepts repeated paid callback without adding currency again", async () => {
+        const payload = {
+            MerchantID: "3002607",
+            MerchantTradeNo: "TOPUP10",
+            RtnCode: "1",
+        }
+        payload.CheckMacValue = createCheckMacValue(payload)
+
+        queryMock.mockResolvedValueOnce({
+            rows: [
+                {
+                    id: 10,
+                    status: "paid",
+                },
+            ],
+        })
+
+        const order = await confirmEcpayReturn(payload)
+
+        expect(order.status).toBe("paid")
+        expect(addCurrencyMock).not.toHaveBeenCalled()
+    })
+
+    test("confirmEcpayReturn() rejects callback with invalid CheckMacValue", async () => {
+        await expect(
+            confirmEcpayReturn({
+                MerchantTradeNo: "TOPUP10",
+                RtnCode: "1",
+                CheckMacValue: "BAD",
+            })
+        ).rejects.toMatchObject({
+            statusCode: 400,
+        })
+
+        expect(queryMock).not.toHaveBeenCalled()
+        expect(addCurrencyMock).not.toHaveBeenCalled()
     })
 })

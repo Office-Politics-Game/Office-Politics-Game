@@ -75,6 +75,7 @@ defineEmits(["purchase", "select"]);
     transform 0.18s ease,
     border-color 0.18s ease,
     box-shadow 0.18s ease;
+  cursor: pointer;
 }
 
 .item-card:hover {
@@ -214,6 +215,11 @@ defineEmits(["purchase", "select"]);
 .item-action--buy {
   background: linear-gradient(180deg, rgba(0, 70, 244, 0.95), rgba(70, 85, 99, 0.95));
   color: white;
+  cursor: pointer;
+}
+
+.item-action:disabled {
+  cursor: not-allowed;
 }
 
 .item-action--buy:hover {

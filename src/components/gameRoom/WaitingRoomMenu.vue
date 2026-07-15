@@ -9,6 +9,7 @@ import waitingRoomOne from "@/assets/images/waiting-room-1.webp";
 import waitingRoomTwo from "@/assets/images/waiting-room-2.webp";
 import waitingRoomThree from "@/assets/images/waiting-room-3.webp";
 import { useCurrentPlayerId } from "@/composables/useCurrentPlayerId.js";
+import { usePreGameAudio } from "@/composables/UsePreGameAudio";
 import { useRoomStore } from "@/stores/roomStore.js";
 
 const roomActions = [
@@ -38,12 +39,17 @@ const roomActions = [
 const router = useRouter();
 const roomStore = useRoomStore();
 const { currentPlayerId } = useCurrentPlayerId();
+const { playPreGameSound } = usePreGameAudio();
 
 const roomId = ref("");
 const activeAction = ref("");
 const matchElapsedSeconds = ref(0);
 const matchTimerId = ref(null);
 const { isLoading, errorMessage } = storeToRefs(roomStore);
+
+function playRoomActionClick() {
+  playPreGameSound("login-button-click");
+}
 
 const Matching = computed(() => {
   const minutes = Math.floor(matchElapsedSeconds.value / 60)
@@ -92,6 +98,7 @@ async function handleCreateRoom() {
 }
 
 async function handleJoinRoom() {
+  playRoomActionClick();
   const normalizedRoomId = roomId.value.trim().toUpperCase();
 
   if (!normalizedRoomId) {
@@ -119,6 +126,7 @@ async function handleJoinRoom() {
 }
 
 async function handleActionClick(action) {
+  playRoomActionClick();
   activeAction.value = action.title;
 
   if (action.title === "開始配對") {

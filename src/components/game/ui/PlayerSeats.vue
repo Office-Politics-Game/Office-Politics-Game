@@ -1,7 +1,9 @@
 <script setup>
 import { computed, ref } from "vue";
-import cardBackUrl from "@/assets/images/card-bg-back.webp";
+import { storeToRefs } from "pinia";
+import defaultCardBackUrl from "@/assets/images/card-bg-back.webp";
 import PlayerAvatar from "./PlayerAvatar.vue";
+import { useAppearanceStore } from "@/stores/appearanceStore.js";
 
 const props = defineProps({
   players: {
@@ -62,6 +64,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["target-select"]);
+const seatsRoot = ref(null);
+const appearanceStore = useAppearanceStore();
+const { cardBackUrl } = storeToRefs(appearanceStore);
 const seatElements = ref({});
 const handTargetElements = ref({});
 const dealtPlayerIdSet = computed(() => new Set(props.dealtPlayerIds));
@@ -128,6 +133,10 @@ function getHandCardBacks(playerId) {
   }));
 }
 
+const resolvedCardBackUrl = computed(
+  () => cardBackUrl.value || defaultCardBackUrl,
+);
+
 function isSelectableTarget(playerId) {
   return (
     props.isTargetSelectionActive && selectablePlayerIdSet.value.has(playerId)
@@ -147,6 +156,15 @@ function handleTargetSelect(player) {
 }
 
 defineExpose({
+  getOpponentSeatsElement() {
+    return seatsRoot.value;
+  },
+  getOpponentSeatElements(currentPlayerId) {
+    return props.players
+      .filter((player) => String(player.id) !== String(currentPlayerId))
+      .map((player) => seatElements.value[player.id])
+      .filter(Boolean);
+  },
   getSeatRect(playerId) {
     return seatElements.value[playerId]?.getBoundingClientRect() ?? null;
   },
@@ -156,6 +174,7 @@ defineExpose({
 
 <template>
   <div
+    ref="seatsRoot"
     class="player-seats pointer-events-none absolute inset-0 z-10"
     :class="{
       'player-seats--target-selection-active': isTargetSelectionActive,
@@ -214,7 +233,7 @@ defineExpose({
         <img
           v-for="cardBack in getHandCardBacks(player.id)"
           :key="cardBack.id"
-          :src="cardBackUrl"
+          :src="resolvedCardBackUrl"
           alt=""
           class="player-seat-hand-target__card block size-full select-none object-contain"
           :style="{

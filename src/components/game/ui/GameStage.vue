@@ -1,33 +1,39 @@
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { storeToRefs } from "pinia";
 import gameTableBackgroundUrl from "@/assets/images/bg-game-table.webp";
 import gameLogoUrl from "@/assets/images/logo-en-white.png";
 import { useAudioSettings } from "@/composables/UseAudioSettings";
 import { useGameStageCardPlay } from "@/composables/useGameStageCardPlay";
 import { useGameStageDrawSequence } from "@/composables/useGameStageDrawSequence";
 import { useGameStageEffectAnimation } from "@/composables/useGameStageEffectAnimation";
+import { CARD_INFO_BY_RANK } from "@/constants/cardInfo";
 import {
   getEliminatedSnapshot,
   getRoundWinSnapshot,
   useGameStageNotices,
 } from "@/composables/useGameStageNotices";
 import { useGameAnimationRects } from "@/composables/useGameAnimationRects";
+import { useGameTutorial } from "@/composables/UseGameTutorial";
+import { useAppearanceStore } from "@/stores/appearanceStore.js";
 import CardDrawAnimation from "../animations/CardDrawAnimation.vue";
 import CardPlayAnimation from "../animations/CardPlayAnimation.vue";
 import CardShuffleAnimation from "../animations/CardShuffleAnimation.vue";
 import CardSwapAnimation from "../animations/CardSwapAnimation.vue";
-import CardPlayConfirmPanel from "./CardPlayConfirmPanel.vue";
 import CleanerAnimation from "../animations/CleanerAnimation.vue";
 import FlyInTextModal from "../animations/FlyInTextModal.vue";
-import GameCard from "./GameCard.vue";
-import GameSettingsIcon from "./GameSettingsIcon.vue";
-import GameSettingsModal from "./GameSettingsModal.vue";
 import InternAnimation from "../animations/InternAnimation.vue";
 import ManagerAnimation from "../animations/ManagerAnimation.vue";
 import PMAnimation from "../animations/PMAnimation.vue";
+import ProtectionAura from "../animations/ProtectionAura.vue";
+import RoundShowdownAnimation from "../animations/RoundShowdownAnimation.vue";
+import CardInspectionOverlay from "./CardInspectionOverlay.vue";
+import CardPlayConfirmPanel from "./CardPlayConfirmPanel.vue";
+import GameCard from "./GameCard.vue";
+import GameSettingsIcon from "./GameSettingsIcon.vue";
+import GameSettingsModal from "./GameSettingsModal.vue";
 import PlayerHand from "./PlayerHand.vue";
 import PlayerSeats from "./PlayerSeats.vue";
-import ProtectionAura from "../animations/ProtectionAura.vue";
 import RotateDeviceNotice from "./RotateDeviceNotice.vue";
 import TableCardPiles from "./TableCardPiles.vue";
 import TurnStatus from "./TurnStatus.vue";
@@ -89,6 +95,10 @@ const props = defineProps({
     type: [Number, String],
     default: null,
   },
+  hasAnyCardBeenPlayed: {
+    type: Boolean,
+    default: false,
+  },
   isLoading: {
     type: Boolean,
     default: false,
@@ -102,6 +112,9 @@ const emit = defineEmits([
   "play-card",
   "round-sequence-complete",
 ]);
+
+const appearanceStore = useAppearanceStore();
+const { boardSkinUrl } = storeToRefs(appearanceStore);
 const isSettingsOpen = ref(false);
 const isDrawAnimating = ref(false);
 const activeDrawCard = ref(null);
@@ -111,6 +124,7 @@ const playerHand = ref(null);
 const cardDrawAnimation = ref(null);
 const cardPlayAnimation = ref(null);
 const cardShuffleAnimation = ref(null);
+const roundShowdownAnimation = ref(null);
 const activeEffectResult = ref(null);
 const isInitialRoundDrawAnimating = ref(false);
 const initialRoundDealtPlayerIds = ref([]);
@@ -121,6 +135,26 @@ const resolvedCurrentPlayerId = computed(
     props.players.find((player) => player.isCurrentPlayer)?.id ??
     null,
 );
+const {
+  startTutorial,
+  waitForTutorialSettlement,
+  disposeTutorial,
+} = useGameTutorial();
+
+function getGameTutorialTargets() {
+  return {
+    deck: tableCardPilesRef.value?.getDeckElement?.() ?? null,
+    hand: playerHand.value?.getHandElement?.() ?? null,
+    discard: tableCardPilesRef.value?.getDiscardElement?.() ?? null,
+    opponents:
+      playerSeats.value?.getOpponentSeatElements?.(
+        resolvedCurrentPlayerId.value,
+      ) ?? [],
+  };
+}
+const resolvedTableBackgroundUrl = computed(
+  () => boardSkinUrl.value || gameTableBackgroundUrl,
+);
 const animationRects = useGameAnimationRects({
   playerHand,
   playerSeats,
@@ -128,15 +162,12 @@ const animationRects = useGameAnimationRects({
   currentPlayerId: resolvedCurrentPlayerId,
 });
 
-const guessOptions = [
-  { rank: 2, name: "打掃阿姨" },
-  { rank: 3, name: "部門主管" },
-  { rank: 4, name: "職場老鳥" },
-  { rank: 5, name: "專案經理" },
-  { rank: 6, name: "人資主管" },
-  { rank: 7, name: "資深顧問" },
-  { rank: 8, name: "執行長" },
-];
+const guessOptions = Object.entries(CARD_INFO_BY_RANK).map(
+  ([rank, cardInfo]) => ({
+    rank: Number(rank),
+    name: cardInfo.chinese,
+  }),
+);
 
 const {
   musicEnabled,
@@ -221,6 +252,7 @@ const drawSequence = useGameStageDrawSequence({
   lastInitialRoundDealSignature,
   playRoundStartNotice,
   playTurnNotice,
+  waitForTutorialSettlement,
   resolveNoticeIdleIfIdle,
 });
 
@@ -241,9 +273,12 @@ const {
   pendingPlay,
   selectedTargetPlayerId,
   selectedGuessRank,
+  inspectedCard,
   hasActivePlay,
   pendingRequiresTarget,
   pendingRequiresGuess,
+  isPendingTargetSelectionActive,
+  isPendingPlayPanelVisible,
   selectableTargetPlayerIds,
   visibleHandCards,
   advisorRuleDisabledCardIds,
@@ -277,9 +312,22 @@ const {
   isDrawAnimating,
   activeEffectResult,
 });
+
 const protectedPlayers = computed(() =>
   props.players.filter((player) => player.isProtected),
 );
+const activeInternTargetPlayerName = computed(() => {
+  if (activeEffectResult.value?.type !== "intern") {
+    return "玩家";
+  }
+
+  return (
+    props.players.find(
+      (player) =>
+        String(player.id) === String(activeEffectResult.value.targetPlayerId),
+    )?.name ?? "玩家"
+  );
+});
 const activeProtectionAnimationPlayer = computed(() => {
   if (activeEffectResult.value?.type !== "protection") {
     return null;
@@ -292,12 +340,35 @@ const activeProtectionAnimationPlayer = computed(() => {
     ) ?? null
   );
 });
+
 onBeforeUnmount(() => {
+  disposeTutorial();
   cleanupCardPlay();
   cardPlayAnimation.value?.stop?.();
+  roundShowdownAnimation.value?.stop?.();
   stopEffectAnimation();
   cleanupNotices();
 });
+
+watch(
+  () => [
+    resolvedCurrentPlayerId.value,
+    props.hasAnyCardBeenPlayed,
+    props.players
+      .map((player) => `${player.id}:${Boolean(player.isComputer)}`)
+      .join("|"),
+  ],
+  async () => {
+    await nextTick();
+    await startTutorial({
+      players: props.players,
+      currentPlayerId: resolvedCurrentPlayerId.value,
+      hasAnyCardBeenPlayed: props.hasAnyCardBeenPlayed,
+      targets: getGameTutorialTargets(),
+    });
+  },
+  { immediate: true, flush: "post" },
+);
 
 watch(
   () => [props.currentTurnPlayerId, resolvedCurrentPlayerId.value],
@@ -388,6 +459,8 @@ defineExpose({
   playDrawAnimation,
   playEffectAnimation,
   playRemoteCardPlayAnimation,
+  playRoundShowdownAnimation: (result) =>
+    roundShowdownAnimation.value?.play?.(result) ?? Promise.resolve(false),
   waitForNoticeIdle,
 });
 </script>
@@ -398,8 +471,8 @@ defineExpose({
   >
     <section
       class="game-stage relative hidden h-[100dvh] w-[100dvw] overflow-hidden bg-cover bg-center bg-no-repeat"
-      :style="{ backgroundImage: `url(${gameTableBackgroundUrl})` }"
-      aria-label="Office Politics 遊戲舞台"
+      :style="{ backgroundImage: `url(${resolvedTableBackgroundUrl})` }"
+      aria-label="Office Politics 遊戲桌面"
     >
       <div
         v-if="pendingPlay"
@@ -407,14 +480,21 @@ defineExpose({
         aria-hidden="true"
       ></div>
 
+      <p
+        v-if="pendingRequiresGuess && isPendingTargetSelectionActive"
+        class="play-target-prompt"
+        role="status"
+        aria-live="polite"
+      >
+        請選擇玩家
+      </p>
+
       <PlayerSeats
         ref="playerSeats"
         :players="players"
         :dealt-player-ids="initialRoundDealtPlayerIds"
         :player-hand-card-counts="resolvedPlayerHandCardCounts"
-        :is-target-selection-active="
-          Boolean(pendingPlay) && pendingRequiresTarget
-        "
+        :is-target-selection-active="isPendingTargetSelectionActive"
         :selectable-player-ids="selectableTargetPlayerIds"
         :selected-target-player-id="selectedTargetPlayerId"
         @target-select="selectTargetPlayer"
@@ -486,7 +566,7 @@ defineExpose({
       </Transition>
 
       <CardPlayConfirmPanel
-        v-if="pendingPlay"
+        v-if="isPendingPlayPanelVisible"
         :pending-play="pendingPlay"
         :pending-requires-target="pendingRequiresTarget"
         :pending-requires-guess="pendingRequiresGuess"
@@ -497,6 +577,13 @@ defineExpose({
         @select-guess="selectGuessRank"
         @confirm="confirmPendingPlay"
         @cancel="cancelPendingPlay"
+      />
+
+      <CardInspectionOverlay
+        v-if="inspectedCard && !isDragging"
+        :card="inspectedCard"
+        @close="inspectedCard = null"
+        @card-pointerdown="handleCardPointerDown"
       />
 
       <CardDrawAnimation ref="cardDrawAnimation" :card="activeDrawCard" />
@@ -533,6 +620,7 @@ defineExpose({
       <InternAnimation
         v-if="activeEffectResult?.type === 'intern'"
         :result="activeEffectResult"
+        :target-player-name="activeInternTargetPlayerName"
         :get-player-hand-rect="animationRects.getPlayerHandRect"
         :get-discard-rect="animationRects.getDiscardRect"
         @complete="handleEffectAnimationComplete"
@@ -563,6 +651,12 @@ defineExpose({
         :get-player-hand-rect="animationRects.getPlayerHandRect"
         @complete="handleEffectAnimationComplete"
       />
+
+      <RoundShowdownAnimation
+        ref="roundShowdownAnimation"
+        :get-player-hand-rect="animationRects.getPlayerHandRect"
+        :is-self-player="animationRects.isSelfPlayer"
+      />
     </section>
 
     <GameSettingsModal
@@ -588,13 +682,13 @@ defineExpose({
 
     <FlyInTextModal
       :is-open="isTurnNoticeOpen"
-      text="輪到你的回合"
+      text="你的回合"
       @close="closeTurnNotice"
     />
 
     <FlyInTextModal
       :is-open="isRoundWinnerNoticeOpen"
-      text="回合勝利"
+      text="回合獲勝"
       :player-name="roundWinnerNotice?.name ?? ''"
       :avatar-url="roundWinnerNotice?.avatarUrl ?? ''"
       :duration="2400"
@@ -618,7 +712,7 @@ defineExpose({
 <style scoped>
 .card-play-drag-preview {
   z-index: 49;
-  cursor: grabbing;
+  cursor: var(--cursor-grabbing, grabbing);
   filter: drop-shadow(0 18px 24px rgba(0, 0, 0, 0.42));
   transform-origin: 50% 50%;
   will-change: transform;
@@ -656,6 +750,24 @@ defineExpose({
   background: rgba(0, 0, 0, 0.42);
   -webkit-backdrop-filter: blur(5px);
   backdrop-filter: blur(5px);
+}
+
+.play-target-prompt {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 20px;
+  pointer-events: none;
+  color: #fff;
+  font-size: clamp(24px, 5vw, 60px);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1.1;
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 @media (orientation: landscape), (min-width: 768px) {
