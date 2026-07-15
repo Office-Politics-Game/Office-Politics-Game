@@ -8,6 +8,7 @@ import {
   startGame,
 } from "../services/roomService.js"
 import { getSocketServer } from "../socket/index.js"
+import { getRoomGameResult } from "../services/gameResultService.js"
 
 function getErrorStatus(error) {
   return error.statusCode || 500
@@ -162,6 +163,22 @@ async function handleStartGame(req, res) {
   }
 }
 
+async function handleGetGameResult(req, res) {
+  try {
+    const { roomCode } = req.params
+    const { playerId } = req.query
+
+    const result = await getRoomGameResult({ roomCode, playerId })
+
+    return res.status(200).json(result)
+  } catch (error) {
+    return res.status(getErrorStatus(error)).json({
+      message: error.statusCode ? error.message : "取得結算資料失敗",
+      error: error.message,
+    })
+  }
+}
+
 export {
   handleCreateRoom,
   handleJoinRoom,
@@ -170,4 +187,5 @@ export {
   handleGetRoomState,
   handleKickPlayer,
   handleStartGame,
+  handleGetGameResult,
 }

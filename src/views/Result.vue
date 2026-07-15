@@ -18,6 +18,9 @@ const fallbackRankingList = ref([])
 
 const roomCode = computed(() => String(route.query.roomCode || "").trim())
 const currentPlayerId = computed(() => route.query.playerId || "")
+const currentPlayerResult = computed(() => {
+  return resultData.value.currentPlayer || resultData.value.playerResult || {}
+})
 
 function toNumber(value, fallback = 0) {
   const numberValue = Number(value)
@@ -87,13 +90,25 @@ const champion = computed(() => {
 })
 
 const rewards = computed(() => {
-  const achievement = resultData.value.achievement || resultData.value.achievements?.[0] || {}
+  const achievements = resultData.value.achievements || []
+  const achievement = resultData.value.achievement || achievements[0] || {}
 
   return {
     achievementTitle: achievement.title || achievement.name || "本局成就",
     achievementDescription: achievement.description || "完成一場職場角力，累積績效表現。",
-    expGained: toNumber(resultData.value.expGained ?? resultData.value.xpGained ?? resultData.value.rewards?.exp, 200),
-    coinsGained: toNumber(resultData.value.coinsGained ?? resultData.value.rewards?.coins, 1000),
+    expGained: toNumber(
+      currentPlayerResult.value.expGained ??
+        resultData.value.expGained ??
+        resultData.value.xpGained ??
+        resultData.value.rewards?.exp,
+      200,
+    ),
+    coinsGained: toNumber(
+      currentPlayerResult.value.coinsGained ??
+        resultData.value.coinsGained ??
+        resultData.value.rewards?.coins,
+      1000,
+    ),
   }
 })
 
@@ -109,8 +124,8 @@ onMounted(async () => {
       roomCode.value,
       currentPlayerId.value ? { playerId: currentPlayerId.value } : {},
     )
-  } catch {
-    // API 失敗時保留 mock fallback，避免結果頁空白。
+  } catch (error) {
+    console.warn("[結算頁] 取得遊戲結算資料失敗", error)
   }
 })
 </script>
