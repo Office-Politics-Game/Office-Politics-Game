@@ -42,6 +42,8 @@ function createMatchRow(overrides = {}) {
     winner_player_id: 1,
     winner_username: "Test Player",
     result: "win",
+    exp_gained: 300,
+    coins_gained: 1000,
     started_at: "2026-07-13T01:00:00.000Z",
     ended_at: "2026-07-13T01:30:00.000Z",
     participants: [
@@ -51,6 +53,8 @@ function createMatchRow(overrides = {}) {
         avatarId: 2,
         roundWins: 2,
         result: "win",
+        expGained: 300,
+        coinsGained: 1000,
       },
       {
         playerId: 2,
@@ -58,6 +62,8 @@ function createMatchRow(overrides = {}) {
         avatarId: 3,
         roundWins: 1,
         result: "lose",
+        expGained: 100,
+        coinsGained: 200,
       },
     ],
     ...overrides,
@@ -225,11 +231,23 @@ describe("profileService", () => {
     })
 
     const matches = await getProfileMatches(1, { limit: "20" })
+    const [sql] = mockQuery.mock.calls[0]
 
     expect(mockQuery).toHaveBeenCalledWith(
       expect.stringContaining("FROM matches"),
       [1, 20],
     )
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INNER JOIN match_participants AS current_participant"),
+      [1, 20],
+    )
+
+    expect(sql).toContain("current_participant.exp_gained")
+    expect(sql).toContain("current_participant.coins_gained")
+    expect(sql).toContain("'expGained', participant.exp_gained")
+    expect(sql).toContain("'coinsGained', participant.coins_gained")
+    expect(sql).not.toMatch(/current_participant\.coins_gained,\s*ORDER BY/)
+
     expect(matches).toEqual([
       {
         id: 10,
@@ -238,6 +256,8 @@ describe("profileService", () => {
         winnerPlayerId: 1,
         winnerUsername: "Test Player",
         xpGained: 300,
+        expGained: 300,
+        coinsGained: 1000,
         startedAt: "2026-07-13T01:00:00.000Z",
         endedAt: "2026-07-13T01:30:00.000Z",
         participants: [
@@ -247,6 +267,8 @@ describe("profileService", () => {
             avatarId: 2,
             roundWins: 2,
             result: "win",
+            expGained: 300,
+            coinsGained: 1000,
           },
           {
             playerId: 2,
@@ -254,6 +276,8 @@ describe("profileService", () => {
             avatarId: 3,
             roundWins: 1,
             result: "lose",
+            expGained: 100,
+            coinsGained: 200,
           },
         ],
       },
