@@ -264,7 +264,7 @@ describe("註冊玩家服務", () => {
             email: "test@example.com",
             password: VALID_PASSWORD,
             options: {
-                emailRedirectTo: "http://localhost:5173/?auth=login",
+                emailRedirectTo: "http://localhost:5173/?auth=login&notice=email-verified",
                 data: {
                     username: "測試玩家",
                     avatarId: 2
@@ -335,7 +335,7 @@ describe("註冊玩家服務", () => {
             email: "test@example.com",
             password: VALID_PASSWORD,
             options: {
-                emailRedirectTo: "http://localhost:5173/?auth=login",
+                emailRedirectTo: "http://localhost:5173/?auth=login&notice=email-verified",
                 data: {
                     username: "測試玩家",
                     avatarId: 1
@@ -385,7 +385,7 @@ describe("註冊玩家服務", () => {
             email: "test@example.com",
             password: VALID_PASSWORD,
             options: {
-                emailRedirectTo: "http://localhost:5173/?auth=login",
+                emailRedirectTo: "http://localhost:5173/?auth=login&notice=email-verified",
                 data: {
                     username: "測試玩家",
                     avatarId: 2
