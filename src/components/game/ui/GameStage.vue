@@ -4,6 +4,8 @@ import { storeToRefs } from "pinia";
 import gameTableBackgroundUrl from "@/assets/images/bg-game-table.webp";
 import gameLogoUrl from "@/assets/images/logo-en-white.png";
 import { useAudioSettings } from "@/composables/UseAudioSettings";
+import { useButtonClickAudio } from "@/composables/UseButtonClickAudio";
+import { useGameTableAudio } from "@/composables/UseGameTableAudio";
 import { useGameStageCardPlay } from "@/composables/useGameStageCardPlay";
 import { useGameStageCardVisibility } from "@/composables/useGameStageCardVisibility";
 import { useGameStageDrawSequence } from "@/composables/useGameStageDrawSequence";
@@ -114,6 +116,7 @@ const emit = defineEmits([
   "round-sequence-complete",
 ]);
 
+const { handleButtonClick } = useButtonClickAudio();
 const appearanceStore = useAppearanceStore();
 const { boardSkinUrl } = storeToRefs(appearanceStore);
 const isSettingsOpen = ref(false);
@@ -182,6 +185,10 @@ const {
   setSoundEnabled,
   setSoundVolume,
 } = useAudioSettings();
+const {
+  playGameCardDealSound,
+  playSeniorProtectionActivateSound,
+} = useGameTableAudio();
 
 const isCurrentPlayerTurn = computed(() => {
   if (!props.currentTurnPlayerId || !resolvedCurrentPlayerId.value) {
@@ -235,6 +242,7 @@ const {
 } = useGameStageEffectAnimation({
   activeEffectResult,
   holdNoticeAckAfterClose,
+  playSeniorProtectionActivateSound,
   resolveNoticeIdleIfIdle,
 });
 
@@ -255,6 +263,7 @@ const drawSequence = useGameStageDrawSequence({
   lastInitialRoundDealSignature,
   playRoundStartNotice,
   playTurnNotice,
+  playGameCardDealSound,
   waitForTutorialSettlement,
   resolveNoticeIdleIfIdle,
 });
@@ -533,6 +542,7 @@ defineExpose({
       class="game-stage relative hidden h-[100dvh] w-[100dvw] overflow-hidden bg-cover bg-center bg-no-repeat"
       :style="{ backgroundImage: `url(${resolvedTableBackgroundUrl})` }"
       aria-label="Office Politics 遊戲桌面"
+      @click.capture="handleButtonClick"
     >
       <div
         v-if="pendingPlay"

@@ -324,6 +324,29 @@ test('post-login pages delegate enabled button clicks to the shared click sound'
   }
 })
 
+test('custom room waiting controls use the shared click sound', async () => {
+  const source = await readSource('src/views/CustomRoomView.vue')
+
+  assert.match(source, /useButtonClickAudio/)
+  assert.match(
+    source,
+    /const \{ handleButtonClick \} = useButtonClickAudio\(\)/,
+  )
+  assert.match(source, /<main[\s\S]*?@click\.capture="handleButtonClick"/)
+})
+
+test('game table selection and settings buttons use the shared click sound', async () => {
+  const gameStageSource = await readSource('src/components/game/ui/GameStage.vue')
+  const settingsModalSource = await readSource(
+    'src/components/game/ui/GameSettingsModal.vue',
+  )
+
+  for (const source of [gameStageSource, settingsModalSource]) {
+    assert.match(source, /useButtonClickAudio/)
+    assert.match(source, /@click\.capture="handleButtonClick"/)
+  }
+})
+
 test('mall entry and leave lobby actions use the shared click sound', async () => {
   const source = await readSource('src/components/menu/LobbyMenu.vue')
   const leaveStart = source.indexOf('function leaveLobby()')
@@ -413,4 +436,29 @@ test('returning from Game preserves activation and fades the pre-game theme in',
     startPreGameSource,
     /!musicEnabled\.value \|\|[\s\S]*?getBoundedVolume\(musicVolume\.value, PRE_GAME_MUSIC_GAIN\) <= 0/,
   )
+})
+
+test('game settings return-lobby flows through GameView to LobbyHome', async () => {
+  const settingsModalSource = await readSource(
+    'src/components/game/ui/GameSettingsModal.vue',
+  )
+  const gameStageSource = await readSource('src/components/game/ui/GameStage.vue')
+  const gameViewSource = await readSource('src/views/GameView.vue')
+
+  assert.match(
+    settingsModalSource,
+    /@click="openConfirmation\(['"]return-lobby['"]\)"/,
+  )
+  assert.match(settingsModalSource, /emit\(confirmationAction\.value\)/)
+  assert.doesNotMatch(
+    settingsModalSource,
+    /\$router\.push\(['"]\/Lobby['"]\)/,
+  )
+  assert.match(gameStageSource, /@return-lobby="emit\(['"]return-lobby['"]\)"/)
+  assert.match(gameViewSource, /useRouter/)
+  assert.match(
+    gameViewSource,
+    /function handleReturnLobby\(\)[\s\S]*?router\.push\(\{ name: ['"]LobbyHome['"] \}\)/,
+  )
+  assert.match(gameViewSource, /@return-lobby="handleReturnLobby"/)
 })

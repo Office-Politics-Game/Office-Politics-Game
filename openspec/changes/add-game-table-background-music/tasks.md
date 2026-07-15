@@ -36,3 +36,41 @@
 - [x] 7.1 依照 **Game card shuffle sound uses two short low-gain layers** 與 **兩層洗牌音效以短裁切與低增益建立層次**，先擴充 `tests/game-table-audio.test.mjs`，要求兩個 `game-card-shuffle.ogg` Audio 實例、1200ms 單層裁切、100ms 第二層延遲、0.25／0.15 增益、三個 timeout 與新一輪播放前的清理；執行 `node --test --test-name-pattern="two short low-gain layers" tests/game-table-audio.test.mjs`，確認測試因目前仍為單層完整播放而失敗。
 - [x] 7.2 實作 **兩層洗牌音效以短裁切與低增益建立層次**：只調整 `playGameCardShuffleSound()` 的內部音效管理，主層立即播放、第二層延遲 100ms，兩層各播放 1200ms 並套用共享 `soundVolume` 的 0.25／0.15 增益；每輪開始先清除舊 timeout、pause 並歸零兩層，且 `soundEnabled === false`、`soundVolume === 0`、Audio 不可用或 play Promise 拒絕時維持安靜 no-op；執行 `node tests/game-table-audio.test.mjs`，確認兩層參數、排程、清理、設定與動畫觸發 assertions 全部通過。
 - [x] 7.3 重新驗證兩層洗牌音效沒有破壞背景音樂與 pre-game 音訊：執行 `node tests/game-table-audio.test.mjs`、`node tests/pre-game-audio.test.mjs` 與 `npm run build`，確認測試零失敗、Vite production build 成功且輸出包含 `game-card-shuffle-*.ogg`。
+
+## 8. 初始逐張發牌音效
+
+- [x] 8.1 依照 **Initial deal plays a sound for each dealt card** 與 **初始發牌透過注入播放函式提供逐張音效**，先擴充 `tests/game-table-audio.test.mjs`，要求 `game-card-draw.mp3` 資產、`playGameCardDealSound()`、0.35 增益、共享音效設定與從 0 秒重播；執行 `node --test --test-name-pattern="deal sound at reduced gain" tests/game-table-audio.test.mjs`，確認測試因控制器尚未引用該資產而失敗。
+- [x] 8.2 實作 **初始發牌透過注入播放函式提供逐張音效** 的控制器部分：在 `UseGameTableAudio` 延遲建立單一發牌 Audio，提供 `playGameCardDealSound()`，使用 bounded `soundVolume × 0.35`、播放前歸零並沿用安全 `playAudio()`；執行 `node --test --test-name-pattern="deal sound at reduced gain" tests/game-table-audio.test.mjs`，確認控制器測試通過。
+- [x] 8.3 依照 **Initial deal plays a sound for each dealt card**，先擴充 `tests/game-table-audio.test.mjs`，要求 `GameStage` 將 callback 注入 `useGameStageDrawSequence()`、初始發牌玩家迴圈在每次 `playDrawAnimation()` 前呼叫一次，且通用 `playDrawAnimation()` 內沒有發牌音效；執行 `node --test --test-name-pattern="initial deal plays one sound" tests/game-table-audio.test.mjs`，確認測試因接線尚未存在而失敗。
+- [x] 8.4 實作 **初始發牌透過注入播放函式提供逐張音效** 的序列接線：`GameStage` 傳入 `playGameCardDealSound`，`useGameStageDrawSequence()` 提供 no-op 預設並只在初始發牌玩家迴圈、每次 `playDrawAnimation()` 前呼叫；執行 `node tests/game-table-audio.test.mjs`，確認逐張觸發與一般抽牌隔離 assertions 全部通過。
+- [x] 8.5 重新驗證發牌音效沒有破壞抽牌動畫、背景音樂與 pre-game 音訊：執行 `node tests/game-table-audio.test.mjs`、`node tests/card-draw-animation.test.mjs`、`node tests/pre-game-audio.test.mjs` 與 `npm run build`，確認測試零失敗、Vite production build 成功且輸出包含 `game-card-draw-*.mp3`。
+
+## 9. 職場老鳥保護啟動音效
+
+- [x] 9.1 依照 **Senior protection activation plays a dedicated sound** 與 **職場老鳥保護啟動時播放語意化音效**，先擴充 `tests/game-table-audio.test.mjs`，要求語意化資產 `game-senior-protection-activate.mp3`、`playSeniorProtectionActivateSound()`、共享 `soundEnabled`／`soundVolume`、0.45 增益與從 0 秒重播，並要求 `useGameStageEffectAnimation()` 只對 `type === "protection" && sourceType === "senior"` 呼叫一次注入 callback；執行 `node --test --test-name-pattern="Senior protection" tests/game-table-audio.test.mjs`，確認測試因資產尚未改名且控制器與動畫接線尚不存在而失敗。
+- [x] 9.2 實作 **職場老鳥保護啟動時播放語意化音效**：將來源音效改名為 `game-senior-protection-activate.mp3`，在 `UseGameTableAudio` 延遲建立單一 Audio 並提供 `playSeniorProtectionActivateSound()`，以 bounded `soundVolume × 0.45` 從 0 秒安全播放；`GameStage` 將 callback 注入 `useGameStageEffectAnimation()`，只在 `senior` 保護動畫開始時呼叫，保護解除及 `cleaner`／`intern`／`manager`／`hr` 擋招不觸發；執行 `node --test --test-name-pattern="Senior protection" tests/game-table-audio.test.mjs`，確認專屬觸發、隔離、設定與安全播放 assertions 全部通過。
+- [x] 9.3 重新驗證 **Senior protection activation plays a dedicated sound** 沒有破壞既有牌桌與保護動畫：執行 `node tests/game-table-audio.test.mjs`、`node tests/protection-aura-label.test.mjs`、`node tests/pre-game-audio.test.mjs` 與 `npm run build`，確認測試零失敗、Vite production build 成功且輸出包含 `game-senior-protection-activate-*.mp3`。
+
+## 10. 正式牌桌所有玩家抽牌音效
+
+- [x] 10.1 依照 **Formal game table draws play a sound** 與 **正式牌桌共用抽牌路徑提供逐張音效**，先更新 `tests/game-table-audio.test.mjs`，要求正式牌桌共用 `playDrawAnimation()` 在來源與目標矩形驗證後、self 或 opponent 動畫開始前呼叫一次 `playGameCardDealSound()`，初始發牌迴圈不得直接重複呼叫，且 `CardPlayTestView.vue` 不接線；執行 `node --test --test-name-pattern="formal table plays one deal sound" tests/game-table-audio.test.mjs`，確認測試因觸發仍只位於初始發牌迴圈而失敗。
+- [x] 10.2 實作 **正式牌桌共用抽牌路徑提供逐張音效**：將 `playGameCardDealSound()` 從 `playInitialRoundDrawSequence()` 的玩家迴圈移至共用 `playDrawAnimation()` 通過來源／目標矩形驗證後、實際動畫前的位置，讓初始發牌與所有玩家一般抽牌各播放一次，無效矩形、角色效果與展示頁不播放；執行 `node tests/game-table-audio.test.mjs`，確認共用觸發、無效矩形隔離、初始發牌不重複與展示頁隔離 assertions 全部通過。
+- [x] 10.3 重新驗證 **Formal game table draws play a sound** 沒有破壞抽牌、socket 與其他音訊流程：執行 `node --test tests/game-table-audio.test.mjs tests/card-draw-animation.test.mjs tests/socket-game-animation.test.mjs tests/pre-game-audio.test.mjs tests/game-view-refactor.test.mjs` 與 `npm run build`，確認測試零失敗、Vite production build 成功且輸出包含 `game-card-draw-*.mp3`。
+
+## 11. 牌桌 UI 共用點擊音效
+
+- [x] 11.1 依照 **Game table UI controls play the shared click sound**，先擴充 `tests/pre-game-audio.test.mjs`，要求 `GameStage` 與 Teleport 的 `GameSettingsModal` 都使用 `useButtonClickAudio()` 並在各自根節點掛載 `@click.capture="handleButtonClick"`；執行 `node --test --test-name-pattern="game table selection and settings buttons" tests/pre-game-audio.test.mjs`，確認測試因兩個元件尚未接線而失敗。
+- [x] 11.2 實作 **牌桌與 Teleport 設定視窗共用點擊事件代理**：在 `GameStage` 根節點與 `GameSettingsModal` overlay 各接上 `useButtonClickAudio().handleButtonClick`，讓可用選單、玩家目標頭像、齒輪與設定視窗按鈕各播放一次 `login-button-click`，同時沿用非按鈕、disabled、`aria-disabled="true"`、`soundEnabled === false` 與 `soundVolume === 0` 的靜音行為；執行 `node --test --test-name-pattern="game table selection and settings buttons" tests/pre-game-audio.test.mjs`，確認聚焦測試通過。
+- [x] 11.3 重新驗證 **Game table UI controls play the shared click sound** 沒有改變既有牌桌與設定操作：執行 `node tests/pre-game-audio.test.mjs`、`node tests/game-table-audio.test.mjs` 與 `npm run build`，確認測試零失敗且 Vite production build 成功。
+
+## 12. 設定返回大廳恢復 pre-game 音樂
+
+- [x] 12.1 依照 **Returning from Game resumes the pre-game lobby theme** 與 **設定返回大廳沿用元件事件鏈並由 GameView 導頁**，先擴充 `tests/pre-game-audio.test.mjs`，要求 `GameSettingsModal` 的返回按鈕開啟 `return-lobby` 確認、`GameStage` 轉送同名事件、`GameView` 接收後導向命名路由 `LobbyHome`，且 modal 不再直接呼叫 `$router.push('/Lobby')`；執行 `node --test --test-name-pattern="game settings return-lobby" tests/pre-game-audio.test.mjs`，確認測試因目前 modal 仍直接導頁且 `GameView` 未接線而失敗。
+- [x] 12.2 實作 **設定返回大廳沿用元件事件鏈並由 GameView 導頁**：讓 `GameSettingsModal` 的返回按鈕呼叫 `openConfirmation('return-lobby')`，確認後沿用既有 emit；`GameStage` 維持轉送，`GameView` 使用 `useRouter()` 的 `router.push({ name: 'LobbyHome' })` 處理 `return-lobby`，使 `App.vue` 既有 `Game → LobbyHome` watcher 恢復 `pre-game-lobby-theme.mp3`，不新增第二個音樂播放入口；執行同一聚焦測試，確認完整事件與命名路由接線通過。
+- [x] 12.3 重新驗證 **Return through the game settings modal** 沒有破壞牌桌音訊、設定互動與建置：執行 `node tests/pre-game-audio.test.mjs`、`node tests/game-table-audio.test.mjs`、`node tests/game-view-refactor.test.mjs` 與 `npm run build`，確認測試零失敗且 Vite production build 成功。
+
+## 13. 自訂房間等待室共用點擊音效
+
+- [x] 13.1 依照 **Custom room waiting controls play the shared click sound**，先擴充 `tests/pre-game-audio.test.mjs`，要求 `CustomRoomView` 使用 `useButtonClickAudio()` 並在根 `<main>` 掛載 `@click.capture="handleButtonClick"`；執行 `node --test --test-name-pattern="custom room waiting controls use the shared click sound" tests/pre-game-audio.test.mjs`，確認測試因等待室尚未接線而失敗。
+- [x] 13.2 實作 **自訂房間等待室共用點擊事件代理**：在 `CustomRoomView` 根 `<main>` 接上 `useButtonClickAudio().handleButtonClick`，讓複製房號、玩家槽操作、邀請好友視窗、返回大廳與開始遊戲等可用按鈕各播放一次 `login-button-click`，同時沿用輸入框、非按鈕、disabled、`aria-disabled="true"`、`soundEnabled === false` 與 `soundVolume === 0` 的靜音行為；執行同一聚焦測試，確認接線 assertions 全部通過。
+- [x] 13.3 重新驗證 **Custom room waiting controls play the shared click sound** 沒有改變等待室、其他 pre-game 音訊與建置：執行 `node tests/pre-game-audio.test.mjs` 與 `npm run build`，確認測試零失敗且 Vite production build 成功。

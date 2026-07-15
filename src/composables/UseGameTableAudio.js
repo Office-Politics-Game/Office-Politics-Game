@@ -1,6 +1,8 @@
 import { watch } from "vue";
 import { useAudioSettings } from "@/composables/UseAudioSettings";
+import gameCardDealSoundUrl from "@/assets/audio/game-card-draw.mp3";
 import gameCardShuffleSoundUrl from "@/assets/audio/game-card-shuffle.ogg";
+import gameSeniorProtectionActivateSoundUrl from "@/assets/audio/game-senior-protection-activate.mp3";
 import gameTableStartThemeUrl from "@/assets/audio/game-table-start-theme.mp3";
 
 const GAME_TABLE_MUSIC_GAIN = 0.2;
@@ -10,12 +12,16 @@ const GAME_CARD_SHUFFLE_SOUND_DURATION_MS = 1200;
 const GAME_CARD_SHUFFLE_LAYER_DELAY_MS = 100;
 const GAME_CARD_SHUFFLE_PRIMARY_GAIN = 0.25;
 const GAME_CARD_SHUFFLE_SECONDARY_GAIN = 0.15;
+const GAME_CARD_DEAL_SOUND_GAIN = 0.35;
+const GAME_SENIOR_PROTECTION_ACTIVATE_SOUND_GAIN = 0.45;
 
 let gameTableMusicAudio = null;
 let gameTableMusicFadeTimerId = null;
 let gameTableBackgroundActive = false;
+let gameCardDealAudio = null;
 let gameCardShuffleAudios = null;
 let gameCardShuffleTimerIds = [];
+let gameSeniorProtectionActivateAudio = null;
 let settingsStopHandle = null;
 
 function canUseAudio() {
@@ -73,6 +79,26 @@ function ensureGameCardShuffleAudios() {
   }
 
   return gameCardShuffleAudios;
+}
+
+function ensureGameCardDealAudio() {
+  if (!gameCardDealAudio) {
+    const audio = new Audio(gameCardDealSoundUrl);
+    audio.preload = "auto";
+    gameCardDealAudio = audio;
+  }
+
+  return gameCardDealAudio;
+}
+
+function ensureGameSeniorProtectionActivateAudio() {
+  if (!gameSeniorProtectionActivateAudio) {
+    const audio = new Audio(gameSeniorProtectionActivateSoundUrl);
+    audio.preload = "auto";
+    gameSeniorProtectionActivateAudio = audio;
+  }
+
+  return gameSeniorProtectionActivateAudio;
 }
 
 function clearGameCardShuffleTimers() {
@@ -161,6 +187,42 @@ function playGameCardShuffleSound() {
     () => pauseAndResetGameCardShuffleAudio(secondaryAudio),
     GAME_CARD_SHUFFLE_LAYER_DELAY_MS + GAME_CARD_SHUFFLE_SOUND_DURATION_MS,
   );
+}
+
+function playGameCardDealSound() {
+  if (!canUseAudio()) {
+    return;
+  }
+
+  const { soundEnabled, soundVolume } = useAudioSettings();
+  const targetVolume = getBoundedGameTableSoundVolume(soundVolume.value);
+
+  if (!soundEnabled.value || targetVolume <= 0) {
+    return;
+  }
+
+  const audio = ensureGameCardDealAudio();
+  audio.currentTime = 0;
+  audio.volume = targetVolume * GAME_CARD_DEAL_SOUND_GAIN;
+  playAudio(audio);
+}
+
+function playSeniorProtectionActivateSound() {
+  if (!canUseAudio()) {
+    return;
+  }
+
+  const { soundEnabled, soundVolume } = useAudioSettings();
+  const targetVolume = getBoundedGameTableSoundVolume(soundVolume.value);
+
+  if (!soundEnabled.value || targetVolume <= 0) {
+    return;
+  }
+
+  const audio = ensureGameSeniorProtectionActivateAudio();
+  audio.currentTime = 0;
+  audio.volume = targetVolume * GAME_SENIOR_PROTECTION_ACTIVATE_SOUND_GAIN;
+  playAudio(audio);
 }
 
 function fadeInGameTableMusic(audio) {
@@ -279,7 +341,9 @@ export function useGameTableAudio() {
   ensureSettingsWatcher();
 
   return {
+    playGameCardDealSound,
     playGameCardShuffleSound,
+    playSeniorProtectionActivateSound,
     startGameTableBackground,
     stopGameTableBackground,
   };

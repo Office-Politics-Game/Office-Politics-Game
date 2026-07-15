@@ -1,6 +1,6 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import LoadingScreen from '@/components/common/LoadingScreen.vue'
 import GameStage from '@/components/game/ui/GameStage.vue'
@@ -22,6 +22,7 @@ import { normalizeCard } from '@/utils/cardUtils'
 import { resolveAvatarUrl } from '@/utils/playerUtils'
 
 const route = useRoute()
+const router = useRouter()
 const appearanceStore = useAppearanceStore()
 const gameStateStore = useGameStateStore()
 const { gameState, currentPlayer, currentPlayerId, currentTurnPlayerId, isLoading } =
@@ -164,6 +165,10 @@ const {
   resolveAvatarUrl,
 })
 
+function handleReturnLobby() {
+  router.push({ name: 'LobbyHome' })
+}
+
 onMounted(() => {
   void loadInitialRoomState()
   void subscribeGameSocket()
@@ -224,6 +229,7 @@ watch(
     :is-loading="isLoading || isDrawing || isSocketActionSubmitting || isPlayingSocketAction"
     @draw-request="handleDrawRequest"
     @play-card="handlePlayCard"
+    @return-lobby="handleReturnLobby"
     @round-sequence-complete="handleRoundSequenceComplete"
   />
 </template>

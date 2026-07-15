@@ -38,6 +38,131 @@ test('game table audio controller plays the shuffle effect using sound settings'
   assert.match(source, /playGameCardShuffleSound,/)
 })
 
+test('game table audio controller plays the deal sound at reduced gain', async () => {
+  const audioDirectory = new URL('../src/assets/audio/', import.meta.url)
+  const audioFiles = await readdir(audioDirectory)
+  const source = await readSource('src/composables/UseGameTableAudio.js')
+
+  assert.ok(audioFiles.includes('game-card-draw.mp3'))
+  assert.ok(
+    (await stat(new URL('game-card-draw.mp3', audioDirectory))).size > 0,
+  )
+  assert.match(source, /gameCardDealSoundUrl/)
+  assert.match(source, /GAME_CARD_DEAL_SOUND_GAIN = 0\.35/)
+  assert.match(source, /new Audio\(gameCardDealSoundUrl\)/)
+  assert.match(source, /function playGameCardDealSound/)
+  assert.match(source, /targetVolume \* GAME_CARD_DEAL_SOUND_GAIN/)
+  assert.match(source, /playGameCardDealSound,/)
+})
+
+test('formal table plays one deal sound for every valid draw animation', async () => {
+  const stageSource = await readSource('src/components/game/ui/GameStage.vue')
+  const sequenceSource = await readSource(
+    'src/composables/useGameStageDrawSequence.js',
+  )
+  const demoSource = await readSource('src/views/CardPlayTestView.vue')
+  const regularDrawSource = sequenceSource.slice(
+    sequenceSource.indexOf('async function playDrawAnimation'),
+    sequenceSource.indexOf('async function playInitialRoundDrawSequence'),
+  )
+  const initialDealSource = sequenceSource.slice(
+    sequenceSource.indexOf('async function playInitialRoundDrawSequence'),
+  )
+  const invalidRectGuardIndex = regularDrawSource.indexOf(
+    'if (!startRect || !targetRect)',
+  )
+  const invalidRectReturnIndex = regularDrawSource.indexOf(
+    'return false;',
+    invalidRectGuardIndex,
+  )
+  const soundIndex = regularDrawSource.indexOf('playGameCardDealSound()')
+  const animationIndex = regularDrawSource.indexOf(
+    'await cardDrawAnimation.value?.selfDraw',
+  )
+
+  assert.match(stageSource, /useGameTableAudio/)
+  assert.match(stageSource, /playGameCardDealSound/)
+  assert.match(
+    stageSource,
+    /useGameStageDrawSequence\(\{[\s\S]*playGameCardDealSound/,
+  )
+  assert.match(sequenceSource, /playGameCardDealSound = \(\) => \{\}/)
+  assert.equal(
+    (regularDrawSource.match(/playGameCardDealSound\(\)/g) ?? []).length,
+    1,
+  )
+  assert.ok(invalidRectGuardIndex >= 0)
+  assert.ok(invalidRectReturnIndex > invalidRectGuardIndex)
+  assert.ok(soundIndex > invalidRectReturnIndex)
+  assert.ok(animationIndex > soundIndex)
+  assert.match(
+    initialDealSource,
+    /for \(const player of props\.players\) \{\s*const didDraw = await playDrawAnimation/,
+  )
+  assert.doesNotMatch(demoSource, /playGameCardDealSound/)
+})
+
+test('Senior protection uses a dedicated activation sound with shared settings', async () => {
+  const audioDirectory = new URL('../src/assets/audio/', import.meta.url)
+  const audioFiles = await readdir(audioDirectory)
+  const source = await readSource('src/composables/UseGameTableAudio.js')
+
+  assert.ok(audioFiles.includes('game-senior-protection-activate.mp3'))
+  assert.ok(
+    (
+      await stat(
+        new URL('game-senior-protection-activate.mp3', audioDirectory),
+      )
+    ).size > 0,
+  )
+  assert.ok(!audioFiles.includes('Cheesy force field on and off Sound effect.mp3'))
+  assert.match(source, /gameSeniorProtectionActivateSoundUrl/)
+  assert.match(source, /GAME_SENIOR_PROTECTION_ACTIVATE_SOUND_GAIN = 0\.45/)
+  assert.match(source, /new Audio\(gameSeniorProtectionActivateSoundUrl\)/)
+  assert.match(source, /function playSeniorProtectionActivateSound/)
+  assert.match(source, /soundEnabled/)
+  assert.match(source, /soundVolume/)
+  assert.match(source, /audio\.currentTime = 0/)
+  assert.match(
+    source,
+    /targetVolume \* GAME_SENIOR_PROTECTION_ACTIVATE_SOUND_GAIN/,
+  )
+  assert.match(source, /playSeniorProtectionActivateSound,/)
+})
+
+test('Senior protection sound starts only for the Senior activation animation', async () => {
+  const stageSource = await readSource('src/components/game/ui/GameStage.vue')
+  const effectSource = await readSource(
+    'src/composables/useGameStageEffectAnimation.js',
+  )
+  const playEffectSource = effectSource.slice(
+    effectSource.indexOf('function playEffectAnimation'),
+    effectSource.indexOf('function handleEffectAnimationComplete'),
+  )
+
+  assert.match(
+    stageSource,
+    /const \{[\s\S]*playSeniorProtectionActivateSound[\s\S]*\} = useGameTableAudio\(\)/,
+  )
+  assert.match(
+    stageSource,
+    /useGameStageEffectAnimation\(\{[\s\S]*playSeniorProtectionActivateSound/,
+  )
+  assert.match(
+    effectSource,
+    /playSeniorProtectionActivateSound = \(\) => \{\}/,
+  )
+  assert.match(
+    playEffectSource,
+    /if \(nextResult\.type === ["']protection["'] && nextResult\.sourceType === ["']senior["']\) \{\s*playSeniorProtectionActivateSound\(\);\s*\}/,
+  )
+  assert.equal(
+    (playEffectSource.match(/playSeniorProtectionActivateSound\(\)/g) ?? [])
+      .length,
+    1,
+  )
+})
+
 test('shuffle effect uses two short low-gain layers and clears stale playback', async () => {
   const source = await readSource('src/composables/UseGameTableAudio.js')
 

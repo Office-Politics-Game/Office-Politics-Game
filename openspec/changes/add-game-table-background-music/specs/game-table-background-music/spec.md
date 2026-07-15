@@ -103,6 +103,12 @@ When `pre-game-lobby-theme.mp3` was explicitly activated before game entry, the 
 - **AND** it linearly fades to the current shared music volume multiplied by 0.2 over 900 milliseconds
 - **AND** shared music settings and other audio players remain unchanged
 
+#### Scenario: Return through the game settings modal
+
+- **WHEN** the player confirms the return-lobby action in the game settings modal while the current route is `Game`
+- **THEN** the frontend navigates to the named `LobbyHome` route through the game page's return-lobby event flow
+- **AND** the resulting `Game` to `LobbyHome` transition resumes `pre-game-lobby-theme.mp3` with the 900 millisecond fade-in behavior
+
 #### Scenario: Loading and Game preserve activation without playing the lobby theme
 
 - **WHEN** the pre-game lobby theme was explicitly activated and navigation proceeds through `Loading` to `Game`
@@ -147,3 +153,105 @@ The frontend SHALL play `game-card-shuffle.ogg` as two independently controlled 
 - **WHEN** the browser rejects either shuffle layer's `play()` Promise
 - **THEN** the rejection is handled silently
 - **AND** the card shuffle animation continues without interruption
+
+### Requirement: Formal game table draws play a sound
+
+The frontend SHALL use `game-card-draw.mp3` for every valid card draw animation on the formal game table. After the shared formal-table draw path validates both source and target rectangles and immediately before it starts either the self or opponent draw animation, the frontend MUST play the sound once from zero seconds at the bounded shared sound volume multiplied by 0.35. The initial deal MUST use this same shared trigger without an additional direct playback. Role-effect animations and the animation demo page MUST NOT trigger this sound.
+
+#### Scenario: Initial deal distributes one card to each player
+
+- **WHEN** the initial round deal sequence iterates through the active players while `soundEnabled` is true and `soundVolume` is greater than zero
+- **THEN** `game-card-draw.mp3` starts once before each player's card draw animation
+- **AND** each playback starts at zero seconds with volume equal to the bounded shared sound volume multiplied by 0.35
+
+#### Scenario: A player draws during the formal game
+
+- **WHEN** the formal game table starts a valid self or opponent draw animation outside the initial deal while `soundEnabled` is true and `soundVolume` is greater than zero
+- **THEN** `game-card-draw.mp3` starts exactly once after the draw rectangles are validated and before the card begins flying
+- **AND** playback starts at zero seconds with volume equal to the bounded shared sound volume multiplied by 0.35
+
+#### Scenario: Draw animation geometry is unavailable
+
+- **WHEN** the formal game table cannot resolve either the source or target rectangle for a requested draw
+- **THEN** the draw animation does not start
+- **AND** `game-card-draw.mp3` is not played
+
+#### Scenario: Draw runs outside the formal game table path
+
+- **WHEN** a role-effect animation or the animation demo page runs a draw animation
+- **THEN** `game-card-draw.mp3` is not played
+
+#### Scenario: Deal sound playback is disabled
+
+- **WHEN** a formal-table draw runs while `soundEnabled` is false, `soundVolume` is zero, or the Audio API is unavailable
+- **THEN** no draw sound is played
+- **AND** the draw animation sequence continues without interruption
+
+#### Scenario: Browser rejects deal sound playback
+
+- **WHEN** the browser rejects the deal sound `play()` Promise
+- **THEN** the rejection is handled silently
+- **AND** the current and remaining formal-table card draw animations continue
+
+### Requirement: Senior protection activation plays a dedicated sound
+
+The frontend SHALL use `game-senior-protection-activate.mp3` for the protection activation caused by playing the Senior card. When an effect animation starts with `type` equal to `protection` and `sourceType` equal to `senior`, the frontend MUST play the sound exactly once from zero seconds at the bounded shared sound volume multiplied by 0.45. Protection removal and protection animations caused by another card being blocked MUST NOT play this sound.
+
+#### Scenario: Senior card activates protection
+
+- **WHEN** an effect animation starts with `type` equal to `protection`, `sourceType` equal to `senior`, `soundEnabled` true, and `soundVolume` greater than zero
+- **THEN** `game-senior-protection-activate.mp3` starts exactly once from zero seconds
+- **AND** its volume equals the bounded shared sound volume multiplied by 0.45
+
+#### Scenario: Existing protection blocks another card
+
+- **WHEN** a protection animation starts with `sourceType` equal to `cleaner`, `intern`, `manager`, or `hr`
+- **THEN** the Senior protection activation sound does not play
+
+#### Scenario: Senior protection ends
+
+- **WHEN** the Senior protection aura is removed because the protection duration ends
+- **THEN** the Senior protection activation sound does not play
+
+#### Scenario: Senior protection sound playback is unavailable
+
+- **WHEN** Senior protection activates while `soundEnabled` is false, `soundVolume` is zero, the Audio API is unavailable, or the browser rejects the sound's `play()` Promise
+- **THEN** no unhandled error interrupts the protection animation
+
+### Requirement: Game table UI controls play the shared click sound
+
+The frontend SHALL use the existing `login-button-click` sound for enabled button interactions on the formal game table. Each enabled menu choice, player target avatar, settings gear, game-table confirmation control, and button inside the teleported game settings modal MUST play the sound exactly once through the shared sound settings. Volume sliders, non-button areas, disabled controls, and interactions while shared sound playback is disabled MUST NOT play the sound.
+
+#### Scenario: Player activates a game table selection control
+
+- **WHEN** `soundEnabled` is true, `soundVolume` is greater than zero, and the player clicks an enabled menu choice, selectable player target avatar, settings gear, or game-table confirmation control
+- **THEN** `login-button-click` plays exactly once through the shared sound controller
+- **AND** the original selection, settings, confirmation, or cancellation behavior continues unchanged
+
+#### Scenario: Player activates a button in the game settings modal
+
+- **WHEN** `soundEnabled` is true, `soundVolume` is greater than zero, and the player clicks an enabled close, music toggle, sound toggle, return-lobby, restart-game, confirmation, or cancellation button in the teleported game settings modal
+- **THEN** `login-button-click` plays exactly once through the shared sound controller
+- **AND** the original settings or navigation action continues unchanged
+
+#### Scenario: UI click sound is not allowed
+
+- **WHEN** the player moves a volume slider, clicks a non-button area, clicks a native disabled or `aria-disabled="true"` control, or activates a control while `soundEnabled` is false or `soundVolume` is zero
+- **THEN** `login-button-click` does not play
+- **AND** clicking the control that enables sound remains silent for that click
+- **AND** a subsequent enabled button click plays the sound when shared sound playback is allowed
+
+### Requirement: Custom room waiting controls play the shared click sound
+
+The frontend SHALL use the existing `login-button-click` sound for enabled button interactions in the custom-room waiting screen. Enabled copy-room-code, player-slot, invite-friend modal, return-lobby, and start-game button controls MUST play the sound exactly once through the shared sound settings. Inputs, non-button areas, native disabled controls, `aria-disabled="true"` controls, and interactions while shared sound playback is disabled MUST NOT play the sound.
+
+#### Scenario: Player activates an enabled custom-room control
+
+- **WHEN** `soundEnabled` is true, `soundVolume` is greater than zero, and the player clicks an enabled copy-room-code, player-slot, invite-friend modal, return-lobby, or start-game button control
+- **THEN** `login-button-click` plays exactly once through the shared sound controller
+- **AND** the original copy, room operation, invitation, navigation, or start-game behavior continues unchanged
+
+#### Scenario: Custom-room click sound is not allowed
+
+- **WHEN** the player clicks an input, a non-button area, a native disabled control, an `aria-disabled="true"` control, or a control while `soundEnabled` is false or `soundVolume` is zero
+- **THEN** `login-button-click` does not play
