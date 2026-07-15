@@ -80,7 +80,8 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
             class="room-player-info mt-[10px] flex w-full flex-col items-center gap-[6px] lg:mt-[24px] lg:gap-[14px]"
           >
             <p
-              class="room-player-title m-0 w-full whitespace-nowrap text-center text-[14px] font-black leading-[1.12] lg:text-[28px]"
+              class="room-player-title m-0 w-full text-center text-[14px] font-black leading-[1.12] lg:text-[28px]"
+              :title="slot.name ?? slot.option1"
               :class="{ 'room-player-title--restoring': slot.isPlaceholder }"
             >
               {{ slot.name ?? slot.option1 }}
@@ -231,6 +232,19 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
   color: var(--brand-active, #465563);
 }
 
+.room-player-title {
+  display: -webkit-box;
+  min-height: 2.3em;
+  overflow: hidden;
+  padding-inline: 6px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .room-player-option-button {
   cursor: pointer;
   transition:
@@ -314,6 +328,13 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
 
 .room-player-level {
   color: var(--brand-active, #465563);
+}
+
+@media (min-width: 1024px) {
+  .room-player-title {
+    min-height: 2.45em;
+    padding-inline: 10px;
+  }
 }
 
 .room-player-level--restoring {
