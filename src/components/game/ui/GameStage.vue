@@ -187,6 +187,8 @@ const {
 } = useAudioSettings();
 const {
   playGameCardDealSound,
+  playGameCardPlaySound,
+  playInternGuessResultSound,
   playSeniorProtectionActivateSound,
 } = useGameTableAudio();
 
@@ -327,6 +329,7 @@ const {
   isDrawAnimating,
   activeEffectResult,
   resolvedPlayerHandCardCounts,
+  playGameCardPlaySound,
 });
 
 const protectedPlayers = computed(() =>
@@ -697,6 +700,7 @@ defineExpose({
         :target-player-name="activeInternTargetPlayerName"
         :get-player-hand-rect="animationRects.getPlayerHandRect"
         :get-discard-rect="animationRects.getDiscardRect"
+        @outcome-reveal="playInternGuessResultSound"
         @complete="handleEffectAnimationComplete"
       />
 

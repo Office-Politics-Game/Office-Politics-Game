@@ -255,3 +255,51 @@ The frontend SHALL use the existing `login-button-click` sound for enabled butto
 
 - **WHEN** the player clicks an input, a non-button area, a native disabled control, an `aria-disabled="true"` control, or a control while `soundEnabled` is false or `soundVolume` is zero
 - **THEN** `login-button-click` does not play
+
+### Requirement: Formal game table card plays use the rise sound
+
+The frontend SHALL play a latency-trimmed `game-card-play-rise.mp3` exactly once immediately before each valid local or remote player card-play animation on the formal game table. The asset MUST retain its complete tail, have a container duration below 1.5 seconds, and contain less than 0.06 seconds of leading silence at a -45 dB threshold. Playback MUST start from zero seconds at bounded shared `soundVolume × 0.4`, MUST respect `soundEnabled`, and MUST NOT be triggered by invalid animation geometry, a remote event for the local player, or animation-only demo views.
+
+#### Scenario: Card-play rise asset starts responsively
+
+- **WHEN** `game-card-play-rise.mp3` is decoded from zero seconds
+- **THEN** audible content begins within 0.06 seconds at a -45 dB threshold
+- **AND** the container duration is below 1.5 seconds
+- **AND** the original audio tail after the removed 0.65-second prefix remains intact
+
+#### Scenario: Local player starts a valid card-play animation
+
+- **WHEN** the local player plays a card and the card, release origin rectangle, and discard target rectangle are valid
+- **THEN** `game-card-play-rise.mp3` plays exactly once immediately before the local `cardPlayAnimation.play()` call
+- **AND** playback starts from zero seconds at bounded `soundVolume × 0.4`
+
+#### Scenario: Remote player starts a valid card-play animation
+
+- **WHEN** a different player plays a card and the card, player-hand origin rectangle, and discard target rectangle are valid
+- **THEN** `game-card-play-rise.mp3` plays exactly once immediately before the remote `cardPlayAnimation.play()` call
+
+#### Scenario: Card-play rise sound is not allowed
+
+- **WHEN** the event represents the local player in the remote path, required card or geometry data is invalid, `soundEnabled` is false, `soundVolume` is zero, the Audio API is unavailable, the browser rejects playback, or `CardPlayAnimation` runs only in a demo view
+- **THEN** no duplicate sound or unhandled error interrupts the card-play flow
+
+### Requirement: Intern guess result reveal plays a semantic sound
+
+The frontend SHALL play a semantic sound exactly once when the Intern animation reveals its guess result on the formal game table. After the existing one-second guess prompt hold and immediately before the outcome text becomes visible, a `correct` result MUST play `intern-guess-correct.mp3` and an `incorrect` result MUST play `intern-guess-incorrect.mp3`. Playback MUST start from zero seconds at bounded shared `soundVolume × 0.45`, MUST respect `soundEnabled`, and MUST NOT be wired into animation-only demo views.
+
+#### Scenario: Intern guess is correct
+
+- **WHEN** the formal-table Intern animation finishes its one-second guess prompt hold with outcome `correct`
+- **THEN** it emits `outcome-reveal` exactly once immediately before showing the correct outcome text
+- **AND** `intern-guess-correct.mp3` plays exactly once from zero seconds at bounded shared `soundVolume × 0.45`
+
+#### Scenario: Intern guess is incorrect
+
+- **WHEN** the formal-table Intern animation finishes its one-second guess prompt hold with outcome `incorrect`
+- **THEN** it emits `outcome-reveal` exactly once immediately before showing the incorrect outcome text
+- **AND** `intern-guess-incorrect.mp3` plays exactly once from zero seconds at bounded shared `soundVolume × 0.45`
+
+#### Scenario: Intern result sound is unavailable or out of scope
+
+- **WHEN** the outcome is unknown, `soundEnabled` is false, `soundVolume` is zero, the Audio API is unavailable, the browser rejects playback, or the animation runs only in a demo view
+- **THEN** no result sound or unhandled error interrupts the Intern animation

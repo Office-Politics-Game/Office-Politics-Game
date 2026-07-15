@@ -289,12 +289,15 @@ test('pre-game lobby music continues through personal, social, and recruitment p
   }
 })
 
-test('starting the game menu uses the shared click sound', async () => {
+test('starting the game menu uses the lobby navigation sound', async () => {
   const source = await readSource('src/components/menu/LobbyMenu.vue')
-  const startGameAction = source.slice(source.indexOf('function openGameMenu()'))
+  const startGameAction = source.slice(
+    source.indexOf('function openGameMenu()'),
+    source.indexOf('function openGachaPage()'),
+  )
 
-  assert.match(startGameAction, /playPreGameSound\("login-button-click"\)/)
-  assert.doesNotMatch(startGameAction, /playLobbyNavigationSound\(\)/)
+  assert.match(startGameAction, /playLobbyNavigationSound\(\)/)
+  assert.doesNotMatch(startGameAction, /playPreGameSound\("login-button-click"\)/)
 })
 
 test('waiting room entry actions use the shared click sound', async () => {

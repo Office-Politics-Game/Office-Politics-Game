@@ -55,6 +55,195 @@ test('game table audio controller plays the deal sound at reduced gain', async (
   assert.match(source, /playGameCardDealSound,/)
 })
 
+test('game table audio controller plays the card-play rise sound at reduced gain', async () => {
+  const audioDirectory = new URL('../src/assets/audio/', import.meta.url)
+  const audioFiles = await readdir(audioDirectory)
+  const source = await readSource('src/composables/UseGameTableAudio.js')
+
+  assert.ok(audioFiles.includes('game-card-play-rise.mp3'))
+  assert.ok(
+    (await stat(new URL('game-card-play-rise.mp3', audioDirectory))).size > 0,
+  )
+  assert.match(source, /gameCardPlaySoundUrl/)
+  assert.match(source, /GAME_CARD_PLAY_SOUND_GAIN = 0\.4/)
+  assert.equal(
+    (source.match(/new Audio\(gameCardPlaySoundUrl\)/g) ?? []).length,
+    1,
+  )
+  assert.match(source, /function playGameCardPlaySound/)
+  assert.match(source, /audio\.currentTime = 0/)
+  assert.match(source, /targetVolume \* GAME_CARD_PLAY_SOUND_GAIN/)
+  assert.match(source, /playGameCardPlaySound,/)
+})
+
+test('card-play rise sound asset is trimmed for responsive playback', async () => {
+  const audioFile = new URL(
+    '../src/assets/audio/game-card-play-rise.mp3',
+    import.meta.url,
+  )
+  const { size } = await stat(audioFile)
+
+  assert.ok(size > 25 * 1024, 'trimmed rise sound must retain its full tail')
+  assert.ok(size < 40 * 1024, 'trimmed rise sound must remove its silent prefix')
+})
+
+test('Intern guess result sound controller maps semantic outcomes to dedicated assets', async () => {
+  const audioDirectory = new URL('../src/assets/audio/', import.meta.url)
+  const audioFiles = await readdir(audioDirectory)
+  const source = await readSource('src/composables/UseGameTableAudio.js')
+  const resultSoundSource = source.slice(
+    source.indexOf('function playInternGuessResultSound'),
+    source.indexOf('function playSeniorProtectionActivateSound'),
+  )
+  const resultAudioFactorySource = source.slice(
+    source.indexOf('function ensureInternGuessResultAudios'),
+    source.indexOf('function ensureGameSeniorProtectionActivateAudio'),
+  )
+  const safePlaybackSource = source.slice(
+    source.indexOf('function playAudio'),
+    source.indexOf('function playGameCardShuffleSound'),
+  )
+
+  for (const fileName of [
+    'intern-guess-correct.mp3',
+    'intern-guess-incorrect.mp3',
+  ]) {
+    assert.ok(audioFiles.includes(fileName))
+    assert.ok((await stat(new URL(fileName, audioDirectory))).size > 0)
+  }
+
+  assert.match(
+    source,
+    /import internGuessCorrectSoundUrl from ["']@\/assets\/audio\/intern-guess-correct\.mp3["'];/,
+  )
+  assert.match(
+    source,
+    /import internGuessIncorrectSoundUrl from ["']@\/assets\/audio\/intern-guess-incorrect\.mp3["'];/,
+  )
+  assert.match(source, /INTERN_GUESS_RESULT_SOUND_GAIN = 0\.45/)
+  assert.match(source, /let internGuessResultAudios = null/)
+  assert.equal(
+    (source.match(/new Audio\(internGuessCorrectSoundUrl\)/g) ?? []).length,
+    1,
+  )
+  assert.equal(
+    (source.match(/new Audio\(internGuessIncorrectSoundUrl\)/g) ?? []).length,
+    1,
+  )
+  assert.match(
+    resultAudioFactorySource,
+    /Object\.values\(internGuessResultAudios\)\.forEach\(\(audio\) => \{\s*audio\.preload = ["']auto["'];\s*\}\);/,
+  )
+  assert.match(
+    resultSoundSource,
+    /if \(!canUseAudio\(\) \|\| !\["correct", "incorrect"\]\.includes\(outcome\)\) \{\s*return;/,
+  )
+  assert.ok(
+    resultSoundSource.indexOf('canUseAudio()') <
+      resultSoundSource.indexOf('useAudioSettings()'),
+  )
+  assert.match(
+    resultSoundSource,
+    /const \{ soundEnabled, soundVolume \} = useAudioSettings\(\)/,
+  )
+  assert.match(
+    resultSoundSource,
+    /if \(!soundEnabled\.value \|\| targetVolume <= 0\) \{\s*return;/,
+  )
+  assert.match(
+    resultSoundSource,
+    /ensureInternGuessResultAudios\(\)\[outcome\]/,
+  )
+  assert.match(resultSoundSource, /audio\.currentTime = 0/)
+  assert.match(
+    resultSoundSource,
+    /targetVolume \* INTERN_GUESS_RESULT_SOUND_GAIN/,
+  )
+  assert.match(resultSoundSource, /playAudio\(audio\)/)
+  assert.match(
+    safePlaybackSource,
+    /try \{\s*const playResult = audio\.play\(\);/,
+  )
+  assert.match(
+    safePlaybackSource,
+    /playResult && typeof playResult\.catch === ["']function["']/,
+  )
+  assert.match(safePlaybackSource, /playResult\.catch\(\(\) => \{\}\)/)
+  assert.match(safePlaybackSource, /\} catch \{[\s\S]*?\}/)
+  assert.match(source, /playInternGuessResultSound,/)
+})
+
+test('formal table wires Intern result reveal sound while the animation demo stays silent', async () => {
+  const stageSource = await readSource('src/components/game/ui/GameStage.vue')
+  const demoSource = await readSource('src/views/CardPlayTestView.vue')
+
+  assert.match(
+    stageSource,
+    /const \{[\s\S]*playInternGuessResultSound[\s\S]*\} = useGameTableAudio\(\)/,
+  )
+  assert.match(
+    stageSource,
+    /<InternAnimation[\s\S]*@outcome-reveal="playInternGuessResultSound"[\s\S]*\/>/,
+  )
+  assert.doesNotMatch(demoSource, /playInternGuessResultSound/)
+  assert.doesNotMatch(demoSource, /@outcome-reveal/)
+})
+
+test('formal table plays one card-play rise sound before each valid player animation', async () => {
+  const stageSource = await readSource('src/components/game/ui/GameStage.vue')
+  const cardPlaySource = await readSource(
+    'src/composables/useGameStageCardPlay.js',
+  )
+  const demoSource = await readSource('src/views/CardPlayTestView.vue')
+  const localPlaySource = cardPlaySource.slice(
+    cardPlaySource.indexOf('async function playActiveCard'),
+    cardPlaySource.indexOf('function handleWindowPointerMove'),
+  )
+  const remotePlaySource = cardPlaySource.slice(
+    cardPlaySource.indexOf('async function playRemoteCardPlayAnimation'),
+    cardPlaySource.indexOf('function cleanupCardPlay'),
+  )
+  const localGuardIndex = localPlaySource.indexOf(
+    'if (!card || !releaseRect || !discardRect.value)',
+  )
+  const localSoundIndex = localPlaySource.indexOf('playGameCardPlaySound()')
+  const localAnimationIndex = localPlaySource.indexOf(
+    'cardPlayAnimation.value?.play',
+  )
+  const remoteGuardIndex = remotePlaySource.indexOf(
+    'if (!originRect || !targetRect)',
+  )
+  const remoteSoundIndex = remotePlaySource.indexOf('playGameCardPlaySound()')
+  const remoteAnimationIndex = remotePlaySource.indexOf(
+    'cardPlayAnimation.value?.play',
+  )
+
+  assert.match(
+    stageSource,
+    /const \{[\s\S]*playGameCardPlaySound[\s\S]*\} = useGameTableAudio\(\)/,
+  )
+  assert.match(
+    stageSource,
+    /useGameStageCardPlay\(\{[\s\S]*playGameCardPlaySound/,
+  )
+  assert.match(cardPlaySource, /playGameCardPlaySound = \(\) => \{\}/)
+  assert.equal(
+    (cardPlaySource.match(/playGameCardPlaySound\(\)/g) ?? []).length,
+    2,
+  )
+  assert.ok(localGuardIndex >= 0)
+  assert.ok(localSoundIndex > localGuardIndex)
+  assert.ok(localAnimationIndex > localSoundIndex)
+  assert.ok(remoteGuardIndex >= 0)
+  assert.ok(remoteSoundIndex > remoteGuardIndex)
+  assert.ok(remoteAnimationIndex > remoteSoundIndex)
+  assert.match(
+    remotePlaySource,
+    /if \(!playerId \|\| !card \|\| animationRects\.isSelfPlayer\(playerId\)\) \{\s*return false;/,
+  )
+  assert.doesNotMatch(demoSource, /playGameCardPlaySound/)
+})
+
 test('formal table plays one deal sound for every valid draw animation', async () => {
   const stageSource = await readSource('src/components/game/ui/GameStage.vue')
   const sequenceSource = await readSource(

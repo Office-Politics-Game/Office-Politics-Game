@@ -74,3 +74,23 @@
 - [x] 13.1 依照 **Custom room waiting controls play the shared click sound**，先擴充 `tests/pre-game-audio.test.mjs`，要求 `CustomRoomView` 使用 `useButtonClickAudio()` 並在根 `<main>` 掛載 `@click.capture="handleButtonClick"`；執行 `node --test --test-name-pattern="custom room waiting controls use the shared click sound" tests/pre-game-audio.test.mjs`，確認測試因等待室尚未接線而失敗。
 - [x] 13.2 實作 **自訂房間等待室共用點擊事件代理**：在 `CustomRoomView` 根 `<main>` 接上 `useButtonClickAudio().handleButtonClick`，讓複製房號、玩家槽操作、邀請好友視窗、返回大廳與開始遊戲等可用按鈕各播放一次 `login-button-click`，同時沿用輸入框、非按鈕、disabled、`aria-disabled="true"`、`soundEnabled === false` 與 `soundVolume === 0` 的靜音行為；執行同一聚焦測試，確認接線 assertions 全部通過。
 - [x] 13.3 重新驗證 **Custom room waiting controls play the shared click sound** 沒有改變等待室、其他 pre-game 音訊與建置：執行 `node tests/pre-game-audio.test.mjs` 與 `npm run build`，確認測試零失敗且 Vite production build 成功。
+
+## 14. 正式牌桌所有玩家出牌 rise 音效
+
+- [x] 14.1 依照 **Formal game table card plays use the rise sound** 與 **正式牌桌共用出牌協調層播放 rise 音效**，先擴充 `tests/game-table-audio.test.mjs`，要求非空的 `game-card-play-rise.mp3` 資產、`playGameCardPlaySound()` 單一 Audio、共享 `soundEnabled`／`soundVolume`、0.4 增益與從 0 秒重播，並要求 `GameStage` 將 no-op 預設 callback 注入 `useGameStageCardPlay()`；本地與遠端流程必須在各自矩形 guard 後、`cardPlayAnimation.play()` 前各呼叫一次，展示頁不得接線；執行 `node --test --test-name-pattern="card-play rise sound" tests/game-table-audio.test.mjs`，確認測試因控制器與出牌協調層尚未接線而失敗。
+- [x] 14.2 實作 **Formal game table card plays use the rise sound**：`UseGameTableAudio` 延遲建立 `game-card-play-rise.mp3` Audio 並提供 `playGameCardPlaySound()`，以 bounded `soundVolume × 0.4` 從 0 秒安全播放；`GameStage` 將 callback 注入 `useGameStageCardPlay()`，本地 `playActiveCard()` 與遠端 `playRemoteCardPlayAnimation()` 只在卡牌與來源／目標矩形有效、實際動畫開始前各呼叫一次，保留遠端 self-player guard，且 Audio 不可用或 play Promise 拒絕時維持安靜 no-op；執行聚焦測試，確認資產、增益、設定、有效觸發與重複／無效路徑隔離 assertions 全部通過。
+- [x] 14.3 重新驗證 **Formal game table card plays use the rise sound** 沒有破壞既有出牌、socket 與其他音訊流程：執行 `node --test tests/game-table-audio.test.mjs tests/card-play-interaction.test.mjs tests/socket-game-animation.test.mjs tests/pre-game-audio.test.mjs` 與 `npm run build`，確認測試零失敗、Vite production build 成功且輸出包含 `game-card-play-rise-*.mp3`。
+
+## 15. 實習生猜牌結果揭露音效
+
+- [x] 15.1 依照 **Intern guess result reveal plays a semantic sound**，先擴充 `tests/game-table-audio.test.mjs`，要求非空的 `intern-guess-correct.mp3` 與 `intern-guess-incorrect.mp3` 資產、`playInternGuessResultSound(outcome)`、只接受 `correct`／`incorrect`、共享 `soundEnabled`／`soundVolume`、0.45 增益、從 0 秒重播與安全 no-op；執行聚焦測試，確認測試因控制器尚未引用兩個資產與提供命令而失敗。
+- [x] 15.2 實作控制器：在 `UseGameTableAudio` 延遲建立正確／錯誤兩個 Audio，提供 `playInternGuessResultSound(outcome)`，以 bounded `soundVolume × 0.45` 從 0 秒安全播放；未知 outcome、Audio 不可用或 play Promise 拒絕時維持安靜 no-op，並執行聚焦測試確認通過。
+- [x] 15.3 依照 **Intern guess result reveal plays a semantic sound** 與 **實習生動畫在結果文字揭露時送出語意事件**，先擴充 `tests/card-play-interaction.test.mjs` 與 `tests/game-table-audio.test.mjs`，要求 `InternAnimation` 在猜對與猜錯時間軸都於 1 秒提示停留後、結果文字可見前 emit 一次 `outcome-reveal`，`GameStage` 將事件接到 `playInternGuessResultSound`，展示頁不接線；執行聚焦測試，確認測試因事件與接線尚不存在而失敗。
+- [x] 15.4 實作 **實習生動畫在結果文字揭露時送出語意事件** 的事件與接線：`InternAnimation` 宣告並在兩條時間軸的精準揭露點 emit `outcome-reveal`，`GameStage` 接到 `playInternGuessResultSound`，展示頁保持無音效；執行聚焦測試，確認猜對／猜錯各一次、順序與展示頁隔離 assertions 全部通過。
+- [x] 15.5 重新驗證實習生結果音效沒有破壞既有出牌與牌桌音訊：執行 `node --test tests/game-table-audio.test.mjs tests/card-play-interaction.test.mjs`、`npm run build` 與 `git diff --check`，確認測試零失敗、Vite production build 成功且輸出包含 `intern-guess-correct-*.mp3` 與 `intern-guess-incorrect-*.mp3`。
+
+## 16. game-card-play-rise 前置靜音裁切
+
+- [x] 16.1 依照 **Formal game table card plays use the rise sound** 與 **裁除 game-card-play-rise 前置靜音**，先擴充 `tests/game-table-audio.test.mjs`，要求 `game-card-play-rise.mp3` 保持非空且裁切後檔案大小低於 40 KiB、仍高於 25 KiB，以鎖定原始約 2.04 秒素材已縮短但未被截成空殼；執行 `node --test --test-name-pattern="card-play rise sound asset is trimmed" tests/game-table-audio.test.mjs`，確認測試因目前素材約 49.57 KiB 而失敗。
+- [x] 16.2 實作 **裁除 game-card-play-rise 前置靜音**：將 `game-card-play-rise.mp3` 從 0.65 秒起重新輸出為 44.1 kHz stereo、192 kbps MP3，保留完整尾音且不修改播放程式；執行聚焦測試並用 FFmpeg `silencedetect=n=-45dB:d=0.01` 驗證容器長度低於 1.5 秒、前置靜音低於 0.06 秒，確認素材起音延遲已移除。
+- [x] 16.3 重新驗證裁切沒有破壞 **Formal game table card plays use the rise sound**：執行 `node --test tests/game-table-audio.test.mjs tests/card-play-interaction.test.mjs tests/socket-game-animation.test.mjs`、`npm run build` 與 `git diff --check`，確認測試零失敗、Vite production build 成功且輸出包含裁切後 `game-card-play-rise-*.mp3`。

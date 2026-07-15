@@ -18,6 +18,8 @@
 - 保留其他路由現有的 900ms 大廳淡入淡出行為。
 - 洗牌動畫開始時建立兩層短音效：主層 0–1200ms／0.25 增益，第二層 100–1300ms／0.15 增益，並遵守共享 `soundEnabled` 與 `soundVolume`。
 - 正式牌桌中每次有效抽牌動畫開始飛牌前播放一次 `game-card-draw.mp3`，使用共享 `soundVolume` 的 0.35 增益；初始發牌與所有玩家的一般抽牌共用同一觸發點。
+- 正式牌桌中本地或遠端玩家每次有效出牌動畫開始前播放一次 `game-card-play-rise.mp3`，使用共享 `soundVolume` 的 0.4 增益。
+- 裁除 `game-card-play-rise.mp3` 前 0.65 秒靜音，將輸出長度控制在 1.5 秒內並保留完整尾音，使動畫開始後能在 0.06 秒內進入可聽內容。
 - 「職場老鳥」保護動畫開始時播放一次 `game-senior-protection-activate.mp3`，使用共享 `soundEnabled`、`soundVolume` 與 0.45 增益。
 - 牌桌選單選項、玩家目標頭像、設定齒輪與設定視窗按鈕使用既有 `login-button-click`，並沿用共享音效開關、音量與停用控制規則。
 - 自訂房間等待室的頁面與子元件可用按鈕使用既有 `login-button-click`，並沿用共享音效開關、音量與停用控制規則。
@@ -31,6 +33,7 @@
 - 不在進入遊戲前從未啟動大廳音樂、共享音樂已停用或音量為 0 時強制播放，也不改變非 `Game` 來源進入大廳的既有行為。
 - 不把音樂生命週期放進 `GameStage`，避免展示頁或其他重用場景自動播放。
 - 不替角色效果抽牌或動畫展示頁加入抽牌音效，也不修改抽牌動畫速度、順序或視覺效果。
+- 不讓 `CardPlayAnimation` 展示頁或無效出牌動畫播放 `game-card-play-rise.mp3`，也不修改出牌確認、Socket.IO 合約、遊戲規則或出牌動畫視覺；除了裁切 `game-card-play-rise.mp3` 前置靜音外，不重新設計音效內容或編輯其他媒體素材。
 - 不在保護解除或其他卡牌效果被既有保護擋下時播放保護啟動音效，也不修改保護持續時間與規則。
 - 不讓音量滑桿、停用控制或非按鈕區域播放 UI 點擊音效，也不改變既有 UI 樣式、選擇或遊戲操作行為；設定視窗「返回大廳」僅修正為既有事件契約與命名路由，不新增目的地或轉場畫面。
 - 不修改自訂房間等待室的版面、按鈕樣式、房間資料流程或既有事件處理，也不為個別等待室按鈕新增不同音效。
@@ -109,6 +112,24 @@ activation 只在 `Mall`、`Loading` 與 `Game` 這些需要返回大廳續播�
 
 替代方案是在 Teleport 子元件內直接呼叫 `$router.push('/Lobby')`；未採用，因為它繞過已宣告的元件事件契約，使頁面層無法測試或協調離場行為。也不在返回按鈕直接呼叫 `startPreGameBackground()`，避免導頁與音訊生命週期出現兩個控制入口。
 
+### 正式牌桌共用出牌協調層播放 rise 音效
+
+`UseGameTableAudio` 延遲建立單一使用 `game-card-play-rise.mp3` 的 Audio 實例，並提供 `playGameCardPlaySound()`。每次播放前將 `currentTime` 重設為 0，音量使用 bounded 共享 `soundVolume` 的 0.4 倍，再沿用 `playAudio()` 的 Promise rejection 保護。
+
+`GameStage` 將此 callback 注入 `useGameStageCardPlay()`。本地 `playActiveCard()` 與遠端 `playRemoteCardPlayAnimation()` 都先驗證卡牌、來源矩形與棄牌目標矩形，只有在即將呼叫正式牌桌的 `cardPlayAnimation.play()` 前才各觸發一次。遠端流程既有的 self-player guard 保留，因此本地玩家不會因自己的 socket 回傳重複播放。替代方案是直接放入 `CardPlayAnimation`；未採用，因為動畫展示頁也會被套用。也不在 socket handler 播放，避免本地音效延遲到伺服器回應才出現。
+
+### 裁除 game-card-play-rise 前置靜音
+
+診斷顯示原始 `game-card-play-rise.mp3` 容器長度約 2.04 秒，在 -45 dB 門檻下從 0 到約 0.688 秒皆為靜音；程式已在動畫開始前立即呼叫播放，因此延遲來源是素材本身。將音檔從 0.65 秒開始裁切，保留約 0.038 秒的低音量緩衝與完整尾音，重新輸出為 192 kbps MP3。完成後容器長度必須低於 1.5 秒，-45 dB 前置靜音必須低於 0.06 秒。
+
+替代方案是在 `playGameCardPlaySound()` 將 `currentTime` 設為 0.65；未採用，因為首次播放的 seek 精度與解碼器行為不一致，也會讓素材延遲繼續存在於其他重用入口。另一方案是同時截短尾音；未採用，因為使用者感受到的是起音延遲，完整尾音不需要犧牲。
+
+### 實習生動畫在結果文字揭露時送出語意事件
+
+`InternAnimation` 將 `outcome-reveal` 加入 emit 契約。猜對與猜錯時間軸都先保留既有 1 秒猜測提示停留，接著在結果文字設為可見前送出一次 `outcome-reveal`，payload 為 `correct` 或 `incorrect`。因此聲音的觸發點與「猜對啦／猜錯啦」文字揭露一致，不提前到出牌或猜測提示階段。
+
+`GameStage` 監聽正式牌桌的 `InternAnimation` 事件，交給 `UseGameTableAudio.playInternGuessResultSound(outcome)`。控制器依 outcome 選擇 `intern-guess-correct.mp3` 或 `intern-guess-incorrect.mp3`，延遲建立兩個 Audio 實例，每次從 0 秒以 bounded `soundVolume × 0.45` 安全播放。未知 outcome、音效停用、音量為 0、Audio API 不可用或播放 Promise 被拒絕時皆安靜 no-op，動畫仍繼續。展示頁不接此事件，避免 demo 自動播放正式牌桌音效。
+
 ## Implementation Contract
 
 - **Observable behavior:** 由任何 pre-game 頁面進入 `Loading` 後，`pre-game-lobby-theme.mp3` 在 4000ms 內從目前音量線性降至 0，接著 pause 並將 `currentTime` 設為 0。Loading 期間不播放 `game-table-start-theme.mp3`。
@@ -120,6 +141,12 @@ activation 只在 `Mall`、`Loading` 與 `Game` 這些需要返回大廳續播�
 - **Observable behavior:** 每次有效洗牌動畫開始時，主層洗牌音效立即以 `soundVolume × 0.25` 播放並在 1200ms 停止；第二層在 100ms 後以 `soundVolume × 0.15` 播放並在自身播放 1200ms 後停止。兩層停止時一律 pause 並把 `currentTime` 重設為 0。
 - **Observable behavior:** 新一輪洗牌在上一輪聲音結束前開始時，舊的三個 timeout 全部被清除，兩層舊聲音停止並歸零，再建立新一輪排程；不得累積第三層或殘留停止計時器。
 - **Observable behavior:** 正式牌桌的共用 `playDrawAnimation()` 在來源與目標矩形有效時，於 self 或 opponent draw animation 開始前播放一次 `game-card-draw.mp3`，音量為 bounded `soundVolume × 0.35`；初始發牌與一般回合中任何玩家的抽牌都各自從 0 秒播放一次。
+- **Observable behavior:** 正式牌桌本地玩家的 `playActiveCard()` 與遠端玩家的 `playRemoteCardPlayAnimation()` 在卡牌、來源矩形與棄牌目標矩形有效時，於 `cardPlayAnimation.play()` 開始前播放一次 `game-card-play-rise.mp3`，音量為 bounded `soundVolume × 0.4` 且每次從 0 秒播放。
+- **Observable behavior:** `game-card-play-rise.mp3` 的前 0.65 秒已裁除，輸出容器長度低於 1.5 秒，使用 -45 dB／0.01 秒靜音偵測時的前置靜音低於 0.06 秒，且原本 0.65 秒之後的尾音完整保留。
+- **Media contract:** `game-card-play-rise.mp3` 維持 MP3、44.1 kHz stereo 與 192 kbps；不以程式 seek 取代素材裁切。
+- **Observable behavior:** 遠端出牌流程收到目前玩家自己的事件、卡牌或矩形無效、僅在 `CardPlayAnimation` 展示頁播放動畫，或共享音效停用／音量為 0 時，不得播放 `game-card-play-rise.mp3`。
+- **Observable behavior:** 實習生猜牌動畫完成既有 1 秒提示停留後、結果文字設為可見前，送出一次 `outcome-reveal`；`correct` 播放 `intern-guess-correct.mp3`，`incorrect` 播放 `intern-guess-incorrect.mp3`，兩者皆從 0 秒以 bounded `soundVolume × 0.45` 播放。
+- **Observable behavior:** 未知結果、共享音效停用／音量為 0、Audio API 不可用、播放 Promise 被拒絕或僅在動畫展示頁執行時，不得產生未處理錯誤或中斷實習生動畫。
 - **Observable behavior:** 來源或目標矩形無效時不得播放；角色效果直接使用 `CardDrawAnimation` 或展示頁播放動畫時也不得觸發 `playGameCardDealSound()`。
 - **Observable behavior:** `playEffectAnimation()` 收到 `{ type: "protection", sourceType: "senior" }` 時，在保護啟動動畫開始時播放一次 `game-senior-protection-activate.mp3`，從 0 秒開始且音量為 bounded `soundVolume × 0.45`。
 - **Observable behavior:** `sourceType` 為 `cleaner`、`intern`、`manager`、`hr` 或缺少 `senior` 的保護擋招動畫，以及 aura 離場／保護解除，都不得播放 `playSeniorProtectionActivateSound()`。
@@ -130,6 +157,8 @@ activation 只在 `Mall`、`Loading` 與 `Game` 這些需要返回大廳續播�
 - **Interface:** `useGameTableAudio()` 回傳 `startGameTableBackground(): void` 與 `stopGameTableBackground(): void`。start 是冪等操作；stop 清除淡入 interval、pause 並將 `currentTime` 重設為 0。
 - **Interface:** `useGameTableAudio()` 同時回傳 `playGameCardShuffleSound(): void`。此命令讀取共享 `soundEnabled`／`soundVolume`，但不讀寫音樂設定。
 - **Interface:** `useGameTableAudio()` 同時回傳 `playGameCardDealSound(): void`；`useGameStageDrawSequence()` 接受同名 callback，預設為 no-op，並只在正式牌桌的 `playDrawAnimation()` 通過矩形驗證後、實際動畫開始前呼叫。
+- **Interface:** `useGameTableAudio()` 同時回傳 `playGameCardPlaySound(): void`；`useGameStageCardPlay()` 接受同名 callback，預設為 no-op，並只在本地或遠端正式出牌流程通過 guard 與矩形驗證後、實際動畫開始前呼叫。
+- **Interface:** `useGameTableAudio()` 同時回傳 `playInternGuessResultSound(outcome): void`；只接受 `correct` 與 `incorrect`。`InternAnimation` emit `outcome-reveal(outcome)`，`GameStage` 在正式牌桌接線，展示頁不接線。
 - **Interface:** `useGameTableAudio()` 同時回傳 `playSeniorProtectionActivateSound(): void`；`useGameStageEffectAnimation()` 接受同名 callback，預設為 no-op，並只在 `type === "protection" && sourceType === "senior"` 的動畫開始路徑呼叫。
 - **Interface:** `syncPreGameRouteAudio(routeName, { fadeIn })` 沿用既有可選淡入旗標；根路由 watcher 對 `previousRouteName === "Mall"` 或 `previousRouteName === "Game"` 傳入 true。
 - **Interface:** `GameStage` 根節點與 `GameSettingsModal` overlay 分別將 capture click 事件傳給 `useButtonClickAudio().handleButtonClick(event)`；兩個 DOM 範圍互斥且不得逐一新增第二個播放呼叫。
@@ -137,11 +166,14 @@ activation 只在 `Mall`、`Loading` 與 `Game` 這些需要返回大廳續播�
 - **Interface:** `GameSettingsModal` 的返回按鈕呼叫 `openConfirmation("return-lobby")`，確認後 emit `return-lobby`；`GameStage` 維持同名事件轉送；`GameView` 的返回 handler 呼叫 `router.push({ name: "LobbyHome" })`，子元件不得直接寫死 `/Lobby` 路徑。
 - **Settings behavior:** `musicEnabled === false` 或 `musicVolume === 0` 時牌桌音樂不得播放。正式牌桌已啟動後重新開啟音樂時執行完整 5000ms 淡入；音量變更套用 0.2 增益並保持在 0 到 1 範圍。
 - **Failure mode:** 不支援 Audio 的環境直接 no-op。play Promise 被瀏覽器拒絕時安靜失敗，不得造成未處理 rejection、路由中斷或牌桌載入失敗。
-- **Acceptance criteria:** `node tests/pre-game-audio.test.mjs` 驗證 Loading 路由不再持續 pre-game 音樂、4000ms 淡出、Loading／Game activation 保留、`Game` 返回大廳時的 900ms 淡入、`GameStage`、Teleport 設定視窗與 `CustomRoomView` 都接上共用 click handler，以及設定返回事件完整傳到 `GameView` 並導向 `LobbyHome`；`node tests/game-table-audio.test.mjs` 驗證資產、控制器介面、5000ms 淡入、循環播放、設定同步、GameView 啟動條件、卸載清理、兩層洗牌音效、正式牌桌每次有效抽牌的 0.35 增益音效、展示頁隔離，以及 `senior` 專屬保護啟動音效與其他保護事件隔離；`node tests/card-draw-animation.test.mjs` 與 `node tests/socket-game-animation.test.mjs` 驗證抽牌與 socket 動畫契約保持不變；`npm run build` 成功且輸出包含 `game-card-draw-*.mp3` 與 `game-senior-protection-activate-*.mp3`。
-- **In scope:** 前端背景音樂控制器、Loading 路由音訊切換、GameView 生命週期與設定返回大廳導頁協調、`game-table-start-theme.mp3` 的每輪重播淡入、`game-card-shuffle.ogg` 的兩層播放控制、`game-card-draw.mp3` 的正式牌桌抽牌控制、`game-senior-protection-activate.mp3` 的職場老鳥保護啟動控制、牌桌、Teleport 設定視窗與自訂房間等待室的按鈕點擊音效及返回事件接線、聚焦測試與既有音訊資產。
-- **Out of scope:** 後端、Socket.IO 事件、遊戲規則、Loading 視覺時間、角色效果抽牌與動畫展示頁音效、保護解除音效、被保護擋招音效、音量滑桿音效、等待室與牌桌 UI 樣式變更、房間資料流程、音訊格式轉換與媒體檔內容編輯。
+- **Acceptance criteria:** `node tests/pre-game-audio.test.mjs` 驗證 Loading 路由不再持續 pre-game 音樂、4000ms 淡出、Loading／Game activation 保留、`Game` 返回大廳時的 900ms 淡入、`GameStage`、Teleport 設定視窗與 `CustomRoomView` 都接上共用 click handler，以及設定返回事件完整傳到 `GameView` 並導向 `LobbyHome`；`node tests/game-table-audio.test.mjs` 驗證資產、控制器介面、5000ms 淡入、循環播放、設定同步、GameView 啟動條件、卸載清理、兩層洗牌音效、正式牌桌每次有效抽牌的 0.35 增益音效、所有玩家有效出牌的 0.4 增益音效、裁切後 `game-card-play-rise.mp3` 小於 40 KiB、展示頁隔離，以及 `senior` 專屬保護啟動音效與其他保護事件隔離；FFmpeg 靜音偵測驗證容器長度低於 1.5 秒且 -45 dB 前置靜音低於 0.06 秒；`node tests/card-draw-animation.test.mjs`、`node tests/card-play-interaction.test.mjs` 與 `node tests/socket-game-animation.test.mjs` 驗證抽牌、出牌互動與 socket 動畫契約保持不變；`npm run build` 成功且輸出包含 `game-card-draw-*.mp3`、`game-card-play-rise-*.mp3` 與 `game-senior-protection-activate-*.mp3`。
+- **In scope:** 前端背景音樂控制器、Loading 路由音訊切換、GameView 生命週期與設定返回大廳導頁協調、`game-table-start-theme.mp3` 的每輪重播淡入、`game-card-shuffle.ogg` 的兩層播放控制、`game-card-draw.mp3` 的正式牌桌抽牌控制、`game-card-play-rise.mp3` 的正式牌桌所有玩家出牌控制與前置靜音裁切、`intern-guess-correct.mp3`／`intern-guess-incorrect.mp3` 的實習生結果揭露控制、`game-senior-protection-activate.mp3` 的職場老鳥保護啟動控制、牌桌、Teleport 設定視窗與自訂房間等待室的按鈕點擊音效及返回事件接線、聚焦測試與既有音訊資產。
+- **Out of scope:** 後端、Socket.IO 合約、遊戲規則、Loading 視覺時間、角色效果抽牌、動畫展示頁音效、無效出牌音效、保護解除音效、被保護擋招音效、音量滑桿音效、等待室與牌桌 UI 樣式變更、房間資料流程、`game-card-play-rise.mp3` 以外的音訊格式轉換或媒體內容編輯。
 
 ## Risks / Trade-offs
+
+- [直接從可聽起點裁切可能產生爆音或切掉起音] → 從偵測到的 0.688 秒起音前 0.038 秒開始裁切，保留短緩衝並驗證前置靜音低於 0.06 秒。
+- [MP3 重新編碼可能降低品質] → 維持來源 44.1 kHz stereo 與 192 kbps，只進行一次裁切重編碼，並保留完整尾音。
 
 - [瀏覽器自動播放政策可能拒絕延後的 play 呼叫] → 捕捉 Promise rejection，保證 UI 不受影響；後續音樂設定互動可再次嘗試。
 - [兩個獨立控制器可能短暫同時存在] → Loading 的 5200ms 視覺流程長於 4000ms 淡出，且牌桌音樂只在 GameStage 顯示後啟動，不做重疊交叉淡入。
@@ -155,3 +187,5 @@ activation 只在 `Mall`、`Loading` 與 `Game` 這些需要返回大廳續播�
 - [設定視窗使用 Teleport，牌桌根節點無法捕捉其點擊] → 在 modal overlay 獨立使用同一 capture handler，並以互斥 DOM 範圍避免單次點擊重複播放。
 - [等待室按鈕分散在頁面與兩個子元件，逐一接線容易遺漏或重複播放] → 僅在 `CustomRoomView` 根節點使用共用 capture handler，依 DOM 事件委派涵蓋整個等待室。
 - [設定視窗直接導頁會繞過頁面級離場協調，使音訊回歸測試只驗證控制器而未驗證實際入口] → 返回按鈕沿用 `return-lobby` emit 鏈，統一由 `GameView` 導向 `LobbyHome`，測試同時驗證 modal、stage 與 view 三層接線。
+- [把出牌音效放入底層動畫會污染展示頁，放入 socket handler 則會讓本地聲音延遲或重複] → 由正式牌桌的 `useGameStageCardPlay()` 在本地與遠端有效動畫開始前各呼叫一次注入 callback，並保留遠端 self-player guard。
+- [把實習生結果音效直接放進動畫元件會讓展示頁也播放，或在結果資料到達時播放會早於文字揭露] → 動畫元件只送出精準的 `outcome-reveal` 語意事件，由正式牌桌 `GameStage` 接到音效控制器。

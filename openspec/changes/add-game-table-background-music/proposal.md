@@ -1,6 +1,6 @@
 ## Why
 
-目前進入遊戲牌桌的 Loading 與正式牌桌階段缺少能配合場景轉換的牌桌主題音樂；此外，從進行中的牌桌返回大廳時，pre-game 大廳主題沒有恢復，現有洗牌效果音長達約 3 秒、單層且增益過高，正式牌桌的初始發牌與一般抽牌動畫、「職場老鳥」保護啟動，以及牌桌選擇、設定操作與自訂房間等待室按鈕也缺少一致的聲音回饋。需要讓 Loading 成為明確的音樂過渡區、在牌桌真正可互動時以較長淡入建立開場氛圍、讓牌桌返回大廳後重新淡入 pre-game 主題，並讓牌桌動畫與遊戲前後的 UI 操作各自取得一致且受共享設定控制的音效。
+目前進入遊戲牌桌的 Loading 與正式牌桌階段缺少能配合場景轉換的牌桌主題音樂；此外，從進行中的牌桌返回大廳時，pre-game 大廳主題沒有恢復，現有洗牌效果音長達約 3 秒、單層且增益過高，`game-card-play-rise.mp3` 開頭約有 0.69 秒靜音，使正式牌桌出牌回饋聽起來延遲，正式牌桌的初始發牌、一般抽牌與所有玩家出牌動畫、「職場老鳥」保護啟動，以及牌桌選擇、設定操作與自訂房間等待室按鈕也缺少一致的聲音回饋。需要讓 Loading 成為明確的音樂過渡區、在牌桌真正可互動時以較長淡入建立開場氛圍、讓牌桌返回大廳後重新淡入 pre-game 主題，並讓牌桌動畫與遊戲前後的 UI 操作各自取得即時、一致且受共享設定控制的音效。
 
 ## What Changes
 
@@ -18,6 +18,9 @@
 - 將來源檔 `Cheesy force field on and off Sound effect.mp3` 改為語意化的 `game-senior-protection-activate.mp3`，並僅在「職場老鳥」的保護啟動動畫開始時播放一次，使用共享音效設定與 0.45 增益；保護解除及其他卡牌被保護擋下時不播放。
 - 牌桌可用的選單選項、玩家目標頭像、右上角設定齒輪，以及 Teleport 設定視窗內的按鈕統一播放既有 `login-button-click`；音量滑桿、停用控制與音效關閉狀態不播放。
 - 自訂房間等待室的複製房號、玩家槽操作、邀請好友視窗、返回大廳與開始遊戲等可用按鈕統一播放既有 `login-button-click`；非按鈕區域與停用控制不播放。
+- 正式牌桌中任何玩家的有效出牌動畫開始前播放一次 `game-card-play-rise.mp3`，使用共享音效音量乘以 0.4；本地玩家與遠端玩家共用相同出牌協調層，無效動畫與展示頁不觸發。
+- 將 `game-card-play-rise.mp3` 的前 0.65 秒裁除並保留完整尾音，使輸出長度低於 1.5 秒、前置靜音低於 0.06 秒，同時維持 MP3 與 192 kbps，消除出牌動畫與聽覺回饋之間的素材延遲。
+- 正式牌桌打出實習生並揭露猜牌結果時，猜對播放一次 `intern-guess-correct.mp3`、猜錯播放一次 `intern-guess-incorrect.mp3`；兩者皆使用共享音效音量乘以 0.45，並與「猜對啦／猜錯啦」文字同步揭露。
 - 以聚焦的 Node 測試覆蓋 Loading 淡出、正式牌桌淡入、循環播放、設定同步及離場清理契約。
 - 以回歸測試覆蓋設定視窗返回事件從 `GameSettingsModal` 經 `GameStage` 傳到 `GameView`，並由命名路由進入 `LobbyHome` 的完整接線。
 
@@ -25,7 +28,8 @@
 
 ### New Capabilities
 
-- `game-table-background-music`: 定義從大廳經 Loading 進入正式牌桌時的背景音樂切換，以及牌桌洗牌、正式牌桌抽牌、「職場老鳥」保護啟動、牌桌與自訂房間等待室 UI 點擊音效的觸發、音量設定與清理行為。
+- `game-table-background-music`: 定義從大廳經 Loading 進入正式牌桌時的背景音樂切換，以及牌桌洗牌、正式牌桌抽牌與出牌、「職場老鳥」保護啟動、牌桌與自訂房間等待室 UI 點擊音效的觸發、音量設定與清理行為。
+- `game-table-background-music`: 同時定義實習生猜牌結果在正式牌桌揭露時的正確／錯誤語意音效與展示頁隔離行為。
 
 ### Modified Capabilities
 
@@ -39,15 +43,20 @@
     - src/assets/audio/game-table-start-theme.mp3
     - src/assets/audio/game-card-shuffle.ogg
     - src/assets/audio/game-card-draw.mp3
+    - src/assets/audio/game-card-play-rise.mp3
+    - src/assets/audio/intern-guess-correct.mp3
+    - src/assets/audio/intern-guess-incorrect.mp3
     - src/assets/audio/game-senior-protection-activate.mp3
     - src/composables/UseGameTableAudio.js
     - tests/game-table-audio.test.mjs
   - Modified:
     - src/App.vue
     - src/components/game/animations/CardShuffleAnimation.vue
+    - src/components/game/animations/InternAnimation.vue
     - src/components/game/ui/GameStage.vue
     - src/components/game/ui/GameSettingsModal.vue
     - src/composables/useGameStageEffectAnimation.js
+    - src/composables/useGameStageCardPlay.js
     - src/composables/useGameStageDrawSequence.js
     - src/composables/UsePreGameAudio.js
     - src/views/CustomRoomView.vue

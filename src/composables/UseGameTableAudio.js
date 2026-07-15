@@ -1,9 +1,12 @@
 import { watch } from "vue";
 import { useAudioSettings } from "@/composables/UseAudioSettings";
 import gameCardDealSoundUrl from "@/assets/audio/game-card-draw.mp3";
+import gameCardPlaySoundUrl from "@/assets/audio/game-card-play-rise.mp3";
 import gameCardShuffleSoundUrl from "@/assets/audio/game-card-shuffle.ogg";
 import gameSeniorProtectionActivateSoundUrl from "@/assets/audio/game-senior-protection-activate.mp3";
 import gameTableStartThemeUrl from "@/assets/audio/game-table-start-theme.mp3";
+import internGuessCorrectSoundUrl from "@/assets/audio/intern-guess-correct.mp3";
+import internGuessIncorrectSoundUrl from "@/assets/audio/intern-guess-incorrect.mp3";
 
 const GAME_TABLE_MUSIC_GAIN = 0.2;
 const GAME_TABLE_MUSIC_FADE_IN_MS = 5000;
@@ -13,15 +16,19 @@ const GAME_CARD_SHUFFLE_LAYER_DELAY_MS = 100;
 const GAME_CARD_SHUFFLE_PRIMARY_GAIN = 0.25;
 const GAME_CARD_SHUFFLE_SECONDARY_GAIN = 0.15;
 const GAME_CARD_DEAL_SOUND_GAIN = 0.35;
+const GAME_CARD_PLAY_SOUND_GAIN = 0.4;
 const GAME_SENIOR_PROTECTION_ACTIVATE_SOUND_GAIN = 0.45;
+const INTERN_GUESS_RESULT_SOUND_GAIN = 0.45;
 
 let gameTableMusicAudio = null;
 let gameTableMusicFadeTimerId = null;
 let gameTableBackgroundActive = false;
 let gameCardDealAudio = null;
+let gameCardPlayAudio = null;
 let gameCardShuffleAudios = null;
 let gameCardShuffleTimerIds = [];
 let gameSeniorProtectionActivateAudio = null;
+let internGuessResultAudios = null;
 let settingsStopHandle = null;
 
 function canUseAudio() {
@@ -89,6 +96,30 @@ function ensureGameCardDealAudio() {
   }
 
   return gameCardDealAudio;
+}
+
+function ensureGameCardPlayAudio() {
+  if (!gameCardPlayAudio) {
+    const audio = new Audio(gameCardPlaySoundUrl);
+    audio.preload = "auto";
+    gameCardPlayAudio = audio;
+  }
+
+  return gameCardPlayAudio;
+}
+
+function ensureInternGuessResultAudios() {
+  if (!internGuessResultAudios) {
+    internGuessResultAudios = {
+      correct: new Audio(internGuessCorrectSoundUrl),
+      incorrect: new Audio(internGuessIncorrectSoundUrl),
+    };
+    Object.values(internGuessResultAudios).forEach((audio) => {
+      audio.preload = "auto";
+    });
+  }
+
+  return internGuessResultAudios;
 }
 
 function ensureGameSeniorProtectionActivateAudio() {
@@ -204,6 +235,42 @@ function playGameCardDealSound() {
   const audio = ensureGameCardDealAudio();
   audio.currentTime = 0;
   audio.volume = targetVolume * GAME_CARD_DEAL_SOUND_GAIN;
+  playAudio(audio);
+}
+
+function playGameCardPlaySound() {
+  if (!canUseAudio()) {
+    return;
+  }
+
+  const { soundEnabled, soundVolume } = useAudioSettings();
+  const targetVolume = getBoundedGameTableSoundVolume(soundVolume.value);
+
+  if (!soundEnabled.value || targetVolume <= 0) {
+    return;
+  }
+
+  const audio = ensureGameCardPlayAudio();
+  audio.currentTime = 0;
+  audio.volume = targetVolume * GAME_CARD_PLAY_SOUND_GAIN;
+  playAudio(audio);
+}
+
+function playInternGuessResultSound(outcome) {
+  if (!canUseAudio() || !["correct", "incorrect"].includes(outcome)) {
+    return;
+  }
+
+  const { soundEnabled, soundVolume } = useAudioSettings();
+  const targetVolume = getBoundedGameTableSoundVolume(soundVolume.value);
+
+  if (!soundEnabled.value || targetVolume <= 0) {
+    return;
+  }
+
+  const audio = ensureInternGuessResultAudios()[outcome];
+  audio.currentTime = 0;
+  audio.volume = targetVolume * INTERN_GUESS_RESULT_SOUND_GAIN;
   playAudio(audio);
 }
 
@@ -342,7 +409,9 @@ export function useGameTableAudio() {
 
   return {
     playGameCardDealSound,
+    playGameCardPlaySound,
     playGameCardShuffleSound,
+    playInternGuessResultSound,
     playSeniorProtectionActivateSound,
     startGameTableBackground,
     stopGameTableBackground,
