@@ -2,6 +2,7 @@ import pool from "../db/index.js"
 import { createInitialState } from "../game/initialState.js"
 
 const MAX_ROOM_PLAYERS = 4
+const MIN_READY_PLAYERS_TO_START = 3
 const COMPUTER_PLAYER_NAMES = [
   "Computer 1",
   "Computer 2",
@@ -583,10 +584,12 @@ async function startGame({ roomCode, playerId }) {
       throw createServiceError("玩家人數需滿 4 人")
     }
 
-    const allReady = players.every((player) => player.is_ready)
+    const readyPlayerCount = players.filter(
+      (player) => player.role !== "host" && player.is_ready,
+    ).length
 
-    if (!allReady) {
-      throw createServiceError("所有玩家都必須準備完成")
+    if (readyPlayerCount < MIN_READY_PLAYERS_TO_START) {
+      throw createServiceError("至少需要 3 名玩家打卡才可開始遊戲")
     }
 
     const matchResult = await client.query(

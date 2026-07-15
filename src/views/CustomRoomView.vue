@@ -27,6 +27,7 @@ const invitingSlotIndex = ref(null);
 const isRestoringRoomState = ref(false);
 const hasJoinedCurrentRoom = ref(false);
 const kickedNotice = ref("");
+const REQUIRED_READY_PLAYERS_TO_START = 3;
 
 const requestedRoomCode = computed(() =>
   typeof route.query.roomCode === "string" ? route.query.roomCode.trim().toUpperCase() : "",
@@ -168,8 +169,12 @@ const occupiedSlotCount = computed(
 const readySlotCount = computed(
   () =>
     displayPlayerSlots.value.filter(
-      (slot) => slot.name && slot.isReady && !slot.isPlaceholder,
+      (slot) => slot.name && slot.isReady && !slot.isPlaceholder && !slot.isHost,
     ).length,
+);
+
+const remainingReadySlotCount = computed(() =>
+  Math.max(0, REQUIRED_READY_PLAYERS_TO_START - readySlotCount.value),
 );
 
 const inviteePlayerIds = computed(() =>
@@ -207,6 +212,10 @@ async function toggleCurrentPlayerReady() {
 }
 
 async function handlePrimaryRoomAction() {
+  if (isPrimaryActionDisabled.value) {
+    return;
+  }
+
   if (isHostPlayer.value) {
     await handleStartRoom();
     return;
@@ -494,8 +503,13 @@ watch(
           正在還原房間與玩家狀態
         </template>
         <template v-else>
-          {{ occupiedSlotCount }}/4 players
-          <span class="ml-3">{{ readySlotCount }} 已打卡</span>
+          <span>
+            {{
+              remainingReadySlotCount === 0
+                ? "已達開始遊戲的打卡條件"
+                : `還需要 ${remainingReadySlotCount} 名玩家打卡才可開始遊戲`
+            }}
+          </span>
         </template>
       </div>
       <div
@@ -509,7 +523,12 @@ watch(
           返回大廳
         </button>
         <button
-          class="btn-dark tap-pop pointer-events-auto flex h-9 cursor-pointer items-center justify-center gap-2 overflow-hidden text-sm font-bold lg:h-12 lg:text-base"
+          :class="[
+            'primary-room-action flex h-9 items-center justify-center gap-2 overflow-hidden text-sm font-bold transition-opacity lg:h-12 lg:text-base',
+            isPrimaryActionDisabled
+              ? 'pointer-events-auto opacity-50'
+              : 'btn-dark tap-pop pointer-events-auto',
+          ]"
           type="button"
           :disabled="isPrimaryActionDisabled"
           @click="handlePrimaryRoomAction"
@@ -584,6 +603,19 @@ watch(
 
 .kicked-modal-kicker {
   color: var(--brand-hover, #0046f4);
+}
+
+.primary-room-action:disabled,
+.primary-room-action:disabled:hover,
+.primary-room-action:disabled:active {
+  pointer-events: auto;
+  cursor: not-allowed;
+  transform: none;
+  border: 1px solid var(--brand-disabled, #a0a6b3);
+  border-color: var(--brand-disabled, #a0a6b3);
+  background: var(--brand-disabled, #a0a6b3);
+  color: white;
+  box-shadow: none;
 }
 
 @media (max-width: 900px) and (max-height: 520px) and (orientation: landscape) {

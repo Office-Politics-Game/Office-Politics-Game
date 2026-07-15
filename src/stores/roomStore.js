@@ -12,6 +12,8 @@ import {
 import { connectSocket, emitWithAck } from "@/services/socketClient.js";
 
 const ROOM_CODE_STORAGE_KEY = "activeRoomCode";
+const MAX_ROOM_PLAYERS = 4;
+const MIN_READY_PLAYERS_TO_START = 3;
 let activeRoomStore = null;
 let subscribedRoomCode = "";
 let subscribedPlayerId = null;
@@ -109,10 +111,11 @@ export const useRoomStore = defineStore("room", {
 
   getters: {
     readyPlayerCount: (state) =>
-      state.players.filter((player) => player.isReady).length,
+      state.players.filter((player) => player.role !== "host" && player.isReady).length,
     isRoomReadyToStart: (state) =>
-      state.players.length === 4 &&
-      state.players.every((player) => player.isReady),
+      state.players.length === MAX_ROOM_PLAYERS &&
+      state.players.filter((player) => player.role !== "host" && player.isReady).length >=
+        MIN_READY_PLAYERS_TO_START,
   },
 
   actions: {
