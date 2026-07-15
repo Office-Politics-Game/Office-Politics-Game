@@ -750,7 +750,7 @@ describe("忘記密碼服務", () => {
 
     test("有設定PASSWORD_RESET_REDIRECT_URL時，使用指定的重設密碼網址", async () => {
         process.env.PASSWORD_RESET_REDIRECT_URL =
-            "https://office-politics-game.vercel.app/?auth=reset-password"
+            "https://office-politics-game-fawn.vercel.app/?auth=reset-password"
 
         mockResetPasswordForEmail.mockResolvedValueOnce({
             data: {},
@@ -764,7 +764,7 @@ describe("忘記密碼服務", () => {
         expect(mockResetPasswordForEmail).toHaveBeenCalledWith(
             "test@example.com",
             {
-                redirectTo: "https://office-politics-game.vercel.app/?auth=reset-password"
+                redirectTo: "https://office-politics-game-fawn.vercel.app/?auth=reset-password"
             }
         )
     })
