@@ -1,0 +1,31 @@
+name: Deploy to GCP VM
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ 35.212.213.247 }}
+          username: ${{ p_tonki1123 }}
+          key: ${{ SHA256:rBn6pqY2GrdT7hn4gMkcWrDHsEMiY9kwNbuIzn9LB1c p_tonki1123@instance-20260714-022702 }}
+          script: |
+            set -e
+            cd /home/p_tonki1123/Office-Politics-Game
+            git fetch origin
+            git checkout dev
+            git pull origin dev
+            npm ci
+            npm run build
+
+            cd server
+            npm ci
+            pm2 restart office-politics-server
