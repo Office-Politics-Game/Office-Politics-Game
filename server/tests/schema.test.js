@@ -9,6 +9,11 @@ const schemaSql = fs.readFileSync(
 )
 
 describe("database schema", () => {
+    test("defines player title column", () => {
+        expect(schemaSql).toContain("title VARCHAR(100)")
+        expect(schemaSql).toContain("ADD COLUMN IF NOT EXISTS title VARCHAR(100)")
+    })
+
     test("defines achievement tables", () => {
         expect(schemaSql).toContain("CREATE TABLE achievements")
         expect(schemaSql).toContain("code VARCHAR(50) NOT NULL UNIQUE")

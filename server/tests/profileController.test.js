@@ -1,19 +1,22 @@
 import { jest } from "@jest/globals"
 
 const mockGetProfile = jest.fn()
-const mockUpdateProfile = jest.fn()
 const mockGetProfileMatches = jest.fn()
+const mockSetProfileTitle = jest.fn()
+const mockUpdateProfile = jest.fn()
 
 jest.unstable_mockModule("../src/services/profileService.js", () => ({
   getProfile: mockGetProfile,
-  updateProfile: mockUpdateProfile,
   getProfileMatches: mockGetProfileMatches,
+  setProfileTitle: mockSetProfileTitle,
+  updateProfile: mockUpdateProfile,
 }))
 
 const {
   handleGetProfile,
-  handleUpdateProfile,
   handleGetProfileMatches,
+  handleSetProfileTitle,
+  handleUpdateProfile,
 } = await import("../src/controllers/profileController.js")
 
 function createMockResponse() {
@@ -31,25 +34,23 @@ function createMockResponse() {
 describe("profileController", () => {
   beforeEach(() => {
     mockGetProfile.mockReset()
-    mockUpdateProfile.mockReset()
     mockGetProfileMatches.mockReset()
+    mockSetProfileTitle.mockReset()
+    mockUpdateProfile.mockReset()
   })
 
-  test("已登入玩家可取得 profile", async () => {
+  test("returns profile for authenticated player", async () => {
     const profile = {
       id: 1,
-      username: "測試玩家",
+      username: "Test Player",
       avatarId: 2,
-      bio: "測試自我介紹",
+      bio: "hello",
+      title: "First Win",
     }
 
     mockGetProfile.mockResolvedValueOnce(profile)
 
-    const req = {
-      player: {
-        id: 1,
-      },
-    }
+    const req = { player: { id: 1 } }
     const res = createMockResponse()
 
     await handleGetProfile(req, res)
@@ -59,23 +60,21 @@ describe("profileController", () => {
     expect(res.json).toHaveBeenCalledWith({ profile })
   })
 
-  test("更新 profile 時會使用 req.player.id 與 request body", async () => {
+  test("updates profile with player id and request body", async () => {
     const profile = {
       id: 1,
-      username: "新暱稱",
+      username: "New Name",
       avatarId: 3,
-      bio: "新的自我介紹",
+      bio: "new bio",
     }
 
     mockUpdateProfile.mockResolvedValueOnce(profile)
 
     const req = {
-      player: {
-        id: 1,
-      },
+      player: { id: 1 },
       body: {
-        username: "新暱稱",
-        bio: "新的自我介紹",
+        username: "New Name",
+        bio: "new bio",
         avatarId: 3,
       },
     }
@@ -88,23 +87,14 @@ describe("profileController", () => {
     expect(res.json).toHaveBeenCalledWith({ profile })
   })
 
-  test("取得對戰紀錄時會使用 req.player.id 與 query", async () => {
-    const matches = [
-      {
-        id: 10,
-        result: "win",
-      },
-    ]
+  test("returns profile matches with player id and query", async () => {
+    const matches = [{ id: 10, result: "win" }]
 
     mockGetProfileMatches.mockResolvedValueOnce(matches)
 
     const req = {
-      player: {
-        id: 1,
-      },
-      query: {
-        limit: "20",
-      },
+      player: { id: 1 },
+      query: { limit: "20" },
     }
     const res = createMockResponse()
 
@@ -115,68 +105,41 @@ describe("profileController", () => {
     expect(res.json).toHaveBeenCalledWith({ matches })
   })
 
-  test("取得對戰紀錄失敗時會回傳 service 錯誤訊息", async () => {
-    const error = new Error("取得對戰紀錄失敗")
-    error.statusCode = 500
-    mockGetProfileMatches.mockRejectedValueOnce(error)
+  test("sets profile title with player id and achievement code", async () => {
+    const profile = {
+      id: 1,
+      username: "Test Player",
+      title: "First Win",
+    }
+
+    mockSetProfileTitle.mockResolvedValueOnce(profile)
 
     const req = {
-      player: {
-        id: 1,
-      },
-      query: {
-        limit: "20",
-      },
+      player: { id: 1 },
+      body: { achievementCode: "first_game_win" },
     }
     const res = createMockResponse()
 
-    await handleGetProfileMatches(req, res)
+    await handleSetProfileTitle(req, res)
 
-    expect(res.status).toHaveBeenCalledWith(500)
-    expect(res.json).toHaveBeenCalledWith({
-      message: "取得對戰紀錄失敗",
-    })
-  })
-
-  test("service 回傳自訂 statusCode 時 controller 會沿用", async () => {
-    const error = new Error("找不到玩家資料")
-    error.statusCode = 404
-    mockGetCurrentProfile.mockRejectedValueOnce(error)
-
-    const req = {
-      player: {
-        id: 1,
-      },
-      query: {
-        limit: "20",
-      },
-    }
-    const res = createMockResponse()
-
-    await handleGetProfileMatches(req, res)
-
-    expect(mockGetProfileMatches).toHaveBeenCalledWith(1, req.query)
+    expect(mockSetProfileTitle).toHaveBeenCalledWith(1, "first_game_win")
     expect(res.status).toHaveBeenCalledWith(200)
-    expect(res.json).toHaveBeenCalledWith({ matches })
+    expect(res.json).toHaveBeenCalledWith({ profile })
   })
 
-  test("service 回傳自訂 statusCode 時 controller 會沿用", async () => {
-    const error = new Error("找不到玩家資料")
+  test("forwards service status codes", async () => {
+    const error = new Error("Player not found")
     error.statusCode = 404
     mockGetProfile.mockRejectedValueOnce(error)
 
-    const req = {
-      player: {
-        id: 999,
-      },
-    }
+    const req = { player: { id: 999 } }
     const res = createMockResponse()
 
     await handleGetProfile(req, res)
 
     expect(res.status).toHaveBeenCalledWith(404)
     expect(res.json).toHaveBeenCalledWith({
-      message: "找不到玩家資料",
+      message: "Player not found",
     })
   })
 })

@@ -51,7 +51,7 @@ const SELECT_DUPLICATE_PLAYER_SQL = `SELECT username, account
 
 const PLAYER_SELECT_SQL = `id, auth_user_id, username, account, avatar_id,
     level, exp, coins, gems, tickets,
-    win_count, lose_count, total_games,
+    win_count, lose_count, total_games, title,
     is_online, last_login_at, created_at, updated_at`
 
 const INSERT_PLAYER_SQL = `INSERT INTO players (auth_user_id, username, account, avatar_id)
@@ -89,6 +89,7 @@ function createPlayerRow(overrides = {}) {
         win_count: 0,
         lose_count: 0,
         total_games: 0,
+        title: null,
         is_online: false,
         last_login_at: null,
         created_at: "2026-07-01T00:00:00.000Z",
@@ -292,6 +293,7 @@ describe("註冊玩家服務", () => {
             winCount: 0,
             loseCount: 0,
             totalGames: 0,
+            title: null,
             isOnline: false,
             lastLoginAt: null,
             createdAt: "2026-07-01T00:00:00.000Z",
@@ -688,6 +690,7 @@ describe("登入玩家服務", () => {
                 winCount: 0,
                 loseCount: 0,
                 totalGames: 0,
+                title: null,
                 isOnline: true,
                 lastLoginAt: "2026-07-01T03:30:00.000Z",
                 createdAt: "2026-07-01T00:00:00.000Z",
@@ -1270,6 +1273,7 @@ describe("驗證登入狀態服務", () => {
             winCount: 0,
             loseCount: 0,
             totalGames: 0,
+            title: null,
             isOnline: false,
             lastLoginAt: null,
             createdAt: "2026-07-01T00:00:00.000Z",

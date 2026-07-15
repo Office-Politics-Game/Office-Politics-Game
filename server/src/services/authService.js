@@ -7,7 +7,7 @@ const PASSWORD_RULE_ERROR_MESSAGE = "密碼格式不符合規則"
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=[\]{};':"|,.<>/?`~])[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"|,.<>/?`~]{8,16}$/
 const PLAYER_SELECT_SQL = `id, auth_user_id, username, account, avatar_id,
     level, exp, coins, gems, tickets,
-    win_count, lose_count, total_games,
+    win_count, lose_count, total_games, title,
     is_online, last_login_at, created_at, updated_at`
 
 function createAuthError(statusCode, message) {
@@ -31,6 +31,7 @@ function formatPlayer(row) {
         winCount: row.win_count,
         loseCount: row.lose_count,
         totalGames: row.total_games,
+        title: row.title ?? null,
         isOnline: row.is_online,
         lastLoginAt: row.last_login_at,
         createdAt: row.created_at,

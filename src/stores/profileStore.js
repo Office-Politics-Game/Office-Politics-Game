@@ -1,37 +1,14 @@
 import { defineStore } from "pinia";
-import { getProfile, updateProfile, getProfileMatches } from "@/services/profileApi.js";
+import {
+  getProfile,
+  getProfileMatches,
+  setProfileTitle as setProfileTitleApi,
+  updateProfile,
+} from "@/services/profileApi.js";
 import { guestAvatars } from "@/constants/guestOptions.js";
 
 const UNSET_TEXT = "尚未設定";
 const DEFAULT_AVATAR_ID = 1;
-const PROFILE_TITLE_STORAGE_PREFIX = "office-politics-profile-title:";
-
-function getProfileTitleStorageKey(playerId) {
-  return `${PROFILE_TITLE_STORAGE_PREFIX}${playerId}`;
-}
-
-function getSavedProfileTitle(playerId) {
-  if (!playerId || typeof window === "undefined") {
-    return "";
-  }
-
-  return window.localStorage.getItem(getProfileTitleStorageKey(playerId)) || "";
-}
-
-function saveProfileTitle(playerId, title) {
-  if (!playerId || typeof window === "undefined") {
-    return;
-  }
-
-  const storageKey = getProfileTitleStorageKey(playerId);
-
-  if (!title || title === UNSET_TEXT) {
-    window.localStorage.removeItem(storageKey);
-    return;
-  }
-
-  window.localStorage.setItem(storageKey, title);
-}
 
 function getErrorMessage(error, fallbackMessage) {
   return error?.data?.message || error?.message || fallbackMessage;
@@ -60,13 +37,13 @@ function formatNumber(value) {
 
 function formatDate(value) {
   if (!value) {
-    return "尚未記錄";
+    return "尚未設定";
   }
 
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "尚未記錄";
+    return "尚未設定";
   }
 
   return new Intl.DateTimeFormat("zh-TW", {
@@ -97,13 +74,12 @@ function normalizeProfile(player, identityType) {
   const avatar =
     guestAvatars.find((item) => item.id === avatarId) ?? guestAvatars[0];
   const playerId = toNumber(player.id, 0);
-  const savedTitle = getSavedProfileTitle(playerId);
 
   return {
     id: playerId,
     identityType,
     username: player.username || UNSET_TEXT,
-    title: savedTitle || player.title || UNSET_TEXT,
+    title: player.title || UNSET_TEXT,
     avatarId,
     avatarUrl: avatar.image,
     level,
@@ -234,15 +210,11 @@ export const useProfileStore = defineStore("profile", {
       return this.profile;
     },
 
-    setProfileTitle(title) {
-      if (!this.profile) {
-        return;
-      }
+    async saveAchievementTitle(achievementCode) {
+      const data = await setProfileTitleApi(achievementCode);
+      this.profile = normalizeProfile(data.profile, "member");
 
-      const nextTitle = title || UNSET_TEXT;
-
-      this.profile.title = nextTitle;
-      saveProfileTitle(this.profile.id, nextTitle);
+      return this.profile;
     },
 
     clearProfile(identityType = "anonymous") {

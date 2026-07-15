@@ -29,8 +29,11 @@
     <AchievementPanel
       v-else-if="activeTab === 'badges' && profileStore.isMemberProfile"
       :achievements="achievementStore.achievements"
+      :current-title="profilePlayer.title"
       :is-loading="achievementStore.isLoading"
+      :is-title-saving="isSavingTitle"
       :error-message="achievementStore.errorMessage"
+      :title-error-message="titleSaveError"
       @retry="fetchAchievements"
       @use-title="handleUseAchievementTitle"
     />
@@ -165,6 +168,8 @@ const RETURN_ANIMATION_DURATION = 700;
 
 const activeTab = ref("profile");
 const isReturningToLobby = ref(false);
+const isSavingTitle = ref(false);
+const titleSaveError = ref("");
 const equippedAvatarUrl = ref("");
 const hasResolvedEquippedAvatar = ref(false);
 const editingField = ref(null);
@@ -475,8 +480,22 @@ function closePasswordEditor() {
   isPasswordEditorOpen.value = false;
 }
 
-function handleUseAchievementTitle(achievement) {
-  profileStore.setProfileTitle(achievement?.name);
+async function handleUseAchievementTitle(achievement) {
+  if (!achievement?.code || isSavingTitle.value) {
+    return;
+  }
+
+  titleSaveError.value = "";
+  isSavingTitle.value = true;
+
+  try {
+    await profileStore.saveAchievementTitle(achievement.code);
+  } catch (error) {
+    titleSaveError.value =
+      error?.data?.message || error?.message || "稱號設定失敗，請再試一次。";
+  } finally {
+    isSavingTitle.value = false;
+  }
 }
 
 function goLogin() {
