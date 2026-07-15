@@ -67,10 +67,12 @@ test('cleaner animation reveals for two seconds and returns to its hand', async 
   const source = await readSource('src/components/game/animations/CleanerAnimation.vue')
   assert.match(source, /getPlayerHandRect/)
   assert.match(source, /\.to\(\{\}, \{ duration: 2 \}\)/)
-  assert.match(source, /rotationY:\s*180/)
-  assert.match(source, /rotationY:\s*0/)
+  assert.match(source, /rotationY: startsFaceUp \? 0 : 180/)
+  assert.match(source, /getFlipVars\(0, timing\.flip\)/)
+  assert.match(source, /getFlipVars\(180, timing\.flip\)/)
+  assert.match(source, /getReturnToOriginVars\(startScale/)
   assert.match(source, /x: 0,[\s\S]*y: 0,[\s\S]*scale: startScale/)
-  assert.doesNotMatch(source, /glow|ring|slash|shockwave/)
+  assert.doesNotMatch(source, /glowRef|ringRef|slashRef|shockwaveRef/)
 })
 
 test('cleaner keeps cards hidden when another player performs the viewing', async () => {
@@ -80,20 +82,39 @@ test('cleaner keeps cards hidden when another player performs the viewing', asyn
   assert.match(source, /result\.viewerPlayerId/)
   assert.match(source, /hiddenFromViewer = result\.revealCard === false/)
   assert.match(source, /viewerTranslation = getTranslation\(originRect, viewerRect\)/)
-  assert.match(source, /viewerTranslation\.x/)
-  assert.match(source, /viewerTranslation\.y/)
+  assert.match(source, /getMoveVars\(viewerTranslation/)
   assert.match(source, /getScaleForHeight\(viewerRect, height\) \* 2/)
   assert.match(source, /if \(!hiddenFromViewer\)/)
   assert.match(source, /\.to\(\{\}, \{ duration: 2 \}\)/)
   assert.match(source, /v-if="activeResult\.revealCard !== false"/)
-  assert.match(demo, /key:\s*'cleaner-opponent-opponent'/)
-  assert.match(demo, /key:\s*'cleaner-opponent-self'/)
-  assert.equal((demo.match(/revealCard:\s*false/g) ?? []).length >= 2, true)
-  assert.match(demo, /viewerPlayerId:\s*'player-left'/)
-  assert.match(
-    demo,
-    /cleaner-opponent-self[\s\S]*targetPlayerId:\s*'player-bottom'/,
-  )
+  assert.match(demo, /viewerPlayerId:\s*SELF_PLAYER_ID/)
+  assert.match(demo, /targetPlayerId:\s*'player-top'/)
+})
+
+test('cleaner shows the public viewer and target prompt on the intern timeline', async () => {
+  const source = await readSource('src/components/game/animations/CleanerAnimation.vue')
+  const stage = await readSource('src/components/game/ui/GameStage.vue')
+  const demo = await readSource('src/views/CardPlayTestView.vue')
+
+  assert.match(source, /sourcePlayerName:\s*\{ type: String, default: ['"]玩家['"] \}/)
+  assert.match(source, /targetPlayerName:\s*\{ type: String, default: ['"]玩家['"] \}/)
+  assert.match(source, /const promptRef = ref\(null\)/)
+  assert.match(source, /const CLEANER_PROMPT_HOLD_SECONDS = 1/)
+  assert.match(source, /ref="promptRef" class="cleaner-animation__prompt"/)
+  assert.match(source, /cleaner-animation__prompt-value">[\s\S]*sourcePlayerName[\s\S]*<\/span>[\s\S]*查看[\s\S]*cleaner-animation__prompt-value">[\s\S]*targetPlayerName[\s\S]*<\/span>[\s\S]*手牌/)
+  assert.match(source, /\.to\(\{\}, \{ duration: CLEANER_PROMPT_HOLD_SECONDS \}\)[\s\S]*\.to\(\s*cardElement,/)
+  assert.match(source, /\.to\(\{\}, \{ duration: 2 \}\)[\s\S]*\.set\(promptRef\.value, \{ opacity: 0 \}\)/)
+  assert.match(source, /function getKillTargets\(\) \{[\s\S]*promptRef\.value/)
+  assert.match(source, /\.cleaner-animation__prompt \{[\s\S]*top: 25%[\s\S]*width: min\(92vw, 900px\)[\s\S]*font-size: clamp\(14\.4px, 2\.7vw, 32\.4px\)/)
+  assert.match(source, /\.cleaner-animation__prompt-value \{[\s\S]*color: #facc15/)
+  assert.match(stage, /const activeCleanerSourcePlayerName = computed/)
+  assert.match(stage, /activeEffectResult\.value\.viewerPlayerId/)
+  assert.match(stage, /const activeCleanerTargetPlayerName = computed/)
+  assert.match(stage, /activeEffectResult\.value\.targetPlayerId/)
+  assert.match(stage, /:source-player-name="activeCleanerSourcePlayerName"/)
+  assert.match(stage, /:target-player-name="activeCleanerTargetPlayerName"/)
+  assert.match(demo, /:source-player-name="getPlayerName\(cleanerResult\.viewerPlayerId\)"/)
+  assert.match(demo, /:target-player-name="getPlayerName\(cleanerResult\.targetPlayerId\)"/)
 })
 
 test('cleaner flips the current player card from front to back without fading', async () => {
@@ -109,25 +130,25 @@ test('cleaner flips the current player card from front to back without fading', 
   assert.match(source, /rotationY: startsFaceUp \? 0 : 180/)
   assert.match(
     source,
-    /if \(startsFaceUp\)[\s\S]*rotationY: 180[\s\S]*'<',/,
+    /if \(startsFaceUp\)[\s\S]*getFlipVars\(180, timing\.flip\)[\s\S]*'<',/,
   )
   assert.match(
     source,
-    /x: 0,[\s\S]*y: 0,[\s\S]*if \(startsFaceUp\)[\s\S]*rotationY: 0[\s\S]*'<',/,
+    /x: 0,[\s\S]*y: 0,[\s\S]*if \(startsFaceUp\)[\s\S]*getFlipVars\(0, timing\.flip\)[\s\S]*'<',/,
   )
   const cardSetSource = source.slice(
-    source.indexOf('gsap.set(cardRef.value'),
-    source.indexOf('gsap.set(flipperRef.value'),
+    source.indexOf('gsap.set(cardElement'),
+    source.indexOf('gsap.set(flipperElement'),
   )
   assert.doesNotMatch(cardSetSource, /opacity:/)
   assert.doesNotMatch(
     source,
-    /\.to\(cardRef\.value,\s*\{[^}]*opacity:/,
+    /\.to\(cardElement,\s*\{[^}]*opacity:/,
   )
   assert.match(stage, /:is-self-player="animationRects\.isSelfPlayer"/)
   assert.match(
     demo,
-    /:is-self-player="\(playerId\) => playerId === 'player-bottom'"/,
+    /:is-self-player="isSelfPlayer"/,
   )
 })
 

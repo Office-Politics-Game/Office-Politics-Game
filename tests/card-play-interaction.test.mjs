@@ -113,19 +113,33 @@ test('intern animation shows the submitted position before a persistent outcome'
   assert.match(source, /\.intern-animation__prompt \{[\s\S]*width: min\(92vw, 900px\)[\s\S]*overflow-wrap: anywhere/)
 })
 
-test('intern target selection precedes the position dialog', async () => {
+test('all targeted cards select a player before opening the confirmation dialog', async () => {
   const stageSource = await readSource('src/components/game/ui/GameStage.vue')
   const cardPlaySource = await readSource('src/composables/useGameStageCardPlay.js')
 
   assert.match(cardPlaySource, /const isPendingTargetSelectionActive = computed/)
-  assert.match(cardPlaySource, /!pendingRequiresGuess\.value \|\| !selectedTargetPlayerId\.value/)
+  assert.match(cardPlaySource, /pendingRequiresTarget\.value &&\s*!selectedTargetPlayerId\.value/)
   assert.match(cardPlaySource, /const isPendingPlayPanelVisible = computed/)
-  assert.match(cardPlaySource, /!pendingRequiresTarget\.value \|\|[\s\S]*!pendingRequiresGuess\.value \|\|[\s\S]*Boolean\(selectedTargetPlayerId\.value\)/)
+  assert.match(cardPlaySource, /!pendingRequiresTarget\.value \|\|\s*Boolean\(selectedTargetPlayerId\.value\)/)
+  assert.match(cardPlaySource, /if \(!selectableTargetPlayerIds\.value\.includes\(playerId\)\) \{\s*return;/)
   assert.match(stageSource, /:is-target-selection-active="isPendingTargetSelectionActive"/)
-  assert.match(stageSource, /v-if="pendingRequiresGuess && isPendingTargetSelectionActive"/)
+  assert.match(stageSource, /v-if="isPendingTargetSelectionActive"/)
   assert.match(stageSource, />\s*請選擇玩家\s*<\/p>/)
   assert.match(stageSource, /\.play-target-prompt \{[\s\S]*z-index: 45[\s\S]*pointer-events: none/)
   assert.match(stageSource, /<CardPlayConfirmPanel[\s\S]*v-if="isPendingPlayPanelVisible"/)
+})
+
+test('cards without a player target bypass pending target selection', async () => {
+  const cardPlaySource = await readSource('src/composables/useGameStageCardPlay.js')
+
+  assert.match(
+    cardPlaySource,
+    /function cardRequiresPlayChoices\(card\) \{[\s\S]*card\?\.targetMode === "opponent" \|\|[\s\S]*card\?\.targetMode === "anyPlayer" \|\|[\s\S]*Boolean\(card\?\.requiresGuess\)/,
+  )
+  assert.match(
+    cardPlaySource,
+    /if \(cardRequiresPlayChoices\(card\)\) \{\s*preparePendingPlay\(card\);\s*\} else \{\s*emitPlayCard\(card\);/,
+  )
 })
 
 test('card play uses a six pixel drag threshold and inspection state', async () => {

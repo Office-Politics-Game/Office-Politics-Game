@@ -32,6 +32,7 @@
       :is-loading="achievementStore.isLoading"
       :error-message="achievementStore.errorMessage"
       @retry="fetchAchievements"
+      @use-title="handleUseAchievementTitle"
     />
     <ProfileEmptyPanel
       v-else-if="isGuestLockedTab"
@@ -472,6 +473,10 @@ function openPasswordEditor() {
 
 function closePasswordEditor() {
   isPasswordEditorOpen.value = false;
+}
+
+function handleUseAchievementTitle(achievement) {
+  profileStore.setProfileTitle(achievement?.name);
 }
 
 function goLogin() {

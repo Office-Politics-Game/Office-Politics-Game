@@ -214,6 +214,7 @@ export function useGameSocketActions({
       return
     }
 
+    gameStage.value?.clearStagedDiscardCard?.()
     await nextTick()
     await nextTick()
     await gameStage.value?.waitForNoticeIdle?.()
@@ -227,7 +228,9 @@ export function useGameSocketActions({
     const afterActionId = data?.afterActionId
 
     if (!afterActionId) {
-      applyGameStatePayload(data)
+      if (applyGameStatePayload(data)) {
+        gameStage.value?.clearStagedDiscardCard?.()
+      }
       return
     }
 
@@ -302,6 +305,9 @@ export function useGameSocketActions({
         : null
 
       await gameStage.value?.playRemoteCardPlayAnimation?.({ ...event, discardedCard })
+      if (discardedCard) {
+        await gameStage.value?.stageDiscardedCard?.(discardedCard)
+      }
       if (animationResult) {
         await gameStage.value?.playEffectAnimation?.(animationResult)
       }
@@ -443,7 +449,9 @@ export function useGameSocketActions({
       if (data?.afterActionId) {
         handleSocketGameState(data)
       } else {
-        applyGameStatePayload(data)
+        if (applyGameStatePayload(data)) {
+          gameStage.value?.clearStagedDiscardCard?.()
+        }
       }
     } catch (error) {
       console.warn('[game:view] play-card:socket-failed', {
@@ -457,6 +465,12 @@ export function useGameSocketActions({
         const data = await playGameCard(normalizedRoomCode.value, playPayload)
         const animationResult = normalizeEffectAnimationResult(data?.animationResult)
         const showdownResult = normalizeShowdownResult(data?.showdownResult)
+        const discardedCard = data?.discardedCard
+          ? normalizeCard(data.discardedCard)
+          : null
+        if (discardedCard) {
+          await gameStage.value?.stageDiscardedCard?.(discardedCard)
+        }
         if (animationResult && gameStage.value?.playEffectAnimation) {
           try {
             await gameStage.value.playEffectAnimation(animationResult)
@@ -480,6 +494,7 @@ export function useGameSocketActions({
         if (!applyGameStatePayload(data)) {
           await refreshRoomState()
         }
+        gameStage.value?.clearStagedDiscardCard?.()
       } catch (fallbackError) {
         console.warn('[game:view] play-card:fallback-failed', {
           roomCode: normalizedRoomCode.value,
@@ -488,6 +503,7 @@ export function useGameSocketActions({
           errorData: fallbackError?.data,
         })
         await refreshRoomState()
+        gameStage.value?.clearStagedDiscardCard?.()
       }
     } finally {
       isSocketActionSubmitting.value = false

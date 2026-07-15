@@ -1,4 +1,5 @@
 <script setup>
+import AchievementUnlockNotice from "@/components/common/AchievementUnlockNotice.vue";
 import { watch } from "vue";
 import { useRoute } from "vue-router";
 import RotateDeviceNotice from "@/components/common/RotateDeviceNotice.vue";
@@ -19,5 +20,6 @@ watch(
 
 <template>
   <RouterView />
+  <AchievementUnlockNotice />
   <RotateDeviceNotice />
 </template>
