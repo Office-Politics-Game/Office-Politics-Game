@@ -25,13 +25,11 @@ describe("requireAuth middleware", () => {
         mockVerifyToken.mockReset()
     })
 
-    test("沒有 Authorization header 時回傳 401", async () => {
+    test("沒有驗證 Cookie 時回傳 401", async () => {
         const error = new Error("缺少登入驗證token")
         mockVerifyToken.mockRejectedValueOnce(error)
 
-        const req = {
-            headers: {}
-        }
+        const req = { cookies: {} }
         const res = createMockResponse()
         const next = jest.fn()
 
@@ -45,11 +43,12 @@ describe("requireAuth middleware", () => {
         })
     })
 
-    test("Authorization 格式不是 Bearer token 時回傳 401", async () => {
+    test("只有 Authorization header、沒有 Cookie 時回傳 401", async () => {
         const error = new Error("缺少登入驗證token")
         mockVerifyToken.mockRejectedValueOnce(error)
 
         const req = {
+            cookies: {},
             headers: {
                 authorization: "Token invalid-token"
             }
@@ -72,8 +71,8 @@ describe("requireAuth middleware", () => {
         mockVerifyToken.mockRejectedValueOnce(error)
 
         const req = {
-            headers: {
-                authorization: "Bearer invalid-token"
+            cookies: {
+                officePoliticsAuthToken: "invalid-token"
             }
         }
         const res = createMockResponse()
@@ -100,8 +99,8 @@ describe("requireAuth middleware", () => {
         mockVerifyToken.mockResolvedValueOnce(player)
 
         const req = {
-            headers: {
-                authorization: "Bearer valid-token"
+            cookies: {
+                officePoliticsAuthToken: "valid-token"
             }
         }
         const res = createMockResponse()
@@ -122,8 +121,8 @@ describe("requireAuth middleware", () => {
         mockVerifyToken.mockRejectedValueOnce(error)
 
         const req = {
-            headers: {
-                authorization: "Bearer valid-token"
+            cookies: {
+                officePoliticsAuthToken: "valid-token"
             }
         }
         const res = createMockResponse()

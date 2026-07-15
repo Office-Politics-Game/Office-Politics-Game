@@ -143,7 +143,7 @@ function mergeDirectMessages(...messageGroups) {
 function getAuthenticatedPlayerId() {
   const authStore = useAuthStore();
 
-  if (!authStore.isLoggedIn || !authStore.token) {
+  if (!authStore.isLoggedIn) {
     return null;
   }
 
@@ -204,14 +204,14 @@ export const useChatStore = defineStore("chat", {
         return false;
       }
 
-      if (!authStore.isLoggedIn || !authStore.token) {
+      if (!authStore.isLoggedIn || !authStore.currentPlayer?.id) {
         this.isRealtimeSubscribed = false;
         this.realtimeErrorMessage = CHAT_LOGIN_REQUIRED_MESSAGE;
         return false;
       }
 
       try {
-        await emitWithAck("chat:subscribe", { token: authStore.token });
+        await emitWithAck("chat:subscribe", {});
 
         if (!isRealtimeGenerationActive(this, generation)) {
           return false;
@@ -408,11 +408,8 @@ export const useChatStore = defineStore("chat", {
       this.errorMessage = "";
 
       try {
-        const playerId = this.getCurrentPlayerId();
-        const data = await getDirectMessagesApi({
-          playerId,
-          friendId: numericFriendId,
-        });
+        this.getCurrentPlayerId();
+        const data = await getDirectMessagesApi(numericFriendId);
 
         if (realtimeGeneration === undefined) {
           this.mergeMessages(numericFriendId, data.messages ?? []);
@@ -459,9 +456,8 @@ export const useChatStore = defineStore("chat", {
       this.errorMessage = "";
 
       try {
-        const playerId = this.getCurrentPlayerId();
+        this.getCurrentPlayerId();
         const data = await sendDirectMessageApi({
-          playerId,
           friendId: numericFriendId,
           content: normalizedContent,
         });

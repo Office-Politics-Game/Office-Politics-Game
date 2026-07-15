@@ -65,7 +65,6 @@ function wait(milliseconds) {
 function authenticatePlayer(playerId = 2) {
   const authStore = useAuthStore()
   authStore.currentPlayer = { id: playerId }
-  authStore.token = `player-${playerId}-token`
   authStore.isLoggedIn = true
   authStore.hasVerifiedToken = true
 }
@@ -217,14 +216,16 @@ test("ignores malformed realtime messages", () => {
   assert.deepEqual(store.conversations, {})
 })
 
-test("starts realtime only once and subscribes with the current member token", async () => {
+test("starts realtime once without exposing or sending the member token", async () => {
   const harness = installSocketHarness()
   authenticatePlayer(2)
+  const authStore = useAuthStore()
   const store = useChatStore()
 
   await store.startRealtime()
   await store.startRealtime()
 
+  assert.equal("token" in authStore, false)
   assert.equal(store.isRealtimeStarted, true)
   assert.equal(
     harness.acknowledgements.filter(({ eventName }) => eventName === "chat:subscribe").length,
@@ -232,7 +233,7 @@ test("starts realtime only once and subscribes with the current member token", a
   )
   assert.deepEqual(harness.acknowledgements[0], {
     eventName: "chat:subscribe",
-    payload: { token: "player-2-token" },
+    payload: {},
   })
   assert.equal(harness.handlers.has("chat:message"), true)
   assert.equal(harness.handlers.has("connect"), true)
