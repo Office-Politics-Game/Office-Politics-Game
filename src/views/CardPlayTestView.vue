@@ -216,6 +216,13 @@ function isSelfPlayer(playerId) {
   return String(playerId) === SELF_PLAYER_ID
 }
 
+function getPlayerName(playerId) {
+  return (
+    players.find((player) => String(player.id) === String(playerId))?.name ??
+    '玩家'
+  )
+}
+
 function setBusyState(label) {
   isBusy.value = true
   lastAction.value = label
@@ -622,6 +629,8 @@ onUnmounted(() => {
     <CleanerAnimation
       v-if="cleanerResult"
       :result="cleanerResult"
+      :source-player-name="getPlayerName(cleanerResult.viewerPlayerId)"
+      :target-player-name="getPlayerName(cleanerResult.targetPlayerId)"
       :get-player-hand-rect="getPlayerHandRect"
       :is-self-player="isSelfPlayer"
       @complete="(result) => clearEffectResult('cleaner', result)"

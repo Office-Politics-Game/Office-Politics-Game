@@ -1,4 +1,4 @@
-import { computed, ref } from "vue";
+import { computed, nextTick, ref } from "vue";
 
 const DRAG_THRESHOLD_PX = 6;
 
@@ -65,6 +65,7 @@ export function useGameStageCardPlay({
   const isOverPlayZone = ref(false);
   const locallyHiddenPlayedCardIds = ref([]);
   const pendingPlay = ref(null);
+  const stagedDiscardCard = ref(null);
   const selectedTargetPlayerId = ref(null);
   const selectedGuessRank = ref(null);
   const inspectedCard = ref(null);
@@ -96,13 +97,12 @@ export function useGameStageCardPlay({
   const isPendingTargetSelectionActive = computed(
     () =>
       pendingRequiresTarget.value &&
-      (!pendingRequiresGuess.value || !selectedTargetPlayerId.value),
+      !selectedTargetPlayerId.value,
   );
   const isPendingPlayPanelVisible = computed(
     () =>
       Boolean(pendingPlay.value) &&
       (!pendingRequiresTarget.value ||
-        !pendingRequiresGuess.value ||
         Boolean(selectedTargetPlayerId.value)),
   );
   const selectableTargetPlayerIds = computed(() => {
@@ -153,15 +153,17 @@ export function useGameStageCardPlay({
   });
   const visibleDiscardCards = computed(() => {
     const pendingCard = pendingPlay.value?.card;
+    const temporaryTopCard = stagedDiscardCard.value ?? pendingCard;
 
     if (
-      !pendingCard ||
-      props.discardCards.some((card) => card.id === pendingCard.id)
+      !temporaryTopCard ||
+      (!stagedDiscardCard.value &&
+        props.discardCards.some((card) => card.id === temporaryTopCard.id))
     ) {
       return props.discardCards;
     }
 
-    return [...props.discardCards, pendingCard];
+    return [...props.discardCards, temporaryTopCard];
   });
   const selectedTargetPlayer = computed(
     () =>
@@ -335,6 +337,28 @@ export function useGameStageCardPlay({
     });
   }
 
+  function setStagedDiscardCard(card) {
+    if (!card) {
+      return false;
+    }
+
+    stagedDiscardCard.value = card;
+    return true;
+  }
+
+  async function stageDiscardedCard(card) {
+    if (!setStagedDiscardCard(card)) {
+      return false;
+    }
+
+    await nextTick();
+    return true;
+  }
+
+  function clearStagedDiscardCard() {
+    stagedDiscardCard.value = null;
+  }
+
   function selectTargetPlayer(playerId) {
     if (!selectableTargetPlayerIds.value.includes(playerId)) {
       return;
@@ -358,6 +382,7 @@ export function useGameStageCardPlay({
 
     const playedCard = pendingPlay.value.card;
 
+    setStagedDiscardCard(playedCard);
     emitPlayCard(
       playedCard,
       selectedTargetPlayerId.value,
@@ -407,6 +432,10 @@ export function useGameStageCardPlay({
 
       if (didPlay) {
         inspectedCard.value = null;
+
+        if (!cardRequiresPlayChoices(card)) {
+          await stageDiscardedCard(card);
+        }
         if (cardRequiresPlayChoices(card)) {
           preparePendingPlay(card);
         } else {
@@ -569,6 +598,7 @@ export function useGameStageCardPlay({
   function cleanupCardPlay() {
     clearPointerListeners();
     inspectedCard.value = null;
+    clearStagedDiscardCard();
     hiddenPlayedCardTimers.forEach((timer) => window.clearTimeout(timer));
     hiddenPlayedCardTimers.clear();
   }
@@ -621,6 +651,8 @@ export function useGameStageCardPlay({
     cancelPendingPlay,
     handleCardPointerDown,
     playRemoteCardPlayAnimation,
+    stageDiscardedCard,
+    clearStagedDiscardCard,
     cleanupCardPlay,
     pruneHiddenPlayedCards,
   };
