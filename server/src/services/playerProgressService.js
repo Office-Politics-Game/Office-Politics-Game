@@ -1,7 +1,10 @@
 import pool from "../db/index.js"
+import { unlockMatchAchievements } from "./achievementService.js"
 
 const MATCH_COMPLETE_EXP = 100
 const MATCH_WIN_BONUS_EXP = 200
+const MATCH_COMPLETE_COINS = 200
+const MATCH_WIN_BONUS_COINS = 800
 
 function createServiceError(message, statusCode = 400) {
   const error = new Error(message)
@@ -41,6 +44,13 @@ function getMatchPlayers(state) {
 
 function getUniquePlayerIds(matchPlayers) {
   return [...new Set(matchPlayers.map((player) => player.playerId))]
+}
+
+function getPlayerReward(isWinner) {
+  return {
+    expGained: MATCH_COMPLETE_EXP + (isWinner ? MATCH_WIN_BONUS_EXP : 0),
+    coinsGained: MATCH_COMPLETE_COINS + (isWinner ? MATCH_WIN_BONUS_COINS : 0),
+  }
 }
 
 async function finalizeMatchProgress({ matchId, state }) {
@@ -106,14 +116,25 @@ async function finalizeMatchProgress({ matchId, state }) {
       throw createServiceError("對局玩家資料不完整")
     }
 
+    const rewardsByPlayerId = {}
+
     for (const player of playerResult.rows) {
       const isWinner = player.id === winnerPlayerId
-      const gainedExp = MATCH_COMPLETE_EXP + (isWinner ? MATCH_WIN_BONUS_EXP : 0)
+      const { expGained, coinsGained } = getPlayerReward(isWinner)
       const progress = applyExperience({
         level: player.level,
         exp: player.exp,
-        gainedExp,
+        gainedExp: expGained,
       })
+
+      rewardsByPlayerId[player.id] = {
+        playerId: player.id,
+        expGained,
+        coinsGained,
+        level: progress.level,
+        exp: progress.exp,
+        result: isWinner ? "win" : "lose",
+      }
 
       await client.query(
         `UPDATE players
@@ -122,15 +143,17 @@ async function finalizeMatchProgress({ matchId, state }) {
              total_games = total_games + 1,
              level = $3,
              exp = $4,
+             coins = coins + $5,
              updated_at = CURRENT_TIMESTAMP
-         WHERE id = $5`,
+         WHERE id = $6`,
         [
           isWinner ? 1 : 0,
           isWinner ? 0 : 1,
           progress.level,
           progress.exp,
+          coinsGained,
           player.id,
-        ]
+        ],
       )
 
       await client.query(
@@ -140,15 +163,19 @@ async function finalizeMatchProgress({ matchId, state }) {
            username_snapshot,
            avatar_id_snapshot,
            round_wins,
-           result
+           result,
+           exp_gained,
+           coins_gained
          )
-         VALUES ($1, $2, $3, $4, $5, $6)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          ON CONFLICT (match_id, player_id)
          DO UPDATE SET
            username_snapshot = EXCLUDED.username_snapshot,
            avatar_id_snapshot = EXCLUDED.avatar_id_snapshot,
            round_wins = EXCLUDED.round_wins,
-           result = EXCLUDED.result`,
+           result = EXCLUDED.result,
+           exp_gained = EXCLUDED.exp_gained,
+           coins_gained = EXCLUDED.coins_gained`,
         [
           numericMatchId,
           player.id,
@@ -156,9 +183,18 @@ async function finalizeMatchProgress({ matchId, state }) {
           player.avatar_id,
           roundWinsByPlayerId.get(player.id) || 0,
           isWinner ? "win" : "lose",
+          expGained,
+          coinsGained,
         ]
       )
     }
+
+    const unlockedAchievementsByPlayerId = await unlockMatchAchievements({
+      client,
+      matchId: numericMatchId,
+      playerIds,
+      winnerPlayerId,
+    })
 
     await client.query(
       `UPDATE matches
@@ -175,6 +211,8 @@ async function finalizeMatchProgress({ matchId, state }) {
       matchId: numericMatchId,
       winnerPlayerId,
       playerIds,
+      rewardsByPlayerId,
+      unlockedAchievementsByPlayerId,
     }
   } catch (error) {
     await client.query("ROLLBACK")
@@ -187,7 +225,10 @@ async function finalizeMatchProgress({ matchId, state }) {
 export {
   MATCH_COMPLETE_EXP,
   MATCH_WIN_BONUS_EXP,
+  MATCH_COMPLETE_COINS,
+  MATCH_WIN_BONUS_COINS,
   applyExperience,
   finalizeMatchProgress,
-  getNextExp
+  getNextExp,
+  getPlayerReward
 }

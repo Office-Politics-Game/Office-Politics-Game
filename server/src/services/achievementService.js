@@ -140,8 +140,51 @@ async function unlockAchievement(playerIdValue, codeValue) {
     })
 }
 
+async function unlockMatchAchievements({ client, matchId, playerIds, winnerPlayerId }) {
+  const result = await client.query(
+    `SELECT id, code, name, description, category, reward_currency, reward_amount
+     FROM achievements
+     WHERE code = ANY($1::text[])`,
+    [["first_match", "first_win"]]
+  )
+
+  const achievementsByCode = new Map(result.rows.map((row) => [row.code, row]))
+  const unlockedByPlayerId = new Map(playerIds.map((playerId) => [playerId, []]))
+
+  for (const playerId of playerIds) {
+    const codes = ["first_match"]
+
+    if (playerId === winnerPlayerId) {
+      codes.push("first_win")
+    }
+
+    for (const code of codes) {
+      const achievement = achievementsByCode.get(code)
+      if (!achievement) continue
+
+      const insertResult = await client.query(
+        `INSERT INTO player_achievements (player_id, achievement_id, source_match_id)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (player_id, achievement_id) DO NOTHING
+         RETURNING unlocked_at`,
+        [playerId, achievement.id, matchId]
+      )
+
+      if (insertResult.rows.length > 0) {
+        unlockedByPlayerId.get(playerId).push(formatAchievement({
+          ...achievement,
+          unlocked_at: insertResult.rows[0].unlocked_at,
+        }))
+      }
+    }
+  }
+
+  return Object.fromEntries(unlockedByPlayerId)
+}
+
 export {
     getPlayerAchievements,
     unlockAchievement,
+    unlockMatchAchievements,
     appendUnlockedAchievements,
 }
