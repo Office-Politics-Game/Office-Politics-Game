@@ -167,6 +167,7 @@ async function emitComputerTurnResult(io, roomCode, result) {
                 : null,
             discardedCard: result.playResult.discardedCard,
             animationResult: result.playResult.animationResult,
+            showdownResult: result.playResult.showdownResult,
         }
 
         emitPlayCardActionToPlayers(io, roomCode, result.playResult.state, playAction)
@@ -272,10 +273,12 @@ function registerGameHandlers(io, socket) {
             if (typeof callback === "function") {
                 callback({
                     ok: true,
-                    data: {
-                        drawnCard: result.drawnCard,
-                        state: gameState,
-                    },
+                        data: {
+                            drawnCard: result.drawnCard,
+                            state: gameState.state,
+                            afterActionId: drawAction.id,
+                            readyForComputerTurn: false,
+                        },
                 })
             }
         } catch (error) {
@@ -323,6 +326,7 @@ function registerGameHandlers(io, socket) {
                 targetPlayerId: targetPlayerId ? Number(targetPlayerId) : null,
                 discardedCard: result.discardedCard,
                 animationResult: result.animationResult,
+                showdownResult: result.showdownResult,
             }
 
             emitPlayCardActionToPlayers(io, roomCode, result.state, playAction)
@@ -341,9 +345,11 @@ function registerGameHandlers(io, socket) {
                     data: {
                         result: result.result,
                         animationResult: result.animationResult,
+                        showdownResult: result.showdownResult,
                         discardedCard: result.discardedCard,
                         actionLog: result.actionLog,
-                        state: gameState,
+                        state: gameState.state,
+                        afterActionId: playActionId,
                     },
                 })
             }

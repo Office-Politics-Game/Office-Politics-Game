@@ -3,6 +3,7 @@ CREATE TABLE players (
   auth_user_id UUID UNIQUE,
   username VARCHAR(50) NOT NULL UNIQUE,
   avatar_id INTEGER,
+  bio TEXT DEFAULT '',
   level INTEGER NOT NULL DEFAULT 1 CHECK (level >= 1),
   exp INTEGER NOT NULL DEFAULT 0 CHECK (exp >= 0),
   coins INTEGER NOT NULL DEFAULT 0 CHECK (coins >= 0 AND coins <= 99999),
@@ -19,6 +20,13 @@ CREATE TABLE players (
 
 ALTER TABLE players
 ADD COLUMN IF NOT EXISTS account VARCHAR(255) UNIQUE;
+
+ALTER TABLE players
+ADD COLUMN IF NOT EXISTS bio TEXT DEFAULT '';
+
+UPDATE players
+SET bio = ''
+WHERE bio IS NULL;
 
 ALTER TABLE players
 ALTER COLUMN avatar_id SET DEFAULT 1;
@@ -161,6 +169,7 @@ CREATE TABLE player_equipped_items (
   player_id INTEGER PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
   avatar_item_id INTEGER REFERENCES shop_items(id) ON DELETE SET NULL,
   card_skin_item_id INTEGER REFERENCES shop_items(id) ON DELETE SET NULL,
+  card_skin_overrides JSONB NOT NULL DEFAULT '{}'::jsonb,
   card_back_item_id INTEGER REFERENCES shop_items(id) ON DELETE SET NULL,
   board_skin_item_id INTEGER REFERENCES shop_items(id) ON DELETE SET NULL,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -230,6 +239,25 @@ CREATE TABLE matches (
   started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   ended_at TIMESTAMP
 );
+
+CREATE TABLE match_participants (
+  id SERIAL PRIMARY KEY,
+  match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  username_snapshot VARCHAR(50) NOT NULL,
+  avatar_id_snapshot INTEGER,
+  round_wins INTEGER NOT NULL DEFAULT 0 CHECK (round_wins >= 0),
+  result VARCHAR(10) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CHECK (result IN ('win', 'lose')),
+  UNIQUE (match_id, player_id)
+);
+
+CREATE INDEX match_participants_player_idx
+ON match_participants(player_id, match_id);
+
+CREATE INDEX match_participants_match_idx
+ON match_participants(match_id);
 
 CREATE TABLE cards (
   id SERIAL PRIMARY KEY,

@@ -29,6 +29,8 @@ test('game socket handlers broadcast animation actions before private state upda
   assert.match(playHandler, /type: "play-card"/)
   assert.match(playHandler, /discardedCard: result\.discardedCard/)
   assert.match(playHandler, /animationResult: result\.animationResult/)
+  assert.match(playHandler, /showdownResult: result\.showdownResult/)
+  assert.match(playHandler, /afterActionId: playActionId/)
   assert.ok(
     playHandler.indexOf('emitPlayCardActionToPlayers') <
       playHandler.indexOf('await emitGameStateAfterActionToPlayers'),
@@ -50,6 +52,7 @@ test('game view subscribes to socket actions and defers state while animations r
   assert.match(source, /const discardedCard = event\.discardedCard[\s\S]*normalizeCard\(event\.discardedCard\)/)
   assert.match(source, /playRemoteCardPlayAnimation\?\.\(\{[\s\S]*discardedCard/)
   assert.match(source, /playEffectAnimation\?\.\(animationResult\)/)
+  assert.match(source, /playRoundShowdownAnimation\?\.\(showdownResult\)/)
   assert.ok(
     source.indexOf('playRemoteCardPlayAnimation') <
       source.indexOf('playEffectAnimation?.(animationResult)'),
@@ -58,7 +61,7 @@ test('game view subscribes to socket actions and defers state while animations r
   assert.match(source, /function cleanupGameSocket\(\)[\s\S]*off\('game:state'/)
 })
 
-test('game view applies acknowledged draw and play states immediately', async () => {
+test('game view defers action-bound draw and play states until their animations complete', async () => {
   const source = await readSource('src/composables/useGameSocketActions.js')
   const drawHandler = source.slice(
     source.indexOf('async function handleDrawRequest'),
@@ -70,10 +73,10 @@ test('game view applies acknowledged draw and play states immediately', async ()
   )
 
   assert.match(drawHandler, /const data = await emitWithAck\('game:draw-card'/)
-  assert.match(drawHandler, /applyGameStatePayload\(data\)/)
+  assert.match(drawHandler, /if \(data\?\.afterActionId\)[\s\S]*handleSocketGameState\(data\)[\s\S]*else[\s\S]*applyGameStatePayload\(data\)/)
   assert.doesNotMatch(drawHandler, /void data/)
   assert.match(playHandler, /const data = await emitWithAck\('game:play-card'/)
-  assert.match(playHandler, /applyGameStatePayload\(data\)/)
+  assert.match(playHandler, /if \(data\?\.afterActionId\)[\s\S]*handleSocketGameState\(data\)[\s\S]*else[\s\S]*applyGameStatePayload\(data\)/)
   assert.doesNotMatch(playHandler, /void data/)
 })
 

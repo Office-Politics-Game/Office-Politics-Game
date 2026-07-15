@@ -12,7 +12,7 @@
       class="btn-dark tap-pop absolute right-3 top-3 grid h-9 w-9 place-items-center"
       aria-label="關閉註冊視窗"
       :disabled="isSubmitting"
-      @click="emit('close')"
+      @click="closeRegister"
     >
       <span aria-hidden="true">×</span>
     </button>
@@ -73,7 +73,7 @@
           class="password-toggle"
           :aria-label="showPassword ? '隱藏密碼' : '顯示密碼'"
           :disabled="isSubmitting"
-          @click="showPassword = !showPassword"
+          @click="togglePasswordVisibility"
         >
           <EyeOff v-if="showPassword" class="password-toggle__icon" />
           <Eye v-else class="password-toggle__icon" />
@@ -98,7 +98,7 @@
           class="password-toggle"
           :aria-label="showConfirmPassword ? '隱藏確認密碼' : '顯示確認密碼'"
           :disabled="isSubmitting"
-          @click="showConfirmPassword = !showConfirmPassword"
+          @click="toggleConfirmPasswordVisibility"
         >
           <EyeOff v-if="showConfirmPassword" class="password-toggle__icon" />
           <Eye v-else class="password-toggle__icon" />
@@ -178,11 +178,13 @@
 import { reactive, ref, onBeforeUnmount } from "vue"
 import { useAuthStore } from "@/stores/authStore.js"
 import { Eye, EyeOff } from "lucide-vue-next"
+import { usePreGameAudio } from "@/composables/UsePreGameAudio"
 import { getPasswordError } from "@/utils/passwordRules.js"
 import PasswordRuleList from "@/components/login/PasswordRuleList.vue"
 
 const authStore = useAuthStore()
 const emit = defineEmits(["close", "back-login", "register-success"])
+const { playPreGameSound } = usePreGameAudio()
 
 const form = reactive({
   username: "",
@@ -210,6 +212,25 @@ let alertTimer = null
 let fadeTimer = null
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function playRegisterClick() {
+  playPreGameSound("login-button-click")
+}
+
+function closeRegister() {
+  playRegisterClick()
+  emit("close")
+}
+
+function togglePasswordVisibility() {
+  playRegisterClick()
+  showPassword.value = !showPassword.value
+}
+
+function toggleConfirmPasswordVisibility() {
+  playRegisterClick()
+  showConfirmPassword.value = !showConfirmPassword.value
+}
 
 function clearRegisterErrors() {
   usernameError.value = ""
@@ -270,6 +291,8 @@ async function handleRegister() {
   if (isSubmitting.value) {
     return
   }
+
+  playRegisterClick()
 
   if (!validateRegisterForm()) {
     return
@@ -343,6 +366,7 @@ function showApiStatus(type, message, onFinished) {
 }
 
 function goLogin() {
+  playRegisterClick()
   clearApiStatus()
   emit("back-login")
 }

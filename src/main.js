@@ -4,7 +4,9 @@ import App from "./App.vue";
 import router from "./router";
 import { useAuthStore } from "@/stores/authStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
+import "intro.js/introjs.css";
 import "./assets/styles/main.css";
+import "./assets/styles/game-tutorial.css";
 
 function restoreGuestPlayer(playerStore) {
   try {
@@ -30,14 +32,12 @@ async function bootstrapApplication() {
   const authStore = useAuthStore(pinia);
   const playerStore = usePlayerStore(pinia);
 
-  if (authStore.token) {
-    const isVerified = await authStore.verifyToken();
+  localStorage.removeItem("gameAuthToken");
 
-    if (isVerified && authStore.currentPlayer) {
-      playerStore.setCurrentPlayer(authStore.currentPlayer);
-    } else {
-      playerStore.resetPlayer();
-    }
+  const isVerified = await authStore.verifyToken();
+
+  if (isVerified && authStore.currentPlayer) {
+    playerStore.setCurrentPlayer(authStore.currentPlayer);
   } else {
     restoreGuestPlayer(playerStore);
   }

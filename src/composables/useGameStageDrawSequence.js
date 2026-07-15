@@ -17,6 +17,7 @@ export function useGameStageDrawSequence({
   lastInitialRoundDealSignature = ref(null),
   playRoundStartNotice,
   playTurnNotice,
+  waitForTutorialSettlement = () => Promise.resolve(false),
   resolveNoticeIdleIfIdle,
 } = {}) {
   const initialRoundDealtPlayerIdSet = computed(
@@ -165,6 +166,7 @@ export function useGameStageDrawSequence({
       );
       isInitialRoundDrawAnimating.value = false;
 
+      await waitForTutorialSettlement();
       await playRoundStartNotice(signature);
 
       if (isExplicitCurrentPlayerTurn.value) {

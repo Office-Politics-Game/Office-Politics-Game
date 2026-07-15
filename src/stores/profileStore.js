@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { getProfile } from "@/services/profileApi.js";
+import { getProfile, updateProfile, getProfileMatches } from "@/services/profileApi.js";
 import { guestAvatars } from "@/constants/guestOptions.js";
 
 const UNSET_TEXT = "尚未設定";
@@ -43,7 +43,7 @@ function toNumber(value, fallback) {
 }
 
 function getNextExp(level) {
-  return Math.max(level * 400 + 200, 1000);
+  return level * 400 + 200;
 }
 
 function getWinRate(winCount, totalGames) {
@@ -118,16 +118,41 @@ function normalizeProfile(player, identityType) {
     winRate: getWinRate(winCount, totalGames),
     playerCode: `CEO_${String(playerId).padStart(4, "0")}`,
     createdAtDisplay: formatDate(player.createdAt ?? player.created_at),
-    region: player.region || UNSET_TEXT,
     bio: player.bio || UNSET_TEXT,
+  };
+}
+
+function normalizeMatchHistoryItem(match) {
+  return {
+    id: match.id,
+    roomId: match.roomId,
+    result: match.result,
+    winnerPlayerId: match.winnerPlayerId,
+    winnerUsername: match.winnerUsername || UNSET_TEXT,
+    xpGained: toNumber(match.xpGained ?? match.xp_gained, 0),
+    startedAt: match.startedAt,
+    endedAt: match.endedAt,
+    participants: Array.isArray(match.participants)
+      ? match.participants.map((participant) => ({
+          playerId: participant.playerId,
+          username: participant.username || UNSET_TEXT,
+          avatarId: toNumber(participant.avatarId, DEFAULT_AVATAR_ID),
+          roundWins: toNumber(participant.roundWins, 0),
+          result: participant.result,
+        }))
+      : [],
   };
 }
 
 export const useProfileStore = defineStore("profile", {
   state: () => ({
     profile: null,
+    matchHistory: [],
     isLoading: false,
+    isUpdating: false,
+    isMatchHistoryLoading: false,
     errorMessage: "",
+    matchHistoryErrorMessage: "",
     loadedIdentityType: "anonymous",
   }),
 
@@ -138,19 +163,13 @@ export const useProfileStore = defineStore("profile", {
   },
 
   actions: {
-    async loadMemberProfile(token) {
-      if (!token) {
-        this.clearProfile("anonymous");
-        this.errorMessage = "請先登入";
-        return null;
-      }
-
+    async loadMemberProfile() {
       this.isLoading = true;
       this.errorMessage = "";
       this.loadedIdentityType = "member";
 
       try {
-        const data = await getProfile(token);
+        const data = await getProfile();
         this.profile = normalizeProfile(data.profile, "member");
 
         return this.profile;
@@ -163,11 +182,54 @@ export const useProfileStore = defineStore("profile", {
       }
     },
 
+    async updateMemberProfile(payload) {
+      this.isUpdating = true
+      this.errorMessage = ""
+
+      try {
+        const data = await updateProfile(payload)
+        this.profile = normalizeProfile(data.profile, "member")
+
+        return this.profile
+      } catch (error) {
+        this.errorMessage = getErrorMessage(error, "個人資料更新失敗")
+        throw error
+      } finally {
+        this.isUpdating = false
+      }
+    },
+
+    async loadMatchHistory(limit = 20) {
+      if (!this.isMemberProfile) {
+        this.matchHistory = []
+        return []
+      }
+
+      this.isMatchHistoryLoading = true
+      this.matchHistoryErrorMessage = ""
+
+      try {
+        const data = await getProfileMatches({ limit })
+        this.matchHistory = (data.matches || []).map(normalizeMatchHistoryItem)
+
+        return this.matchHistory
+      } catch (error) {
+        this.matchHistory = []
+        this.matchHistoryErrorMessage = getErrorMessage(error, "對戰紀錄載入失敗")
+        throw error
+      } finally {
+        this.isMatchHistoryLoading = false
+      }
+    },
+
     loadGuestProfile(player) {
       this.isLoading = false;
       this.errorMessage = "";
       this.loadedIdentityType = "guest";
       this.profile = normalizeProfile(player, "guest");
+      this.matchHistory = [];
+      this.matchHistoryErrorMessage = "";
+      this.isMatchHistoryLoading = false;
 
       return this.profile;
     },
@@ -188,6 +250,10 @@ export const useProfileStore = defineStore("profile", {
       this.isLoading = false;
       this.errorMessage = "";
       this.loadedIdentityType = identityType;
+      this.matchHistory = [];
+      this.isUpdating = false;
+      this.isMatchHistoryLoading = false;
+      this.matchHistoryErrorMessage = "";
     },
 
     clearError() {

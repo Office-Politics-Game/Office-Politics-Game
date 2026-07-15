@@ -17,9 +17,7 @@ export function useProfileInitializer() {
   const profileStore = useProfileStore();
 
   async function initializeProfile() {
-    const hadAuthToken = Boolean(authStore.token);
-
-    if (authStore.token && !authStore.hasVerifiedToken) {
+    if (!authStore.hasVerifiedToken) {
       const isVerified = await authStore.verifyToken();
 
       if (!isVerified) {
@@ -31,20 +29,12 @@ export function useProfileInitializer() {
       }
     }
 
-    if (authStore.isLoggedIn && authStore.token) {
-      const profile = await profileStore.loadMemberProfile(authStore.token);
+    if (authStore.isLoggedIn) {
+      const profile = await profileStore.loadMemberProfile();
 
       return {
         status: "member",
         profile,
-      };
-    }
-
-    if (hadAuthToken) {
-      profileStore.clearProfile("anonymous");
-      return {
-        status: "auth_failed",
-        profile: null,
       };
     }
 

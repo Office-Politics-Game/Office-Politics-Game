@@ -8,26 +8,93 @@ import { useGameRoomState } from '@/composables/useGameRoomState'
 import { useGameSocketActions } from '@/composables/useGameSocketActions'
 import { useGameViewModel } from '@/composables/useGameViewModel'
 import { cardAssetKeyByRank, cardAssetsByKey } from '@/constants/cardAssets'
+import { getCardSkinThemeSlotAsset } from '@/constants/cardSkinThemes'
 import {
   drawCard as drawGameCard,
   getRoomGameState,
   playCard as playGameCard,
 } from '@/services/gameActionApi'
 import { connectSocket, emitWithAck } from '@/services/socketClient'
+import { useAppearanceStore } from '@/stores/appearanceStore'
 import { useGameStateStore } from '@/stores/gameStateStore'
 import { normalizeCard } from '@/utils/cardUtils'
 import { resolveAvatarUrl } from '@/utils/playerUtils'
 
 const route = useRoute()
+const appearanceStore = useAppearanceStore()
 const gameStateStore = useGameStateStore()
+const { gameState, currentPlayer, currentPlayerId, currentTurnPlayerId, isLoading } =
+  storeToRefs(gameStateStore)
 const {
-  gameState,
-  currentPlayer,
-  currentPlayerId,
-  currentTurnPlayerId,
-  isLoading,
-} = storeToRefs(gameStateStore)
+  cardSkinUrl,
+  cardSkinOverrides,
+  isHydrated: isAppearanceHydrated,
+} = storeToRefs(appearanceStore)
 const gameStage = ref(null)
+
+function getViewerCardSkinSource(cardKey = '') {
+  const overrideUrl =
+    cardKey &&
+    cardSkinOverrides.value &&
+    typeof cardSkinOverrides.value === 'object'
+      ? cardSkinOverrides.value[cardKey]
+      : ''
+
+  if (typeof overrideUrl === 'string' && overrideUrl) {
+    return overrideUrl
+  }
+
+  return typeof cardSkinUrl.value === 'string' ? cardSkinUrl.value : ''
+}
+
+function getViewerCardAssetUrls(cardKey = '') {
+  const source = getViewerCardSkinSource(cardKey)
+  const themeAssets = getCardSkinThemeSlotAsset(source, cardKey)
+
+  return {
+    backgroundUrl: themeAssets.backgroundUrl || source,
+    frameUrl: themeAssets.frameUrl,
+  }
+}
+
+function normalizeCardForViewer(rawCard = {}, fallbackIndex = 0) {
+  const normalizedCard = normalizeCard(rawCard, fallbackIndex)
+  const viewerAssets = getViewerCardAssetUrls(normalizedCard.assetKey)
+
+  if (!viewerAssets.backgroundUrl && !viewerAssets.frameUrl) {
+    return normalizedCard
+  }
+
+  return {
+    ...normalizedCard,
+    ...(viewerAssets.backgroundUrl ? { backgroundUrl: viewerAssets.backgroundUrl } : {}),
+    ...(viewerAssets.frameUrl ? { frameUrl: viewerAssets.frameUrl } : {}),
+  }
+}
+
+async function ensureViewerAppearanceHydrated(viewerPlayerId) {
+  const numericPlayerId = Number(viewerPlayerId ?? currentPlayerId.value)
+
+  if (!Number.isInteger(numericPlayerId) || numericPlayerId <= 0) {
+    return
+  }
+
+  if (
+    isAppearanceHydrated.value &&
+    String(appearanceStore.playerId ?? '') === String(numericPlayerId)
+  ) {
+    return
+  }
+
+  try {
+    await appearanceStore.hydrateForPlayer(numericPlayerId)
+  } catch (error) {
+    console.warn('[game:view] hydrate-viewer-appearance:failed', {
+      playerId: numericPlayerId,
+      error,
+    })
+  }
+}
 
 const {
   normalizedRoomCode,
@@ -45,6 +112,7 @@ const {
   gameStateStore,
   currentPlayerId,
   getRoomGameState,
+  beforeRefresh: ensureViewerAppearanceHydrated,
 })
 
 const {
@@ -67,7 +135,7 @@ const {
   emitWithAck,
   drawGameCard,
   playGameCard,
-  normalizeCard,
+  normalizeCard: normalizeCardForViewer,
   cardAssetKeyByRank,
   cardAssetsByKey,
 })
@@ -87,13 +155,13 @@ const {
   resolvedCurrentPlayerId,
   roomPlayerMetadata,
   isDrawing,
-  normalizeCard,
+  normalizeCard: normalizeCardForViewer,
   resolveAvatarUrl,
 })
 
 onMounted(() => {
-  loadInitialRoomState()
-  subscribeGameSocket()
+  void loadInitialRoomState()
+  void subscribeGameSocket()
 })
 
 onBeforeUnmount(() => {
@@ -107,8 +175,8 @@ watch(
       return
     }
 
-    loadInitialRoomState()
-    subscribeGameSocket()
+    void loadInitialRoomState()
+    void subscribeGameSocket()
   },
 )
 </script>
@@ -136,6 +204,7 @@ watch(
     :draw-player-id="resolvedCurrentPlayerId || null"
     :current-player-id="resolvedCurrentPlayerId"
     :current-turn-player-id="currentTurnPlayerId"
+    :has-any-card-been-played="Boolean(gameState?.hasAnyCardBeenPlayed)"
     :is-loading="isLoading || isDrawing || isSocketActionSubmitting || isPlayingSocketAction"
     @draw-request="handleDrawRequest"
     @play-card="handlePlayCard"
