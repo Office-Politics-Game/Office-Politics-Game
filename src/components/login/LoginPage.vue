@@ -59,6 +59,7 @@ import RegisterPage from "@/components/register/RegisterPage.vue"
 import { usePlayerStore } from "@/stores/playerStore.js"
 import ForgotPasswordContent from "@/components/login/ForgotPasswordContent.vue"
 import ResetPasswordContent from "@/components/login/ResetPasswordContent.vue"
+import { resolvePasswordResetToken } from "@/services/authApi.js"
 
 const route = useRoute()
 const router = useRouter()
@@ -68,18 +69,20 @@ const showGuestLoginModal = ref(false)
 const authPageMode = ref("login")
 const resetPasswordToken = ref("")
 
-function getResetPasswordTokenFromUrl() {
-  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""))
-  const queryToken = route.query.access_token
-  const hashToken = hashParams.get("access_token")
+async function openResetPasswordPageFromRoute() {
+  resetPasswordToken.value = ""
+  authPageMode.value = "reset-password"
 
-  return typeof queryToken === "string" ? queryToken : hashToken || ""
+  try {
+    resetPasswordToken.value = await resolvePasswordResetToken()
+  } catch {
+    resetPasswordToken.value = ""
+  }
 }
 
 function syncAuthPageModeFromRoute() {
   if (route.query.auth === "reset-password") {
-    resetPasswordToken.value = getResetPasswordTokenFromUrl()
-    authPageMode.value = "reset-password"
+    void openResetPasswordPageFromRoute()
     return
   }
 

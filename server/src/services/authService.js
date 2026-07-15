@@ -250,6 +250,95 @@ async function loginPlayer({ account, password } = {}) {
     }
 }
 
+function getOAuthDisplayName(user, email) {
+    const metadata = user.user_metadata || {}
+    const name =
+        metadata.full_name ||
+        metadata.name ||
+        metadata.display_name ||
+        metadata.user_name ||
+        email.split("@")[0]
+
+    return String(name).trim() || email.split("@")[0]
+}
+
+function createOAuthUsername(user, email) {
+    const displayName = getOAuthDisplayName(user, email)
+        .replace(/\s+/g, "")
+        .slice(0, 16)
+    const suffix = user.id.replace(/-/g, "").slice(0, 8)
+
+    return `${displayName}-${suffix}`
+}
+
+async function syncOAuthPlayer({ accessToken, expiresIn } = {}) {
+    if (!accessToken) {
+        throw createAuthError(401, "缺少第三方登入憑證")
+    }
+
+    const { data, error } = await supabaseAdmin.auth.getUser(accessToken)
+
+    if (error || !data?.user?.id) {
+        throw createAuthError(401, "第三方登入驗證失敗")
+    }
+
+    const authUser = data.user
+    const email = authUser.email?.trim().toLowerCase()
+
+    if (!email || !isValidEmail(email)) {
+        throw createAuthError(400, "第三方登入未提供Email，請改用其他登入方式")
+    }
+
+    const existingResult = await pool.query(
+        `SELECT ${PLAYER_SELECT_SQL}
+         FROM players
+         WHERE account = $1 OR auth_user_id = $2
+         ORDER BY CASE WHEN account = $1 THEN 0 ELSE 1 END
+         LIMIT 1`,
+        [email, authUser.id]
+    )
+
+    const existingPlayer = existingResult.rows[0]
+
+    if (existingPlayer) {
+        const updatedResult = await pool.query(
+            `UPDATE players
+             SET auth_user_id = COALESCE(auth_user_id, $1),
+                 account = $2,
+                 is_online = true,
+                 last_login_at = CURRENT_TIMESTAMP,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $3
+             RETURNING ${PLAYER_SELECT_SQL}`,
+            [authUser.id, email, existingPlayer.id]
+        )
+
+        return {
+            player: formatPlayer(updatedResult.rows[0]),
+            token: accessToken,
+            expiresIn
+        }
+    }
+
+    const createdResult = await pool.query(
+        `INSERT INTO players (auth_user_id, username, account, avatar_id, is_online, last_login_at)
+         VALUES ($1, $2, $3, $4, true, CURRENT_TIMESTAMP)
+         RETURNING ${PLAYER_SELECT_SQL}`,
+        [
+            authUser.id,
+            createOAuthUsername(authUser, email),
+            email,
+            DEFAULT_AVATAR_ID
+        ]
+    )
+
+    return {
+        player: formatPlayer(createdResult.rows[0]),
+        token: accessToken,
+        expiresIn
+    }
+}
+
 async function requestPasswordReset({ account } = {}) {
     const trimmedAccount = account?.trim().toLowerCase()
 
@@ -304,6 +393,34 @@ async function resetPlayerPassword({ token, password } = {}) {
     }
 }
 
+async function logoutPlayer(token) {
+    if (!token) {
+        return false
+    }
+
+    try {
+        const { data, error } = await supabaseAdmin.auth.getUser(token)
+
+        if (error || !data?.user?.id) {
+            return false
+        }
+
+        const email = data.user.email?.trim().toLowerCase() || ""
+
+        await pool.query(
+            `UPDATE players
+             SET is_online = false,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE auth_user_id = $1 OR account = $2`,
+            [data.user.id, email]
+        )
+
+        return true
+    } catch {
+        return false
+    }
+}
+
 async function verifyToken(token) {
     if (!token) {
         throw createAuthError(401, "缺少登入驗證token")
@@ -315,12 +432,15 @@ async function verifyToken(token) {
         throw createAuthError(401, "登入驗證失敗")
     }
 
+    const email = data.user.email?.trim().toLowerCase() || ""
+
     const playerResult = await pool.query(
         `SELECT ${PLAYER_SELECT_SQL}
          FROM players
-         WHERE auth_user_id = $1
+         WHERE auth_user_id = $1 OR account = $2
+         ORDER BY CASE WHEN auth_user_id = $1 THEN 0 ELSE 1 END
          LIMIT 1`,
-        [data.user.id]
+        [data.user.id, email]
     )
 
     const player = playerResult.rows[0]
@@ -332,4 +452,4 @@ async function verifyToken(token) {
     return formatPlayer(player)
 }
 
-export { registerPlayer, loginPlayer, verifyToken, requestPasswordReset, resetPlayerPassword }
+export { registerPlayer, loginPlayer, syncOAuthPlayer, logoutPlayer, verifyToken, requestPasswordReset, resetPlayerPassword }

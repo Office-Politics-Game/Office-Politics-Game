@@ -1,4 +1,12 @@
-import { registerPlayer, loginPlayer, verifyToken, requestPasswordReset, resetPlayerPassword } from "../services/authService.js"
+import {
+    registerPlayer,
+    loginPlayer,
+    syncOAuthPlayer,
+    logoutPlayer,
+    verifyToken,
+    requestPasswordReset,
+    resetPlayerPassword
+} from "../services/authService.js"
 
 const AUTH_COOKIE_NAME = "officePoliticsAuthToken"
 const DEFAULT_AUTH_COOKIE_MAX_AGE = 60 * 60 * 1000
@@ -68,6 +76,20 @@ async function handleLoginPlayer(req, res) {
     }
 }
 
+async function handleOAuthCallback(req, res) {
+    try {
+        const { player, token, expiresIn } = await syncOAuthPlayer(req.body)
+
+        setAuthCookie(res, token, expiresIn)
+
+        res.status(200).json({ player })
+    } catch (error) {
+        res.status(error.statusCode || 500).json({
+            message: error.message || "第三方登入失敗"
+        })
+    }
+}
+
 async function handleVerifyToken(req, res) {
     try {
         const token = getCookieToken(req)
@@ -82,6 +104,13 @@ async function handleVerifyToken(req, res) {
 }
 
 async function handleLogoutPlayer(req, res) {
+    const token = getCookieToken(req)
+
+    try {
+        await logoutPlayer(token)
+    } catch {
+    }
+    
     clearAuthCookie(res)
 
     res.status(200).json({
@@ -113,4 +142,4 @@ async function handleResetPassword(req, res) {
     }
 }
 
-export { handleRegisterPlayer, handleLoginPlayer, handleVerifyToken, handleLogoutPlayer, handleForgotPassword, handleResetPassword }
+export { handleRegisterPlayer, handleLoginPlayer, handleOAuthCallback, handleVerifyToken, handleLogoutPlayer, handleForgotPassword, handleResetPassword }

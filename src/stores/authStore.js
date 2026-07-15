@@ -5,7 +5,9 @@ import {
   verifyToken as verifyTokenApi,
   logout as logoutApi,
   forgotPassword as forgotPasswordApi,
-  resetPassword as resetPasswordApi
+  resetPassword as resetPasswordApi,
+  startOAuthLogin as startOAuthLoginApi,
+  completeOAuthLogin as completeOAuthLoginApi
 } from "../services/authApi.js"
 import { hydratePlayerAppearanceBundle } from "@/services/playerAppearanceService.js"
 import { useAppearanceStore } from "@/stores/appearanceStore.js"
@@ -68,6 +70,50 @@ export const useAuthStore = defineStore("auth", {
         resetAuthState(this)
         this.errorMessage = getErrorMessage(error, "登入失敗")
         appearanceStore.resetAppearance()
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async startOAuthLogin(provider) {
+      this.isLoading = true
+      this.errorMessage = ""
+
+      try {
+        await startOAuthLoginApi(provider)
+      } catch (error) {
+        this.errorMessage = getErrorMessage(error, "第三方登入失敗")
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async completeOAuthLogin() {
+      this.isLoading = true
+      this.errorMessage = ""
+      const appearanceStore = useAppearanceStore()
+
+      try {
+        const data = await completeOAuthLoginApi()
+        const { player: hydratedPlayer, appearance } =
+          await hydratePlayerAppearanceBundle(data.player || null)
+
+        this.currentPlayer = hydratedPlayer
+        this.isLoggedIn = Boolean(hydratedPlayer)
+        this.hasVerifiedToken = Boolean(hydratedPlayer)
+
+        appearanceStore.applyAppearance({
+          ...appearance,
+          playerId: hydratedPlayer?.id ?? null
+        })
+
+        return data
+      } catch (error) {
+        resetAuthState(this)
+        appearanceStore.resetAppearance()
+        this.errorMessage = getErrorMessage(error, "第三方登入失敗")
         throw error
       } finally {
         this.isLoading = false
