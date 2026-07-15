@@ -115,6 +115,51 @@ describe("profileController", () => {
     expect(res.json).toHaveBeenCalledWith({ matches })
   })
 
+  test("取得對戰紀錄失敗時會回傳 service 錯誤訊息", async () => {
+    const error = new Error("取得對戰紀錄失敗")
+    error.statusCode = 500
+    mockGetProfileMatches.mockRejectedValueOnce(error)
+
+    const req = {
+      player: {
+        id: 1,
+      },
+      query: {
+        limit: "20",
+      },
+    }
+    const res = createMockResponse()
+
+    await handleGetProfileMatches(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(500)
+    expect(res.json).toHaveBeenCalledWith({
+      message: "取得對戰紀錄失敗",
+    })
+  })
+
+  test("service 回傳自訂 statusCode 時 controller 會沿用", async () => {
+    const error = new Error("找不到玩家資料")
+    error.statusCode = 404
+    mockGetCurrentProfile.mockRejectedValueOnce(error)
+
+    const req = {
+      player: {
+        id: 1,
+      },
+      query: {
+        limit: "20",
+      },
+    }
+    const res = createMockResponse()
+
+    await handleGetProfileMatches(req, res)
+
+    expect(mockGetProfileMatches).toHaveBeenCalledWith(1, req.query)
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(res.json).toHaveBeenCalledWith({ matches })
+  })
+
   test("service 回傳自訂 statusCode 時 controller 會沿用", async () => {
     const error = new Error("找不到玩家資料")
     error.statusCode = 404
