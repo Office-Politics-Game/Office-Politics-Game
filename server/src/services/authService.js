@@ -79,7 +79,7 @@ function getEmailConfirmRedirectUrl() {
         process.env.FRONTEND_URL ||
         "http://localhost:5173"
 
-    return `${clientOrigin.replace(/\/$/, "")}/?auth=login`
+    return `${clientOrigin.replace(/\/$/, "")}/?auth=login&notice=email-verified`
 }
 
 function isEmailNotConfirmedError(error) {

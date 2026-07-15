@@ -33,6 +33,35 @@ function createPlayerRow(overrides = {}) {
   }
 }
 
+function createMatchRow(overrides = {}) {
+  return {
+    id: 10,
+    room_id: 3,
+    winner_player_id: 1,
+    winner_username: "測試玩家",
+    result: "win",
+    started_at: "2026-07-13T01:00:00.000Z",
+    ended_at: "2026-07-13T01:30:00.000Z",
+    participants: [
+      {
+        playerId: 1,
+        username: "測試玩家",
+        avatarId: 2,
+        roundWins: 2,
+        result: "win",
+      },
+      {
+        playerId: 2,
+        username: "對手玩家",
+        avatarId: 3,
+        roundWins: 1,
+        result: "lose",
+      },
+    ],
+    ...overrides,
+  }
+}
+
 describe("profileService", () => {
   beforeEach(() => {
     mockQuery.mockReset()
@@ -153,9 +182,86 @@ describe("profileService", () => {
     })
   })
 
-  test("getProfileMatches 目前回傳空陣列", async () => {
+  test("getProfileMatches 回傳目前玩家參與過的對戰紀錄", async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [createMatchRow()],
+    })
+
+    const matches = await getProfileMatches(1, { limit: "20" })
+
+    expect(mockQuery).toHaveBeenCalledTimes(1)
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("FROM matches"),
+      [1, 20],
+    )
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INNER JOIN match_participants AS current_participant"),
+      [1, 20],
+    )
+
+    expect(matches).toEqual([
+      {
+        id: 10,
+        roomId: 3,
+        result: "win",
+        winnerPlayerId: 1,
+        winnerUsername: "測試玩家",
+        xpGained: 300,
+        startedAt: "2026-07-13T01:00:00.000Z",
+        endedAt: "2026-07-13T01:30:00.000Z",
+        participants: [
+          {
+            playerId: 1,
+            username: "測試玩家",
+            avatarId: 2,
+            roundWins: 2,
+            result: "win",
+          },
+          {
+            playerId: 2,
+            username: "對手玩家",
+            avatarId: 3,
+            roundWins: 1,
+            result: "lose",
+          },
+        ],
+      },
+    ])
+  })
+
+  test("getProfileMatches 沒有紀錄時回傳空陣列", async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [],
+    })
+
     const matches = await getProfileMatches(1, { limit: "20" })
 
     expect(matches).toEqual([])
+  })
+
+  test("getProfileMatches 會限制 limit 最大值", async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [],
+    })
+
+    await getProfileMatches(1, { limit: "999" })
+
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.any(String),
+      [1, 40],
+    )
+  })
+
+  test("getProfileMatches limit 非有效數字時使用預設值", async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [],
+    })
+
+    await getProfileMatches(1, { limit: "abc" })
+
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.any(String),
+      [1, 20],
+    )
   })
 })

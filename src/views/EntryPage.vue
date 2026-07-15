@@ -41,10 +41,11 @@
       <div
         v-if="showLoginModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-        @click.self="handleAuthOverlayClose"
       >
         <LoginContent
           v-if="authModalMode === 'login'"
+          :notice-message="loginNoticeMessage"
+          :notice-type="loginNoticeType"
           @close="closeAuthModal"
           @open-guest="openGuestModal"
           @open-register="openRegisterModal"
@@ -72,7 +73,6 @@
       <div
         v-if="showGuestLoginModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-        @click.self="handleGuestOverlayClose"
       >
         <GuestLoginModal
           @close="closeGuestLoginModal"
@@ -109,6 +109,8 @@ const showLoginModal = ref(false);
 const showGuestLoginModal = ref(false);
 const authModalMode = ref("login");
 const resetPasswordToken = ref("");
+const loginNoticeMessage = ref("");
+const loginNoticeType = ref("success");
 
 const isMemberLoggedIn = computed(
   () => authStore.isLoggedIn && Boolean(authStore.currentPlayer),
@@ -185,17 +187,27 @@ function showLoginMode() {
 }
 
 function clearAuthQuery() {
-  if (route.name !== "Entry" || !route.query.auth) {
+  if (route.name !== "Entry" || (!route.query.auth && !route.query.notice)) {
     return;
   }
 
-  const { auth, ...nextQuery } = route.query;
+  const { auth, notice, ...nextQuery } = route.query;
 
   router.replace({
     name: "Entry",
     query: nextQuery,
     hash: "",
   });
+}
+
+function clearLoginNotice() {
+  loginNoticeMessage.value = "";
+  loginNoticeType.value = "success";
+}
+
+function showLoginNotice(message, type = "success") {
+  loginNoticeMessage.value = message;
+  loginNoticeType.value = type;
 }
 
 function getResetPasswordTokenFromUrl() {
@@ -210,21 +222,12 @@ function closeAuthModal() {
   showLoginModal.value = false;
   authModalMode.value = "login";
   resetPasswordToken.value = "";
+  clearLoginNotice();
   clearAuthQuery();
-}
-
-function handleAuthOverlayClose() {
-  playLoginClick();
-  closeAuthModal();
 }
 
 function closeGuestLoginModal() {
   showGuestLoginModal.value = false;
-}
-
-function handleGuestOverlayClose() {
-  playLoginClick();
-  closeGuestLoginModal();
 }
 
 function handleRegisterSuccess() {
@@ -248,21 +251,28 @@ onMounted(async () => {
 });
 
 watch(
-  () => route.query.auth,
-  (auth) => {
+  () => [route.query.auth, route.query.notice],
+  ([auth, notice]) => {
     if (auth === "login") {
       authModalMode.value = "login";
       showLoginModal.value = true;
+
+      if (notice === "email-verified") {
+        showLoginNotice("信箱驗證完成，請重新登入", "success");
+      }
+
       return;
     }
 
     if (auth === "forgot-password") {
+      clearLoginNotice();
       authModalMode.value = "forgot-password";
       showLoginModal.value = true;
       return;
     }
 
     if (auth === "reset-password") {
+      clearLoginNotice();
       resetPasswordToken.value = getResetPasswordTokenFromUrl();
       authModalMode.value = "reset-password";
       showLoginModal.value = true;

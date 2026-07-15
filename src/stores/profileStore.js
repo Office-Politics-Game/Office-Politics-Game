@@ -15,7 +15,7 @@ function toNumber(value, fallback) {
 }
 
 function getNextExp(level) {
-  return Math.max(level * 400 + 200, 1000);
+  return level * 400 + 200;
 }
 
 function getWinRate(winCount, totalGames) {
@@ -93,6 +93,28 @@ function normalizeProfile(player, identityType) {
   };
 }
 
+function normalizeMatchHistoryItem(match) {
+  return {
+    id: match.id,
+    roomId: match.roomId,
+    result: match.result,
+    winnerPlayerId: match.winnerPlayerId,
+    winnerUsername: match.winnerUsername || UNSET_TEXT,
+    xpGained: toNumber(match.xpGained ?? match.xp_gained, 0),
+    startedAt: match.startedAt,
+    endedAt: match.endedAt,
+    participants: Array.isArray(match.participants)
+      ? match.participants.map((participant) => ({
+          playerId: participant.playerId,
+          username: participant.username || UNSET_TEXT,
+          avatarId: toNumber(participant.avatarId, DEFAULT_AVATAR_ID),
+          roundWins: toNumber(participant.roundWins, 0),
+          result: participant.result,
+        }))
+      : [],
+  };
+}
+
 export const useProfileStore = defineStore("profile", {
   state: () => ({
     profile: null,
@@ -159,7 +181,7 @@ export const useProfileStore = defineStore("profile", {
 
       try {
         const data = await getProfileMatches({ limit })
-        this.matchHistory = data.matches || []
+        this.matchHistory = (data.matches || []).map(normalizeMatchHistoryItem)
 
         return this.matchHistory
       } catch (error) {
@@ -176,6 +198,9 @@ export const useProfileStore = defineStore("profile", {
       this.errorMessage = "";
       this.loadedIdentityType = "guest";
       this.profile = normalizeProfile(player, "guest");
+      this.matchHistory = [];
+      this.matchHistoryErrorMessage = "";
+      this.isMatchHistoryLoading = false;
 
       return this.profile;
     },
@@ -185,6 +210,10 @@ export const useProfileStore = defineStore("profile", {
       this.isLoading = false;
       this.errorMessage = "";
       this.loadedIdentityType = identityType;
+      this.matchHistory = [];
+      this.isUpdating = false;
+      this.isMatchHistoryLoading = false;
+      this.matchHistoryErrorMessage = "";
     },
 
     clearError() {
