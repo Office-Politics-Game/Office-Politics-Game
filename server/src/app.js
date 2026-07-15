@@ -15,6 +15,7 @@ import { router as authRouter } from "./routes/authRoutes.js";
 import { router as shopRouter } from "./routes/shopRoutes.js";
 import { router as profileRouter } from "./routes/profileRoutes.js";
 import { router as chatRouter } from "./routes/chatRoutes.js";
+import { router as gachaRouter } from "./routes/gachaRoutes.js";
 import topUpRoutes from "./routes/topUpRoutes.js";
 
 dotenv.config();
@@ -45,6 +46,7 @@ app.use("/api/chats", chatRouter)
 app.use("/api", roomInvitationRouter)
 app.use("/api/shop", shopRouter)
 app.use("/api/top-ups", topUpRoutes)
+app.use("/api/gacha", gachaRouter)
 
 app.get("/", (req, res) => {
     res.send("server is running")
