@@ -27,3 +27,9 @@ test('local Vite proxy entries remain available for fallback endpoints', async (
   assert.match(source, /["']\/api["']:\s*\{[\s\S]*target:\s*["']http:\/\/localhost:3000["']/)
   assert.match(source, /["']\/socket\.io["']:\s*\{[\s\S]*target:\s*["']http:\/\/localhost:3000["'][\s\S]*ws:\s*true/)
 })
+
+test('backend accepts form-encoded payment callbacks', async () => {
+  const source = await readSource('server/src/app.js')
+
+  assert.match(source, /app\.use\(express\.urlencoded\(\{\s*extended:\s*false\s*\}\)\)/)
+})
