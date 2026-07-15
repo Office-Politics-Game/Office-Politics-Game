@@ -59,13 +59,13 @@ async function handleJoinRoom(req, res) {
 async function handleAddComputerPlayer(req, res) {
   try {
     const { roomCode } = req.params
-    const { hostPlayerId } = req.body
+    const { hostPlayerId, username } = req.body
 
     if (!hostPlayerId) {
       return res.status(400).json({ message: "缺少房主玩家 ID" })
     }
 
-    const roomState = await addComputerPlayer({ roomCode, hostPlayerId })
+    const roomState = await addComputerPlayer({ roomCode, hostPlayerId, username })
 
     return res.status(201).json(roomState)
   } catch (error) {
