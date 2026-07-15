@@ -94,6 +94,7 @@ CREATE TABLE player_achievements (
   player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
   achievement_id INTEGER NOT NULL REFERENCES achievements(id) ON DELETE CASCADE,
   unlocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  source_match_id INTEGER,
   UNIQUE (player_id, achievement_id)
 );
 
@@ -244,6 +245,15 @@ CREATE TABLE matches (
   ended_at TIMESTAMP
 );
 
+ALTER TABLE player_achievements
+ADD CONSTRAINT player_achievements_source_match_id_fkey
+FOREIGN KEY (source_match_id)
+REFERENCES matches(id)
+ON DELETE SET NULL;
+
+CREATE INDEX player_achievements_source_match_idx
+ON player_achievements(source_match_id, player_id);
+
 CREATE TABLE match_participants (
   id SERIAL PRIMARY KEY,
   match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
@@ -252,6 +262,8 @@ CREATE TABLE match_participants (
   avatar_id_snapshot INTEGER,
   round_wins INTEGER NOT NULL DEFAULT 0 CHECK (round_wins >= 0),
   result VARCHAR(10) NOT NULL,
+  exp_gained INTEGER NOT NULL DEFAULT 0 CHECK (exp_gained >= 0),
+  coins_gained INTEGER NOT NULL DEFAULT 0 CHECK (coins_gained >= 0),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CHECK (result IN ('win', 'lose')),
   UNIQUE (match_id, player_id)
