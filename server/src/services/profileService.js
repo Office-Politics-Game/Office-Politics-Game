@@ -65,6 +65,9 @@ function normalizeMatchParticipants(participants) {
 }
 
 function formatProfileMatch(row) {
+  const expGained = Number(row.exp_gained ?? (row.result === "win" ? 300 : 100))
+  const coinsGained = Number(row.coins_gained ?? 0)
+
   return {
     id: row.id,
     roomId: row.room_id,
@@ -73,14 +76,18 @@ function formatProfileMatch(row) {
     winnerUsername: row.winner_username || "暫無記錄",
     startedAt: row.started_at,
     endedAt: row.ended_at,
-    xpGained: row.result === "win" ? 300 : 100,
+    xpGained: expGained,
+    expGained,
+    coinsGained,
     participants: normalizeMatchParticipants(row.participants).map((participant) => ({
       playerId: participant.playerId,
       username: participant.username,
       avatarId: participant.avatarId,
       roundWins: participant.roundWins,
       result: participant.result,
-    })),
+      expGained: participant.expGained ?? 0,
+      coinsGained: participant.coinsGained ?? 0
+    }))
   }
 }
 
@@ -220,6 +227,8 @@ async function getProfileMatches(playerId, query = {}) {
         matches.started_at,
         matches.ended_at,
         current_participant.result,
+        current_participant.exp_gained,
+        current_participant.coins_gained,
         winner_participant.username_snapshot AS winner_username,
         COALESCE(
           JSON_AGG(
@@ -228,7 +237,9 @@ async function getProfileMatches(playerId, query = {}) {
               'username', participant.username_snapshot,
               'avatarId', participant.avatar_id_snapshot,
               'roundWins', participant.round_wins,
-              'result', participant.result
+              'result', participant.result,
+              'expGained', participant.exp_gained,
+              'coinsGained', participant.coins_gained
             )
             ORDER BY participant.round_wins DESC, participant.id ASC
           ) FILTER (WHERE participant.id IS NOT NULL),
@@ -247,7 +258,9 @@ async function getProfileMatches(playerId, query = {}) {
       GROUP BY
         matches.id,
         current_participant.result,
-        winner_participant.username_snapshot
+        winner_participant.username_snapshot,
+        current_participant.exp_gained,
+        current_participant.coins_gained
       ORDER BY matches.ended_at DESC, matches.id DESC
       LIMIT $2`,
     [playerId, limit],
