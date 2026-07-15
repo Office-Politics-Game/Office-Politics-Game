@@ -188,7 +188,10 @@ const {
 const {
   playGameCardDealSound,
   playGameCardPlaySound,
+  playHrCardSwapSound,
   playInternGuessResultSound,
+  playPlayerEliminatedSound,
+  playRoundWinSound,
   playSeniorProtectionActivateSound,
 } = useGameTableAudio();
 
@@ -235,6 +238,7 @@ const {
   activeEffectResult,
   getInitialRoundDealSignature: () => getInitialRoundDealSignature(),
   lastInitialRoundDealSignature,
+  playPlayerEliminatedSound,
 });
 
 const {
@@ -495,6 +499,7 @@ watch(
     });
 
     if (winner) {
+      playRoundWinSound();
       playRoundWinnerNotice(winner);
     }
   },
@@ -730,6 +735,7 @@ defineExpose({
         :result="activeEffectResult"
         :target-player-name="activeSwapTargetPlayerName"
         :get-player-hand-rect="animationRects.getPlayerHandRect"
+        @swap-motion-start="playHrCardSwapSound"
         @complete="handleEffectAnimationComplete"
       />
 

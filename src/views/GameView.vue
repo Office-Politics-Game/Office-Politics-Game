@@ -5,6 +5,7 @@ import { storeToRefs } from 'pinia'
 import LoadingScreen from '@/components/common/LoadingScreen.vue'
 import GameStage from '@/components/game/ui/GameStage.vue'
 import { useGameTableAudio } from '@/composables/UseGameTableAudio'
+import { usePreGameAudio } from '@/composables/UsePreGameAudio'
 import { useGameRoomState } from '@/composables/useGameRoomState'
 import { useGameSocketActions } from '@/composables/useGameSocketActions'
 import { useGameViewModel } from '@/composables/useGameViewModel'
@@ -120,6 +121,7 @@ const {
 
 const { startGameTableBackground, stopGameTableBackground } =
   useGameTableAudio()
+const { requestPreGameBackgroundResume } = usePreGameAudio()
 
 const {
   isDrawing,
@@ -166,6 +168,7 @@ const {
 })
 
 function handleReturnLobby() {
+  requestPreGameBackgroundResume()
   router.push({ name: 'LobbyHome' })
 }
 

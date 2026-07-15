@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readdir, readFile } from 'node:fs/promises'
 import test from 'node:test'
+import { createServer } from 'vite'
 
 const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
@@ -464,4 +465,95 @@ test('game settings return-lobby flows through GameView to LobbyHome', async () 
     /function handleReturnLobby\(\)[\s\S]*?router\.push\(\{ name: ['"]LobbyHome['"] \}\)/,
   )
   assert.match(gameViewSource, /@return-lobby="handleReturnLobby"/)
+})
+
+test('confirmed game settings return restores a missing pre-game activation before routing', async () => {
+  const originalAudio = globalThis.Audio
+  const originalWindow = globalThis.window
+  const audioInstances = []
+
+  class AudioMock {
+    constructor(url) {
+      this.url = url
+      this.currentTime = 0
+      this.paused = true
+      this.volume = 1
+      audioInstances.push(this)
+    }
+
+    pause() {
+      this.paused = true
+    }
+
+    play() {
+      this.paused = false
+      return Promise.resolve()
+    }
+  }
+
+  globalThis.Audio = AudioMock
+  globalThis.window = {
+    addEventListener() {},
+    removeEventListener() {},
+    setInterval() {
+      return 1
+    },
+    clearInterval() {},
+    setTimeout() {
+      return 1
+    },
+    clearTimeout() {},
+    localStorage: {
+      getItem() {
+        return null
+      },
+      setItem() {},
+    },
+  }
+
+  const viteServer = await createServer({
+    appType: 'custom',
+    logLevel: 'silent',
+    server: { middlewareMode: true },
+  })
+
+  try {
+    const { usePreGameAudio } = await viteServer.ssrLoadModule(
+      '/src/composables/UsePreGameAudio.js',
+    )
+    const preGameAudio = usePreGameAudio()
+
+    assert.equal(typeof preGameAudio.requestPreGameBackgroundResume, 'function')
+    preGameAudio.requestPreGameBackgroundResume()
+    assert.equal(audioInstances.length, 0)
+
+    preGameAudio.syncPreGameRouteAudio('LobbyHome', { fadeIn: true })
+
+    const lobbyTheme = audioInstances.find((audio) =>
+      String(audio.url).includes('pre-game-lobby-theme'),
+    )
+    assert.ok(lobbyTheme)
+    assert.equal(lobbyTheme.paused, false)
+    assert.equal(lobbyTheme.currentTime, 0)
+    assert.equal(lobbyTheme.volume, 0)
+  } finally {
+    await viteServer.close()
+    if (originalAudio === undefined) {
+      delete globalThis.Audio
+    } else {
+      globalThis.Audio = originalAudio
+    }
+    if (originalWindow === undefined) {
+      delete globalThis.window
+    } else {
+      globalThis.window = originalWindow
+    }
+  }
+
+  const gameViewSource = await readSource('src/views/GameView.vue')
+  assert.match(gameViewSource, /requestPreGameBackgroundResume/)
+  assert.match(
+    gameViewSource,
+    /function handleReturnLobby\(\)[\s\S]*?requestPreGameBackgroundResume\(\)[\s\S]*?router\.push\(\{ name: ['"]LobbyHome['"] \}\)/,
+  )
 })

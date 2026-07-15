@@ -173,6 +173,85 @@ test('Intern guess result sound controller maps semantic outcomes to dedicated a
   assert.match(source, /playInternGuessResultSound,/)
 })
 
+test('HR card swap sound chains whoosh 04 into whoosh 05 at reduced gain', async () => {
+  const audioDirectory = new URL('../src/assets/audio/', import.meta.url)
+  const source = await readSource('src/composables/UseGameTableAudio.js')
+  const continuationSource = source.slice(
+    source.indexOf('function handleHrCardSwapLeadEnded'),
+    source.indexOf('function playHrCardSwapSound'),
+  )
+  const commandSource = source.slice(
+    source.indexOf('function playHrCardSwapSound'),
+    source.indexOf('function playInternGuessResultSound'),
+  )
+
+  assert.ok(
+    (
+      await stat(
+        new URL('game-card-swap-whoosh-04.mp3', audioDirectory),
+      )
+    ).size > 0,
+  )
+  assert.ok(
+    (
+      await stat(
+        new URL('game-card-swap-whoosh-05.mp3', audioDirectory),
+      )
+    ).size > 0,
+  )
+  assert.match(
+    source,
+    /import gameCardSwapWhoosh04SoundUrl from ["']@\/assets\/audio\/game-card-swap-whoosh-04\.mp3["'];/,
+  )
+  assert.match(
+    source,
+    /import gameCardSwapWhoosh05SoundUrl from ["']@\/assets\/audio\/game-card-swap-whoosh-05\.mp3["'];/,
+  )
+  assert.match(source, /const GAME_HR_CARD_SWAP_SOUND_GAIN = 0\.45/)
+  assert.match(source, /let hrCardSwapAudios = null/)
+  assert.equal(
+    (source.match(/new Audio\(gameCardSwapWhoosh04SoundUrl\)/g) ?? []).length,
+    1,
+  )
+  assert.equal(
+    (source.match(/new Audio\(gameCardSwapWhoosh05SoundUrl\)/g) ?? []).length,
+    1,
+  )
+  assert.match(source, /audio\.preload = ["']auto["']/)
+  assert.equal(
+    (source.match(/addEventListener\(["']ended["'], handleHrCardSwapLeadEnded\)/g) ?? []).length,
+    1,
+  )
+  assert.match(continuationSource, /const audio = hrCardSwapAudios\.tail/)
+  assert.match(
+    continuationSource,
+    /if \(!soundEnabled\.value \|\| targetVolume <= 0\) \{\s*return;/,
+  )
+  assert.match(continuationSource, /audio\.currentTime = 0/)
+  assert.match(
+    continuationSource,
+    /targetVolume \* GAME_HR_CARD_SWAP_SOUND_GAIN/,
+  )
+  assert.match(continuationSource, /playAudio\(audio\)/)
+  assert.match(commandSource, /if \(!canUseAudio\(\)\) \{\s*return;/)
+  assert.match(
+    commandSource,
+    /if \(hrCardSwapAudios\) \{\s*resetHrCardSwapAudios\(hrCardSwapAudios\);\s*\}/,
+  )
+  assert.match(
+    commandSource,
+    /if \(!soundEnabled\.value \|\| targetVolume <= 0\) \{\s*return;/,
+  )
+  assert.match(commandSource, /const audio = ensureHrCardSwapAudios\(\)\.lead/)
+  assert.match(commandSource, /audio\.currentTime = 0/)
+  assert.match(
+    commandSource,
+    /targetVolume \* GAME_HR_CARD_SWAP_SOUND_GAIN/,
+  )
+  assert.match(commandSource, /playAudio\(audio\)/)
+  assert.match(source, /playHrCardSwapSound,/)
+})
+
 test('formal table wires Intern result reveal sound while the animation demo stays silent', async () => {
   const stageSource = await readSource('src/components/game/ui/GameStage.vue')
   const demoSource = await readSource('src/views/CardPlayTestView.vue')
@@ -187,6 +266,22 @@ test('formal table wires Intern result reveal sound while the animation demo sta
   )
   assert.doesNotMatch(demoSource, /playInternGuessResultSound/)
   assert.doesNotMatch(demoSource, /@outcome-reveal/)
+})
+
+test('formal table wires HR swap motion sound while the animation demo stays silent', async () => {
+  const stageSource = await readSource('src/components/game/ui/GameStage.vue')
+  const demoSource = await readSource('src/views/CardPlayTestView.vue')
+
+  assert.match(
+    stageSource,
+    /const \{[\s\S]*playHrCardSwapSound[\s\S]*\} = useGameTableAudio\(\)/,
+  )
+  assert.match(
+    stageSource,
+    /<CardSwapAnimation[\s\S]*@swap-motion-start="playHrCardSwapSound"[\s\S]*\/>/,
+  )
+  assert.doesNotMatch(demoSource, /playHrCardSwapSound/)
+  assert.doesNotMatch(demoSource, /@swap-motion-start/)
 })
 
 test('formal table plays one card-play rise sound before each valid player animation', async () => {
@@ -419,7 +514,11 @@ test('game table theme manually restarts with a fresh fade after each ending', a
     /audio\.addEventListener\(["']ended["'], handleGameTableMusicEnded\)/,
   )
   assert.equal(
-    (source.match(/addEventListener\(["']ended["']/g) ?? []).length,
+    (
+      source.match(
+        /addEventListener\(["']ended["'], handleGameTableMusicEnded\)/g,
+      ) ?? []
+    ).length,
     1,
   )
   assert.match(
@@ -501,4 +600,140 @@ test('GameView starts music only after GameStage is ready and stops it on unmoun
 
   const startCalls = source.match(/startGameTableBackground\(\)/g) ?? []
   assert.equal(startCalls.length, 1)
+})
+
+test('player elimination notice opens with one dedicated sound', async () => {
+  const audioDirectory = new URL('../src/assets/audio/', import.meta.url)
+  const audioFiles = await readdir(audioDirectory)
+  const audioSource = await readSource('src/composables/UseGameTableAudio.js')
+  const stageSource = await readSource('src/components/game/ui/GameStage.vue')
+  const noticeSource = await readSource('src/composables/useGameStageNotices.js')
+  const playSoundSource = audioSource.slice(
+    audioSource.indexOf('function playPlayerEliminatedSound'),
+    audioSource.indexOf('function fadeInGameTableMusic'),
+  )
+
+  assert.ok(audioFiles.includes('game-player-eliminated.mp3'))
+  assert.ok(
+    (
+      await stat(
+        new URL('game-player-eliminated.mp3', audioDirectory),
+      )
+    ).size > 0,
+  )
+  assert.ok(
+    !audioFiles.includes(
+      'floraphonic-classic-game-action-negative-18-224576.mp3',
+    ),
+  )
+  assert.match(
+    audioSource,
+    /import gamePlayerEliminatedSoundUrl from ["']@\/assets\/audio\/game-player-eliminated\.mp3["'];/,
+  )
+  assert.match(audioSource, /GAME_PLAYER_ELIMINATED_SOUND_GAIN = 0\.45/)
+  assert.match(audioSource, /let gamePlayerEliminatedAudio = null/)
+  assert.equal(
+    (audioSource.match(/new Audio\(gamePlayerEliminatedSoundUrl\)/g) ?? [])
+      .length,
+    1,
+  )
+  assert.match(playSoundSource, /const \{ soundEnabled, soundVolume \} = useAudioSettings\(\)/)
+  assert.match(
+    playSoundSource,
+    /if \(!soundEnabled\.value \|\| targetVolume <= 0\) \{\s*return;/,
+  )
+  assert.match(playSoundSource, /audio\.currentTime = 0/)
+  assert.match(
+    playSoundSource,
+    /audio\.volume =\s*targetVolume \* GAME_PLAYER_ELIMINATED_SOUND_GAIN/,
+  )
+  assert.match(playSoundSource, /playAudio\(audio\)/)
+  assert.match(audioSource, /playPlayerEliminatedSound,/)
+  assert.match(
+    stageSource,
+    /const \{[\s\S]*playPlayerEliminatedSound[\s\S]*\} = useGameTableAudio\(\)/,
+  )
+  assert.match(
+    stageSource,
+    /useGameStageNotices\(\{[\s\S]*playPlayerEliminatedSound[\s\S]*\}\)/,
+  )
+  assert.match(
+    noticeSource,
+    /playPlayerEliminatedSound = \(\) => \{\}/,
+  )
+  assert.match(
+    noticeSource,
+    /scheduleNoticeOpen\(\(\) => \{\s*isPlayerEliminatedNoticeOpen\.value = true;\s*playPlayerEliminatedSound\(\);\s*\}\);/,
+  )
+  assert.equal(
+    (noticeSource.match(/playPlayerEliminatedSound\(\)/g) ?? []).length,
+    1,
+  )
+  assert.doesNotMatch(stageSource, /playPlayerEliminatedSound\(\)/)
+})
+
+test('round winner notice plays one semantic cheer for any player win', async () => {
+  const audioDirectory = new URL('../src/assets/audio/', import.meta.url)
+  const audioFiles = await readdir(audioDirectory)
+  const audioSource = await readSource('src/composables/UseGameTableAudio.js')
+  const stageSource = await readSource('src/components/game/ui/GameStage.vue')
+  const demoSource = await readSource('src/views/CardPlayTestView.vue')
+  const playSoundSource = audioSource.slice(
+    audioSource.indexOf('function playRoundWinSound'),
+    audioSource.indexOf('function fadeInGameTableMusic'),
+  )
+
+  assert.ok(audioFiles.includes('game-round-win-cheer.mp3'))
+  assert.ok(
+    (
+      await stat(
+        new URL('game-round-win-cheer.mp3', audioDirectory),
+      )
+    ).size > 0,
+  )
+  assert.ok(!audioFiles.includes('kids_cheering.mp3'))
+  assert.match(
+    audioSource,
+    /import gameRoundWinSoundUrl from ["']@\/assets\/audio\/game-round-win-cheer\.mp3["'];/,
+  )
+  assert.match(audioSource, /GAME_ROUND_WIN_SOUND_GAIN = 0\.45/)
+  assert.match(audioSource, /let gameRoundWinAudio = null/)
+  assert.equal(
+    (audioSource.match(/new Audio\(gameRoundWinSoundUrl\)/g) ?? []).length,
+    1,
+  )
+  assert.match(
+    playSoundSource,
+    /const \{ soundEnabled, soundVolume \} = useAudioSettings\(\)/,
+  )
+  assert.match(
+    playSoundSource,
+    /if \(!soundEnabled\.value \|\| targetVolume <= 0\) \{\s*return;/,
+  )
+  assert.match(playSoundSource, /audio\.currentTime = 0/)
+  assert.match(
+    playSoundSource,
+    /audio\.volume =\s*targetVolume \* GAME_ROUND_WIN_SOUND_GAIN/,
+  )
+  assert.match(playSoundSource, /playAudio\(audio\)/)
+  assert.match(audioSource, /playRoundWinSound,/)
+  assert.match(
+    stageSource,
+    /const \{[\s\S]*playRoundWinSound[\s\S]*\} = useGameTableAudio\(\)/,
+  )
+
+  const winnerBranchSource = stageSource.slice(
+    stageSource.indexOf('if (winner) {'),
+    stageSource.indexOf('watch(\n  () => getEliminatedSnapshot'),
+  )
+  const soundIndex = winnerBranchSource.indexOf('playRoundWinSound()')
+  const noticeIndex = winnerBranchSource.indexOf('playRoundWinnerNotice(winner)')
+
+  assert.ok(soundIndex >= 0)
+  assert.ok(noticeIndex > soundIndex)
+  assert.equal(
+    (winnerBranchSource.match(/playRoundWinSound\(\)/g) ?? []).length,
+    1,
+  )
+  assert.doesNotMatch(demoSource, /playRoundWinSound/)
 })

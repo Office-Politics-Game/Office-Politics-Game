@@ -587,6 +587,16 @@ function startPreGameBackground({ fadeIn = false, userInitiated = false } = {}) 
   playPreGameLobbyMusic({ fadeIn });
 }
 
+function requestPreGameBackgroundResume() {
+  if (!canUseAudio()) {
+    return;
+  }
+
+  audioUnlocked = true;
+  preGameBackgroundStarted = true;
+  removeAudioUnlockListeners();
+}
+
 function removeAudioUnlockListeners() {
   if (!canUseAudio() || !unlockListenersInstalled) {
     return;
@@ -738,6 +748,7 @@ export function usePreGameAudio() {
 
   return {
     playPreGameSound,
+    requestPreGameBackgroundResume,
     startPreGameBackground,
     stopPreGameBackground,
     syncPreGameRouteAudio,

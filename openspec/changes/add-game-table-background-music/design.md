@@ -23,6 +23,8 @@
 - 「職場老鳥」保護動畫開始時播放一次 `game-senior-protection-activate.mp3`，使用共享 `soundEnabled`、`soundVolume` 與 0.45 增益。
 - 牌桌選單選項、玩家目標頭像、設定齒輪與設定視窗按鈕使用既有 `login-button-click`，並沿用共享音效開關、音量與停用控制規則。
 - 自訂房間等待室的頁面與子元件可用按鈕使用既有 `login-button-click`，並沿用共享音效開關、音量與停用控制規則。
+- 任何玩家首次進入淘汰狀態並開啟「玩家淘汰」提示時播放一次 `game-player-eliminated.mp3`，使用共享 `soundEnabled`、`soundVolume` 與 0.45 增益。
+- 任何玩家的 `roundWins` 首次增加並排定「回合獲勝」提示時播放一次三秒的 `game-round-win-cheer.mp3`，使用共享 `soundEnabled`、`soundVolume` 與 0.45 增益。
 
 **Non-Goals:**
 
@@ -37,6 +39,8 @@
 - 不在保護解除或其他卡牌效果被既有保護擋下時播放保護啟動音效，也不修改保護持續時間與規則。
 - 不讓音量滑桿、停用控制或非按鈕區域播放 UI 點擊音效，也不改變既有 UI 樣式、選擇或遊戲操作行為；設定視窗「返回大廳」僅修正為既有事件契約與命名路由，不新增目的地或轉場畫面。
 - 不修改自訂房間等待室的版面、按鈕樣式、房間資料流程或既有事件處理，也不為個別等待室按鈕新增不同音效。
+- 不修改玩家淘汰判定、提示文案、提示時長、後端狀態或淘汰動畫；已維持淘汰狀態的重複更新不得再次播放。
+- 不修改小局勝負判定、`roundWins` 資料、提示文案、提示時長、後端狀態或回合流程；動畫展示頁不播放小局勝利音效。
 
 ## Decisions
 
@@ -110,6 +114,8 @@ activation 只在 `Mall`、`Loading` 與 `Game` 這些需要返回大廳續播�
 
 `GameSettingsModal` 已宣告 `return-lobby` emit 與確認內容，`GameStage` 也已將該事件向上轉送；返回按鈕應開啟 `return-lobby` 確認狀態，確認後沿用這條事件鏈。`GameView` 作為頁面級協調層接收事件，使用 Vue Router 的命名路由 `{ name: "LobbyHome" }` 導頁。這會產生可辨識的 `Game → LobbyHome` 轉場，交由 `App.vue` 與 `UsePreGameAudio` 的既有路由音訊同步恢復 `pre-game-lobby-theme.mp3`。
 
+牌桌期間若因 session 還原、頁面重載或模組更新而遺失記憶體內的 `preGameBackgroundStarted`，單靠路由的 `fadeIn` 不會播放。`GameView` 因此在收到已確認的 `return-lobby` 後，先呼叫 `requestPreGameBackgroundResume()` 登記這次使用者觸發的恢復意圖，再導向 `LobbyHome`。該方法只恢復 activation 與 audio unlock 狀態，不在 `Game` 路由播放；真正的 900ms 淡入仍只由根路由 watcher 進入 pre-game 路由時執行。
+
 替代方案是在 Teleport 子元件內直接呼叫 `$router.push('/Lobby')`；未採用，因為它繞過已宣告的元件事件契約，使頁面層無法測試或協調離場行為。也不在返回按鈕直接呼叫 `startPreGameBackground()`，避免導頁與音訊生命週期出現兩個控制入口。
 
 ### 正式牌桌共用出牌協調層播放 rise 音效
@@ -130,6 +136,24 @@ activation 只在 `Mall`、`Loading` 與 `Game` 這些需要返回大廳續播�
 
 `GameStage` 監聽正式牌桌的 `InternAnimation` 事件，交給 `UseGameTableAudio.playInternGuessResultSound(outcome)`。控制器依 outcome 選擇 `intern-guess-correct.mp3` 或 `intern-guess-incorrect.mp3`，延遲建立兩個 Audio 實例，每次從 0 秒以 bounded `soundVolume × 0.45` 安全播放。未知 outcome、音效停用、音量為 0、Audio API 不可用或播放 Promise 被拒絕時皆安靜 no-op，動畫仍繼續。展示頁不接此事件，避免 demo 自動播放正式牌桌音效。
 
+### 人資主管換牌動畫在動作起點送出語意事件
+
+`CardSwapAnimation` 將 `swap-motion-start` 加入 emit 契約。一般與 reduced-motion 時間軸都先保留既有 `SWAP_PROMPT_HOLD_SECONDS` 的 1 秒提示停留，接著在第一個翻牌或位置交換操作前送出一次事件。每次動畫只會進入其中一條時間軸，因此一次有效換牌只會觸發一次音效；矩形無效、動畫 stale 或提早完成時不會建立時間軸，也不會 emit。
+
+正式 `GameStage` 監聽 `swap-motion-start`，直接交給 `UseGameTableAudio.playHrCardSwapSound()`。控制器延遲建立 `game-card-swap-whoosh-04.mp3` 與 `game-card-swap-whoosh-05.mp3` 兩個 Audio 實例；每次播放前先停止並歸零兩段，從 0 秒以 bounded `soundVolume × 0.45` 播放 04，再由 04 的單一 `ended` listener 立即從 0 秒銜接 05。銜接時重新讀取共享音效設定；若音效已停用或音量為 0，則不播放 05。動畫元件不 import 音效控制器，`CardPlayTestView` 不監聽事件，因此展示頁保持靜音。替代方案是在 GSAP 時間軸加入第二個語意事件；未採用，因為固定動畫位置無法保證與 04 素材的實際結尾無縫銜接。
+
+### 玩家淘汰提示開啟時播放語意化音效
+
+將來源素材 `floraphonic-classic-game-action-negative-18-224576.mp3` 改名為 `game-player-eliminated.mp3`。`UseGameTableAudio` 延遲建立單一 Audio 實例並提供 `playPlayerEliminatedSound()`；每次播放前將 `currentTime` 重設為 0，以 bounded 共享 `soundVolume × 0.45` 播放並沿用 `playAudio()` 的 rejection 保護。
+
+`GameStage` 將此 callback 注入 `useGameStageNotices()`。既有玩家快照 watcher 仍只在 `isEliminated` 從 false 轉為 true 時呼叫 `playPlayerEliminatedNotice(player)`；notice composable 在排定的下一個 tick 實際把 `isPlayerEliminatedNoticeOpen` 設為 true 時，緊接著呼叫一次 callback，使聽覺與提示開啟同步。callback 預設為 no-op，讓其他測試或重用入口不需要音訊依賴。替代方案是在 `GameStage` watcher 偵測轉場時直接播放；未採用，因為它會比排程後的提示開啟早一個 tick，無法符合已核准的同步時機。
+
+### 小局勝利提示開啟時播放三秒歡呼音效
+
+來源 `kids_cheering.mp3` 長約 4.15 秒，波形在開頭至中段最飽滿，尾段逐步衰減。保留 0 至 3 秒並在最後 180ms 套用線性淡出，輸出為語意化的 `game-round-win-cheer.mp3`；容器長度不得超過 3.05 秒，且不得保留原始非語意檔名。`UseGameTableAudio` 延遲建立單一 Audio 實例並提供 `playRoundWinSound()`，每次從 0 秒以 bounded 共享 `soundVolume × 0.45` 安全播放。
+
+`GameStage` 既有 `getRoundWinSnapshot(props.players)` watcher 只在任一玩家的 `roundWins` 增加時找到 winner；在呼叫 `playRoundWinnerNotice(winner)` 的同一分支先呼叫一次 `playRoundWinSound()`，因此本地與其他玩家獲勝都會播放，未增加勝場的重繪不會重播。展示頁沒有正式牌局快照 watcher，因此保持靜音。替代方案是監看 `isRoundWinnerNoticeOpen`；未採用，因為提示開關若因 UI 生命週期重設可能造成非勝場事件的重播。
+
 ## Implementation Contract
 
 - **Observable behavior:** 由任何 pre-game 頁面進入 `Loading` 後，`pre-game-lobby-theme.mp3` 在 4000ms 內從目前音量線性降至 0，接著 pause 並將 `currentTime` 設為 0。Loading 期間不播放 `game-table-start-theme.mp3`。
@@ -137,7 +161,7 @@ activation 只在 `Mall`、`Loading` 與 `Game` 這些需要返回大廳續播�
 - **Observable behavior:** 僅當 `game-table-start-theme.mp3` 自然播放完畢且牌桌仍為 active 時，同一 Audio 實例從 0 秒重播，音量歸零後再次用 5000ms 淡入；其他背景音樂與音效不受影響。
 - **Observable behavior:** 若 `pre-game-lobby-theme.mp3` 在進入遊戲前已由使用者互動啟動，Loading 與 Game 期間保留其 activation 但維持暫停；當來源路由為 `Game` 且目標為 pre-game 大廳時，音樂從 0 音量播放並在 900ms 內淡入共享音量乘以 0.2。
 - **Observable behavior:** 若共享音樂已停用、音量為 0 或進入遊戲前從未啟動 pre-game 主題，Game 返回大廳不得強制播放；從其他來源進入大廳時維持既有同步行為。
-- **Observable behavior:** 玩家在牌桌設定視窗選擇「返回大廳」並確認後，設定視窗送出 `return-lobby`，`GameStage` 向上轉送，`GameView` 導向命名路由 `LobbyHome`；路由從 `Game` 離開後由既有根 watcher 觸發 900ms pre-game 主題淡入。
+- **Observable behavior:** 玩家在牌桌設定視窗選擇「返回大廳」並確認後，設定視窗送出 `return-lobby`，`GameStage` 向上轉送，`GameView` 先登記 pre-game 恢復意圖再導向命名路由 `LobbyHome`；即使記憶體 activation 已遺失，路由從 `Game` 離開後仍由既有根 watcher 觸發 900ms pre-game 主題淡入。
 - **Observable behavior:** 每次有效洗牌動畫開始時，主層洗牌音效立即以 `soundVolume × 0.25` 播放並在 1200ms 停止；第二層在 100ms 後以 `soundVolume × 0.15` 播放並在自身播放 1200ms 後停止。兩層停止時一律 pause 並把 `currentTime` 重設為 0。
 - **Observable behavior:** 新一輪洗牌在上一輪聲音結束前開始時，舊的三個 timeout 全部被清除，兩層舊聲音停止並歸零，再建立新一輪排程；不得累積第三層或殘留停止計時器。
 - **Observable behavior:** 正式牌桌的共用 `playDrawAnimation()` 在來源與目標矩形有效時，於 self 或 opponent draw animation 開始前播放一次 `game-card-draw.mp3`，音量為 bounded `soundVolume × 0.35`；初始發牌與一般回合中任何玩家的抽牌都各自從 0 秒播放一次。
@@ -147,6 +171,12 @@ activation 只在 `Mall`、`Loading` 與 `Game` 這些需要返回大廳續播�
 - **Observable behavior:** 遠端出牌流程收到目前玩家自己的事件、卡牌或矩形無效、僅在 `CardPlayAnimation` 展示頁播放動畫，或共享音效停用／音量為 0 時，不得播放 `game-card-play-rise.mp3`。
 - **Observable behavior:** 實習生猜牌動畫完成既有 1 秒提示停留後、結果文字設為可見前，送出一次 `outcome-reveal`；`correct` 播放 `intern-guess-correct.mp3`，`incorrect` 播放 `intern-guess-incorrect.mp3`，兩者皆從 0 秒以 bounded `soundVolume × 0.45` 播放。
 - **Observable behavior:** 未知結果、共享音效停用／音量為 0、Audio API 不可用、播放 Promise 被拒絕或僅在動畫展示頁執行時，不得產生未處理錯誤或中斷實習生動畫。
+- **Observable behavior:** 人資主管換牌動畫在一般與 reduced-motion 模式都先顯示 1 秒提示，接著於第一個翻牌／位置交換操作前送出一次 `swap-motion-start`；正式牌桌從 0 秒以 bounded `soundVolume × 0.45` 播放 `game-card-swap-whoosh-04.mp3`，04 自然結束後立即以相同 bounded 增益從 0 秒銜接 `game-card-swap-whoosh-05.mp3`。
+- **Observable behavior:** 新換牌序列開始時，尚未完成的 04 或 05 必須先 pause 並歸零，然後只啟動新序列的 04，避免兩次序列重疊。
+- **Observable behavior:** 來源或目標矩形無效、動畫 stale、共享音效停用／音量為 0、Audio API 不可用、播放 Promise 被拒絕或僅在動畫展示頁執行時，不得產生未處理錯誤或中斷動畫；若 04 結束時音效已停用或音量為 0，05 不得播放。
+- **Observable behavior:** 任何正式牌桌玩家的 `isEliminated` 首次從 false 轉為 true 時，「玩家淘汰」提示開啟並同步播放一次 `game-player-eliminated.mp3`，每次從 0 秒以 bounded `soundVolume × 0.45` 播放；同一玩家維持 true 的後續更新不得再次觸發。
+- **Observable behavior:** 任何正式牌桌玩家的 `roundWins` 相對上一份快照增加時，播放一次 `game-round-win-cheer.mp3` 並顯示該玩家的「回合獲勝」提示；同一份勝場資料的重繪不得再次播放，本地與其他玩家採用相同行為。
+- **Media contract:** `game-round-win-cheer.mp3` 由來源 0 至 3 秒輸出，最後 180ms 線性淡出，容器長度不超過 3.05 秒；原始 `kids_cheering.mp3` 不得保留在音訊資產目錄。
 - **Observable behavior:** 來源或目標矩形無效時不得播放；角色效果直接使用 `CardDrawAnimation` 或展示頁播放動畫時也不得觸發 `playGameCardDealSound()`。
 - **Observable behavior:** `playEffectAnimation()` 收到 `{ type: "protection", sourceType: "senior" }` 時，在保護啟動動畫開始時播放一次 `game-senior-protection-activate.mp3`，從 0 秒開始且音量為 bounded `soundVolume × 0.45`。
 - **Observable behavior:** `sourceType` 為 `cleaner`、`intern`、`manager`、`hr` 或缺少 `senior` 的保護擋招動畫，以及 aura 離場／保護解除，都不得播放 `playSeniorProtectionActivateSound()`。
@@ -159,16 +189,19 @@ activation 只在 `Mall`、`Loading` 與 `Game` 這些需要返回大廳續播�
 - **Interface:** `useGameTableAudio()` 同時回傳 `playGameCardDealSound(): void`；`useGameStageDrawSequence()` 接受同名 callback，預設為 no-op，並只在正式牌桌的 `playDrawAnimation()` 通過矩形驗證後、實際動畫開始前呼叫。
 - **Interface:** `useGameTableAudio()` 同時回傳 `playGameCardPlaySound(): void`；`useGameStageCardPlay()` 接受同名 callback，預設為 no-op，並只在本地或遠端正式出牌流程通過 guard 與矩形驗證後、實際動畫開始前呼叫。
 - **Interface:** `useGameTableAudio()` 同時回傳 `playInternGuessResultSound(outcome): void`；只接受 `correct` 與 `incorrect`。`InternAnimation` emit `outcome-reveal(outcome)`，`GameStage` 在正式牌桌接線，展示頁不接線。
+- **Interface:** `useGameTableAudio()` 同時回傳 `playHrCardSwapSound(): void`；此命令擁有 04 → 05 的 Audio 序列與重入清理，`CardSwapAnimation` emit `swap-motion-start()`，`GameStage` 在正式牌桌直接接線，展示頁不接線。
 - **Interface:** `useGameTableAudio()` 同時回傳 `playSeniorProtectionActivateSound(): void`；`useGameStageEffectAnimation()` 接受同名 callback，預設為 no-op，並只在 `type === "protection" && sourceType === "senior"` 的動畫開始路徑呼叫。
+- **Interface:** `useGameTableAudio()` 同時回傳 `playPlayerEliminatedSound(): void`；`useGameStageNotices()` 接受同名 callback，預設為 no-op，並只在排定的玩家淘汰提示實際開啟時呼叫一次。
+- **Interface:** `useGameTableAudio()` 同時回傳 `playRoundWinSound(): void`；`GameStage` 只在 `getRoundWinSnapshot()` 偵測到任一玩家的 `roundWins` 增加後、呼叫 `playRoundWinnerNotice(winner)` 的同一分支呼叫一次。
 - **Interface:** `syncPreGameRouteAudio(routeName, { fadeIn })` 沿用既有可選淡入旗標；根路由 watcher 對 `previousRouteName === "Mall"` 或 `previousRouteName === "Game"` 傳入 true。
 - **Interface:** `GameStage` 根節點與 `GameSettingsModal` overlay 分別將 capture click 事件傳給 `useButtonClickAudio().handleButtonClick(event)`；兩個 DOM 範圍互斥且不得逐一新增第二個播放呼叫。
 - **Interface:** `CustomRoomView` 根 `<main>` 將 capture click 事件傳給 `useButtonClickAudio().handleButtonClick(event)`；等待室頁面與子元件不得再逐一新增第二個播放呼叫。
-- **Interface:** `GameSettingsModal` 的返回按鈕呼叫 `openConfirmation("return-lobby")`，確認後 emit `return-lobby`；`GameStage` 維持同名事件轉送；`GameView` 的返回 handler 呼叫 `router.push({ name: "LobbyHome" })`，子元件不得直接寫死 `/Lobby` 路徑。
+- **Interface:** `UsePreGameAudio` 提供 `requestPreGameBackgroundResume()`，只登記使用者觸發的恢復意圖而不直接播放；`GameSettingsModal` 的返回按鈕呼叫 `openConfirmation("return-lobby")`，確認後 emit `return-lobby`；`GameStage` 維持同名事件轉送；`GameView` 的返回 handler 先呼叫 `requestPreGameBackgroundResume()`，再呼叫 `router.push({ name: "LobbyHome" })`，子元件不得直接寫死 `/Lobby` 路徑。
 - **Settings behavior:** `musicEnabled === false` 或 `musicVolume === 0` 時牌桌音樂不得播放。正式牌桌已啟動後重新開啟音樂時執行完整 5000ms 淡入；音量變更套用 0.2 增益並保持在 0 到 1 範圍。
 - **Failure mode:** 不支援 Audio 的環境直接 no-op。play Promise 被瀏覽器拒絕時安靜失敗，不得造成未處理 rejection、路由中斷或牌桌載入失敗。
-- **Acceptance criteria:** `node tests/pre-game-audio.test.mjs` 驗證 Loading 路由不再持續 pre-game 音樂、4000ms 淡出、Loading／Game activation 保留、`Game` 返回大廳時的 900ms 淡入、`GameStage`、Teleport 設定視窗與 `CustomRoomView` 都接上共用 click handler，以及設定返回事件完整傳到 `GameView` 並導向 `LobbyHome`；`node tests/game-table-audio.test.mjs` 驗證資產、控制器介面、5000ms 淡入、循環播放、設定同步、GameView 啟動條件、卸載清理、兩層洗牌音效、正式牌桌每次有效抽牌的 0.35 增益音效、所有玩家有效出牌的 0.4 增益音效、裁切後 `game-card-play-rise.mp3` 小於 40 KiB、展示頁隔離，以及 `senior` 專屬保護啟動音效與其他保護事件隔離；FFmpeg 靜音偵測驗證容器長度低於 1.5 秒且 -45 dB 前置靜音低於 0.06 秒；`node tests/card-draw-animation.test.mjs`、`node tests/card-play-interaction.test.mjs` 與 `node tests/socket-game-animation.test.mjs` 驗證抽牌、出牌互動與 socket 動畫契約保持不變；`npm run build` 成功且輸出包含 `game-card-draw-*.mp3`、`game-card-play-rise-*.mp3` 與 `game-senior-protection-activate-*.mp3`。
-- **In scope:** 前端背景音樂控制器、Loading 路由音訊切換、GameView 生命週期與設定返回大廳導頁協調、`game-table-start-theme.mp3` 的每輪重播淡入、`game-card-shuffle.ogg` 的兩層播放控制、`game-card-draw.mp3` 的正式牌桌抽牌控制、`game-card-play-rise.mp3` 的正式牌桌所有玩家出牌控制與前置靜音裁切、`intern-guess-correct.mp3`／`intern-guess-incorrect.mp3` 的實習生結果揭露控制、`game-senior-protection-activate.mp3` 的職場老鳥保護啟動控制、牌桌、Teleport 設定視窗與自訂房間等待室的按鈕點擊音效及返回事件接線、聚焦測試與既有音訊資產。
-- **Out of scope:** 後端、Socket.IO 合約、遊戲規則、Loading 視覺時間、角色效果抽牌、動畫展示頁音效、無效出牌音效、保護解除音效、被保護擋招音效、音量滑桿音效、等待室與牌桌 UI 樣式變更、房間資料流程、`game-card-play-rise.mp3` 以外的音訊格式轉換或媒體內容編輯。
+- **Acceptance criteria:** `node tests/pre-game-audio.test.mjs` 驗證 Loading 路由不再持續 pre-game 音樂、4000ms 淡出、Loading／Game activation 保留、`Game` 返回大廳時的 900ms 淡入、`GameStage`、Teleport 設定視窗與 `CustomRoomView` 都接上共用 click handler，以及設定返回事件完整傳到 `GameView` 並導向 `LobbyHome`；`node tests/game-table-audio.test.mjs` 驗證資產、控制器介面、5000ms 淡入、循環播放、設定同步、GameView 啟動條件、卸載清理、兩層洗牌音效、正式牌桌每次有效抽牌的 0.35 增益音效、所有玩家有效出牌的 0.4 增益音效、淘汰提示與任何玩家小局勝利各自單次播放的 0.45 增益音效、三秒歡呼素材、裁切後 `game-card-play-rise.mp3` 小於 40 KiB、展示頁隔離，以及 `senior` 專屬保護啟動音效與其他保護事件隔離；`node tests/round-start-notice.test.mjs` 驗證既有 false-to-true 淘汰快照、勝場快照與提示接線保持單次觸發；FFmpeg 驗證 `game-round-win-cheer.mp3` 長度不超過 3.05 秒，並以靜音偵測驗證 `game-card-play-rise.mp3` 容器長度低於 1.5 秒且 -45 dB 前置靜音低於 0.06 秒；`node tests/card-draw-animation.test.mjs`、`node tests/card-play-interaction.test.mjs` 與 `node tests/socket-game-animation.test.mjs` 驗證抽牌、出牌互動與 socket 動畫契約保持不變；`npm run build` 成功且輸出包含 `game-card-draw-*.mp3`、`game-card-play-rise-*.mp3`、`game-player-eliminated-*.mp3`、`game-round-win-cheer-*.mp3` 與 `game-senior-protection-activate-*.mp3`。
+- **In scope:** 前端背景音樂控制器、Loading 路由音訊切換、GameView 生命週期與設定返回大廳導頁協調、`game-table-start-theme.mp3` 的每輪重播淡入、`game-card-shuffle.ogg` 的兩層播放控制、`game-card-draw.mp3` 的正式牌桌抽牌控制、`game-card-play-rise.mp3` 的正式牌桌所有玩家出牌控制與前置靜音裁切、`intern-guess-correct.mp3`／`intern-guess-incorrect.mp3` 的實習生結果揭露控制、`game-card-swap-whoosh-04.mp3` → `game-card-swap-whoosh-05.mp3` 的人資主管換牌動作序列控制、`game-player-eliminated.mp3` 的玩家淘汰提示同步控制、`game-round-win-cheer.mp3` 的三秒裁切與所有玩家小局勝利控制、`game-senior-protection-activate.mp3` 的職場老鳥保護啟動控制、牌桌、Teleport 設定視窗與自訂房間等待室的按鈕點擊音效及返回事件接線、聚焦測試與既有音訊資產。
+- **Out of scope:** 後端、Socket.IO 合約、遊戲規則、小局勝負與 `roundWins` 計算、玩家淘汰判定、淘汰或勝利提示文案與時長、Loading 視覺時間、角色效果抽牌、動畫展示頁音效、無效出牌音效、保護解除音效、被保護擋招音效、音量滑桿音效、等待室與牌桌 UI 樣式變更、房間資料流程、`game-card-play-rise.mp3` 與 `game-round-win-cheer.mp3` 以外的音訊內容編輯。
 
 ## Risks / Trade-offs
 
@@ -189,3 +222,8 @@ activation 只在 `Mall`、`Loading` 與 `Game` 這些需要返回大廳續播�
 - [設定視窗直接導頁會繞過頁面級離場協調，使音訊回歸測試只驗證控制器而未驗證實際入口] → 返回按鈕沿用 `return-lobby` emit 鏈，統一由 `GameView` 導向 `LobbyHome`，測試同時驗證 modal、stage 與 view 三層接線。
 - [把出牌音效放入底層動畫會污染展示頁，放入 socket handler 則會讓本地聲音延遲或重複] → 由正式牌桌的 `useGameStageCardPlay()` 在本地與遠端有效動畫開始前各呼叫一次注入 callback，並保留遠端 self-player guard。
 - [把實習生結果音效直接放進動畫元件會讓展示頁也播放，或在結果資料到達時播放會早於文字揭露] → 動畫元件只送出精準的 `outcome-reveal` 語意事件，由正式牌桌 `GameStage` 接到音效控制器。
+- [一般與 reduced-motion 換牌時間軸不同，容易漏接或重複播放] → 兩條時間軸都只在共同的 1 秒提示結束後 emit `swap-motion-start`，測試分別鎖定順序並驗證總共兩個 emit 位置。
+- [用固定延遲啟動 05 會因瀏覽器解碼與素材實際長度產生重疊或空白] → 由 04 的單一 `ended` listener 銜接 05；新序列開始前清除兩個 Audio 的舊播放狀態。
+- [在玩家快照 watcher 直接播放會比淘汰提示開啟早一個 tick，或重複狀態更新造成誤播] → 只沿用 false-to-true 快照判定建立提示，並由 `useGameStageNotices()` 在排定的提示實際開啟時呼叫注入 callback。
+- [三秒截點仍有可聽訊號，直接截斷會產生突兀尾音] → 在 2.82 至 3.00 秒套用 180ms 線性淡出，並驗證輸出容器長度不超過 3.05 秒。
+- [監看勝利提示 open 狀態可能因 UI 重設而重播] → 只在 `roundWins` 快照增加的既有 winner 分支呼叫一次音效，提示元件本身不負責播放。

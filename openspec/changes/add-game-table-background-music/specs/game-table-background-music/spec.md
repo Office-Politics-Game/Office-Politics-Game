@@ -94,7 +94,7 @@ The game table audio controller MUST no-op when the browser Audio API is unavail
 
 ### Requirement: Returning from Game resumes the pre-game lobby theme
 
-When `pre-game-lobby-theme.mp3` was explicitly activated before game entry, the frontend MUST preserve that activation while navigating through `Loading` and `Game` without playing the pre-game theme on either route. When navigation changes from `Game` to a pre-game lobby route while shared music remains enabled and its volume is greater than zero, the frontend MUST restart the pre-game theme at zero volume and linearly fade it to the configured target volume over 900 milliseconds. This transition MUST NOT change shared music settings, other background music, sound effects, or the existing behavior for navigation from non-Game routes.
+When `pre-game-lobby-theme.mp3` was explicitly activated before game entry, the frontend MUST preserve that activation while navigating through `Loading` and `Game` without playing the pre-game theme on either route. Confirming the game settings return-lobby action MUST also register an explicit one-shot resume intent before navigation so that a missing in-memory activation does not suppress the requested return music. When navigation changes from `Game` to a pre-game lobby route while shared music remains enabled and its volume is greater than zero, the frontend MUST restart the pre-game theme at zero volume and linearly fade it to the configured target volume over 900 milliseconds. This transition MUST NOT change shared music settings, other background music, sound effects, or the existing behavior for navigation from non-Game routes.
 
 #### Scenario: Return to the lobby from an active game
 
@@ -106,7 +106,9 @@ When `pre-game-lobby-theme.mp3` was explicitly activated before game entry, the 
 #### Scenario: Return through the game settings modal
 
 - **WHEN** the player confirms the return-lobby action in the game settings modal while the current route is `Game`
+- **AND** the in-memory pre-game activation is unavailable
 - **THEN** the frontend navigates to the named `LobbyHome` route through the game page's return-lobby event flow
+- **AND** the confirmation registers a pre-game resume intent before navigation without playing the theme on `Game`
 - **AND** the resulting `Game` to `LobbyHome` transition resumes `pre-game-lobby-theme.mp3` with the 900 millisecond fade-in behavior
 
 #### Scenario: Loading and Game preserve activation without playing the lobby theme
@@ -117,7 +119,7 @@ When `pre-game-lobby-theme.mp3` was explicitly activated before game entry, the 
 
 #### Scenario: Return while pre-game playback is not allowed
 
-- **WHEN** navigation changes from `Game` to a pre-game lobby route while shared music is disabled, its volume is zero, or the pre-game theme was never explicitly activated
+- **WHEN** navigation changes from `Game` to a pre-game lobby route while shared music is disabled, its volume is zero, or the pre-game theme was never explicitly activated and no confirmed settings return requested a resume
 - **THEN** the frontend does not force `pre-game-lobby-theme.mp3` to play
 
 #### Scenario: Enter the lobby from a non-Game route
@@ -303,3 +305,73 @@ The frontend SHALL play a semantic sound exactly once when the Intern animation 
 
 - **WHEN** the outcome is unknown, `soundEnabled` is false, `soundVolume` is zero, the Audio API is unavailable, the browser rejects playback, or the animation runs only in a demo view
 - **THEN** no result sound or unhandled error interrupts the Intern animation
+
+### Requirement: Player elimination notice plays a dedicated sound
+
+The frontend SHALL use `game-player-eliminated.mp3` when any player first transitions from active to eliminated on the formal game table. The frontend MUST play the sound exactly once when the corresponding player-elimination notice opens, from zero seconds at bounded shared `soundVolume × 0.45`. Repeated renders of an already-eliminated player, disabled sound playback, unavailable Audio API access, and rejected playback MUST NOT interrupt the notice or play duplicate audio.
+
+#### Scenario: A player becomes eliminated
+
+- **WHEN** any formal-table player's `isEliminated` state transitions from false to true while `soundEnabled` is true and `soundVolume` is greater than zero
+- **THEN** the player-elimination notice opens for that player
+- **AND** `game-player-eliminated.mp3` plays exactly once from zero seconds at bounded `soundVolume × 0.45`
+
+#### Scenario: An eliminated player remains eliminated
+
+- **WHEN** the formal game table receives another render or state update where the same player's `isEliminated` state remains true
+- **THEN** no additional player-elimination notice or elimination sound is started for that unchanged state
+
+#### Scenario: Elimination sound playback is unavailable
+
+- **WHEN** a player becomes eliminated while `soundEnabled` is false, `soundVolume` is zero, the Audio API is unavailable, or the browser rejects playback
+- **THEN** no unhandled error interrupts the player-elimination notice or game flow
+
+### Requirement: HR card swap motion plays whoosh 04 followed by whoosh 05
+
+The frontend SHALL play `game-card-swap-whoosh-04.mp3` exactly once when a valid HR card swap animation begins its card motion on the formal game table, then SHALL play `game-card-swap-whoosh-05.mp3` exactly once immediately after 04 naturally ends. In both standard and reduced-motion timelines, 04 playback MUST occur after the existing one-second swap prompt hold and immediately before the first flip or position-exchange operation. Both clips MUST start from zero seconds at bounded shared `soundVolume × 0.45`, MUST respect `soundEnabled`, and MUST NOT be wired into animation-only demo views. Starting another swap sequence MUST pause and reset both clips before the new 04 playback begins.
+
+#### Scenario: Standard HR swap begins card motion
+
+- **WHEN** a valid standard-motion HR swap animation finishes its one-second prompt hold
+- **THEN** it emits `swap-motion-start` exactly once immediately before the first card flip
+- **AND** `game-card-swap-whoosh-04.mp3` plays exactly once from zero seconds at bounded shared `soundVolume × 0.45`
+- **AND** `game-card-swap-whoosh-05.mp3` plays exactly once from zero seconds immediately after 04 ends at bounded shared `soundVolume × 0.45`
+
+#### Scenario: Reduced-motion HR swap begins card motion
+
+- **WHEN** a valid reduced-motion HR swap animation finishes its one-second prompt hold
+- **THEN** it emits `swap-motion-start` exactly once immediately before applying the swapped card state
+- **AND** `game-card-swap-whoosh-04.mp3` plays exactly once from zero seconds at bounded shared `soundVolume × 0.45`
+- **AND** `game-card-swap-whoosh-05.mp3` plays exactly once from zero seconds immediately after 04 ends at bounded shared `soundVolume × 0.45`
+
+#### Scenario: Another HR swap starts before the current sequence ends
+
+- **WHEN** another valid HR swap begins while 04 or 05 from the previous swap is still playing
+- **THEN** the frontend pauses and resets both previous clips
+- **AND** the new sequence starts only `game-card-swap-whoosh-04.mp3` from zero seconds
+
+#### Scenario: HR swap sound is unavailable or out of scope
+
+- **WHEN** required animation geometry is invalid, the animation is stale, `soundEnabled` is false, `soundVolume` is zero, the Audio API is unavailable, the browser rejects playback, or the animation runs only in a demo view
+- **THEN** the 04 → 05 sequence does not produce an unhandled error or interrupt the HR animation
+- **AND** if shared sound becomes disabled or zero before 04 ends, 05 does not play
+
+### Requirement: Round winner notice plays a three-second cheer
+
+The frontend SHALL use `game-round-win-cheer.mp3` when any formal-table player's `roundWins` value increases. The asset MUST contain the source audio from zero through 3.00 seconds, MUST apply a linear fade-out during the final 180 milliseconds, MUST have a container duration no greater than 3.05 seconds, and MUST replace the non-semantic `kids_cheering.mp3` filename. Playback MUST start from zero seconds exactly once at bounded shared `soundVolume × 0.45` before the corresponding round-winner notice is requested.
+
+#### Scenario: Any player wins a round
+
+- **WHEN** any formal-table player's `roundWins` value increases relative to the previous player snapshot while `soundEnabled` is true and `soundVolume` is greater than zero
+- **THEN** `game-round-win-cheer.mp3` plays exactly once from zero seconds at bounded shared `soundVolume × 0.45`
+- **AND** the round-winner notice is requested for that same player
+
+#### Scenario: Round-win state is rendered again
+
+- **WHEN** the formal table receives another render where every player's `roundWins` value is unchanged
+- **THEN** no additional round-win cheer or round-winner notice is started for that unchanged state
+
+#### Scenario: Round-win sound playback is unavailable or out of scope
+
+- **WHEN** a player's `roundWins` value increases while `soundEnabled` is false, `soundVolume` is zero, the Audio API is unavailable, the browser rejects playback, or a round-winner notice is opened only in the animation demo view
+- **THEN** no unhandled error or demo audio interrupts the round-winner notice or game flow

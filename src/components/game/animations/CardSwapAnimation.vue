@@ -11,7 +11,7 @@ const props = defineProps({
   targetPlayerName: { type: String, default: '玩家' },
   getPlayerHandRect: { type: Function, default: null },
 })
-const emit = defineEmits(['complete'])
+const emit = defineEmits(['complete', 'swap-motion-start'])
 
 const sourceLayerRef = ref(null)
 const targetLayerRef = ref(null)
@@ -129,6 +129,7 @@ async function play(result) {
   if (reduced) {
     timeline.value
       .to({}, { duration: SWAP_PROMPT_HOLD_SECONDS })
+      .call(() => emit('swap-motion-start'))
       .set([sourceFlipperElement, targetFlipperElement], { rotationY: 180 })
       .to(exchangeLineRef.value, { autoAlpha: 0.72, scaleX: 1, duration: timing.flash })
       .set(promptRef.value, { opacity: 0 })
@@ -143,6 +144,7 @@ async function play(result) {
 
   timeline.value
     .to({}, { duration: SWAP_PROMPT_HOLD_SECONDS })
+    .call(() => emit('swap-motion-start'))
     .to(sourceFlipperElement, getFlipVars(180, timing.flip))
     .to(targetFlipperElement, getFlipVars(180, timing.flip), '<')
     .to(sourceElement, getMoveVars(sourceShowcase, { scale: 1.24, duration: timing.showcase, ease: 'expo.out', extra: { rotation: -7 } }), '-=0.04')
