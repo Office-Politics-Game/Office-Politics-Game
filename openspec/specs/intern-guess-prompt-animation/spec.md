@@ -36,22 +36,17 @@ The game stage SHALL resolve the target nickname by matching the intern animatio
 
 ### Requirement: Sequential intern target and position selection
 
-When a pending card requires both a target player and a guessed position, the game stage SHALL present target-player selection first and MUST NOT render the position-selection dialog before a valid target is selected. After the target is selected, the game stage SHALL stop target-selection mode and SHALL render the position-selection dialog. Cards that do not require both choices MUST retain their existing pending-play behavior.
+When an Intern card enters pending-play state, the game stage SHALL present target-player selection first and MUST NOT render the position-selection dialog before a valid target is selected. After the target is selected, the game stage SHALL stop target-selection mode and SHALL render the position-selection dialog for ranks 2 through 8. The common target-card flow SHALL govern the same target-first ordering for cards that require a player target without a guessed position.
 
 #### Scenario: Intern waits for target selection
 
-- **WHEN** an intern card enters pending-play state and no target player has been selected
-- **THEN** eligible player avatars are selectable and the position-selection dialog is not rendered
+- **WHEN** an Intern card enters pending-play state and no target player has been selected
+- **THEN** eligible player avatars are selectable, `請選擇玩家` is displayed, and the position-selection dialog is not rendered
 
 #### Scenario: Target selection opens the position dialog
 
-- **WHEN** the player selects an eligible target for a pending intern card
+- **WHEN** the player selects an eligible target for a pending Intern card
 - **THEN** target-selection mode stops and the position-selection dialog is rendered for choosing ranks 2 through 8
-
-#### Scenario: Target-only card remains unchanged
-
-- **WHEN** a pending card requires a target player but does not require a guessed position
-- **THEN** its existing target-selection and confirmation panel behavior remains available
 
 ### Requirement: Guess prompt precedes and persists through the result
 

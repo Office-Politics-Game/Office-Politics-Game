@@ -4,13 +4,21 @@ const VALID_AVATAR_IDS = new Set([1, 2, 3, 4])
 const DEFAULT_MATCH_HISTORY_LIMIT = 20
 const MAX_MATCH_HISTORY_LIMIT = 40
 
-const PROFILE_SELECT_SQL = `id, username, avatar_id, bio,
+const PROFILE_SELECT_SQL = `id, username, avatar_id, bio, title,
     level, exp, win_count, lose_count, total_games, created_at, updated_at`
 
 function createProfileError(statusCode, message) {
   const error = new Error(message)
   error.statusCode = statusCode
   return error
+}
+
+function parseAchievementCode(code) {
+  if (typeof code !== "string" || code.trim() === "") {
+    throw createProfileError(400, "Invalid achievement code")
+  }
+
+  return code.trim()
 }
 
 function formatProfile(row) {
@@ -24,8 +32,9 @@ function formatProfile(row) {
     winCount: row.win_count,
     loseCount: row.lose_count,
     totalGames: row.total_games,
+    title: row.title ?? null,
     createdAt: row.created_at,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
   }
 }
 
@@ -70,8 +79,8 @@ function formatProfileMatch(row) {
       username: participant.username,
       avatarId: participant.avatarId,
       roundWins: participant.roundWins,
-      result: participant.result
-    }))
+      result: participant.result,
+    })),
   }
 }
 
@@ -81,7 +90,51 @@ async function getProfile(playerId) {
       FROM players
       WHERE id = $1
       LIMIT 1`,
-    [playerId]
+    [playerId],
+  )
+
+  const player = result.rows[0]
+
+  if (!player) {
+    throw createProfileError(404, "找不到玩家資料")
+  }
+
+  return formatProfile(player)
+}
+
+async function setProfileTitle(playerId, achievementCodeValue) {
+  const achievementCode = parseAchievementCode(achievementCodeValue)
+
+  const achievementResult = await pool.query(
+    `SELECT
+       a.name,
+       pa.player_id AS unlocked_player_id
+     FROM achievements a
+     LEFT JOIN player_achievements pa
+       ON pa.achievement_id = a.id
+      AND pa.player_id = $2
+     WHERE a.code = $1
+     LIMIT 1`,
+    [achievementCode, playerId],
+  )
+
+  if (achievementResult.rows.length === 0) {
+    throw createProfileError(404, "Achievement not found")
+  }
+
+  const achievement = achievementResult.rows[0]
+
+  if (!achievement.unlocked_player_id) {
+    throw createProfileError(403, "Achievement has not been unlocked")
+  }
+
+  const result = await pool.query(
+    `UPDATE players
+      SET title = $1,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING ${PROFILE_SELECT_SQL}`,
+    [achievement.name, playerId],
   )
 
   const player = result.rows[0]
@@ -137,7 +190,7 @@ async function updateProfile(playerId, payload = {}) {
           updated_at = CURRENT_TIMESTAMP
         WHERE id = $${values.length}
         RETURNING ${PROFILE_SELECT_SQL}`,
-      values
+      values,
     )
 
     const player = result.rows[0]
@@ -197,7 +250,7 @@ async function getProfileMatches(playerId, query = {}) {
         winner_participant.username_snapshot
       ORDER BY matches.ended_at DESC, matches.id DESC
       LIMIT $2`,
-    [playerId, limit]
+    [playerId, limit],
   )
 
   return result.rows.map(formatProfileMatch)
@@ -207,6 +260,7 @@ export {
   formatProfile,
   formatProfileMatch,
   getProfile,
+  getProfileMatches,
+  setProfileTitle,
   updateProfile,
-  getProfileMatches
 }

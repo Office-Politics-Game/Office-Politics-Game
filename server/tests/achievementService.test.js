@@ -8,7 +8,7 @@ jest.unstable_mockModule("../src/db/index.js", () => ({
     },
 }))
 
-const { getPlayerAchievements } = await import(
+const { getPlayerAchievements, unlockAchievement } = await import(
     "../src/services/achievementService.js"
 )
 
@@ -120,5 +120,80 @@ describe("achievementService", () => {
         })
         expect(executedSql).not.toMatch(/UPDATE\s+players/i)
         expect(executedSql).not.toMatch(/player_currency_logs/i)
+    })
+
+    test("unlockAchievement() returns achievement data on first unlock", async () => {
+        queryMock
+            .mockResolvedValueOnce({
+                rows: [{ id: 1 }],
+            })
+            .mockResolvedValueOnce({
+                rows: [
+                    {
+                        id: 10,
+                        code: "first_friend",
+                        name: "社交新人",
+                        description: "第一次加好友",
+                        category: "social",
+                        reward_currency: null,
+                        reward_amount: 0,
+                        unlocked_at: null,
+                    },
+                ],
+            })
+            .mockResolvedValueOnce({
+                rows: [{ unlocked_at: "2026-07-12T00:00:00.000Z" }],
+            })
+
+        const achievement = await unlockAchievement(1, "first_friend")
+
+        expect(achievement).toMatchObject({
+            code: "first_friend",
+            isUnlocked: true,
+            unlockedAt: "2026-07-12T00:00:00.000Z",
+        })
+        expect(queryMock.mock.calls[2][0]).toContain(
+            "ON CONFLICT (player_id, achievement_id) DO NOTHING"
+        )
+    })
+
+    test("unlockAchievement() returns null when achievement was already unlocked", async () => {
+        queryMock
+            .mockResolvedValueOnce({
+                rows: [{ id: 1 }],
+            })
+            .mockResolvedValueOnce({
+                rows: [
+                    {
+                        id: 10,
+                        code: "first_friend",
+                        name: "社交新人",
+                        description: "第一次加好友",
+                        category: "social",
+                        reward_currency: null,
+                        reward_amount: 0,
+                        unlocked_at: null,
+                    },
+                ],
+            })
+            .mockResolvedValueOnce({
+                rows: [],
+            })
+
+        await expect(unlockAchievement(1, "first_friend")).resolves.toBeNull()
+    })
+
+    test("unlockAchievement() throws 404 for unknown achievement code", async () => {
+        queryMock
+            .mockResolvedValueOnce({
+                rows: [{ id: 1 }],
+            })
+            .mockResolvedValueOnce({
+                rows: [],
+            })
+
+        await expect(unlockAchievement(1, "bad_code")).rejects.toMatchObject({
+            statusCode: 404,
+        })
     })
 })

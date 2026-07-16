@@ -23,6 +23,7 @@ const props = defineProps({
     default: null,
   },
 })
+const emit = defineEmits(['hidden-player-ids-change'])
 
 const activeResult = ref(null)
 const cardEntries = ref([])
@@ -52,6 +53,7 @@ function resetVisuals() {
   activeResult.value = null
   cardEntries.value = []
   cardLayerRefs.clear()
+  emit('hidden-player-ids-change', [])
 }
 
 function settle(value) {
@@ -122,6 +124,10 @@ async function play(result) {
   })
 
   activePlayKey = playKey
+  const hiddenPlayerIds = entries
+    .filter((entry) => !entry.isSelf)
+    .map((entry) => entry.playerId)
+  emit('hidden-player-ids-change', hiddenPlayerIds)
   activeResult.value = result
   cardEntries.value = entries
   await nextTick()

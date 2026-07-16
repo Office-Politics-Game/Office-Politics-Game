@@ -1,5 +1,10 @@
 import { defineStore } from "pinia";
-import { getProfile, updateProfile, getProfileMatches } from "@/services/profileApi.js";
+import {
+  getProfile,
+  getProfileMatches,
+  setProfileTitle as setProfileTitleApi,
+  updateProfile,
+} from "@/services/profileApi.js";
 import { guestAvatars } from "@/constants/guestOptions.js";
 
 const UNSET_TEXT = "尚未設定";
@@ -32,13 +37,13 @@ function formatNumber(value) {
 
 function formatDate(value) {
   if (!value) {
-    return "尚未記錄";
+    return "尚未設定";
   }
 
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "尚未記錄";
+    return "尚未設定";
   }
 
   return new Intl.DateTimeFormat("zh-TW", {
@@ -201,6 +206,13 @@ export const useProfileStore = defineStore("profile", {
       this.matchHistory = [];
       this.matchHistoryErrorMessage = "";
       this.isMatchHistoryLoading = false;
+
+      return this.profile;
+    },
+
+    async saveAchievementTitle(achievementCode) {
+      const data = await setProfileTitleApi(achievementCode);
+      this.profile = normalizeProfile(data.profile, "member");
 
       return this.profile;
     },

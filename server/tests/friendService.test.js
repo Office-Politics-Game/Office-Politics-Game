@@ -1,11 +1,28 @@
 import { jest } from "@jest/globals"
 
 const queryMock = jest.fn()
+const unlockAchievementMock = jest.fn()
 
 jest.unstable_mockModule("../src/db/index.js", () => ({
   default: {
     query: queryMock,
   },
+}))
+
+jest.unstable_mockModule("../src/services/achievementService.js", () => ({
+  appendUnlockedAchievements: (payload, achievements) => {
+    const unlockedAchievements = achievements.filter(Boolean)
+
+    if (unlockedAchievements.length === 0) {
+      return payload
+    }
+
+    return {
+      ...payload,
+      unlockedAchievements,
+    }
+  },
+  unlockAchievement: unlockAchievementMock,
 }))
 
 const {
@@ -23,6 +40,7 @@ const {
 
 beforeEach(()=>{
   queryMock.mockReset()
+  unlockAchievementMock.mockReset()
 })
 
 describe("sendFriendRequest", ()=>{
@@ -289,10 +307,21 @@ describe("acceptFriendRequest", ()=>{
         },
       ],
     })
+    unlockAchievementMock.mockResolvedValueOnce({
+      code: "first_friend",
+      name: "First Friend",
+    })
 
     const request = await acceptFriendRequest({ requestId: 10, playerId: 2 })
 
     expect(request.status).toBe("accepted")
+    expect(request.unlockedAchievements).toEqual([
+      {
+        code: "first_friend",
+        name: "First Friend",
+      },
+    ])
+    expect(unlockAchievementMock).toHaveBeenCalledWith(2, "first_friend")
     expect(queryMock).toHaveBeenCalledWith(
       expect.stringContaining("UPDATE friends"),
       [10, 2]

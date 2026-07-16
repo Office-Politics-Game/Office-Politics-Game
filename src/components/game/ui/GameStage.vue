@@ -5,6 +5,7 @@ import gameTableBackgroundUrl from "@/assets/images/bg-game-table.webp";
 import gameLogoUrl from "@/assets/images/logo-en-white.png";
 import { useAudioSettings } from "@/composables/UseAudioSettings";
 import { useGameStageCardPlay } from "@/composables/useGameStageCardPlay";
+import { useGameStageCardVisibility } from "@/composables/useGameStageCardVisibility";
 import { useGameStageDrawSequence } from "@/composables/useGameStageDrawSequence";
 import { useGameStageEffectAnimation } from "@/composables/useGameStageEffectAnimation";
 import { CARD_INFO_BY_RANK } from "@/constants/cardInfo";
@@ -125,6 +126,7 @@ const cardDrawAnimation = ref(null);
 const cardPlayAnimation = ref(null);
 const cardShuffleAnimation = ref(null);
 const roundShowdownAnimation = ref(null);
+const roundShowdownHiddenPlayerIds = ref([]);
 const activeEffectResult = ref(null);
 const isInitialRoundDrawAnimating = ref(false);
 const initialRoundDealtPlayerIds = ref([]);
@@ -267,7 +269,7 @@ const {
 
 const {
   activeCard,
-  draggingCardId,
+  draggingHandCard,
   isDragging,
   isOverPlayZone,
   pendingPlay,
@@ -281,6 +283,7 @@ const {
   isPendingPlayPanelVisible,
   selectableTargetPlayerIds,
   visibleHandCards,
+  visiblePlayerHandCardCounts,
   advisorRuleDisabledCardIds,
   visibleDiscardCards,
   selectedTargetPlayer,
@@ -298,6 +301,8 @@ const {
   cancelPendingPlay,
   handleCardPointerDown,
   playRemoteCardPlayAnimation,
+  stageDiscardedCard,
+  clearStagedDiscardCard,
   cleanupCardPlay,
   pruneHiddenPlayedCards,
 } = useGameStageCardPlay({
@@ -311,11 +316,42 @@ const {
   isCurrentPlayerTurn,
   isDrawAnimating,
   activeEffectResult,
+  resolvedPlayerHandCardCounts,
 });
 
 const protectedPlayers = computed(() =>
   props.players.filter((player) => player.isProtected),
 );
+function resolvePlayerName(playerId) {
+  return (
+    props.players.find(
+      (player) => String(player.id) === String(playerId),
+    )?.name ?? "玩家"
+  );
+}
+const activeCleanerTargetPlayerName = computed(() => {
+  if (activeEffectResult.value?.type !== "cleaner") {
+    return "玩家";
+  }
+
+  return resolvePlayerName(activeEffectResult.value.targetPlayerId);
+});
+const {
+  activeCleanerAnimationResult,
+  temporarilyHiddenCardIds,
+  temporarilyHiddenSeatHandPlayerIds,
+} = useGameStageCardVisibility({
+  activeEffectResult,
+  handCards: computed(() => props.handCards),
+  isSelfPlayer: animationRects.isSelfPlayer,
+  roundShowdownHiddenPlayerIds,
+});
+
+function handleShowdownHiddenPlayerIdsChange(playerIds) {
+  roundShowdownHiddenPlayerIds.value = Array.isArray(playerIds)
+    ? playerIds.map(String)
+    : [];
+}
 const activeInternTargetPlayerName = computed(() => {
   if (activeEffectResult.value?.type !== "intern") {
     return "玩家";
@@ -327,6 +363,27 @@ const activeInternTargetPlayerName = computed(() => {
         String(player.id) === String(activeEffectResult.value.targetPlayerId),
     )?.name ?? "玩家"
   );
+});
+const activeManagerTargetPlayerName = computed(() => {
+  if (activeEffectResult.value?.type !== "manager") {
+    return "玩家";
+  }
+
+  return resolvePlayerName(activeEffectResult.value.targetPlayerId);
+});
+const activePmTargetPlayerName = computed(() => {
+  if (activeEffectResult.value?.type !== "pm") {
+    return "玩家";
+  }
+
+  return resolvePlayerName(activeEffectResult.value.targetPlayerId);
+});
+const activeSwapTargetPlayerName = computed(() => {
+  if (activeEffectResult.value?.type !== "swap") {
+    return "玩家";
+  }
+
+  return resolvePlayerName(activeEffectResult.value.targetPlayerId);
 });
 const activeProtectionAnimationPlayer = computed(() => {
   if (activeEffectResult.value?.type !== "protection") {
@@ -449,9 +506,9 @@ watch(
 );
 
 watch(
-  () => props.handCards.map((card) => card.id),
-  (cardIds) => {
-    pruneHiddenPlayedCards(cardIds);
+  () => props.handCards,
+  (handCards) => {
+    pruneHiddenPlayedCards(handCards);
   },
 );
 
@@ -459,6 +516,8 @@ defineExpose({
   playDrawAnimation,
   playEffectAnimation,
   playRemoteCardPlayAnimation,
+  stageDiscardedCard,
+  clearStagedDiscardCard,
   playRoundShowdownAnimation: (result) =>
     roundShowdownAnimation.value?.play?.(result) ?? Promise.resolve(false),
   waitForNoticeIdle,
@@ -481,7 +540,7 @@ defineExpose({
       ></div>
 
       <p
-        v-if="pendingRequiresGuess && isPendingTargetSelectionActive"
+        v-if="isPendingTargetSelectionActive"
         class="play-target-prompt"
         role="status"
         aria-live="polite"
@@ -493,7 +552,8 @@ defineExpose({
         ref="playerSeats"
         :players="players"
         :dealt-player-ids="initialRoundDealtPlayerIds"
-        :player-hand-card-counts="resolvedPlayerHandCardCounts"
+        :player-hand-card-counts="visiblePlayerHandCardCounts"
+        :temporarily-hidden-hand-card-player-ids="temporarilyHiddenSeatHandPlayerIds"
         :is-target-selection-active="isPendingTargetSelectionActive"
         :selectable-player-ids="selectableTargetPlayerIds"
         :selected-target-player-id="selectedTargetPlayerId"
@@ -538,8 +598,9 @@ defineExpose({
         <PlayerHand
           ref="playerHand"
           :cards="visibleHandCards"
-          :dragging-card-id="draggingCardId"
+          :dragging-card="draggingHandCard"
           :disabled-card-ids="advisorRuleDisabledCardIds"
+          :temporarily-hidden-card-ids="temporarilyHiddenCardIds"
           :is-interaction-disabled="isHandDrawRequired"
           :disabled-message="handDisabledMessage"
           @card-pointerdown="handleCardPointerDown"
@@ -560,6 +621,7 @@ defineExpose({
           v-if="activeProtectionAnimationPlayer"
           :key="`protection-block-${activeEffectResult.id}`"
           :success-key="activeEffectResult.id"
+          :show-success-label="Boolean(activeEffectResult.sourceType) && activeEffectResult.sourceType !== 'senior'"
           screen-anchored
           :position="activeProtectionAnimationPlayer.position"
         />
@@ -611,7 +673,8 @@ defineExpose({
 
       <CleanerAnimation
         v-if="activeEffectResult?.type === 'cleaner'"
-        :result="activeEffectResult"
+        :result="activeCleanerAnimationResult"
+        :target-player-name="activeCleanerTargetPlayerName"
         :get-player-hand-rect="animationRects.getPlayerHandRect"
         :is-self-player="animationRects.isSelfPlayer"
         @complete="handleEffectAnimationComplete"
@@ -629,6 +692,7 @@ defineExpose({
       <ManagerAnimation
         v-if="activeEffectResult?.type === 'manager'"
         :result="activeEffectResult"
+        :target-player-name="activeManagerTargetPlayerName"
         :get-player-hand-rect="animationRects.getPlayerHandRect"
         :get-discard-rect="animationRects.getDiscardRect"
         :is-self-player="animationRects.isSelfPlayer"
@@ -638,6 +702,7 @@ defineExpose({
       <PMAnimation
         v-if="activeEffectResult?.type === 'pm'"
         :result="activeEffectResult"
+        :target-player-name="activePmTargetPlayerName"
         :get-player-hand-rect="animationRects.getPlayerHandRect"
         :get-discard-rect="animationRects.getDiscardRect"
         :get-deck-rect="animationRects.getDeckRect"
@@ -648,6 +713,7 @@ defineExpose({
       <CardSwapAnimation
         v-if="activeEffectResult?.type === 'swap'"
         :result="activeEffectResult"
+        :target-player-name="activeSwapTargetPlayerName"
         :get-player-hand-rect="animationRects.getPlayerHandRect"
         @complete="handleEffectAnimationComplete"
       />
@@ -656,6 +722,7 @@ defineExpose({
         ref="roundShowdownAnimation"
         :get-player-hand-rect="animationRects.getPlayerHandRect"
         :is-self-player="animationRects.isSelfPlayer"
+        @hidden-player-ids-change="handleShowdownHiddenPlayerIdsChange"
       />
     </section>
 
