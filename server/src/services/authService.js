@@ -2,6 +2,9 @@ import pool from "../db/index.js"
 import { supabaseAdmin, supabaseAuth } from "../db/supabaseClient.js"
 
 const DEFAULT_AVATAR_ID = 1
+const INITIAL_PLAYER_COINS = 6000
+const INITIAL_PLAYER_GEMS = 600
+const INITIAL_PLAYER_TICKETS = 50
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PASSWORD_RULE_ERROR_MESSAGE = "密碼格式不符合規則"
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=[\]{};':"|,.<>/?`~])[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"|,.<>/?`~]{8,16}$/
@@ -169,14 +172,17 @@ async function registerPlayer({ username, account, password, avatarId } = {}) {
 
     try {
         const result = await pool.query(
-            `INSERT INTO players (auth_user_id, username, account, avatar_id)
-            VALUES ($1, $2, $3, $4)
+            `INSERT INTO players (auth_user_id, username, account, avatar_id, coins, gems, tickets)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING ${PLAYER_SELECT_SQL}`,
             [
                 authUserId,
                 trimmedUsername,
                 trimmedAccount,
                 avatarId ?? DEFAULT_AVATAR_ID,
+                INITIAL_PLAYER_COINS,
+                INITIAL_PLAYER_GEMS,
+                INITIAL_PLAYER_TICKETS,
             ]
         )
 
@@ -340,16 +346,19 @@ async function syncOAuthPlayer({ accessToken, expiresIn } = {}) {
         }
     }
 
-    try {
+      try {
         const createdResult = await pool.query(
-            `INSERT INTO players (auth_user_id, username, account, avatar_id, is_online, last_login_at)
-             VALUES ($1, $2, $3, $4, true, CURRENT_TIMESTAMP)
+            `INSERT INTO players (auth_user_id, username, account, avatar_id, coins, gems, tickets, is_online, last_login_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, true, CURRENT_TIMESTAMP)
              RETURNING ${PLAYER_SELECT_SQL}`,
             [
                 authUser.id,
                 createOAuthUsername(authUser, email),
                 email,
-                DEFAULT_AVATAR_ID
+                DEFAULT_AVATAR_ID,
+                INITIAL_PLAYER_COINS,
+                INITIAL_PLAYER_GEMS,
+                INITIAL_PLAYER_TICKETS,
             ]
         )
 

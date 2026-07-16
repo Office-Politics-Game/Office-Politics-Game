@@ -54,8 +54,8 @@ const PLAYER_SELECT_SQL = `id, auth_user_id, username, account, avatar_id,
     win_count, lose_count, total_games, title,
     is_online, last_login_at, created_at, updated_at`
 
-const INSERT_PLAYER_SQL = `INSERT INTO players (auth_user_id, username, account, avatar_id)
-            VALUES ($1, $2, $3, $4)
+const INSERT_PLAYER_SQL = `INSERT INTO players (auth_user_id, username, account, avatar_id, coins, gems, tickets)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING ${PLAYER_SELECT_SQL}`
 
 function resetMocks() {
@@ -242,7 +242,11 @@ describe("註冊玩家服務", () => {
                 rows: []
             })
             .mockResolvedValueOnce({
-                rows: [createPlayerRow()]
+                rows: [createPlayerRow({
+                    coins: 6000,
+                    gems: 600,
+                    tickets: 50
+                })]
             })
 
         mockSignUp.mockResolvedValueOnce({
@@ -276,7 +280,7 @@ describe("註冊玩家服務", () => {
         expect(mockQuery).toHaveBeenNthCalledWith(
             2,
             INSERT_PLAYER_SQL,
-            ["auth-user-001", "測試玩家", "test@example.com", 2]
+            ["auth-user-001", "測試玩家", "test@example.com", 2, 6000, 600, 50]
         )
 
         expect(player).toEqual({
@@ -287,9 +291,9 @@ describe("註冊玩家服務", () => {
             avatarId: 2,
             level: 1,
             exp: 0,
-            coins: 0,
-            gems: 0,
-            tickets: 0,
+            coins: 6000,
+            gems: 600,
+            tickets: 50,
             winCount: 0,
             loseCount: 0,
             totalGames: 0,
@@ -348,7 +352,7 @@ describe("註冊玩家服務", () => {
         expect(mockQuery).toHaveBeenNthCalledWith(
             2,
             INSERT_PLAYER_SQL,
-            ["auth-user-001", "測試玩家", "test@example.com", 1]
+            ["auth-user-001", "測試玩家", "test@example.com", 1, 6000, 600, 50]
         )
     })
 
@@ -398,7 +402,7 @@ describe("註冊玩家服務", () => {
         expect(mockQuery).toHaveBeenNthCalledWith(
             2,
             INSERT_PLAYER_SQL,
-            ["auth-user-001", "測試玩家", "test@example.com", 2]
+            ["auth-user-001", "測試玩家", "test@example.com", 2, 6000, 600, 50]
         )
     })
 
@@ -1121,6 +1125,9 @@ describe("第三方登入玩家同步服務", () => {
             username: oauthUsername,
             account: "new@example.com",
             avatar_id: 1,
+            coins: 6000,
+            gems: 600,
+            tickets: 50,
             is_online: true,
             last_login_at: "2026-07-10T12:00:00.000Z"
         })
@@ -1162,12 +1169,15 @@ describe("第三方登入玩家同步服務", () => {
 
         expect(mockQuery).toHaveBeenNthCalledWith(
             2,
-            expect.stringContaining("INSERT INTO players"),
+            expect.stringContaining("coins, gems, tickets"),
             [
                 oauthUserId,
                 oauthUsername,
                 "new@example.com",
-                1
+                1,
+                6000,
+                600,
+                50
             ]
         )
 
@@ -1180,9 +1190,9 @@ describe("第三方登入玩家同步服務", () => {
                 avatarId: 1,
                 level: 1,
                 exp: 0,
-                coins: 0,
-                gems: 0,
-                tickets: 0,
+                coins: 6000,
+                gems: 600,
+                tickets: 50,
                 winCount: 0,
                 loseCount: 0,
                 totalGames: 0,
