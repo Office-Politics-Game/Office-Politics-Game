@@ -47,6 +47,12 @@ const props = defineProps({
         (count) => Number.isInteger(count) && count >= 0,
       ),
   },
+  temporarilyHiddenHandCardPlayerIds: {
+    type: Array,
+    default: () => [],
+    validator: (playerIds) =>
+      playerIds.every((playerId) => typeof playerId === "string"),
+  },
   isTargetSelectionActive: {
     type: Boolean,
     default: false,
@@ -72,6 +78,9 @@ const handTargetElements = ref({});
 const dealtPlayerIdSet = computed(() => new Set(props.dealtPlayerIds));
 const selectablePlayerIdSet = computed(
   () => new Set(props.selectablePlayerIds),
+);
+const temporarilyHiddenHandCardPlayerIdSet = computed(
+  () => new Set(props.temporarilyHiddenHandCardPlayerIds),
 );
 
 const positionClasses = {
@@ -131,6 +140,13 @@ function getHandCardBacks(playerId) {
     rotation: `${(index - center) * 7}deg`,
     zIndex: index + 1,
   }));
+}
+
+function isHandCardTemporarilyHidden(playerId, index) {
+  return (
+    index === 0 &&
+    temporarilyHiddenHandCardPlayerIdSet.value.has(String(playerId))
+  );
 }
 
 const resolvedCardBackUrl = computed(
@@ -231,11 +247,15 @@ defineExpose({
         aria-hidden="true"
       >
         <img
-          v-for="cardBack in getHandCardBacks(player.id)"
+          v-for="(cardBack, index) in getHandCardBacks(player.id)"
           :key="cardBack.id"
           :src="resolvedCardBackUrl"
           alt=""
           class="player-seat-hand-target__card block size-full select-none object-contain"
+          :class="{
+            'player-seat-hand-target__card--temporarily-hidden':
+              isHandCardTemporarilyHidden(player.id, index),
+          }"
           :style="{
             '--hand-card-offset': cardBack.offset,
             '--hand-card-rotation': cardBack.rotation,
@@ -274,6 +294,11 @@ defineExpose({
 .player-seat-hand-target__card {
   position: absolute;
   inset: 0;
+}
+
+.player-seat-hand-target__card--temporarily-hidden {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .player-seat-hand-target--top {

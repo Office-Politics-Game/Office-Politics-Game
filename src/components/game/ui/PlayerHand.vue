@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, toRaw } from 'vue'
 import cursorGrabUrl from '@/assets/icons/cursor-grab.svg'
 import cursorGrabbingUrl from '@/assets/icons/cursor-grabbing.svg'
 import cursorPointerUrl from '@/assets/icons/cursor-pointer.svg'
@@ -19,11 +19,16 @@ const props = defineProps({
           typeof card?.frameUrl === 'string',
       ),
   },
-  draggingCardId: {
-    type: String,
+  draggingCard: {
+    type: Object,
     default: null,
   },
   disabledCardIds: {
+    type: Array,
+    default: () => [],
+    validator: (cardIds) => cardIds.every((cardId) => typeof cardId === 'string'),
+  },
+  temporarilyHiddenCardIds: {
     type: Array,
     default: () => [],
     validator: (cardIds) => cardIds.every((cardId) => typeof cardId === 'string'),
@@ -73,6 +78,14 @@ function isCardRuleDisabled(card) {
   return props.disabledCardIds.includes(card.id)
 }
 
+function isCardTemporarilyHidden(card) {
+  return props.temporarilyHiddenCardIds.includes(card.id)
+}
+
+function isDraggingCard(card) {
+  return Boolean(props.draggingCard) && toRaw(card) === toRaw(props.draggingCard)
+}
+
 function getHandElement() {
   return handRoot.value
 }
@@ -105,18 +118,20 @@ defineExpose({
     aria-label="玩家手牌"
   >
     <div
-      v-for="card in cards"
-      :key="card.id"
+      v-for="(card, index) in cards"
+      :key="card.instanceId ?? `${card.id}-${index}`"
       class="game-card-arrangement absolute bottom-0 left-1/2 aspect-[3/4] h-[clamp(126px,31vh,230px)] origin-bottom select-none"
       :class="{
-        'game-card-arrangement--dragging': card.id === draggingCardId,
+        'game-card-arrangement--dragging': isDraggingCard(card),
         'game-card-arrangement--disabled': isCardDisabled(card),
         'game-card-arrangement--interaction-disabled': props.isInteractionDisabled,
         'game-card-arrangement--rule-disabled': isCardRuleDisabled(card),
+        'game-card-arrangement--temporarily-hidden': isCardTemporarilyHidden(card),
         'hover-block-hint-target': props.isInteractionDisabled,
       }"
       role="button"
       tabindex="0"
+      :aria-hidden="isCardTemporarilyHidden(card) ? 'true' : undefined"
       :aria-disabled="isCardDisabled(card) ? 'true' : undefined"
       :aria-label="`檢視卡牌：${card.name}`"
       @pointerdown="emit('card-pointerdown', card, $event)"
@@ -203,6 +218,12 @@ defineExpose({
   opacity: 0;
   visibility: hidden;
   filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0));
+}
+
+.game-card-arrangement--temporarily-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

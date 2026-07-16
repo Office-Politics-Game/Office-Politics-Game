@@ -58,7 +58,7 @@ export function useGameStageEffectAnimation({
         () => {
           settleEffectAnimation(nextResult, nextResult.type === "protection");
         },
-        nextResult.type === "protection" ? 1000 : 8000,
+        nextResult.type === "protection" ? 1600 : 8000,
       );
     });
   }

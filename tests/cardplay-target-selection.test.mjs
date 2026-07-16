@@ -34,7 +34,8 @@ test('cardplay test keeps played card pending until confirm or cancel', async ()
   assert.match(source, /function cancelPendingPlay\(/)
   assert.match(source, /canConfirmPendingPlay/)
   assert.match(source, /visibleHandCards/)
-  assert.match(source, /pendingCardId/)
+  assert.match(source, /pendingPlay\.value\?\.card \?\? null/)
+  assert.match(source, /filterVisibleHandCards/)
 })
 
 test('cardplay test uses the original player seats as target choices', async () => {

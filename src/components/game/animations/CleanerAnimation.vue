@@ -21,7 +21,6 @@ import EffectCardLayer from './EffectCardLayer.vue'
 
 const props = defineProps({
   result: { type: Object, default: null },
-  sourcePlayerName: { type: String, default: '玩家' },
   targetPlayerName: { type: String, default: '玩家' },
   getPlayerHandRect: { type: Function, default: null },
   isSelfPlayer: { type: Function, default: null },
@@ -82,8 +81,10 @@ async function play(result) {
     ? props.getPlayerHandRect?.(result.viewerPlayerId)
     : null
   const hiddenFromViewer = result.revealCard === false
-  const startsFaceUp =
-    hiddenFromViewer && result.targetCard && props.isSelfPlayer?.(result.targetPlayerId)
+  const keepsFaceUp =
+    hiddenFromViewer &&
+    Boolean(result.targetCard) &&
+    props.isSelfPlayer?.(result.targetPlayerId) === true
 
   if (
     !originRect ||
@@ -125,7 +126,7 @@ async function play(result) {
     transformPerspective: 1200,
   })
   gsap.set(flipperElement, {
-    rotationY: startsFaceUp ? 0 : 180,
+    rotationY: keepsFaceUp ? 0 : 180,
     transformPerspective: 1200,
     transformStyle: 'preserve-3d',
   })
@@ -148,14 +149,6 @@ async function play(result) {
         }),
     )
 
-  if (startsFaceUp) {
-    timeline.value.to(
-      flipperElement,
-      getFlipVars(180, timing.flip),
-      '<',
-    )
-  }
-
   if (!hiddenFromViewer) {
     timeline.value.to(flipperElement, getFlipVars(0, timing.flip))
   }
@@ -176,14 +169,6 @@ async function play(result) {
     }),
   )
 
-  if (startsFaceUp) {
-    timeline.value.to(
-      flipperElement,
-      getFlipVars(0, timing.flip),
-      '<',
-    )
-  }
-
 }
 
 watch(() => props.result?.id, (id) => {
@@ -201,16 +186,7 @@ onBeforeUnmount(stop)
         ref="veilRef"
         class="cleaner-animation__veil"
       ></div>
-      <div ref="promptRef" class="cleaner-animation__prompt">
-        <span class="cleaner-animation__prompt-value">{{
-          sourcePlayerName
-        }}</span>
-        查看
-        <span class="cleaner-animation__prompt-value">{{
-          targetPlayerName
-        }}</span>
-        手牌
-      </div>
+      <div ref="promptRef" class="cleaner-animation__prompt">偷看<span class="cleaner-animation__prompt-value">{{ targetPlayerName }}</span>手牌</div>
       <EffectCardLayer
         ref="cardLayerRef"
         class="cleaner-animation__card"
