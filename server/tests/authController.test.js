@@ -7,6 +7,7 @@ const mockRequestPasswordReset = jest.fn()
 const mockResetPlayerPassword = jest.fn()
 const mockSyncOAuthPlayer = jest.fn()
 const mockLogoutPlayer = jest.fn()
+const mockChangePlayerPassword = jest.fn()
 
 jest.unstable_mockModule("../src/services/authService.js", () => ({
     registerPlayer: mockRegisterPlayer,
@@ -15,7 +16,8 @@ jest.unstable_mockModule("../src/services/authService.js", () => ({
     logoutPlayer: mockLogoutPlayer,
     verifyToken: mockVerifyToken,
     requestPasswordReset: mockRequestPasswordReset,
-    resetPlayerPassword: mockResetPlayerPassword
+    resetPlayerPassword: mockResetPlayerPassword,
+    changePlayerPassword: mockChangePlayerPassword
 }))
 
 const {
@@ -23,7 +25,8 @@ const {
     handleLoginPlayer,
     handleOAuthCallback,
     handleVerifyToken,
-    handleLogoutPlayer
+    handleLogoutPlayer,
+    handleChangePassword
 } = await import("../src/controllers/authController.js")
 
 function createMockResponse() {
@@ -61,6 +64,7 @@ describe("auth controller cookie login flow", () => {
         mockRequestPasswordReset.mockReset()
         mockResetPlayerPassword.mockReset()
         mockSyncOAuthPlayer.mockReset()
+        mockChangePlayerPassword.mockReset()
 
         delete process.env.AUTH_COOKIE_SAME_SITE
         delete process.env.AUTH_COOKIE_SECURE
@@ -291,5 +295,72 @@ describe("auth controller cookie login flow", () => {
         expect(res.json).toHaveBeenCalledWith({
             message: "登出成功"
         })
+    })
+
+    test("修改密碼成功時，從 Cookie 讀取 token 並清除登入 Cookie", async () => {
+        mockChangePlayerPassword.mockResolvedValueOnce({
+            message: "密碼已更新，請重新登入"
+    })
+
+        const req = {
+            cookies: {
+                officePoliticsAuthToken: "valid-token"
+            },
+            body: {
+                currentPassword: "Aa123456!",
+                password: "Bb123456!",
+                confirmPassword: "Bb123456!"
+            }
+        }
+        const res = createMockResponse()
+
+        await handleChangePassword(req, res)
+
+        expect(mockChangePlayerPassword).toHaveBeenCalledWith({
+            token: "valid-token",
+            currentPassword: "Aa123456!",
+            password: "Bb123456!",
+            confirmPassword: "Bb123456!"
+        })
+        expect(res.clearCookie).toHaveBeenCalledWith(
+            "officePoliticsAuthToken",
+            {
+                httpOnly: true,
+                secure: false,
+                sameSite: "lax",
+                path: "/"
+            }
+        )
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({
+            message: "密碼已更新，請重新登入"
+        })
+    })
+
+    test("修改密碼發生未知錯誤時，回傳友善訊息", async () => {
+        const consoleErrorSpy = jest
+            .spyOn(console, "error")
+            .mockImplementation(() => {})
+
+        mockChangePlayerPassword.mockRejectedValueOnce(
+            new Error("Supabase內部錯誤")
+        )
+
+        const req = {
+            cookies: {
+                officePoliticsAuthToken: "valid-token"
+            },
+            body: {}
+        }
+        const res = createMockResponse()
+
+        await handleChangePassword(req, res)
+
+        expect(res.status).toHaveBeenCalledWith(500)
+        expect(res.json).toHaveBeenCalledWith({
+            message: "修改密碼失敗，請稍後再試"
+        })
+
+        consoleErrorSpy.mockRestore()
     })
 })

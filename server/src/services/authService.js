@@ -421,6 +421,74 @@ async function resetPlayerPassword({ token, password } = {}) {
     }
 }
 
+async function changePlayerPassword({
+    token,
+    currentPassword,
+    password,
+    confirmPassword
+} = {}) {
+    if (!token) {
+        throw createAuthError(401, "請先登入後再修改密碼")
+    }
+
+    if (!currentPassword) {
+        throw createAuthError(400, "請輸入目前密碼")
+    }
+
+    validatePassword(password)
+
+    if (!confirmPassword) {
+        throw createAuthError(400, "請再次輸入新密碼")
+    }
+
+    if (password !== confirmPassword) {
+        throw createAuthError(400, "新密碼與確認密碼不一致")
+    }
+
+    const { data, error } = await supabaseAdmin.auth.getUser(token)
+
+    if (error || !data?.user?.id) {
+        throw createAuthError(401, "登入狀態已失效，請重新登入")
+    }
+
+    const email = data.user.email?.trim().toLowerCase()
+
+    if (!email || !isValidEmail(email)) {
+        throw createAuthError(400, "會員帳號資料異常，請重新登入")
+    }
+
+    const { error: signInError } =
+        await supabaseAdmin.auth.signInWithPassword({
+            email,
+            password: currentPassword
+        })
+
+    if (signInError) {
+        throw createAuthError(401, "目前密碼錯誤")
+    }
+
+    if (currentPassword === password) {
+        throw createAuthError(400, "新密碼不可與目前密碼相同")
+    }
+
+    const { error: updateError } =
+        await supabaseAdmin.auth.admin.updateUserById(data.user.id, {
+            password
+        })
+
+    if (updateError) {
+        throw createInternalAuthError(
+            updateError,
+            "修改密碼失敗",
+            "修改密碼失敗，請稍後再試"
+        )
+    }
+
+    return {
+        message: "密碼已更新，請重新登入"
+    }
+}
+
 async function logoutPlayer(token) {
     if (!token) {
         return false
@@ -480,4 +548,13 @@ async function verifyToken(token) {
     return formatPlayer(player)
 }
 
-export { registerPlayer, loginPlayer, syncOAuthPlayer, logoutPlayer, verifyToken, requestPasswordReset, resetPlayerPassword }
+export {
+    registerPlayer,
+    loginPlayer,
+    syncOAuthPlayer,
+    logoutPlayer,
+    verifyToken,
+    requestPasswordReset,
+    resetPlayerPassword,
+    changePlayerPassword
+}
