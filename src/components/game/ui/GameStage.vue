@@ -21,13 +21,14 @@ import CardDrawAnimation from "../animations/CardDrawAnimation.vue";
 import CardPlayAnimation from "../animations/CardPlayAnimation.vue";
 import CardShuffleAnimation from "../animations/CardShuffleAnimation.vue";
 import CardSwapAnimation from "../animations/CardSwapAnimation.vue";
-import CardInspectionOverlay from "./CardInspectionOverlay.vue";
 import CleanerAnimation from "../animations/CleanerAnimation.vue";
 import FlyInTextModal from "../animations/FlyInTextModal.vue";
 import InternAnimation from "../animations/InternAnimation.vue";
 import ManagerAnimation from "../animations/ManagerAnimation.vue";
 import PMAnimation from "../animations/PMAnimation.vue";
 import ProtectionAura from "../animations/ProtectionAura.vue";
+import RoundShowdownAnimation from "../animations/RoundShowdownAnimation.vue";
+import CardInspectionOverlay from "./CardInspectionOverlay.vue";
 import CardPlayConfirmPanel from "./CardPlayConfirmPanel.vue";
 import GameCard from "./GameCard.vue";
 import GameRulesModal from "./GameRulesModal.vue";
@@ -35,7 +36,6 @@ import GameSettingsIcon from "./GameSettingsIcon.vue";
 import GameSettingsModal from "./GameSettingsModal.vue";
 import PlayerHand from "./PlayerHand.vue";
 import PlayerSeats from "./PlayerSeats.vue";
-import RoundShowdownAnimation from "../animations/RoundShowdownAnimation.vue";
 import RotateDeviceNotice from "./RotateDeviceNotice.vue";
 import TableCardPiles from "./TableCardPiles.vue";
 import TurnStatus from "./TurnStatus.vue";
@@ -155,7 +155,6 @@ function getGameTutorialTargets() {
       ) ?? [],
   };
 }
-
 const resolvedTableBackgroundUrl = computed(
   () => boardSkinUrl.value || gameTableBackgroundUrl,
 );

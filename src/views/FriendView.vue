@@ -3,6 +3,7 @@
     class="friend-page-shell flex min-h-screen w-screen items-center justify-center overflow-hidden bg-cover bg-center p-3 md:p-4"
     :class="{ 'is-returning': isReturningToLobby }"
     :style="{ backgroundImage: `url(${BG_FriendView})` }"
+    @click.capture="handleButtonClick"
   >
     <div
       class="friend-exit-layer"
@@ -13,7 +14,7 @@
     <section
       class="friend-page-panel relative z-10 flex h-[92vh] w-[94vw] max-w-[1100px] flex-col overflow-hidden bg-white/95 shadow-2xl backdrop-blur md:h-[82vh] md:flex-row"
     >
-      <aside class="flex min-h-0 w-full flex-col border-b border-[var(--gray-100)] md:w-[38%] md:border-b-0 md:border-r">
+      <aside class="flex max-h-[40%] min-h-0 w-full shrink-0 flex-col overflow-hidden border-b border-[var(--gray-100)] md:max-h-none md:w-[38%] md:border-b-0 md:border-r">
         <div class="flex h-14 shrink-0 items-center overflow-x-auto border-b border-[var(--gray-100)] px-5">
           <button
             type="button"
@@ -150,7 +151,7 @@
           </button>
         </header>
 
-        <section class="min-h-0 flex-1 bg-[rgba(244,247,251,0.74)] px-6 py-5">
+        <section class="flex min-h-0 flex-1 flex-col overflow-hidden bg-[rgba(244,247,251,0.74)] px-6 py-5">
           <FriendAuthRequiredState
             v-if="!friendStore.canUseFriendSystem"
             @login="goLogin"
@@ -177,7 +178,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import AddFriendForm from "@/components/friend/AddFriendForm.vue";
 import FriendAuthRequiredState from "@/components/friend/FriendAuthRequiredState.vue";
@@ -187,12 +188,14 @@ import FriendList from "@/components/friend/FriendList.vue";
 import FriendRequestList from "@/components/friend/FriendRequestList.vue";
 import BG_FriendView from "@/assets/images/bg-friend-view.webp";
 import bgDashboard from "@/assets/images/bg-dashboard.webp";
+import { useButtonClickAudio } from "@/composables/UseButtonClickAudio";
 import { useChatStore } from "@/stores/chatStore.js";
 import { useFriendStore } from "@/stores/friendStore.js";
 
 const router = useRouter();
 const chatStore = useChatStore();
 const friendStore = useFriendStore();
+const { handleButtonClick } = useButtonClickAudio();
 const activeTab = ref("friends");
 const isReturningToLobby = ref(false);
 const RETURN_ANIMATION_DURATION = 520;
@@ -240,6 +243,7 @@ function goLogin() {
 
 function loadFriendDataIfAllowed() {
   if (friendStore.canUseFriendSystem) {
+    chatStore.startRealtime();
     friendStore.loadFriendData();
     return;
   }
@@ -319,6 +323,10 @@ function returnToLobby() {
 
 onMounted(() => {
   loadFriendDataIfAllowed();
+});
+
+onUnmounted(() => {
+  chatStore.stopRealtime();
 });
 
 watch(

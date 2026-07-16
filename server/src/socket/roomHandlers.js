@@ -1,4 +1,10 @@
-import { addComputerPlayer, getRoomState, updateReady, startGame } from "../services/roomService.js"
+import {
+    addComputerPlayer,
+    getRoomState,
+    kickPlayer,
+    updateReady,
+    startGame,
+} from "../services/roomService.js"
 
 function registerRoomHandlers(io, socket) {
     socket.on("room:subscribe", async (payload, callback) => {
@@ -85,6 +91,36 @@ function registerRoomHandlers(io, socket) {
             const roomState = await addComputerPlayer({
                 roomCode,
                 hostPlayerId,
+            })
+
+            io.to(roomCode).emit("room:state", roomState)
+
+            if (typeof callback === "function") {
+                callback({
+                    ok: true,
+                    data: roomState,
+                })
+            }
+        } catch (error) {
+            if (typeof callback === "function") {
+                callback({
+                    ok: false,
+                    error: {
+                        message: error.message,
+                    },
+                })
+            }
+        }
+    })
+
+    socket.on("room:remove-player", async (payload, callback) => {
+        try {
+            const { roomCode, requesterPlayerId, targetPlayerId } = payload
+
+            const roomState = await kickPlayer({
+                roomCode,
+                requesterPlayerId,
+                targetPlayerId,
             })
 
             io.to(roomCode).emit("room:state", roomState)

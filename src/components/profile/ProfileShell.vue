@@ -3,9 +3,10 @@
     class="profile-page grid w-screen min-h-[100svh] place-items-center overflow-hidden bg-[var(--brand-navy)] bg-center bg-cover isolate"
     :class="{ 'is-returning': isReturning }"
     :style="{ backgroundImage: `url(${backgroundImage})` }"
+    @click.capture="handleButtonClick"
   >
     <div
-      class="profile-exit-layer absolute inset-0 z-0 bg-center bg-cover opacity-0 will-change-[opacity]"
+      class="profile-exit-layer pointer-events-none absolute inset-0 z-0 bg-center bg-cover opacity-0 will-change-[opacity]"
       :style="{ backgroundImage: `url(${exitBackgroundImage})` }"
       aria-hidden="true"
     ></div>
@@ -32,7 +33,11 @@
       class="profile-paper"
       :style="{ '--paper-image': `url(${paperImage})` }"
     >
-      <ProfileSidebar :player="player" />
+      <ProfileSidebar
+        :player="player"
+        :can-edit="canEdit"
+        @edit-avatar="$emit('edit-avatar')"
+      />
 
       <div class="profile-paper__content flex min-h-0 min-w-0 flex-1 flex-col">
         <header class="profile-paper__header relative pr-[38px] lg:pr-[58px]">
@@ -40,7 +45,7 @@
             :tabs="tabs"
             :active-tab="activeTab"
             :locked-tabs="lockedTabs"
-            @update:active-tab="$emit('update:activeTab', $event)"
+            @update:active-tab="$emit('update:active-tab', $event)"
           />
           <button
             type="button"
@@ -65,6 +70,9 @@ import { X } from "lucide-vue-next";
 import LobbyMenu from "@/components/menu/LobbyMenu.vue";
 import ProfileSidebar from "@/components/profile/ProfileSidebar.vue";
 import ProfileTabs from "@/components/profile/ProfileTabs.vue";
+import { useButtonClickAudio } from "@/composables/UseButtonClickAudio";
+
+const { handleButtonClick } = useButtonClickAudio();
 
 defineProps({
   player: {
@@ -99,9 +107,13 @@ defineProps({
     type: Array,
     default: () => [],
   },
+  canEdit: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-defineEmits(["close", "update:activeTab"]);
+defineEmits(["close", "update:active-tab", "edit-avatar"]);
 </script>
 
 <style scoped>
@@ -193,6 +205,7 @@ defineEmits(["close", "update:activeTab"]);
 }
 
 .profile-paper__close {
+  cursor: pointer;
   transition:
     background 0.18s ease,
     color 0.18s ease;

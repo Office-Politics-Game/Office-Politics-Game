@@ -1,0 +1,6 @@
+ALTER TABLE players
+ADD COLUMN IF NOT EXISTS bio TEXT DEFAULT '';
+
+UPDATE players
+SET bio = ''
+WHERE bio IS NULL;

@@ -1,6 +1,6 @@
 <template>
   <nav
-    class="profile-tabs grid h-8 grid-cols-4 border-b border-[rgba(160,166,179,0.3)] lg:h-16"
+    class="profile-tabs grid h-8 grid-cols-3 border-b border-[rgba(160,166,179,0.3)] lg:h-16"
     aria-label="個人資料分頁"
   >
     <button
@@ -12,7 +12,7 @@
         'profile-tabs__button--active': tab.id === activeTab,
         'profile-tabs__button--locked': lockedTabs.includes(tab.id),
       }"
-      @click="$emit('update:activeTab', tab.id)"
+      @click="$emit('update:active-tab', tab.id)"
     >
       {{ tab.label }}
       <span
@@ -42,11 +42,12 @@ defineProps({
   },
 });
 
-defineEmits(["update:activeTab"]);
+defineEmits(["update:active-tab"]);
 </script>
 
 <style scoped>
 .profile-tabs__button {
+  cursor: pointer;
   transition:
     color 0.18s ease,
     background 0.18s ease;

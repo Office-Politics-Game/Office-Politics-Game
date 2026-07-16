@@ -10,6 +10,11 @@ import {
 import { addLog } from "./actionLogService.js"
 import { discardCard } from "./discardService.js"
 import { finishTurn } from "./roundFlowService.js"
+import { finalizeMatchProgress } from "./playerProgressService.js"
+import {
+    appendUnlockedAchievements,
+    unlockAchievement,
+} from "./achievementService.js"
 import {
     checkTurn,
     checkPlayer,
@@ -22,6 +27,25 @@ function createServiceError(message, statusCode = 400) {
     const error = new Error(message)
     error.statusCode = statusCode
     return error
+}
+
+async function unlockGameEndAchievements(state, viewerPlayerId) {
+    if (state.phase !== "finished") {
+        return []
+    }
+
+    if (state.winnerPlayerId) {
+        const unlockedAchievement = await unlockAchievement(
+            state.winnerPlayerId,
+            "first_game_win"
+        )
+
+        if (state.winnerPlayerId === viewerPlayerId) {
+            unlockedAchievements.push(unlockedAchievement)
+        }
+    }
+
+    return []
 }
 
 async function drawCardAction({ roomCode, playerId }) {
@@ -169,6 +193,14 @@ async function playCardAction({
         WHERE id = $4`,
         [state, state.phase, state.currentTurnPlayerId, gameSession.id]
     )
+
+    const matchProgress = state.phase === "finished"
+        ? await finalizeMatchProgress({
+            matchId: gameSession.match_id,
+            state,
+        })
+        : { finalized: false }
+
     const actionLog = await addLog(
         gameSession.room_id,
         numericPlayerId,
@@ -190,16 +222,22 @@ async function playCardAction({
 
     const publicState = getPublicState(state, numericPlayerId)
 
-    return {
+    const unlockedAchievements = await unlockGameEndAchievements(
+        state,
+        numericPlayerId
+    )
+
+    return appendUnlockedAchievements({
         gameSession,
         result: effectResult,
         animationResult,
         showdownResult,
         discardedCard,
         actionLog,
+        matchProgress,
         state,
         publicState,
-    }
+    }, unlockedAchievements)
 }
 
 export { drawCardAction, playCardAction }
