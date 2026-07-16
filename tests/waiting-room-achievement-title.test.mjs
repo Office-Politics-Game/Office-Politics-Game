@@ -30,8 +30,13 @@ assert.match(
 );
 assert.match(
   playerListSource,
-  /\.room-ready-stamp\s*\{[\s\S]*position:\s*absolute;[\s\S]*bottom:\s*0;[\s\S]*left:\s*50%;/,
-  "ready stamps should share the same vertical anchor regardless of player info height",
+  /room-player-info[^\"]*gap-\[6px\][^\"]*lg:gap-\[14px\]/,
+  "player names and titles should use the shared responsive spacing",
+);
+assert.match(
+  playerListSource,
+  /room-ready-stamp mt-\[6px\] lg:mt-\[14px\]/,
+  "ready stamps should use the same spacing as names and titles",
 );
 
 console.log("waiting-room achievement title ok");
