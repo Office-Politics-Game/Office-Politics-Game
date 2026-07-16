@@ -108,7 +108,10 @@
                 :key="item.selectionId ?? item.shopItemId"
                 type="button"
                 class="asset-card"
-                :class="{ selected: (item.selectionId ?? item.shopItemId) === selectedItemKey }"
+                :class="{
+                  selected: (item.selectionId ?? item.shopItemId) === selectedItemKey,
+                  locked: item.isLocked,
+                }"
                 @click="handleSelectItem(item)"
               >
                 <div class="asset-media" :class="activeCategory">
@@ -119,6 +122,7 @@
                     :class="{ round: activeCategory === 'avatar' }"
                   />
                   <span v-else>NO PREVIEW</span>
+                  <span v-if="item.isLocked" class="locked-badge">未解鎖</span>
                 </div>
                 <strong>{{ item.name }}</strong>
                 <span
@@ -137,7 +141,7 @@
           <h2>預覽</h2>
 
           <div v-if="activeCategory === 'card_skin'" class="skin-preview-editor">
-            <div class="large-skin-preview" :style="pageStyle">
+            <div class="large-skin-preview" :style="selectedPreviewBackgroundStyle">
               <button
                 class="large-skin-card"
                 type="button"
@@ -203,12 +207,20 @@
               整套套用主題
             </button>
             <button
-              class="save-button"
-              type="button"
-              :disabled="!selectedItem || isSaving"
-              @click="saveSelection"
-            >
-              {{ isSaving ? "儲存中..." : activeCategory === "card_skin" ? "儲存此卡面" : "儲存設定" }}
+            class="save-button"
+            type="button"
+            :disabled="!selectedItem || selectedItem?.isLocked || isSaving"
+            @click="saveSelection"
+          >
+            {{
+              selectedItem?.isLocked
+                ? "尚未解鎖"
+                : isSaving
+                  ? "儲存中..."
+                  : activeCategory === "card_skin"
+                    ? "儲存此卡面"
+                    : "儲存設定"
+            }}
             </button>
           </div>
           <p v-if="saveFeedback" class="save-feedback" :class="{ error: saveFailed }">
@@ -293,6 +305,7 @@ import { cardAssetsByKey } from "@/constants/cardAssets.js";
 import { guestAvatars } from "@/constants/guestOptions.js";
 import { CARD_SKIN_SLOT_LABELS, CARD_SKIN_SLOT_ORDER } from "@/constants/cardSkinSlots.js";
 import {
+  getCardSkinThemeLogo,
   getCardSkinThemeSlotFrame,
   getCardSkinThemeSlotImage,
 } from "@/constants/cardSkinThemes.js";
@@ -307,11 +320,13 @@ import {
   equipShopItem,
   getPlayerEquippedItems,
   getPlayerShopItems,
+  getShopItems,
   updateCardSkinLoadout,
 } from "@/services/shopApi.js";
 import { useAppearanceStore } from "@/stores/appearanceStore.js";
 import { useAuthStore } from "@/stores/authStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
+import { resolveImageAssetUrl } from "@/utils/assetUrlResolver.js";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -320,6 +335,7 @@ const appearanceStore = useAppearanceStore();
 
 const activeCategory = ref("card_back");
 const inventoryItems = ref([]);
+const allShopItems = ref([]);
 const equippedItems = ref(normalizeEquippedItems(null));
 const selectedItemIdByCategory = ref({});
 const isLoading = ref(false);
@@ -364,8 +380,38 @@ const equipmentSections = computed(() => {
 
   return sectionDisplay.map(({ id, label }) => {
     const section = { ...sectionsById[id], label };
+    const ownedItemIds = new Set(section.items.map((item) => Number(item.shopItemId)));
+    const lockedItems = allShopItems.value
+      .filter((item) => item.type === section.id && !ownedItemIds.has(Number(item.id)))
+      .map((item) => ({
+        selectionId: `locked-${section.id}-${item.id}`,
+        inventoryId: null,
+        shopItemId: Number(item.id),
+        shopItem: item,
+        playerId: resolvedPlayerId.value,
+        quantity: 0,
+        type: section.id,
+        categoryId: section.id,
+        categoryLabel: label,
+        name: item.name,
+        description: item.description || "",
+        previewImage:
+          (section.id === "card_skin" ? getCardSkinThemeLogo(item) : "") ||
+          resolveImageAssetUrl(item.imageUrl || item.image_url) ||
+          "",
+        price: item.price,
+        currency: item.currency,
+        isOwned: false,
+        isLocked: true,
+        isEquipped: false,
+      }));
+    const mergedSection = {
+      ...section,
+      count: section.items.length + lockedItems.length,
+      items: [...section.items, ...lockedItems],
+    };
 
-    if (section.id !== "avatar") return section;
+    if (section.id !== "avatar") return mergedSection;
 
     const presetAvatars = guestAvatars.map((avatar) => ({
       selectionId: `default-avatar-${avatar.id}`,
@@ -376,7 +422,7 @@ const equipmentSections = computed(() => {
       quantity: 1,
       type: "avatar",
       categoryId: "avatar",
-      categoryLabel: section.label,
+      categoryLabel: mergedSection.label,
       name: avatar.name,
       description: "預設角色頭像",
       previewImage: avatar.image,
@@ -389,9 +435,9 @@ const equipmentSections = computed(() => {
     }));
 
     return {
-      ...section,
-      count: section.items.length + presetAvatars.length,
-      items: [...presetAvatars, ...section.items],
+      ...mergedSection,
+      count: mergedSection.items.length + presetAvatars.length,
+      items: [...presetAvatars, ...mergedSection.items],
     };
   });
 });
@@ -483,6 +529,9 @@ const gameAvatarImage = computed(() => findSelectedItem("avatar")?.previewImage 
 const gameCardBackImage = computed(
   () => findSelectedItem("card_back")?.previewImage || defaultCardBackImage,
 );
+const selectedPreviewBackgroundStyle = computed(() => ({
+  backgroundImage: `url(${findSelectedItem("board_skin")?.previewImage || pageBackgroundImage})`,
+}));
 const gamePreviewStyle = computed(() => ({
   backgroundImage: `url(${findSelectedItem("board_skin")?.previewImage || defaultGameBackground})`,
 }));
@@ -492,7 +541,7 @@ const previewStageStyle = computed(() => {
     return { backgroundImage: `url(${selectedItem.value.previewImage})` };
   }
 
-  return pageStyle;
+  return selectedPreviewBackgroundStyle.value;
 });
 
 watch(
@@ -570,6 +619,7 @@ async function reloadEquipment() {
   if (!resolvedPlayerId.value) {
     errorMessage.value = "找不到目前玩家資料，請重新登入後再試。";
     inventoryItems.value = [];
+    allShopItems.value = [];
     equippedItems.value = normalizeEquippedItems(null);
     return;
   }
@@ -578,12 +628,14 @@ async function reloadEquipment() {
   errorMessage.value = "";
 
   try {
-    const [playerItemsResponse, equippedResponse] = await Promise.all([
+    const [playerItemsResponse, equippedResponse, shopItemsResponse] = await Promise.all([
       getPlayerShopItems(resolvedPlayerId.value),
       getPlayerEquippedItems(resolvedPlayerId.value),
+      getShopItems({ activeOnly: true }),
     ]);
 
     inventoryItems.value = playerItemsResponse.items || [];
+    allShopItems.value = shopItemsResponse.items || [];
     equippedItems.value = normalizeEquippedItems(
       {
         ...(equippedResponse?.equipped || {}),
@@ -592,6 +644,7 @@ async function reloadEquipment() {
       resolvedPlayerId.value,
     );
   } catch (error) {
+    allShopItems.value = [];
     errorMessage.value = error?.message || "載入造型素材失敗，請稍後再試。";
   } finally {
     isLoading.value = false;
@@ -599,7 +652,14 @@ async function reloadEquipment() {
 }
 
 async function saveSelection() {
-  if (!resolvedPlayerId.value || !selectedItem.value || isSaving.value) return;
+  if (
+    !resolvedPlayerId.value ||
+    !selectedItem.value ||
+    selectedItem.value.isLocked ||
+    isSaving.value
+  ) {
+    return;
+  }
 
   isSaving.value = true;
   saveFeedback.value = "";
@@ -996,7 +1056,29 @@ onMounted(reloadEquipment);
   box-shadow: inset 0 0 0 1px #1c63ff, 0 8px 18px rgba(28, 99, 255, 0.12);
 }
 
+.asset-card.locked .asset-media img {
+  filter: grayscale(0.72) brightness(0.58);
+}
+
+.asset-media .locked-badge {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: grid;
+  width: auto;
+  height: auto;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(14, 25, 42, 0.42);
+  color: white;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+
 .asset-media {
+  position: relative;
   display: grid;
   place-items: center;
   height: 128px;
@@ -1050,6 +1132,7 @@ onMounted(reloadEquipment);
 
 .selected-check {
   position: absolute;
+  z-index: 2;
   top: 6px;
   right: 6px;
   display: grid;
@@ -1708,6 +1791,27 @@ onMounted(reloadEquipment);
   border: 1px dashed #cbd5e1;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.5);
+}
+
+.settings-modal,
+.game-preview-button,
+.asset-card,
+.asset-media,
+.empty-state,
+.preview-heading button,
+.preview-stage,
+.large-skin-preview,
+.large-skin-card,
+.skin-preview-grid button,
+.save-button,
+.game-preview-label,
+.opponent-cards img,
+.table-pile img,
+.hand-card,
+.card-gallery-grid > button,
+.gallery-card,
+.lightbox-card {
+  border-radius: 0;
 }
 
 @media (max-width: 760px) {
