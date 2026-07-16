@@ -161,6 +161,19 @@ const {
   resolveAvatarUrl,
 })
 
+async function navigateToResult() {
+  await gameStage.value?.playGameEndTransition?.()
+
+  await router.push({
+    name: "Result",
+    query: {
+      roomCode: normalizedRoomCode.value,
+      playerId: resolvedCurrentPlayerId.value || requestedPlayerId.value || undefined,
+      transition: "game-end",
+    },
+  })
+}
+
 onMounted(() => {
   void loadInitialRoomState()
   void subscribeGameSocket()
@@ -191,13 +204,7 @@ watch(
 
     hasNavigatedToResult.value = true
 
-    void router.push({
-      name: "Result",
-      query: {
-        roomCode: normalizedRoomCode.value,
-        playerId: resolvedCurrentPlayerId.value || requestedPlayerId.value || undefined,
-      },
-    })
+    void navigateToResult()
   },
 )
 </script>

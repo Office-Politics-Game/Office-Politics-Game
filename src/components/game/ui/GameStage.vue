@@ -206,15 +206,18 @@ const {
   roundWinnerNotice,
   isPlayerEliminatedNoticeOpen,
   playerEliminatedNotice,
+  isGameEndNoticeOpen,
   roundStartNoticeText,
   playRoundStartNotice,
   playTurnNotice,
   playRoundWinnerNotice,
   playPlayerEliminatedNotice,
+  playGameEndNotice,
   closeRoundStartNotice,
   closeTurnNotice,
   closeRoundWinnerNotice,
   closePlayerEliminatedNotice,
+  closeGameEndNotice,
   waitForNoticeIdle,
   resolveNoticeIdleIfIdle,
   holdNoticeAckAfterClose,
@@ -512,6 +515,15 @@ watch(
   },
 );
 
+async function playGameEndTransition() {
+  stopEffectAnimation();
+  clearStagedDiscardCard();
+
+  await nextTick();
+
+  return playGameEndNotice();
+}
+
 defineExpose({
   playDrawAnimation,
   playEffectAnimation,
@@ -520,6 +532,7 @@ defineExpose({
   clearStagedDiscardCard,
   playRoundShowdownAnimation: (result) =>
     roundShowdownAnimation.value?.play?.(result) ?? Promise.resolve(false),
+  playGameEndTransition,
   waitForNoticeIdle,
 });
 </script>
@@ -770,6 +783,14 @@ defineExpose({
       tone="danger"
       :duration="2400"
       @close="closePlayerEliminatedNotice"
+    />
+
+    <FlyInTextModal
+      :is-open="isGameEndNoticeOpen"
+      text="遊戲結束"
+      modal-class="fly-in-text-modal--game-end"
+      :duration="2400"
+      @close="closeGameEndNotice"
     />
 
     <RotateDeviceNotice />

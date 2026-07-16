@@ -32,6 +32,10 @@ const props = defineProps({
     default: 1600,
     validator: (value) => value >= 0,
   },
+  modalClass: {
+    type: String,
+    default: "",
+  },
 });
 
 const emit = defineEmits(["close", "after-leave"]);
@@ -85,7 +89,7 @@ onBeforeUnmount(clearCloseTimer);
       <div
         v-if="isOpen"
         class="fly-in-text-modal"
-        :class="`fly-in-text-modal--${tone}`"
+        :class="[`fly-in-text-modal--${tone}`, modalClass]"
         role="status"
         aria-live="polite"
       >
@@ -259,6 +263,11 @@ onBeforeUnmount(clearCloseTimer);
   opacity: 0;
   filter: blur(1px);
   transform: translate3d(110vw, 0, 0) skewX(-8deg);
+}
+
+.fly-in-text-modal--game-end {
+  background: rgba(0, 19, 50, 0.58);
+  backdrop-filter: blur(5px);
 }
 
 @media (max-width: 640px) {
