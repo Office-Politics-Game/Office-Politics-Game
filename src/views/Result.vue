@@ -4,17 +4,14 @@ import Board from "@/assets/images/result-board.webp"
 import RankingItems from "@/components/result/RankingItems.vue"
 import ChampionCard from "@/components/result/ChampionCard.vue"
 import Achievements from "@/components/result/Achievements.vue"
-import { computed, onMounted, ref } from "vue"
+import { computed, onMounted } from "vue"
 import { useRoute, useRouter } from "vue-router"
-import { getRankingList } from "@/services/rankingService.js"
 import { useGameActionStore } from "@/stores/gameActionStore.js"
 import { resolveAvatarUrl } from "@/utils/playerUtils"
 
 const route = useRoute()
 const router = useRouter()
 const gameActionStore = useGameActionStore()
-
-const fallbackRankingList = ref([])
 
 const roomCode = computed(() => String(route.query.roomCode || "").trim())
 const currentPlayerId = computed(() => route.query.playerId || "")
@@ -65,7 +62,7 @@ const resultPlayers = computed(() => {
     resultData.value.ranking ||
     resultData.value.rankingList
 
-  return Array.isArray(players) && players.length ? players : fallbackRankingList.value
+  return Array.isArray(players) ? players : []
 })
 
 const rankingPlayers = computed(() =>
@@ -94,27 +91,25 @@ const rewards = computed(() => {
   const achievement = resultData.value.achievement || achievements[0] || {}
 
   return {
-    achievementTitle: achievement.title || achievement.name || "本局成就",
+    achievementTitle: achievement.title || achievement.name || "完成對局",
     achievementDescription: achievement.description || "完成一場職場角力，累積績效表現。",
     expGained: toNumber(
       currentPlayerResult.value.expGained ??
         resultData.value.expGained ??
         resultData.value.xpGained ??
         resultData.value.rewards?.exp,
-      200,
+      100,
     ),
     coinsGained: toNumber(
       currentPlayerResult.value.coinsGained ??
         resultData.value.coinsGained ??
         resultData.value.rewards?.coins,
-      1000,
+      500,
     ),
   }
 })
 
 onMounted(async () => {
-  fallbackRankingList.value = await getRankingList()
-
   if (!roomCode.value) {
     return
   }
@@ -249,7 +244,7 @@ onMounted(async () => {
   transform: translateX(-50%);
   pointer-events: auto;
   animation: result-fade-up 0.7s ease both;
-  animation-delay: 4.4s;
+  animation-delay: 4.7s;
 }
 
 .result-stage__action {
@@ -287,6 +282,7 @@ onMounted(async () => {
   .result-stage__actions {
     bottom: 6%;
     gap: 20px;
+    animation-delay: 5.1s;
   }
 
   .result-stage__action {

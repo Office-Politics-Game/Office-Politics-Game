@@ -2,19 +2,19 @@
 defineProps({
   achievementTitle: {
     type: String,
-    default: "本局成就",
+    default: "完成對局",
   },
   achievementDescription: {
     type: String,
-    default: "完成一場職場角力。",
+    default: "完成一場職場角力，累積績效表現。",
   },
   expGained: {
     type: Number,
-    default: 200,
+    default: 100,
   },
   coinsGained: {
     type: Number,
-    default: 1000,
+    default: 500,
   },
 })
 </script>
@@ -43,9 +43,6 @@ defineProps({
   width: 100%;
   height: 100%;
   color: var(--brand-navy);
-  opacity: 0;
-  animation: notes-in 1s ease-out forwards;
-  animation-delay: 3.6s;
 }
 
 .achievement-panel__main {
@@ -62,6 +59,9 @@ defineProps({
   padding: 2.8% 2.2%;
   text-align: center;
   transform: rotate(2deg);
+  opacity: 0;
+  animation: reward-fade-in 0.55s ease-out forwards;
+  animation-delay: 4.05s;
 }
 
 .achievement-panel__tag {
@@ -96,6 +96,8 @@ defineProps({
   gap: 8%;
   color: var(--brand-navy);
   text-align: center;
+  opacity: 0;
+  animation: reward-fade-in 0.5s ease-out forwards;
 }
 
 .achievement-panel__reward--exp {
@@ -104,6 +106,7 @@ defineProps({
   width: 10.8%;
   height: 16.4%;
   transform: rotate(3deg);
+  animation-delay: 4.05s;
 }
 
 .achievement-panel__reward--coin {
@@ -112,6 +115,7 @@ defineProps({
   width: 10.8%;
   height: 16.2%;
   transform: rotate(-1deg);
+  animation-delay: 4.05s;
 }
 
 .achievement-panel__reward span,
@@ -142,8 +146,19 @@ defineProps({
   }
 }
 
+@keyframes reward-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .achievement-panel {
+  .achievement-panel__main,
+  .achievement-panel__reward {
     opacity: 1;
     animation: none;
   }

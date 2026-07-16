@@ -58,7 +58,7 @@ defineProps({
   overflow: hidden;
   color: var(--brand-navy);
   opacity: 0;
-  animation: ranking-slide-in 1.1s cubic-bezier(.2, .8, .2, 1) forwards;
+  animation: ranking-slide-in 0.75s cubic-bezier(.2, .8, .2, 1) forwards;
   animation-delay: var(--item-delay);
   --item-offset-y: 0px;
   transform: translate(-40px, var(--item-offset-y));

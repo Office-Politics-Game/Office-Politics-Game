@@ -16,7 +16,7 @@ defineProps({
       :key="player.id"
       :player="player"
       :rank="index + 1"
-      :delay="`${0.85 + index * 0.45}s`"
+      :delay="`${0.35 + index * 0.6}s`"
     />
   </section>
 </template>

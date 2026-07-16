@@ -31,8 +31,8 @@ defineProps({
   color: var(--brand-navy);
   opacity: 0;
   transform: translateY(-90px) rotate(-2deg);
-  animation: champion-drop-in 1.45s cubic-bezier(.18, .95, .32, 1.2) forwards;
-  animation-delay: 2.9s;
+  animation: champion-drop-in 0.9s cubic-bezier(.18, .95, .32, 1.2) forwards;
+  animation-delay: 3.05s;
 }
 
 .champion-card__portrait {
