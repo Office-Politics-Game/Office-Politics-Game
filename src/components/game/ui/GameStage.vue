@@ -30,6 +30,7 @@ import PMAnimation from "../animations/PMAnimation.vue";
 import ProtectionAura from "../animations/ProtectionAura.vue";
 import CardPlayConfirmPanel from "./CardPlayConfirmPanel.vue";
 import GameCard from "./GameCard.vue";
+import GameRulesModal from "./GameRulesModal.vue";
 import GameSettingsIcon from "./GameSettingsIcon.vue";
 import GameSettingsModal from "./GameSettingsModal.vue";
 import PlayerHand from "./PlayerHand.vue";
@@ -594,6 +595,8 @@ defineExpose({
           @draw="requestDraw"
         />
       </div>
+
+      <GameRulesModal />
 
       <div class="absolute bottom-[-34px] left-1/2 z-20 -translate-x-1/2">
         <PlayerHand
