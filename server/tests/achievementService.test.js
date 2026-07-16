@@ -138,7 +138,7 @@ describe("achievementService", () => {
                         reward_currency: null,
                         reward_amount: 0,
                         unlocked_at: null,
-                     },
+                    },
                 ],
             })
             .mockResolvedValueOnce({
@@ -197,7 +197,7 @@ describe("achievementService", () => {
         })
     })
 
-    test("unlockMatchAchievements() 會解鎖完成對局與首次勝利成就", async () => {
+    test("unlockMatchAchievements() 會解鎖既有的首次勝利成就", async () => {
         const clientQueryMock = jest.fn()
         const client = { query: clientQueryMock }
 
@@ -205,32 +205,19 @@ describe("achievementService", () => {
             .mockResolvedValueOnce({
                 rows: [
                     {
-                        id: 1,
-                        code: "first_match",
-                        name: "初入職場",
-                        description: "完成第一場職場角力。",
-                        category: "match",
-                        reward_currency: null,
-                        reward_amount: 0,
-                    },
-                    {
-                        id: 2,
-                        code: "first_win",
-                        name: "職場勝利組",
-                        description: "贏得第一場職場角力。",
-                        category: "match",
+                        id: 3,
+                        code: "first_game_win",
+                        name: "初次勝利",
+                        description: "第一次遊戲勝利",
+                        category: "game",
                         reward_currency: null,
                         reward_amount: 0,
                     },
                 ],
             })
             .mockResolvedValueOnce({
-                rows: [{ unlocked_at: "2026-07-15T00:00:00.000Z" }],
-            })
-            .mockResolvedValueOnce({
                 rows: [{ unlocked_at: "2026-07-15T00:01:00.000Z" }],
             })
-            .mockResolvedValueOnce({ rows: [] })
 
         const result = await unlockMatchAchievements({
             client,
@@ -241,43 +228,24 @@ describe("achievementService", () => {
 
         expect(clientQueryMock).toHaveBeenCalledWith(
             expect.stringContaining("WHERE code = ANY"),
-            [["first_match", "first_win"]]
+            [["first_game_win"]]
         )
 
         expect(clientQueryMock).toHaveBeenCalledWith(
             expect.stringContaining("INSERT INTO player_achievements"),
-            [1, 1, 10]
+            [1, 3, 10]
         )
 
-        expect(clientQueryMock).toHaveBeenCalledWith(
-            expect.stringContaining("INSERT INTO player_achievements"),
-            [1, 2, 10]
-        )
-
-        expect(clientQueryMock).toHaveBeenCalledWith(
-            expect.stringContaining("INSERT INTO player_achievements"),
-            [2, 1, 10]
-        )
+        expect(clientQueryMock).toHaveBeenCalledTimes(2)
 
         expect(result).toEqual({
             1: [
                 {
-                    id: 1,
-                    code: "first_match",
-                    name: "初入職場",
-                    description: "完成第一場職場角力。",
-                    category: "match",
-                    rewardCurrency: null,
-                    rewardAmount: 0,
-                    isUnlocked: true,
-                    unlockedAt: "2026-07-15T00:00:00.000Z",
-                },
-                {
-                    id: 2,
-                    code: "first_win",
-                    name: "職場勝利組",
-                    description: "贏得第一場職場角力。",
-                    category: "match",
+                    id: 3,
+                    code: "first_game_win",
+                    name: "初次勝利",
+                    description: "第一次遊戲勝利",
+                    category: "game",
                     rewardCurrency: null,
                     rewardAmount: 0,
                     isUnlocked: true,

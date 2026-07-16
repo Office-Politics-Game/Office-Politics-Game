@@ -3,8 +3,9 @@ import { unlockMatchAchievements } from "./achievementService.js"
 
 const MATCH_COMPLETE_EXP = 100
 const MATCH_WIN_BONUS_EXP = 200
-const MATCH_COMPLETE_COINS = 200
-const MATCH_WIN_BONUS_COINS = 800
+const MATCH_COMPLETE_COINS = 500
+const MATCH_WIN_BONUS_COINS = 500
+const MAX_COIN_BALANCE = 99999
 
 function createServiceError(message, statusCode = 400) {
   const error = new Error(message)
@@ -53,7 +54,7 @@ function getPlayerReward(isWinner) {
   }
 }
 
-async function finalizeMatchProgress({ matchId, state }) {
+async function finalizeMatchProgress({ matchId, state, client: externalClient = null }) {
   if (state?.phase !== "finished") {
     return { finalized: false }
   }
@@ -80,10 +81,13 @@ async function finalizeMatchProgress({ matchId, state }) {
     matchPlayers.map((player) => [player.playerId, player.roundWins])
   )
 
-  const client = await pool.connect()
+  const client = externalClient || await pool.connect()
+  const shouldManageTransaction = !externalClient
 
   try {
-    await client.query("BEGIN")
+    if (shouldManageTransaction) {
+      await client.query("BEGIN")
+    }
 
     const matchResult = await client.query(
       `SELECT id, ended_at
@@ -100,7 +104,10 @@ async function finalizeMatchProgress({ matchId, state }) {
     }
 
     if (match.ended_at) {
-      await client.query("COMMIT")
+      if (shouldManageTransaction) {
+        await client.query("COMMIT")
+      }
+
       return { finalized: false }
     }
 
@@ -143,15 +150,16 @@ async function finalizeMatchProgress({ matchId, state }) {
              total_games = total_games + 1,
              level = $3,
              exp = $4,
-             coins = coins + $5,
+             coins = LEAST(coins + $5, $6),
              updated_at = CURRENT_TIMESTAMP
-         WHERE id = $6`,
+         WHERE id = $7`,
         [
           isWinner ? 1 : 0,
           isWinner ? 0 : 1,
           progress.level,
           progress.exp,
           coinsGained,
+          MAX_COIN_BALANCE,
           player.id,
         ],
       )
@@ -204,7 +212,9 @@ async function finalizeMatchProgress({ matchId, state }) {
       [winnerPlayerId, numericMatchId]
     )
 
-    await client.query("COMMIT")
+    if (shouldManageTransaction) {
+      await client.query("COMMIT")
+    }
 
     return {
       finalized: true,
@@ -215,10 +225,15 @@ async function finalizeMatchProgress({ matchId, state }) {
       unlockedAchievementsByPlayerId,
     }
   } catch (error) {
-    await client.query("ROLLBACK")
+    if (shouldManageTransaction) {
+      await client.query("ROLLBACK")
+    }
+
     throw error
   } finally {
-    client.release()
+    if (!externalClient) {
+      client.release()
+    }
   }
 }
 

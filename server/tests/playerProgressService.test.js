@@ -110,7 +110,7 @@ describe("playerProgressService", () => {
         1: {
           playerId: 1,
           expGained: 100,
-          coinsGained: 200,
+          coinsGained: MATCH_COMPLETE_COINS,
           level: 1,
           exp: 100,
           result: "lose",
@@ -126,7 +126,7 @@ describe("playerProgressService", () => {
         3: {
           playerId: 3,
           expGained: 100,
-          coinsGained: 200,
+          coinsGained: MATCH_COMPLETE_COINS,
           level: 2,
           exp: 200,
           result: "lose",
@@ -134,7 +134,7 @@ describe("playerProgressService", () => {
         4: {
           playerId: 4,
           expGained: 100,
-          coinsGained: 200,
+          coinsGained: MATCH_COMPLETE_COINS,
           level: 3,
           exp: 1300,
           result: "lose",
@@ -153,7 +153,7 @@ describe("playerProgressService", () => {
 
     expect(queryMock).toHaveBeenCalledWith(
       expect.stringContaining("UPDATE players"),
-      [0, 1, 1, MATCH_COMPLETE_EXP, MATCH_COMPLETE_COINS, 1]
+      [0, 1, 1, MATCH_COMPLETE_EXP, MATCH_COMPLETE_COINS, 99999, 1]
     )
 
     expect(queryMock).toHaveBeenCalledWith(
@@ -164,6 +164,7 @@ describe("playerProgressService", () => {
         2,
         200,
         MATCH_COMPLETE_COINS + MATCH_WIN_BONUS_COINS,
+        99999,
         2,
       ]
     )
@@ -175,7 +176,7 @@ describe("playerProgressService", () => {
 
     expect(queryMock).toHaveBeenCalledWith(
       expect.stringContaining("INSERT INTO match_participants"),
-      [10, 1, "玩家一", 1, 1, "lose", 100, 200]
+      [10, 1, "玩家一", 1, 1, "lose", 100, MATCH_COMPLETE_COINS]
     )
 
     expect(queryMock).toHaveBeenCalledWith(

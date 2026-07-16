@@ -1,4 +1,5 @@
 import pool from "../db/index.js"
+import { getPlayerReward } from "./playerProgressService.js"
 
 function createServiceError(message, statusCode = 400) {
   const error = new Error(message)
@@ -34,7 +35,44 @@ function formatAchievement(row) {
   }
 }
 
+function getResultAchievementFallback(player) {
+  if (!player) {
+    return null
+  }
+
+  if (player.isWinner || player.result === "win") {
+    return {
+      id: null,
+      code: "match_win_result",
+      name: "本局勝利",
+      title: "本局勝利",
+      description: "贏得本場職場角力，績效表現大幅提升。",
+      category: "match",
+      rewardCurrency: null,
+      rewardAmount: 0,
+      unlockedAt: null,
+    }
+  }
+
+  return {
+    id: null,
+    code: "match_complete_result",
+    name: "完成對局",
+    title: "完成對局",
+    description: "完成一場職場角力，累積績效表現。",
+    category: "match",
+    rewardCurrency: null,
+    rewardAmount: 0,
+    unlockedAt: null,
+  }
+}
+
 function formatParticipant(row, winnerPlayerId) {
+  const isWinner = row.player_id === winnerPlayerId
+  const calculatedReward = getPlayerReward(isWinner)
+  const storedExpGained = Number(row.exp_gained)
+  const storedCoinsGained = Number(row.coins_gained)
+
   return {
     id: row.player_id,
     playerId: row.player_id,
@@ -44,9 +82,9 @@ function formatParticipant(row, winnerPlayerId) {
     level: row.level ?? 1,
     roundWins: row.round_wins ?? 0,
     result: row.result,
-    expGained: row.exp_gained ?? 0,
-    coinsGained: row.coins_gained ?? 0,
-    isWinner: row.player_id === winnerPlayerId,
+    expGained: storedExpGained > 0 ? storedExpGained : calculatedReward.expGained,
+    coinsGained: storedCoinsGained > 0 ? storedCoinsGained : calculatedReward.coinsGained,
+    isWinner,
   }
 }
 
@@ -136,7 +174,13 @@ async function getRoomGameResult({ roomCode, playerId }) {
       )
     : { rows: [] }
 
-  const achievements = achievementResult.rows.map(formatAchievement)
+  const unlockedAchievements = achievementResult.rows.map(formatAchievement)
+  const fallbackAchievement = getResultAchievementFallback(selectedPlayer)
+  const achievements = unlockedAchievements.length > 0
+    ? unlockedAchievements
+    : fallbackAchievement
+      ? [fallbackAchievement]
+      : []
   const winner =
     participants.find((participant) => participant.playerId === match.winner_player_id) ||
     null
