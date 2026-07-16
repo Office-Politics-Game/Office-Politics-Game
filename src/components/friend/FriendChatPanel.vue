@@ -17,7 +17,24 @@
       ></span>
     </div>
 
-    <div class="chat-body">
+    <div
+      v-if="chatStore.realtimeErrorMessage"
+      class="realtime-status"
+      role="status"
+    >
+      <span class="min-w-0 flex-1">
+        即時連線異常：{{ chatStore.realtimeErrorMessage }}。仍可載入與送出訊息。
+      </span>
+      <button
+        type="button"
+        class="realtime-retry-button"
+        @click="chatStore.startRealtime"
+      >
+        重新連線
+      </button>
+    </div>
+
+    <div ref="chatBodyRef" class="chat-body">
       <div v-if="chatStore.isLoading" class="chat-state">
         聊天紀錄載入中...
       </div>
@@ -37,6 +54,9 @@
           class="chat-message"
           :class="isMine(message) ? 'chat-message--mine' : 'chat-message--friend'"
         >
+          <p class="message-author">
+            {{ isMine(message) ? "我" : friend.name }}
+          </p>
           <div class="message-bubble">
             <p class="message-content">
               {{ message.content }}
@@ -58,6 +78,7 @@
         rows="2"
         placeholder="輸入訊息"
         :disabled="chatStore.isSending"
+        @keydown="handleMessageKeydown"
       ></textarea>
 
       <button type="submit" class="chat-send-button" :disabled="sendDisabled">
@@ -68,8 +89,10 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import { useChatStore } from "@/stores/chatStore.js";
+import { isFriendChatSubmitShortcut } from "@/utils/FriendChatKeyboard.js";
+import { scrollFriendChatToLatest } from "@/utils/FriendChatScroll.js";
 
 const props = defineProps({
   friend: {
@@ -83,12 +106,21 @@ const props = defineProps({
 });
 
 const chatStore = useChatStore();
+const chatBodyRef = ref(null);
 const messageText = ref("");
 
 const messages = computed(() => chatStore.messagesByFriend(props.friend.playerId));
+const latestMessageId = computed(
+  () => messages.value.at(-1)?.id ?? null,
+);
 const sendDisabled = computed(
   () => chatStore.isSending || !messageText.value.trim(),
 );
+
+async function scrollToLatestMessage() {
+  await nextTick();
+  scrollFriendChatToLatest(chatBodyRef.value);
+}
 
 function isMine(message) {
   return Number(message.senderPlayerId) === Number(props.currentPlayerId);
@@ -114,6 +146,20 @@ function formatMessageTime(value) {
   }).format(date);
 }
 
+function handleMessageKeydown(event) {
+  if (!isFriendChatSubmitShortcut(event)) {
+    return;
+  }
+
+  event.preventDefault();
+
+  if (sendDisabled.value) {
+    return;
+  }
+
+  submitMessage();
+}
+
 async function submitMessage() {
   const sentMessage = await chatStore.sendMessage({
     friendId: props.friend.playerId,
@@ -132,13 +178,23 @@ watch(
   },
   { immediate: true },
 );
+
+watch(
+  [
+    () => props.friend.playerId,
+    () => messages.value.length,
+    latestMessageId,
+  ],
+  scrollToLatestMessage,
+  { immediate: true },
+);
 </script>
 
 <style scoped>
 @reference "tailwindcss";
 
 .friend-chat-panel {
-  @apply flex min-h-full flex-col border border-[rgba(134,179,224,0.38)] bg-[rgba(255,255,255,0.88)] shadow-[var(--shadow)];
+  @apply flex min-h-0 flex-1 flex-col overflow-hidden border border-[rgba(134,179,224,0.38)] bg-[rgba(255,255,255,0.88)] shadow-[var(--shadow)];
 }
 
 .chat-toolbar {
@@ -147,6 +203,14 @@ watch(
 
 .status-dot {
   @apply h-2.5 w-2.5 shrink-0;
+}
+
+.realtime-status {
+  @apply flex shrink-0 items-center gap-3 border-b border-[var(--brand-hover)] bg-[rgba(0,70,244,0.08)] px-4 py-2 text-xs font-bold text-[var(--brand-active)] max-sm:flex-col max-sm:items-stretch;
+}
+
+.realtime-retry-button {
+  @apply min-h-12 shrink-0 border border-[var(--brand-active)] bg-white px-4 py-2 text-xs font-black text-[var(--brand-active)] transition-[border-color,background-color,color,box-shadow] duration-[180ms] hover:border-[var(--brand-hover)] hover:bg-[var(--brand-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-focus)];
 }
 
 .chat-body {
@@ -166,27 +230,69 @@ watch(
 }
 
 .chat-message {
-  @apply flex w-full;
+  @apply flex w-full flex-col;
 }
 
 .chat-message--mine {
-  @apply justify-end;
+  @apply items-start;
 }
 
 .chat-message--friend {
-  @apply justify-start;
+  @apply items-end;
+}
+
+.message-author {
+  @apply mb-1 text-xs font-bold text-[var(--gray-400)];
 }
 
 .message-bubble {
-  @apply max-w-[78%] border px-3 py-2 shadow-[0_10px_24px_rgba(0,19,50,0.08)];
+  @apply relative max-w-[62%] border px-4 py-2 shadow-[0_10px_24px_rgba(0,19,50,0.08)] max-md:max-w-[82%];
+}
+
+.message-bubble::before,
+.message-bubble::after {
+  position: absolute;
+  top: 12px;
+  width: 0;
+  height: 0;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  content: "";
+  pointer-events: none;
 }
 
 .chat-message--mine .message-bubble {
-  @apply border-[var(--brand-active)] bg-[var(--brand-active)] text-white;
+  @apply border-[var(--gray-100)] bg-white text-[var(--brand-active)];
+}
+
+.chat-message--mine .message-bubble::before {
+  top: 11px;
+  left: -9px;
+  border-top-width: 8px;
+  border-bottom-width: 8px;
+  border-right: 9px solid var(--gray-100);
+}
+
+.chat-message--mine .message-bubble::after {
+  left: -7px;
+  border-right: 8px solid white;
 }
 
 .chat-message--friend .message-bubble {
-  @apply border-[var(--gray-100)] bg-white text-[var(--brand-active)];
+  @apply border-[var(--gray-200)] bg-[var(--gray-100)] text-[var(--brand-active)];
+}
+
+.chat-message--friend .message-bubble::before {
+  top: 11px;
+  right: -9px;
+  border-top-width: 8px;
+  border-bottom-width: 8px;
+  border-left: 9px solid var(--gray-200);
+}
+
+.chat-message--friend .message-bubble::after {
+  right: -7px;
+  border-left: 8px solid var(--gray-100);
 }
 
 .message-content {

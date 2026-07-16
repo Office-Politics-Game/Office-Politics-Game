@@ -23,6 +23,7 @@ import EffectCardLayer from './EffectCardLayer.vue'
 
 const props = defineProps({
   result: { type: Object, default: null },
+  targetPlayerName: { type: String, default: '玩家' },
   getPlayerHandRect: { type: Function, default: null },
   getDiscardRect: { type: Function, default: null },
   isSelfPlayer: { type: Function, default: null },
@@ -33,8 +34,10 @@ const veilRef = ref(null)
 const sourceLayerRef = ref(null)
 const targetLayerRef = ref(null)
 const loserGlowRef = ref(null)
+const promptRef = ref(null)
 const sourceStyle = ref({ display: 'none' })
 const targetStyle = ref({ display: 'none' })
+const MANAGER_PROMPT_HOLD_SECONDS = 1
 
 function getSourceElement() {
   return sourceLayerRef.value?.getCardElement?.() ?? null
@@ -60,6 +63,7 @@ function getKillTargets() {
     getTargetElement(),
     getTargetFlipperElement(),
     loserGlowRef.value,
+    promptRef.value,
   ]
 }
 
@@ -127,7 +131,7 @@ async function play(result) {
   const targetElement = getTargetElement()
   const sourceFlipperElement = getSourceFlipperElement()
   const targetFlipperElement = getTargetFlipperElement()
-  if (isStale(result) || !sourceElement || !targetElement || !sourceFlipperElement || !targetFlipperElement || !loserGlowRef.value || !veilRef.value) {
+  if (isStale(result) || !sourceElement || !targetElement || !sourceFlipperElement || !targetFlipperElement || !loserGlowRef.value || !promptRef.value || !veilRef.value) {
     finishAnimation(result)
     return
   }
@@ -136,6 +140,7 @@ async function play(result) {
   gsap.set(targetElement, { x: 0, y: 0, scale: targetStartScale, transformPerspective: 1200 })
   gsap.set([sourceFlipperElement, targetFlipperElement], { rotationY: 180, transformPerspective: 1200, transformStyle: 'preserve-3d' })
   gsap.set(loserGlowRef.value, { opacity: 0, scale: 0.7, x: sourceWins ? gap : -gap })
+  gsap.set(promptRef.value, { opacity: 1 })
 
   const winner = sourceWins ? sourceElement : targetElement
   const loser = sourceWins ? targetElement : sourceElement
@@ -145,6 +150,7 @@ async function play(result) {
 
   setTimeline(gsap.timeline({ onComplete: () => finishAnimation(result) }))
   timeline.value
+    .to({}, { duration: MANAGER_PROMPT_HOLD_SECONDS })
     .to(sourceElement, getMoveVars({
       x: viewportCenter.x - gap - sourceCenter.x,
       y: viewportCenter.y - sourceCenter.y,
@@ -162,6 +168,7 @@ async function play(result) {
 
   timeline.value
     .to({}, { duration: 0.5 })
+    .set(promptRef.value, { opacity: 0 })
 
   if (draw) {
     timeline.value
@@ -193,6 +200,13 @@ onBeforeUnmount(stop)
     <div v-if="activeResult" class="manager-animation" aria-hidden="true">
       <div ref="veilRef" class="manager-animation__veil"></div>
       <div ref="loserGlowRef" class="manager-animation__loser-glow"></div>
+      <div ref="promptRef" class="manager-animation__prompt">
+        與
+        <span class="manager-animation__prompt-value">{{
+          targetPlayerName
+        }}</span>
+        比大小
+      </div>
       <EffectCardLayer
         ref="sourceLayerRef"
         class="manager-animation__card"
@@ -214,4 +228,28 @@ onBeforeUnmount(stop)
 .manager-animation__veil { position: fixed; inset: 0; background: radial-gradient(circle at 50% 50%,rgba(15,23,42,.08),rgba(0,0,0,.72) 68%),linear-gradient(115deg,rgba(2,6,23,.76),rgba(15,23,42,.42)); }
 .manager-animation__card { z-index: 2; --effect-card-face-filter: drop-shadow(0 20px 28px rgba(0,0,0,.48)); }
 .manager-animation__loser-glow { position: fixed; top: 50%; left: 50%; z-index: 1; width: min(32vmin,280px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle,rgba(251,113,133,.76),rgba(225,29,72,.26) 42%,transparent 72%); filter: blur(18px); mix-blend-mode: screen; transform: translate(-50%,-50%); }
+.manager-animation__prompt {
+  position: fixed;
+  top: 135px;
+  left: 50%;
+  z-index: 4;
+  width: 920px;
+  color: var(--gray-100);
+  font-size: var(--text-xl);
+  font-weight: 900;
+  line-height: 1.3;
+  letter-spacing: 0.04em;
+  text-align: center;
+  overflow-wrap: anywhere;
+  text-shadow: 0 2px 16px rgba(0, 19, 50, 0.88);
+  transform: translateX(-50%);
+}
+.manager-animation__prompt-value { color: #facc15; }
+
+@media (min-width: 1024px) {
+  .manager-animation__prompt {
+    top: 180px;
+    width: 1180px;
+  }
+}
 </style>

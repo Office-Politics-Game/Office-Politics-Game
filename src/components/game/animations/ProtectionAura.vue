@@ -6,6 +6,10 @@ const props = defineProps({
     type: [Number, String],
     default: 0,
   },
+  showSuccessLabel: {
+    type: Boolean,
+    default: false,
+  },
   screenAnchored: {
     type: Boolean,
     default: false,
@@ -19,9 +23,12 @@ const props = defineProps({
 });
 
 const isSuccessFlashing = ref(false);
+const isSuccessLabelVisible = ref(false);
 const flashId = ref(0);
 const viewportSize = ref(getViewportSize());
 let flashTimeout = null;
+let successLabelTimeout = null;
+const SUCCESS_LABEL_DURATION_MS = 1500;
 const positionRotations = {
   top: "180deg",
   left: "90deg",
@@ -123,11 +130,16 @@ function getScreenEdgeCenter({ width, height, viewportWidth, viewportHeight }) {
 
 function playSuccessFlash() {
   window.clearTimeout(flashTimeout);
+  window.clearTimeout(successLabelTimeout);
   flashId.value += 1;
   isSuccessFlashing.value = true;
+  isSuccessLabelVisible.value = props.showSuccessLabel;
   flashTimeout = window.setTimeout(() => {
     isSuccessFlashing.value = false;
   }, 760);
+  successLabelTimeout = window.setTimeout(() => {
+    isSuccessLabelVisible.value = false;
+  }, SUCCESS_LABEL_DURATION_MS);
 }
 
 function getViewportSize() {
@@ -168,13 +180,17 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener("resize", updateViewportSize);
   window.clearTimeout(flashTimeout);
+  window.clearTimeout(successLabelTimeout);
 });
 </script>
 
 <template>
   <div
     class="protection-aura"
-    :class="{ 'protection-aura--anchored': screenAnchored }"
+    :class="[
+      `protection-aura--${position}`,
+      { 'protection-aura--anchored': screenAnchored },
+    ]"
     :style="auraStyle"
     aria-hidden="true"
   >
@@ -183,6 +199,15 @@ onUnmounted(() => {
       :key="flashId"
       class="protection-aura__success-flash"
     ></span>
+    <span
+      v-if="isSuccessLabelVisible"
+      :key="`success-label-${flashId}`"
+      class="protection-aura__success-label-anchor"
+    >
+      <span class="protection-aura__success-label" aria-label="特休假">
+        <span>特</span><span>休</span><span>假</span>
+      </span>
+    </span>
   </div>
 </template>
 
@@ -220,6 +245,10 @@ onUnmounted(() => {
 }
 
 :global(.protection-aura-fade-leave-active .protection-aura__success-flash) {
+  display: none;
+}
+
+:global(.protection-aura-fade-leave-active .protection-aura__success-label-anchor) {
   display: none;
 }
 
@@ -328,6 +357,52 @@ onUnmounted(() => {
   mask-composite: intersect;
 }
 
+.protection-aura__success-label-anchor {
+  position: absolute;
+  top: -48px;
+  left: 50%;
+  z-index: 3;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.protection-aura__success-label {
+  display: inline-flex;
+  color: #fff;
+  font-size: var(--text-xl);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  text-shadow:
+    0 2px 4px rgba(70, 70, 70, 0.92),
+    0 0 10px rgba(70, 70, 70, 0.72);
+  animation: protectionSuccessLabel 1.5s ease-out forwards;
+  transform: rotate(var(--protection-label-counter-rotation, 0deg));
+  transform-origin: 50% 50%;
+}
+
+.protection-aura--top {
+  --protection-label-counter-rotation: -180deg;
+}
+
+.protection-aura--left {
+  --protection-label-counter-rotation: -90deg;
+}
+
+.protection-aura--right {
+  --protection-label-counter-rotation: 90deg;
+}
+
+.protection-aura--bottom {
+  --protection-label-counter-rotation: 0deg;
+}
+
+.protection-aura--left .protection-aura__success-label,
+.protection-aura--right .protection-aura__success-label {
+  flex-direction: column;
+}
+
 @keyframes protectionAuraPulse {
   0%,
   100% {
@@ -388,6 +463,30 @@ onUnmounted(() => {
     opacity: 0;
     transform: scale(1.16);
     filter: brightness(1) saturate(1);
+  }
+}
+
+@keyframes protectionSuccessLabel {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--protection-label-counter-rotation, 0deg)) scale(0.92);
+  }
+
+  12%,
+  78% {
+    opacity: 1;
+    transform: rotate(var(--protection-label-counter-rotation, 0deg)) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: rotate(var(--protection-label-counter-rotation, 0deg)) scale(1.04);
+  }
+}
+
+@media (min-width: 1024px) {
+  .protection-aura__success-label-anchor {
+    top: -64px;
   }
 }
 

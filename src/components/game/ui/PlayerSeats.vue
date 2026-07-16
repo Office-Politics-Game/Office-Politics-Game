@@ -47,6 +47,12 @@ const props = defineProps({
         (count) => Number.isInteger(count) && count >= 0,
       ),
   },
+  temporarilyHiddenHandCardPlayerIds: {
+    type: Array,
+    default: () => [],
+    validator: (playerIds) =>
+      playerIds.every((playerId) => typeof playerId === "string"),
+  },
   isTargetSelectionActive: {
     type: Boolean,
     default: false,
@@ -64,6 +70,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["target-select"]);
+const seatsRoot = ref(null);
 const appearanceStore = useAppearanceStore();
 const { cardBackUrl } = storeToRefs(appearanceStore);
 const seatElements = ref({});
@@ -71,6 +78,9 @@ const handTargetElements = ref({});
 const dealtPlayerIdSet = computed(() => new Set(props.dealtPlayerIds));
 const selectablePlayerIdSet = computed(
   () => new Set(props.selectablePlayerIds),
+);
+const temporarilyHiddenHandCardPlayerIdSet = computed(
+  () => new Set(props.temporarilyHiddenHandCardPlayerIds),
 );
 
 const positionClasses = {
@@ -132,6 +142,13 @@ function getHandCardBacks(playerId) {
   }));
 }
 
+function isHandCardTemporarilyHidden(playerId, index) {
+  return (
+    index === 0 &&
+    temporarilyHiddenHandCardPlayerIdSet.value.has(String(playerId))
+  );
+}
+
 const resolvedCardBackUrl = computed(
   () => cardBackUrl.value || defaultCardBackUrl,
 );
@@ -155,6 +172,15 @@ function handleTargetSelect(player) {
 }
 
 defineExpose({
+  getOpponentSeatsElement() {
+    return seatsRoot.value;
+  },
+  getOpponentSeatElements(currentPlayerId) {
+    return props.players
+      .filter((player) => String(player.id) !== String(currentPlayerId))
+      .map((player) => seatElements.value[player.id])
+      .filter(Boolean);
+  },
   getSeatRect(playerId) {
     return seatElements.value[playerId]?.getBoundingClientRect() ?? null;
   },
@@ -164,6 +190,7 @@ defineExpose({
 
 <template>
   <div
+    ref="seatsRoot"
     class="player-seats pointer-events-none absolute inset-0 z-10"
     :class="{
       'player-seats--target-selection-active': isTargetSelectionActive,
@@ -220,11 +247,15 @@ defineExpose({
         aria-hidden="true"
       >
         <img
-          v-for="cardBack in getHandCardBacks(player.id)"
+          v-for="(cardBack, index) in getHandCardBacks(player.id)"
           :key="cardBack.id"
           :src="resolvedCardBackUrl"
           alt=""
           class="player-seat-hand-target__card block size-full select-none object-contain"
+          :class="{
+            'player-seat-hand-target__card--temporarily-hidden':
+              isHandCardTemporarilyHidden(player.id, index),
+          }"
           :style="{
             '--hand-card-offset': cardBack.offset,
             '--hand-card-rotation': cardBack.rotation,
@@ -263,6 +294,11 @@ defineExpose({
 .player-seat-hand-target__card {
   position: absolute;
   inset: 0;
+}
+
+.player-seat-hand-target__card--temporarily-hidden {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .player-seat-hand-target--top {

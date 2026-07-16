@@ -4,11 +4,17 @@ import { getPublicState } from "./gameStateService.js"
 import { runCardEffect, checkGuess } from "./cardEffectService.js"
 import {
     buildCardEffectAnimationResult,
+    createCardEffectAnimationResultForViewer,
     createCardEffectAnimationContext,
 } from "./cardEffectAnimationService.js"
 import { addLog } from "./actionLogService.js"
 import { discardCard } from "./discardService.js"
 import { finishTurn } from "./roundFlowService.js"
+import { finalizeMatchProgress } from "./playerProgressService.js"
+import {
+    appendUnlockedAchievements,
+    unlockAchievement,
+} from "./achievementService.js"
 import {
     checkTurn,
     checkPlayer,
@@ -21,6 +27,25 @@ function createServiceError(message, statusCode = 400) {
     const error = new Error(message)
     error.statusCode = statusCode
     return error
+}
+
+async function unlockGameEndAchievements(state, viewerPlayerId) {
+    if (state.phase !== "finished") {
+        return []
+    }
+
+    if (state.winnerPlayerId) {
+        const unlockedAchievement = await unlockAchievement(
+            state.winnerPlayerId,
+            "first_game_win"
+        )
+
+        if (state.winnerPlayerId === viewerPlayerId) {
+            unlockedAchievements.push(unlockedAchievement)
+        }
+    }
+
+    return []
 }
 
 async function drawCardAction({ roomCode, playerId }) {
@@ -135,6 +160,8 @@ async function playCardAction({
         throw createServiceError("玩家沒有此手牌")
     }
 
+    state.hasAnyCardBeenPlayed = true
+
     const effectAnimationContext = createCardEffectAnimationContext({
         state,
         card: discardedCard,
@@ -155,7 +182,7 @@ async function playCardAction({
         effectResult,
     )
 
-    finishTurn(state, numericPlayerId)
+    const { showdownResult } = finishTurn(state, numericPlayerId)
 
     await pool.query(
         `UPDATE game_sessions
@@ -166,6 +193,14 @@ async function playCardAction({
         WHERE id = $4`,
         [state, state.phase, state.currentTurnPlayerId, gameSession.id]
     )
+
+    const matchProgress = state.phase === "finished"
+        ? await finalizeMatchProgress({
+            matchId: gameSession.match_id,
+            state,
+        })
+        : { finalized: false }
+
     const actionLog = await addLog(
         gameSession.room_id,
         numericPlayerId,
@@ -175,7 +210,11 @@ async function playCardAction({
             targetPlayerId,
             guessedCardName,
             result: effectResult,
-            animationResult,
+            animationResult: createCardEffectAnimationResultForViewer(
+                animationResult,
+                numericPlayerId,
+                numericPlayerId,
+            ),
             discardedCard,
             nextTurnPlayerId: state.currentTurnPlayerId,
         })
@@ -183,15 +222,22 @@ async function playCardAction({
 
     const publicState = getPublicState(state, numericPlayerId)
 
-    return {
+    const unlockedAchievements = await unlockGameEndAchievements(
+        state,
+        numericPlayerId
+    )
+
+    return appendUnlockedAchievements({
         gameSession,
         result: effectResult,
         animationResult,
+        showdownResult,
         discardedCard,
         actionLog,
+        matchProgress,
         state,
         publicState,
-    }
+    }, unlockedAchievements)
 }
 
 export { drawCardAction, playCardAction }

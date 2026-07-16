@@ -1,5 +1,9 @@
 import pool from "../db/index.js"
 import { addCurrency } from "./currencyService.js"
+import {
+  appendUnlockedAchievements,
+  unlockAchievement,
+} from "./achievementService.js"
 import crypto from "node:crypto"
 
 const topUpPackages = [
@@ -81,7 +85,7 @@ async function createTopUpOrder(playerId, packageId) {
   return result.rows[0]
 }
 
-async function mockPayTopUpOrder(orderId) {
+async function mockPayTopUpOrder(orderId, options = {}) {
   const orderResult = await pool.query(
     `SELECT *
      FROM top_up_orders
@@ -96,6 +100,10 @@ async function mockPayTopUpOrder(orderId) {
   }
 
   if (order.status === "paid") {
+    if (options.allowPaid) {
+      return order
+    }
+
     throw createServiceError("訂單已付款", 409)
   }
 
@@ -117,7 +125,12 @@ async function mockPayTopUpOrder(orderId) {
     `儲值訂單 #${order.id}`
   )
 
-  return paidResult.rows[0]
+  const unlockedAchievement = await unlockAchievement(
+    order.player_id,
+    "first_top_up"
+  )
+
+  return appendUnlockedAchievements(paidResult.rows[0], [unlockedAchievement])
 }
 
 function formatEcpayDate(date = new Date()) {
@@ -152,8 +165,9 @@ function encodeEcpayValue(value) {
 
 function createCheckMacValue(params) {
   const sortedParams = Object.keys(params)
+    .filter((key) => key !== "CheckMacValue")
     .sort((keyA, keyB) => keyA.localeCompare(keyB))
-    .map((key) => `${key}=${params[key]}`)
+    .map((key) => `${key}=${String(params[key])}`)
     .join("&")
 
   const rawValue = `HashKey=${ecpayHashKey}&${sortedParams}&HashIV=${ecpayHashIv}`
@@ -188,8 +202,8 @@ async function createEcpayCheckout(orderId) {
     TotalAmount: order.price,
     TradeDesc: "Office Politics Game top up",
     ItemName: order.package_id,
-    ReturnURL: "https://office-politics-game.onrender.com/api/top-ups/ecpay/return",
-    ClientBackURL: "https://office-politics-game.vercel.app/mall",
+    ReturnURL: "https://35.212.213.247.sslip.io/api/top-ups/ecpay/return",
+    ClientBackURL: "https://office-politics-game-fawn.vercel.app/mall",
     ChoosePayment: "ALL",
     EncryptType: 1,
   }
@@ -213,9 +227,14 @@ async function createEcpayCheckout(orderId) {
 async function confirmEcpayReturn(payload) {
   const tradeNo = payload?.MerchantTradeNo
   const rtnCode = String(payload?.RtnCode || "")
+  const checkMacValue = String(payload?.CheckMacValue || "")
 
   if (rtnCode !== "1") {
     throw createServiceError("綠界付款未成功", 400)
+  }
+
+  if (!checkMacValue || createCheckMacValue(payload) !== checkMacValue.toUpperCase()) {
+    throw createServiceError("Invalid ECPay CheckMacValue", 400)
   }
 
   if (!tradeNo || !tradeNo.startsWith("TOPUP")) {
@@ -228,7 +247,7 @@ async function confirmEcpayReturn(payload) {
     throw createServiceError("綠界訂單編號錯誤", 400)
   }
 
-  return mockPayTopUpOrder(orderId)
+  return mockPayTopUpOrder(orderId, { allowPaid: true })
 }
 
 export {
@@ -237,4 +256,5 @@ export {
   mockPayTopUpOrder,
   createEcpayCheckout,
   confirmEcpayReturn,
+  createCheckMacValue,
 }

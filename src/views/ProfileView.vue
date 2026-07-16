@@ -9,7 +9,9 @@
     :exit-background-image="bgDashboard"
     :paper-image="paperBackground"
     :is-returning="isReturningToLobby"
+    :can-edit="profileStore.isMemberProfile"
     @close="goLobby"
+    @edit-avatar="openAvatarEditor"
   >
     <ProfileInfoPanel
       v-if="activeTab === 'profile'"
@@ -17,12 +19,23 @@
       :can-edit="profileStore.isMemberProfile"
       @edit="handleEditProfileField"
     />
+    <ProfileMatchHistoryPanel
+      v-else-if="activeTab === 'matches' && profileStore.isMemberProfile"
+      :matches="profileStore.matchHistory"
+      :is-loading="profileStore.isMatchHistoryLoading"
+      :error-message="profileStore.matchHistoryErrorMessage"
+      @reload="profileStore.loadMatchHistory().catch(() => {})"
+    />
     <AchievementPanel
       v-else-if="activeTab === 'badges' && profileStore.isMemberProfile"
       :achievements="achievementStore.achievements"
+      :current-title="profilePlayer.title"
       :is-loading="achievementStore.isLoading"
+      :is-title-saving="isSavingTitle"
       :error-message="achievementStore.errorMessage"
+      :title-error-message="titleSaveError"
       @retry="fetchAchievements"
+      @use-title="handleUseAchievementTitle"
     />
     <ProfileEmptyPanel
       v-else-if="isGuestLockedTab"
@@ -38,7 +51,6 @@
       :description="activeTabMeta.description"
     />
   </ProfileShell>
-
   <main
     v-else
     class="profile-page-state grid min-h-[100svh] w-screen place-items-center overflow-hidden bg-[var(--brand-navy)] bg-center bg-cover p-4"
@@ -46,11 +58,10 @@
     :style="{ backgroundImage: `url(${bgPersonal})` }"
   >
     <div
-      class="profile-state-exit-layer absolute inset-0 z-0 bg-center bg-cover opacity-0"
+      class="profile-state-exit-layer pointer-events-none absolute inset-0 z-0 bg-center bg-cover opacity-0"
       :style="{ backgroundImage: `url(${bgDashboard})` }"
       aria-hidden="true"
     ></div>
-
     <section
       v-if="profileStore.isLoading || profileStore.errorMessage"
       class="profile-state-panel"
@@ -70,7 +81,6 @@
       <p v-if="!profileStore.isLoading" class="profile-state-panel__copy">
         {{ statePanel.description }}
       </p>
-
       <div v-if="showStateActions" class="profile-state-panel__actions">
         <button
           v-if="profileStore.errorMessage"
@@ -99,26 +109,51 @@
       </div>
     </section>
   </main>
+  <ProfileEditModal
+    v-if="editingField"
+    :field="editingField"
+    :initial-value="editingInitialValue"
+    :is-saving="profileStore.isUpdating"
+    :error-message="editErrorMessage"
+    @close="closeProfileEditor"
+    @save="saveProfileField"
+  />
+  <ProfileAvatarModal
+    v-if="isAvatarEditorOpen"
+    :selected-avatar-id="profilePlayer?.avatarId"
+    :is-saving="profileStore.isUpdating"
+    :error-message="editErrorMessage"
+    @close="closeAvatarEditor"
+    @save="saveAvatar"
+  />
+  <ProfilePasswordModal
+    v-if="isPasswordEditorOpen"
+    @close="closePasswordEditor"
+  />
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import AchievementPanel from "@/components/profile/AchievementPanel.vue";
+import ProfileAvatarModal from "@/components/profile/ProfileAvatarModal.vue";
+import ProfileEditModal from "@/components/profile/ProfileEditModal.vue";
 import ProfileEmptyPanel from "@/components/profile/ProfileEmptyPanel.vue";
 import ProfileInfoPanel from "@/components/profile/ProfileInfoPanel.vue";
+import ProfileMatchHistoryPanel from "@/components/profile/ProfileMatchHistoryPanel.vue";
+import ProfilePasswordModal from "@/components/profile/ProfilePasswordModal.vue";
 import ProfileShell from "@/components/profile/ProfileShell.vue";
-import bgPersonal from "@/assets/images/bg-personal.webp";
 import bgDashboard from "@/assets/images/bg-dashboard.webp";
+import bgPersonal from "@/assets/images/bg-personal.webp";
 import paperBackground from "@/assets/images/waiting-room.webp";
 import { guestAvatars } from "@/constants/guestOptions.js";
+import { useProfileInitializer } from "@/composables/useProfileInitializer.js";
 import {
   getPlayerEquippedItems,
   getPlayerShopItems,
 } from "@/services/shopApi.js";
-import { useProfileInitializer } from "@/composables/useProfileInitializer.js";
-import { useAuthStore } from "@/stores/authStore.js";
 import { useAchievementStore } from "@/stores/achievementStore.js";
+import { useAuthStore } from "@/stores/authStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
 import { useProfileStore } from "@/stores/profileStore.js";
 
@@ -128,11 +163,20 @@ const achievementStore = useAchievementStore();
 const playerStore = usePlayerStore();
 const profileStore = useProfileStore();
 const { initializeProfile: initializeProfileData } = useProfileInitializer();
+
+const RETURN_ANIMATION_DURATION = 700;
+
 const activeTab = ref("profile");
 const isReturningToLobby = ref(false);
+const isSavingTitle = ref(false);
+const titleSaveError = ref("");
 const equippedAvatarUrl = ref("");
 const hasResolvedEquippedAvatar = ref(false);
-const RETURN_ANIMATION_DURATION = 700;
+const editingField = ref(null);
+const editingInitialValue = ref("");
+const isAvatarEditorOpen = ref(false);
+const editErrorMessage = ref("");
+const isPasswordEditorOpen = ref(false);
 
 const tabs = [
   {
@@ -143,29 +187,28 @@ const tabs = [
   {
     id: "matches",
     label: "對戰紀錄",
-    description: "完整對戰紀錄正在整理中，之後會顯示近期牌局與勝負結果。",
+    description: "查看近期牌局與勝負結果。",
   },
   {
     id: "badges",
     label: "成就徽章",
-    description: "成就牆即將開放，未來會展示你的辦公室生存里程碑。",
-  },
-  {
-    id: "collection",
-    label: "造型收藏",
-    description: "收藏櫃正在佈置中，之後可查看已取得的頭像、牌背與桌面造型。",
+    description: "查看你的辦公室生存里程碑。",
   },
 ];
 
-const memberOnlyTabIds = ["matches", "badges", "collection"];
+const memberOnlyTabIds = ["matches", "badges"];
 
-const sourcePlayer = computed(
-  () =>
-    profileStore.profilePlayer ||
-    authStore.currentPlayer ||
-    playerStore.currentPlayer ||
-    null,
-);
+const sourcePlayer = computed(() => {
+  if (profileStore.profile) {
+    return profileStore.profile;
+  }
+
+  if (profileStore.isMemberProfile || profileStore.isLoading) {
+    return null;
+  }
+
+  return authStore.currentPlayer || playerStore.currentPlayer || null;
+});
 
 function toNumber(value, fallback) {
   const number = Number(value);
@@ -196,18 +239,17 @@ function formatDate(value) {
 
 function getNextExp(level) {
   const safeLevel = Math.max(1, toNumber(level, 1));
-  return safeLevel * 1000;
+  return safeLevel * 400 + 200;
 }
 
 function getWinRate(winCount, totalGames) {
   const safeTotalGames = Math.max(0, toNumber(totalGames, 0));
 
   if (safeTotalGames === 0) {
-    return "0%";
+    return 0;
   }
 
-  const rate = Math.round((toNumber(winCount, 0) / safeTotalGames) * 100);
-  return `${rate}%`;
+  return Math.round((toNumber(winCount, 0) / safeTotalGames) * 100);
 }
 
 const activeTabMeta = computed(
@@ -217,29 +259,44 @@ const activeTabMeta = computed(
 const lockedTabs = computed(() =>
   profileStore.isGuestProfile ? memberOnlyTabIds : [],
 );
+
 const isGuestLockedTab = computed(
   () =>
     profileStore.isGuestProfile && memberOnlyTabIds.includes(activeTab.value),
 );
 
 const profilePlayer = computed(() => {
+  if (profileStore.isMemberProfile && !profileStore.profile) {
+    return null;
+  }
+
   const player = sourcePlayer.value;
-  const level = toNumber(player.level, 12);
-  const exp = toNumber(player.exp, 3250);
+
+  if (!player) {
+    return null;
+  }
+
+  const level = toNumber(player.level, 1);
+  const exp = toNumber(player.exp, 0);
   const nextExp = getNextExp(level);
-  const winCount = toNumber(player.winCount ?? player.win_count, 62);
-  const loseCount = toNumber(player.loseCount ?? player.lose_count, 38);
-  const totalGames = toNumber(player.totalGames ?? player.total_games, winCount + loseCount);
-  const avatar = guestAvatars.find((item) => item.id === toNumber(player.avatarId ?? player.avatar_id, 1));
-  const playerId = toNumber(player.id, 1);
+  const winCount = toNumber(player.winCount ?? player.win_count, 0);
+  const loseCount = toNumber(player.loseCount ?? player.lose_count, 0);
+  const totalGames = toNumber(
+    player.totalGames ?? player.total_games,
+    winCount + loseCount,
+  );
+  const avatarId = toNumber(player.avatarId ?? player.avatar_id, 1);
+  const avatar = guestAvatars.find((item) => item.id === avatarId);
+  const playerId = toNumber(player.id, 0);
   const fallbackAvatarUrl = avatar?.image ?? guestAvatars[0].image;
   const shouldWaitForEquippedAvatar =
     playerId > 0 && !player.avatarUrl && !hasResolvedEquippedAvatar.value;
 
   return {
     id: playerId,
-    username: player.username || "CEO小陳",
-    title: player.title || "職場操盤手",
+    avatarId,
+    username: player.username || "尚未設定",
+    title: player.title || "尚未設定",
     avatarUrl: shouldWaitForEquippedAvatar
       ? ""
       : equippedAvatarUrl.value || player.avatarUrl || fallbackAvatarUrl,
@@ -254,13 +311,222 @@ const profilePlayer = computed(() => {
     totalGames,
     winRate: getWinRate(winCount, totalGames),
     playerCode: `CEO_${String(playerId).padStart(4, "0")}`,
-    createdAtDisplay: formatDate(player.createdAt ?? player.created_at),
-    region: player.region || "台灣",
-    bio: player.bio || "在辦公室，我就是規則。",
+    createdAtDisplay: player.createdAtDisplay || formatDate(player.createdAt ?? player.created_at),
+    bio: player.bio || "尚未設定",
   };
 });
 
 const profilePlayerId = computed(() => profilePlayer.value?.id ?? null);
+
+const statePanel = computed(() => {
+  if (profileStore.isLoading) {
+    return {
+      eyebrow: "",
+      title: "資料載入中",
+      description: "正在向伺服器取得你的個人資料。",
+    };
+  }
+
+  if (profileStore.errorMessage) {
+    return {
+      eyebrow: "個人資料",
+      title: "資料載入失敗",
+      description: profileStore.errorMessage,
+    };
+  }
+
+  return {
+    eyebrow: "",
+    title: "",
+    description: "",
+  };
+});
+
+const showStateActions = computed(() => Boolean(profileStore.errorMessage));
+
+const showGuestAction = computed(
+  () => profileStore.errorMessage && !authStore.isLoggedIn,
+);
+
+async function initializeProfile() {
+  try {
+    const result = await initializeProfileData();
+
+    if (result?.status === "auth_failed") {
+      router.replace({
+        name: "Entry",
+        query: { auth: "login" },
+      });
+      return;
+    }
+
+    if (result?.status === "anonymous") {
+      router.replace({
+        name: "Entry",
+      });
+    }
+  } catch {
+    activeTab.value = "profile";
+  }
+}
+
+async function fetchAchievements() {
+  if (
+    activeTab.value !== "badges" ||
+    !profileStore.isMemberProfile ||
+    !profilePlayerId.value
+  ) {
+    achievementStore.resetAchievements();
+    return;
+  }
+
+  await achievementStore
+    .fetchPlayerAchievements(profilePlayerId.value)
+    .catch(() => {});
+}
+
+function handleEditProfileField(item) {
+  if (!profileStore.isMemberProfile) {
+    goLogin();
+    return;
+  }
+
+  if (item.id === "password") {
+    openPasswordEditor();
+    return;
+  }
+
+  if (!["username", "bio"].includes(item.id)) {
+    return;
+  }
+
+  editingField.value = item;
+  editingInitialValue.value =
+    item.id === "bio" ? profilePlayer.value.bio : profilePlayer.value.username;
+  editErrorMessage.value = "";
+}
+
+function closeProfileEditor() {
+  editingField.value = null;
+  editingInitialValue.value = "";
+  editErrorMessage.value = "";
+}
+
+async function saveProfileField(value) {
+  if (!editingField.value) {
+    return;
+  }
+
+  try {
+    const updatedProfile = await profileStore.updateMemberProfile({
+      [editingField.value.id]: value,
+    });
+
+    authStore.currentPlayer = {
+      ...authStore.currentPlayer,
+      ...updatedProfile,
+    };
+
+    closeProfileEditor();
+  } catch (error) {
+    editErrorMessage.value =
+      error?.data?.message || error?.message || "個人資料更新失敗";
+  }
+}
+
+function openAvatarEditor() {
+  if (!profileStore.isMemberProfile) {
+    goLogin();
+    return;
+  }
+
+  isAvatarEditorOpen.value = true;
+  editErrorMessage.value = "";
+}
+
+function closeAvatarEditor() {
+  isAvatarEditorOpen.value = false;
+  editErrorMessage.value = "";
+}
+
+async function saveAvatar(avatarId) {
+  try {
+    const updatedProfile = await profileStore.updateMemberProfile({ avatarId });
+
+    authStore.currentPlayer = {
+      ...authStore.currentPlayer,
+      ...updatedProfile,
+    };
+
+    if (updatedProfile?.avatarUrl || updatedProfile?.avatarId) {
+      authStore.setCurrentPlayerAvatar(
+        updatedProfile.avatarUrl,
+        updatedProfile.avatarId,
+      );
+    }
+
+    closeAvatarEditor();
+  } catch (error) {
+    editErrorMessage.value =
+      error?.data?.message || error?.message || "頭像更新失敗";
+  }
+}
+
+function openPasswordEditor() {
+  isPasswordEditorOpen.value = true;
+}
+
+function closePasswordEditor() {
+  isPasswordEditorOpen.value = false;
+}
+
+async function handleUseAchievementTitle(achievement) {
+  if (!achievement?.code || isSavingTitle.value) {
+    return;
+  }
+
+  titleSaveError.value = "";
+  isSavingTitle.value = true;
+
+  try {
+    await profileStore.saveAchievementTitle(achievement.code);
+  } catch (error) {
+    titleSaveError.value =
+      error?.data?.message || error?.message || "稱號設定失敗，請再試一次。";
+  } finally {
+    isSavingTitle.value = false;
+  }
+}
+
+function goLogin() {
+  router.push({
+    name: "Entry",
+    query: { auth: "login" },
+  });
+}
+
+function goEntry() {
+  router.push({
+    name: "Entry",
+  });
+}
+
+function goLobby() {
+  if (isReturningToLobby.value) {
+    return;
+  }
+
+  isReturningToLobby.value = true;
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    router.push("/lobby");
+    return;
+  }
+
+  window.setTimeout(() => {
+    router.push("/lobby");
+  }, RETURN_ANIMATION_DURATION);
+}
 
 watch(
   () => sourcePlayer.value?.id,
@@ -298,112 +564,6 @@ watch(
   { immediate: true },
 );
 
-const statePanel = computed(() => {
-  if (profileStore.isLoading) {
-    return {
-      eyebrow: "",
-      title: "資料載入中",
-      description: "正在向伺服器取得你的個人資料。",
-    };
-  }
-
-  if (profileStore.errorMessage) {
-    return {
-      eyebrow: "個人資料",
-      title: "資料載入失敗",
-      description: profileStore.errorMessage,
-    };
-  }
-
-  return {
-    eyebrow: "",
-    title: "",
-    description: "",
-  };
-});
-
-const showStateActions = computed(() => Boolean(profileStore.errorMessage));
-const showGuestAction = computed(
-  () => profileStore.errorMessage && !authStore.isLoggedIn,
-);
-
-async function initializeProfile() {
-  try {
-    const result = await initializeProfileData();
-
-    if (result?.status === "auth_failed") {
-      router.replace({
-        name: "Entry",
-        query: { auth: "login" },
-      });
-      return;
-    }
-
-    if (result?.status === "anonymous") {
-      router.replace({
-        name: "Entry",
-      });
-      return;
-    }
-  } catch {
-    activeTab.value = "profile";
-  }
-}
-
-async function fetchAchievements() {
-  if (
-    activeTab.value !== "badges" ||
-    !profileStore.isMemberProfile ||
-    !profilePlayerId.value
-  ) {
-    achievementStore.resetAchievements();
-    return;
-  }
-
-  await achievementStore
-    .fetchPlayerAchievements(profilePlayerId.value)
-    .catch(() => {});
-}
-
-function handleEditProfileField() {
-  if (!profileStore.isMemberProfile) {
-    goLogin();
-    return;
-  }
-
-  window.alert("個人資料編輯尚未開放。");
-}
-
-function goLogin() {
-  router.push({
-    name: "Entry",
-    query: { auth: "login" },
-  });
-}
-
-function goEntry() {
-  router.push({
-    name: "Entry",
-  });
-}
-
-function goLobby() {
-  if (isReturningToLobby.value) {
-    return;
-  }
-
-  isReturningToLobby.value = true;
-
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    router.push("/lobby");
-    return;
-  }
-
-  window.setTimeout(() => {
-    router.push("/lobby");
-  }, RETURN_ANIMATION_DURATION);
-}
-
 onMounted(() => {
   if (profileStore.hasProfile || profileStore.errorMessage) {
     return;
@@ -414,9 +574,10 @@ onMounted(() => {
 
 watch(
   () => [
-    authStore.token,
     authStore.isLoggedIn,
     playerStore.currentPlayer?.id,
+    authStore.hasVerifiedToken,
+    authStore.currentPlayer?.id,
   ],
   () => {
     initializeProfile();
@@ -431,6 +592,16 @@ watch(
   ],
   () => {
     fetchAchievements();
+  },
+  { immediate: true },
+);
+
+watch(
+  () => [activeTab.value, profileStore.isMemberProfile],
+  ([tab, isMemberProfile]) => {
+    if (tab === "matches" && isMemberProfile) {
+      profileStore.loadMatchHistory().catch(() => {});
+    }
   },
   { immediate: true },
 );
@@ -532,8 +703,17 @@ watch(
 }
 
 .profile-state-panel__button {
-  min-height: 48px;
   min-width: 144px;
+  min-height: 48px;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.profile-state-panel__button:hover {
+  transform: translateY(-1px);
 }
 
 .profile-page-state.is-returning .profile-state-exit-layer {
@@ -567,10 +747,7 @@ watch(
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .profile-page-state.is-returning .profile-state-exit-layer {
-    animation: none;
-  }
-
+  .profile-page-state.is-returning .profile-state-exit-layer,
   .profile-state-panel__spinner {
     animation: none;
   }

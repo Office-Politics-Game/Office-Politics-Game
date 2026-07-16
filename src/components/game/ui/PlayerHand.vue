@@ -1,5 +1,8 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, toRaw } from 'vue'
+import cursorGrabUrl from '@/assets/icons/cursor-grab.svg'
+import cursorGrabbingUrl from '@/assets/icons/cursor-grabbing.svg'
+import cursorPointerUrl from '@/assets/icons/cursor-pointer.svg'
 import GameCard from './GameCard.vue'
 import HoverBlockHint from './HoverBlockHint.vue'
 
@@ -16,11 +19,16 @@ const props = defineProps({
           typeof card?.frameUrl === 'string',
       ),
   },
-  draggingCardId: {
-    type: String,
+  draggingCard: {
+    type: Object,
     default: null,
   },
   disabledCardIds: {
+    type: Array,
+    default: () => [],
+    validator: (cardIds) => cardIds.every((cardId) => typeof cardId === 'string'),
+  },
+  temporarilyHiddenCardIds: {
     type: Array,
     default: () => [],
     validator: (cardIds) => cardIds.every((cardId) => typeof cardId === 'string'),
@@ -70,11 +78,30 @@ function isCardRuleDisabled(card) {
   return props.disabledCardIds.includes(card.id)
 }
 
+function isCardTemporarilyHidden(card) {
+  return props.temporarilyHiddenCardIds.includes(card.id)
+}
+
+function isDraggingCard(card) {
+  return Boolean(props.draggingCard) && toRaw(card) === toRaw(props.draggingCard)
+}
+
+function getHandElement() {
+  return handRoot.value
+}
+
+const cursorStyle = {
+  '--cursor-pointer': `url("${cursorPointerUrl}") 5 3, pointer`,
+  '--cursor-grab': `url("${cursorGrabUrl}") 16 14, grab`,
+  '--cursor-grabbing': `url("${cursorGrabbingUrl}") 16 14, grabbing`,
+}
+
 defineExpose({
   prepareDrawTarget,
   getDrawTargetRect,
   getDealTargetRect,
   getHandRect,
+  getHandElement,
   finishDraw,
 })
 </script>
@@ -83,6 +110,7 @@ defineExpose({
   <section
     ref="handRoot"
     class="player-hand relative"
+    :style="cursorStyle"
     :class="{
       'player-hand--drawing': isDrawing,
       'player-hand--single': props.cards.length === 1,
@@ -90,21 +118,23 @@ defineExpose({
     aria-label="玩家手牌"
   >
     <div
-      v-for="card in cards"
-      :key="card.id"
+      v-for="(card, index) in cards"
+      :key="card.instanceId ?? `${card.id}-${index}`"
       class="game-card-arrangement absolute bottom-0 left-1/2 aspect-[3/4] h-[clamp(126px,31vh,230px)] origin-bottom select-none"
       :class="{
-        'game-card-arrangement--dragging': card.id === draggingCardId,
+        'game-card-arrangement--dragging': isDraggingCard(card),
         'game-card-arrangement--disabled': isCardDisabled(card),
         'game-card-arrangement--interaction-disabled': props.isInteractionDisabled,
         'game-card-arrangement--rule-disabled': isCardRuleDisabled(card),
+        'game-card-arrangement--temporarily-hidden': isCardTemporarilyHidden(card),
         'hover-block-hint-target': props.isInteractionDisabled,
       }"
       role="button"
-      :tabindex="isCardDisabled(card) ? -1 : 0"
-      :aria-disabled="isCardDisabled(card)"
-      :aria-label="`出牌：${card.name}`"
-      @pointerdown="!isCardDisabled(card) && emit('card-pointerdown', card, $event)"
+      tabindex="0"
+      :aria-hidden="isCardTemporarilyHidden(card) ? 'true' : undefined"
+      :aria-disabled="isCardDisabled(card) ? 'true' : undefined"
+      :aria-label="`檢視卡牌：${card.name}`"
+      @pointerdown="emit('card-pointerdown', card, $event)"
     >
       <div class="game-card-motion size-full">
         <GameCard
@@ -140,7 +170,7 @@ defineExpose({
 }
 
 .game-card-arrangement {
-  cursor: grab;
+  cursor: var(--cursor-grab, grab) !important;
   touch-action: none;
   filter: drop-shadow(0 12px 18px rgba(0, 19, 50, 0.32));
   transition:
@@ -151,17 +181,17 @@ defineExpose({
 }
 
 .game-card-arrangement:active {
-  cursor: grabbing;
+  cursor: var(--cursor-grabbing, grabbing) !important;
 }
 
 .game-card-arrangement--rule-disabled,
 .game-card-arrangement--rule-disabled:active {
-  cursor: not-allowed;
+  cursor: not-allowed !important;
 }
 
 .game-card-arrangement--interaction-disabled,
 .game-card-arrangement--interaction-disabled:active {
-  cursor: default;
+  cursor: var(--cursor-pointer, pointer) !important;
 }
 
 .game-card-arrangement:nth-child(1) {
@@ -188,6 +218,12 @@ defineExpose({
   opacity: 0;
   visibility: hidden;
   filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0));
+}
+
+.game-card-arrangement--temporarily-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
