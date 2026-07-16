@@ -1,4 +1,4 @@
-<script setup >
+<script setup>
 import RankingItem from "./RankingItem.vue";
 
 defineProps({
