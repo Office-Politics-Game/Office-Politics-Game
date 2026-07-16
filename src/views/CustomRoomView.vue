@@ -74,6 +74,7 @@ function createRoomPlayerSlot(player, index) {
     isHost: player.role === "host",
     isReady: Boolean(player.isReady),
     name: player.username,
+    title: player.title || "",
     avatar: player.avatarUrl
       ? player.avatarUrl
       : resolveAvatarUrl(player.avatarId ?? player.avatar_id, index),
@@ -119,6 +120,7 @@ function createPendingRemovalSlot(player, index, pendingState) {
     isHost: player.role === "host",
     isReady: false,
     name: player.username,
+    title: player.title || "",
     avatar: player.avatarUrl
       ? player.avatarUrl
       : resolveAvatarUrl(player.avatarId ?? player.avatar_id, index),

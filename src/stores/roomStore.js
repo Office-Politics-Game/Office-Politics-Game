@@ -49,6 +49,27 @@ function handleSocketRoomStarted(payload) {
   activeRoomStore?.applyRoomState(payload);
 }
 
+function handleSocketPlayerTitleUpdated(payload) {
+  if (!activeRoomStore || payload?.playerId === undefined || payload?.playerId === null) {
+    return;
+  }
+
+  const playerId = String(payload.playerId);
+  const hasRoomPlayer = activeRoomStore.players.some(
+    (player) => String(player.playerId) === playerId,
+  );
+
+  if (!hasRoomPlayer) {
+    return;
+  }
+
+  activeRoomStore.players = activeRoomStore.players.map((player) =>
+    String(player.playerId) === playerId
+      ? { ...player, title: String(payload.title || "") }
+      : player,
+  );
+}
+
 function handleSocketConnect() {
   if (!activeRoomStore || !subscribedRoomCode || !subscribedPlayerId) {
     return;
@@ -68,9 +89,11 @@ function bindRoomSocketListeners(store) {
   const socket = connectSocket();
   socket.off("room:state", handleSocketRoomState);
   socket.off("room:game-started", handleSocketRoomStarted);
+  socket.off("player:title-updated", handleSocketPlayerTitleUpdated);
   socket.off("connect", handleSocketConnect);
   socket.on("room:state", handleSocketRoomState);
   socket.on("room:game-started", handleSocketRoomStarted);
+  socket.on("player:title-updated", handleSocketPlayerTitleUpdated);
   socket.on("connect", handleSocketConnect);
 }
 
