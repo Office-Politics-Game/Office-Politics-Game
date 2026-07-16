@@ -2,10 +2,12 @@
   <section class="equipment-switcher flex flex-col">
     <header class="equipment-switcher__header">
       <div>
-        <p class="equipment-switcher__eyebrow">LOADOUT LAB</p>
-        <h2 class="equipment-switcher__title">更換配件測試</h2>
+        <p class="equipment-switcher__eyebrow">STYLE STUDIO</p>
+        <h2 class="equipment-switcher__title">個人風格切換</h2>
       </div>
-      <p class="equipment-switcher__hint">先驗證互動流程，之後再接正式個人頁。</p>
+      <p class="equipment-switcher__hint">
+        從已擁有的造型中挑選你想展示的配件，預覽後直接套用到目前角色。
+      </p>
     </header>
 
     <div class="equipment-switcher__tabs">
@@ -27,7 +29,7 @@
     </div>
 
     <div v-else-if="isLoading" class="equipment-switcher__status">
-      讀取配件資料中...
+      正在讀取風格資料...
     </div>
 
     <div v-else class="equipment-switcher__content">
@@ -48,12 +50,12 @@
               v-if="selectedItem?.isEquipped"
               class="equipment-switcher__badge equipment-switcher__badge--equipped"
             >
-              已裝備
+              使用中
             </span>
           </div>
 
           <h3 class="equipment-switcher__preview-title">
-            {{ selectedItem?.name || "請先選擇一個配件" }}
+            {{ selectedItem?.name || "請先選擇一個風格項目" }}
           </h3>
 
           <p class="equipment-switcher__preview-description">
@@ -75,7 +77,7 @@
                 ? "套用中..."
                 : selectedItem?.isEquipped
                   ? "目前使用中"
-                  : "套用配件"
+                  : "套用這個風格"
             }}
           </button>
         </div>
@@ -104,7 +106,7 @@
             <div class="equipment-switcher__card-title">{{ item.name }}</div>
             <div class="equipment-switcher__card-meta">
               <span>x{{ item.quantity }}</span>
-              <span v-if="item.isEquipped">已裝備</span>
+              <span v-if="item.isEquipped">使用中</span>
             </div>
           </div>
         </button>

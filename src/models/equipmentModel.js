@@ -13,25 +13,25 @@ const EQUIPMENT_CATEGORY_META = {
     id: "avatar",
     label: "頭像",
     equippedKey: "avatarItemId",
-    emptyText: "尚未擁有可切換的頭像。",
+    emptyText: "目前還沒有可切換的頭像。",
   },
   card_skin: {
     id: "card_skin",
     label: "卡面",
     equippedKey: "cardSkinItemId",
-    emptyText: "尚未擁有可切換的卡面。",
+    emptyText: "目前還沒有可切換的卡面。",
   },
   card_back: {
     id: "card_back",
     label: "卡背",
     equippedKey: "cardBackItemId",
-    emptyText: "尚未擁有可切換的卡背。",
+    emptyText: "目前還沒有可切換的卡背。",
   },
   board_skin: {
     id: "board_skin",
-    label: "盤面",
+    label: "遊戲背景",
     equippedKey: "boardSkinItemId",
-    emptyText: "尚未擁有可切換的盤面。",
+    emptyText: "目前還沒有可切換的遊戲背景。",
   },
 };
 
