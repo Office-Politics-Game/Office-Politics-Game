@@ -7,7 +7,7 @@
       </p>
     </div>
 
-    <div class="flex gap-2 max-sm:flex-col">
+    <div class="flex gap-2">
       <input
         v-model="keyword"
         type="text"
@@ -206,7 +206,9 @@ function statusColorClass(player) {
 }
 
 .friend-button {
-  @apply border px-3 py-2 text-sm font-bold transition-[border-color,background-color,box-shadow,color] duration-[180ms] disabled:cursor-not-allowed disabled:opacity-60;
+  width: 88px;
+  height: 40px;
+  @apply shrink-0 border px-3 py-2 text-sm font-bold transition-[border-color,background-color,box-shadow,color] duration-[180ms] disabled:cursor-not-allowed disabled:opacity-60;
 }
 
 .friend-button.is-primary {
