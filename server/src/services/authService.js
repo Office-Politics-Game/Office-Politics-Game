@@ -4,6 +4,8 @@ import { supabaseAdmin, supabaseAuth } from "../db/supabaseClient.js"
 const DEFAULT_AVATAR_ID = 1
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PASSWORD_RULE_ERROR_MESSAGE = "密碼格式不符合規則"
+const PASSWORD_AUTH_PROVIDER = "email"
+const OAUTH_PASSWORD_BLOCK_MESSAGE = "第三方登入帳號沒有修改密碼權限，請至原登入平台管理密碼"
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=[\]{};':"|,.<>/?`~])[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"|,.<>/?`~]{8,16}$/
 const PLAYER_SELECT_SQL = `id, auth_user_id, username, account, avatar_id,
     level, exp, coins, gems, tickets,
@@ -20,6 +22,29 @@ function createAuthError(statusCode, message) {
 function createInternalAuthError(error, logMessage, publicMessage = "服務暫時異常，請稍後再試") {
     console.error(logMessage, error)
     return createAuthError(500, publicMessage)
+}
+
+function getAuthProvider(user) {
+    return (
+        user?.app_metadata?.provider ||
+        user?.identities?.[0]?.provider ||
+        PASSWORD_AUTH_PROVIDER
+    )
+}
+
+function canChangePassword(user) {
+    return (
+        getAuthProvider(user) === PASSWORD_AUTH_PROVIDER ||
+        user?.identities?.some((identity) => identity.provider === PASSWORD_AUTH_PROVIDER)
+    )
+}
+
+function formatAuthPlayer(row, authUser) {
+    return {
+        ...formatPlayer(row),
+        authProvider: getAuthProvider(authUser),
+        canChangePassword: canChangePassword(authUser)
+    }
 }
 
 function formatPlayer(row) {
@@ -180,7 +205,11 @@ async function registerPlayer({ username, account, password, avatarId } = {}) {
             ]
         )
 
-        return formatPlayer(result.rows[0])
+        return {
+            ...formatPlayer(result.rows[0]),
+            authProvider: PASSWORD_AUTH_PROVIDER,
+            canChangePassword: true
+        }
     } catch (error) {
         await deleteSupabaseUserQuietly(authUserId)
         throw createInternalAuthError(
@@ -256,7 +285,7 @@ async function loginPlayer({ account, password } = {}) {
     )
 
     return {
-        player: formatPlayer(updatedPlayerResult.rows[0]),
+        player: formatAuthPlayer(updatedPlayerResult.rows[0], data.user),
         token,
         expiresIn
     }
@@ -327,7 +356,7 @@ async function syncOAuthPlayer({ accessToken, expiresIn } = {}) {
             )
 
             return {
-                player: formatPlayer(updatedResult.rows[0]),
+                player: formatAuthPlayer(updatedResult.rows[0], authUser),
                 token: accessToken,
                 expiresIn
             }
@@ -354,7 +383,7 @@ async function syncOAuthPlayer({ accessToken, expiresIn } = {}) {
         )
 
         return {
-            player: formatPlayer(createdResult.rows[0]),
+            player: formatAuthPlayer(createdResult.rows[0], authUser),
             token: accessToken,
             expiresIn
         }
@@ -451,6 +480,10 @@ async function changePlayerPassword({
         throw createAuthError(401, "登入狀態已失效，請重新登入")
     }
 
+    if (!canChangePassword(data.user)) {
+        throw createAuthError(403, OAUTH_PASSWORD_BLOCK_MESSAGE)
+    }
+
     const email = data.user.email?.trim().toLowerCase()
 
     if (!email || !isValidEmail(email)) {
@@ -545,7 +578,7 @@ async function verifyToken(token) {
         throw createAuthError(404, "找不到玩家資料")
     }
 
-    return formatPlayer(player)
+    return formatAuthPlayer(player, data.user)
 }
 
 export {

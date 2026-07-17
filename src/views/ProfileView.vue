@@ -131,6 +131,29 @@
     @close="closePasswordEditor"
     @changed="handlePasswordChanged"
   />
+  <div
+    v-if="passwordNoticeMessage"
+    class="profile-password-notice"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="profile-password-notice-title"
+  >
+    <section class="profile-password-notice__panel">
+      <h2 id="profile-password-notice-title" class="profile-password-notice__title">
+        無法修改密碼
+      </h2>
+      <p class="profile-password-notice__message">
+        {{ passwordNoticeMessage }}
+      </p>
+      <button
+        type="button"
+        class="profile-password-notice__button"
+        @click="closePasswordNotice"
+      >
+        確認
+      </button>
+    </section>
+  </div>
 </template>
 
 <script setup>
@@ -178,6 +201,7 @@ const editingInitialValue = ref("");
 const isAvatarEditorOpen = ref(false);
 const editErrorMessage = ref("");
 const isPasswordEditorOpen = ref(false);
+const passwordNoticeMessage = ref("");
 
 const tabs = [
   {
@@ -265,6 +289,15 @@ const isGuestLockedTab = computed(
   () =>
     profileStore.isGuestProfile && memberOnlyTabIds.includes(activeTab.value),
 );
+
+const canChangePassword = computed(() => {
+  const player = authStore.currentPlayer;
+
+  return (
+    profileStore.isMemberProfile &&
+    (player?.canChangePassword === true || player?.authProvider === "email")
+  );
+});
 
 const profilePlayer = computed(() => {
   if (profileStore.isMemberProfile && !profileStore.profile) {
@@ -393,6 +426,11 @@ function handleEditProfileField(item) {
   }
 
   if (item.id === "password") {
+    if (!canChangePassword.value) {
+      showPasswordNotice();
+      return;
+    }
+
     openPasswordEditor();
     return;
   }
@@ -475,6 +513,15 @@ async function saveAvatar(avatarId) {
 
 function openPasswordEditor() {
   isPasswordEditorOpen.value = true;
+}
+
+function showPasswordNotice() {
+  passwordNoticeMessage.value =
+    "第三方登入帳號沒有修改密碼權限，請至原登入平台管理密碼";
+}
+
+function closePasswordNotice() {
+  passwordNoticeMessage.value = "";
 }
 
 function closePasswordEditor() {
@@ -730,6 +777,58 @@ watch(
 
 .profile-page-state.is-returning .profile-state-exit-layer {
   animation: dashboardReveal 700ms ease both;
+}
+
+.profile-password-notice {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 19, 50, 0.56);
+}
+
+.profile-password-notice__panel {
+  width: min(420px, calc(100vw - 32px));
+  border: 1px solid var(--brand-primary);
+  background: rgba(255, 255, 255, 0.96);
+  padding: 32px 28px 28px;
+  text-align: center;
+}
+
+.profile-password-notice__title {
+  margin: 0 0 16px;
+  color: var(--brand-navy);
+  font-size: var(--text-xl);
+  font-weight: 900;
+}
+
+.profile-password-notice__message {
+  margin: 0 0 24px;
+  color: var(--brand-active);
+  font-size: var(--text-md);
+  font-weight: 800;
+  line-height: 1.6;
+}
+
+.profile-password-notice__button {
+  min-width: 160px;
+  min-height: 48px;
+  border: 1px solid var(--brand-primary);
+  background: var(--brand-active);
+  color: white;
+  cursor: pointer;
+  font-size: var(--text-md);
+  font-weight: 900;
+}
+
+.profile-password-notice__button:hover {
+  background: var(--brand-hover);
+}
+
+.profile-password-notice__button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--brand-focus);
 }
 
 @keyframes dashboardReveal {

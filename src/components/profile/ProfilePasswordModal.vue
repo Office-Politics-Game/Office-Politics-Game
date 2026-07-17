@@ -47,7 +47,7 @@
               :type="showPassword ? 'text' : 'password'"
               autocomplete="new-password"
               :disabled="isSubmitting"
-              @input="passwordError = ''; confirmPasswordError = ''; clearApiMessage()"
+              @input="handlePasswordInput"
             />
             <button
               type="button"
@@ -150,6 +150,17 @@ function clearApiMessage() {
   apiStatus.value = "";
 }
 
+function handlePasswordInput() {
+  passwordError.value = "";
+  confirmPasswordError.value = "";
+  clearApiMessage();
+
+  if (!password.value) {
+    confirmPassword.value = "";
+    showConfirmPassword.value = false;
+  }
+}
+
 function validateForm() {
   currentPasswordError.value = currentPassword.value
     ? ""
@@ -180,6 +191,25 @@ function validateForm() {
   );
 }
 
+function applyApiFieldError(message) {
+  if (message === "目前密碼錯誤") {
+    currentPasswordError.value = message;
+    return true;
+  }
+
+  if (message === "新密碼不可與目前密碼相同") {
+    passwordError.value = message;
+    return true;
+  }
+
+  if (message === "新密碼與確認密碼不一致") {
+    confirmPasswordError.value = message;
+    return true;
+  }
+
+  return false;
+}
+
 async function submitPasswordChange() {
   clearApiMessage();
 
@@ -201,9 +231,14 @@ async function submitPasswordChange() {
       emit("changed");
     }, 900);
   } catch (error) {
+    const message = error?.data?.message || error?.message || "修改密碼失敗";
+
+    if (applyApiFieldError(message)) {
+      return;
+    }
+
     apiStatus.value = "error";
-    apiMessage.value =
-      error?.data?.message || error?.message || "修改密碼失敗";
+    apiMessage.value = message;
   }
 }
 </script>
