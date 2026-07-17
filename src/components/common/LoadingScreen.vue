@@ -20,12 +20,12 @@ const props = defineProps({
 const emit = defineEmits(['retry'])
 
 const loadingMessages = [
-  '整理辦公桌面...',
-  '確認會議行程...',
-  '準備茶水間情報...',
-  '更新同事名單...',
-  '整理辦公室政治...',
-  '載入遊戲資料...',
+  '小提示:實習生不能猜實習生...',
+  '小提示:可以把CEO換給你的對手...',
+  '小提示:如果最後點數相等可能會有小驚喜...',
+  '小提示:免疫狀態可以擋下一輪攻擊...',
+  '小提示:先記住棄牌區，會比亂猜更有用...',
+  '小提示:部門主管會比較雙方牌面大小...',
 ]
 const activeMessages = [...loadingMessages]
   .sort(() => Math.random() - 0.5)
@@ -71,7 +71,7 @@ onMounted(() => {
     messageTimer = window.setInterval(() => {
       currentMessageIndex.value =
         (currentMessageIndex.value + 1) % activeMessages.length
-    }, 1000)
+    }, 5000)
   }, 600)
 })
 
@@ -96,7 +96,7 @@ onBeforeUnmount(clearLoadingTimers)
       class="absolute right-[50%] bottom-20 flex w-64 translate-x-[50%] flex-col lg:bottom-40 lg:w-96"
       aria-live="polite"
     >
-      <p class="m-0 text-center text-lg font-bold text-white">
+      <p class="m-0 text-center text-base font-bold text-white">
         {{ currentMessage }}
       </p>
 

@@ -107,7 +107,7 @@ test('cleaner prompt shows only the target player', async () => {
   assert.match(source, /\.to\(\{\}, \{ duration: CLEANER_PROMPT_HOLD_SECONDS \}\)[\s\S]*\.to\(\s*cardElement,/)
   assert.match(source, /\.to\(\{\}, \{ duration: 2 \}\)[\s\S]*\.set\(promptRef\.value, \{ opacity: 0 \}\)/)
   assert.match(source, /function getKillTargets\(\) \{[\s\S]*promptRef\.value/)
-  assert.match(source, /\.cleaner-animation__prompt \{[\s\S]*top: 25%[\s\S]*width: min\(92vw, 900px\)[\s\S]*font-size: clamp\(14\.4px, 2\.7vw, 32\.4px\)/)
+  assert.match(source, /\.cleaner-animation__prompt \{[\s\S]*top: 31%[\s\S]*width: min\(92vw, 900px\)[\s\S]*font-size: clamp\(14\.4px, 2\.7vw, 32\.4px\)/)
   assert.match(source, /\.cleaner-animation__prompt-value \{[\s\S]*color: #facc15/)
   assert.match(stage, /const activeCleanerTargetPlayerName = computed/)
   assert.match(stage, /activeEffectResult\.value\.targetPlayerId/)

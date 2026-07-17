@@ -1,3 +1,5 @@
+import { ref } from "vue";
+
 export const GAME_TUTORIAL_STEP_CONTENT = Object.freeze({
   deck: {
     title: "抽牌區",
@@ -106,6 +108,7 @@ export function useGameTutorial({
   let isFinalized = false;
   let highlightedTargets = null;
   const settlementResolvers = new Set();
+  const isBlocking = ref(false);
 
   function settleTutorial(result = false) {
     settlementResolvers.forEach((resolve) => resolve(result));
@@ -155,6 +158,7 @@ export function useGameTutorial({
     if (tour === activeTour) {
       tour = null;
     }
+    isBlocking.value = false;
     settleTutorial(true);
   }
 
@@ -184,6 +188,7 @@ export function useGameTutorial({
       return false;
     }
 
+    isBlocking.value = true;
     isStarting = true;
     let nextTour = null;
     try {
@@ -256,6 +261,7 @@ export function useGameTutorial({
     tour = null;
     isFinalized = true;
     clearOpponentHighlights();
+    isBlocking.value = false;
     settleTutorial(false);
 
     if (activeTour) {
@@ -267,6 +273,7 @@ export function useGameTutorial({
     startTutorial,
     waitForTutorialSettlement,
     disposeTutorial,
+    isBlocking,
     get hasStarted() {
       return hasStarted;
     },

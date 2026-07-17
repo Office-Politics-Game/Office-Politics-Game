@@ -26,6 +26,7 @@ function createInitialState(players) {
     return {
       playerId: player.player_id,
       username: player.username,
+      level: player.level,
       avatarId: player.avatar_id,
       avatarUrl: player.avatar_url,
       cardSkinUrl: player.card_skin_url,
@@ -44,6 +45,7 @@ function createInitialState(players) {
 
   return {
     phase: "playing",
+    roundNumber: 1,
     deck,
     discardPile: [],
     hasAnyCardBeenPlayed: false,

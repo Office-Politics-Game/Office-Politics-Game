@@ -63,8 +63,9 @@ test('game stage coordinates pending play target and guess confirmation', async 
   assert.match(source, /v-if="pendingPlay"[\s\S]*class="play-target-backdrop"/)
   assert.match(source, /\.play-target-backdrop \{[\s\S]*z-index: 44[\s\S]*background: rgba\(0, 0, 0, 0\.42\)[\s\S]*backdrop-filter: blur\(5px\)/)
   assert.match(source, /<CardPlayConfirmPanel/)
-  assert.match(source, /import \{ CARD_INFO_BY_RANK \} from ["']@\/constants\/cardInfo["']/)
+  assert.match(source, /import \{ CARD_INFO_BY_RANK, getCardDisplayName \} from ["']@\/constants\/cardInfo["']/)
   assert.match(source, /Object\.entries\(CARD_INFO_BY_RANK\)/)
+  assert.match(source, /name: getCardDisplayName\(cardInfo\)/)
   assert.match(confirmPanelSource, /<CardGuessSelector/)
   assert.match(source, /@target-select="selectTargetPlayer"/)
   assert.match(confirmPanelSource, /:disabled="!canConfirmPendingPlay"/)
@@ -151,8 +152,9 @@ test('intern animation normalization requires and preserves the submitted guess'
 
   assert.match(source, /typeof result\.guessedCardName === ['"]string['"]/)
   assert.match(source, /result\.guessedCardName\.trim\(\)/)
+  assert.match(source, /getCardDisplayName\(\s*guessedCardName,/)
   assert.match(source, /targetPlayerId && targetCard && guessedCardName/)
-  assert.match(source, /\{ \.\.\.result, id, targetPlayerId, targetCard, guessedCardName \}/)
+  assert.match(source, /guessedCardName: guessedCardDisplayName/)
 })
 
 test('game stage resolves the intern target name with a stable fallback', async () => {

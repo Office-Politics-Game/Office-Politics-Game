@@ -56,6 +56,31 @@ describe("computerPlayerService decision helpers", () => {
         expect(chooseCardToPlay(state, player)).toEqual({ id: 1, name: "Intern" })
     })
 
+    test("prefers the drawn card when it is playable", () => {
+        const state = createState({
+            players: [
+                {
+                    playerId: 1,
+                    username: "Computer 1",
+                    isComputer: true,
+                    isEliminated: false,
+                    hand: [
+                        { id: 4, name: "Senior" },
+                        { id: 1, name: "Intern" },
+                    ],
+                },
+                {
+                    playerId: 2,
+                    isEliminated: false,
+                    hand: [{ id: 8, name: "CEO" }],
+                },
+            ],
+        })
+        const player = getCurrentTurnPlayer(state)
+
+        expect(chooseCardToPlay(state, player, 4)).toEqual({ id: 4, name: "Senior" })
+    })
+
     test("obeys Advisor rule when Advisor is held with PM or HR", () => {
         const state = createState({
             players: [
@@ -85,6 +110,14 @@ describe("computerPlayerService decision helpers", () => {
         const player = getCurrentTurnPlayer(state)
 
         expect(chooseTargetPlayerId(state, player, { id: 1, name: "Intern" })).toBe(2)
+    })
+
+    test("skips eliminated targets", () => {
+        const state = createState()
+        state.players[1].isEliminated = true
+        const player = getCurrentTurnPlayer(state)
+
+        expect(chooseTargetPlayerId(state, player, { id: 1, name: "Intern" })).toBe(3)
     })
 
     test("builds Intern play payload with fixed CEO guess", () => {

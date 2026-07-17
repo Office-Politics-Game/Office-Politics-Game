@@ -65,11 +65,16 @@ let pressTimeline;
 let hasRequestedDraw = false;
 
 const normalizedDiscardCards = computed(() => {
+  const withDisplayName = (card) => ({
+    ...card,
+    name: card.displayName ?? card.name,
+  });
+
   if (props.discardCards.length > 0) {
-    return props.discardCards;
+    return props.discardCards.map(withDisplayName);
   }
 
-  return props.discardCard ? [props.discardCard] : [];
+  return props.discardCard ? [withDisplayName(props.discardCard)] : [];
 });
 
 const topDiscardCard = computed(() => {
@@ -81,6 +86,10 @@ const topDiscardCard = computed(() => {
 
   return null;
 });
+
+const topDiscardDisplayName = computed(
+  () => topDiscardCard.value?.displayName ?? topDiscardCard.value?.name ?? "",
+);
 
 const isDeckInteractionDisabled = computed(
   () => props.isDrawDisabled || props.isDeckHidden || isDeckPressing.value,
@@ -401,7 +410,7 @@ onUnmounted(() => {
 
       <p
         aria-hidden="true"
-        class="m-0 text-[var(--text-xs)] font-bold tracking-[0.12em] text-white text-shadow-[0_2px_6px_var(--brand-navy)]"
+        class="table-card-pile__label m-0 text-[var(--text-xs)] font-bold tracking-[0.12em] text-white text-shadow-[0_2px_6px_var(--brand-navy)]"
       >
         牌庫·{{ deckCount }} 張
       </p>
@@ -423,7 +432,7 @@ onUnmounted(() => {
           :key="`${index}-${card.name}`"
         >
           <GameCard
-            :name="card.name"
+            :name="card.displayName ?? card.name"
             :background-url="card.backgroundUrl"
             :frame-url="card.frameUrl"
             class="table-card-pile__card"
@@ -433,7 +442,7 @@ onUnmounted(() => {
 
       <p
         aria-hidden="true"
-        class="m-0 text-[var(--text-xs)] font-bold tracking-[0.12em] text-white text-shadow-[0_2px_6px_var(--brand-navy)]"
+        class="table-card-pile__label m-0 text-[var(--text-xs)] font-bold tracking-[0.12em] text-white text-shadow-[0_2px_6px_var(--brand-navy)]"
       >
         棄牌區·{{ topDiscardCard ? topDiscardCard.name : "尚未出牌" }}
       </p>
@@ -527,6 +536,10 @@ onUnmounted(() => {
   inset: 0;
 }
 
+.table-card-pile__label {
+  font-size: var(--text-xs);
+}
+
 .card-stack__layer--1 {
   transform: translate(clamp(7px, 1vw, 12px), clamp(7px, 1vw, 12px));
   filter: brightness(0.72);
@@ -544,6 +557,13 @@ onUnmounted(() => {
 @media (prefers-reduced-motion: reduce) {
   .table-card-pile {
     will-change: auto;
+  }
+}
+
+@media (max-width: 767px) {
+  .table-card-pile__label {
+    font-size: 10px;
+    letter-spacing: 0.06em;
   }
 }
 </style>

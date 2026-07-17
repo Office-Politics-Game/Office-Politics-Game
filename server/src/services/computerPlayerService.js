@@ -1,5 +1,6 @@
 import pool from "../db/index.js"
 import { drawCardAction, playCardAction } from "./gameActionService.js"
+import { finishTurn } from "./roundFlowService.js"
 
 const TARGET_REQUIRED_CARD_IDS = [1, 2, 3, 5, 6]
 const ADVISOR_CARD_ID = 7
@@ -85,18 +86,32 @@ function sortPlayableCards(cards) {
     })
 }
 
-function chooseCardToPlay(state, player) {
+function isCardPlayable(state, player, card) {
     const hand = Array.isArray(player?.hand) ? player.hand : []
+
+    if (!card || !obeysAdvisorRule(hand, card)) {
+        return false
+    }
+
+    if (!cardNeedsTarget(card)) {
+        return true
+    }
+
+    return getAliveTargets(state, player.playerId, card.id).length > 0
+}
+
+function chooseCardToPlay(state, player, preferredCardId = null) {
+    const hand = Array.isArray(player?.hand) ? player.hand : []
+    const preferredCard = hand.find((card) => {
+        return preferredCardId != null && Number(card.id) === Number(preferredCardId)
+    })
+
+    if (isCardPlayable(state, player, preferredCard)) {
+        return preferredCard
+    }
+
     const playableCards = sortPlayableCards(hand).filter((card) => {
-        if (!obeysAdvisorRule(hand, card)) {
-            return false
-        }
-
-        if (!cardNeedsTarget(card)) {
-            return true
-        }
-
-        return getAliveTargets(state, player.playerId, card.id).length > 0
+        return isCardPlayable(state, player, card)
     })
 
     return playableCards[0] ?? null
@@ -129,14 +144,59 @@ function buildPlayPayload(state, player, card) {
 }
 
 async function runComputerTurn({ roomCode }) {
-    let gameSession = await getLatestGameSession(roomCode)
-    let state = gameSession.state_json
-    let player = getCurrentTurnPlayer(state)
+    const gameSession = await getLatestGameSession(roomCode)
+    const state = gameSession.state_json
+    const player = getCurrentTurnPlayer(state)
 
     if (!player?.isComputer || state.phase !== "playing") {
         return {
             didRun: false,
             reason: "not-computer-turn",
+            state,
+        }
+    }
+
+    return runAutomatedTurn({ roomCode })
+}
+
+async function runAutomatedTurn({ roomCode, playerId } = {}) {
+    let gameSession = await getLatestGameSession(roomCode)
+    let state = gameSession.state_json
+    let player = playerId
+        ? state.players.find((candidate) => Number(candidate.playerId) === Number(playerId))
+        : getCurrentTurnPlayer(state)
+
+    if (player?.isEliminated && !playerId) {
+        const turnResult = finishTurn(state, player.playerId)
+        await pool.query(
+            `UPDATE game_sessions
+             SET state_json = $1,
+                 status = $2,
+                 current_turn_player_id = $3,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $4`,
+            [state, state.phase, state.currentTurnPlayerId, gameSession.id]
+        )
+
+        return {
+            didRun: true,
+            playerId: Number(player.playerId),
+            drawResult: null,
+            playResult: null,
+            roundEndState: turnResult.roundEndState,
+            state,
+            reason: "advanced-eliminated-turn",
+        }
+    }
+
+    if (
+        !player ||
+        Number(player.playerId) !== Number(state.currentTurnPlayerId) ||
+        state.phase !== "playing"
+    ) {
+        return {
+            didRun: false,
+            reason: "not-automated-turn",
             state,
         }
     }
@@ -151,17 +211,20 @@ async function runComputerTurn({ roomCode }) {
     const hand = Array.isArray(player.hand) ? player.hand : []
     const deck = Array.isArray(state.deck) ? state.deck : []
 
+    let preferredCardId = null
+
     if (hand.length < 2 && deck.length > 0) {
         result.drawResult = await drawCardAction({
             roomCode,
             playerId: Number(player.playerId),
         })
+        preferredCardId = result.drawResult.drawnCard?.id ?? null
         gameSession = await getLatestGameSession(roomCode)
         state = gameSession.state_json
         player = getCurrentTurnPlayer(state)
     }
 
-    const card = chooseCardToPlay(state, player)
+    const card = chooseCardToPlay(state, player, preferredCardId)
 
     if (!card) {
         return {
@@ -183,6 +246,7 @@ async function runComputerTurn({ roomCode }) {
 
 export {
     runComputerTurn,
+    runAutomatedTurn,
     chooseCardToPlay,
     chooseTargetPlayerId,
     buildPlayPayload,

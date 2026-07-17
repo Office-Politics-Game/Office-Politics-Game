@@ -136,6 +136,10 @@ export function useGameStageCardPlay({
 
     return props.players
       .filter((player) => {
+        if (player.isEliminated) {
+          return false;
+        }
+
         if (pendingTargetMode.value === "opponent") {
           return !player.isCurrentPlayer;
         }
@@ -235,6 +239,7 @@ export function useGameStageCardPlay({
   const isPlayInteractionLocked = computed(
     () =>
       props.isLoading ||
+      props.isSkippingComputerFinish ||
       isInitialRoundDrawAnimating.value ||
       !isCurrentPlayerTurn.value ||
       Boolean(activeCard.value) ||

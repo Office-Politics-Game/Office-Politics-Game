@@ -42,6 +42,7 @@ describe("小局重置邏輯",()=>{
         startNextRound(state, { random: ()=> 0.75 })
 
         expect(state.phase).toBe("playing")
+        expect(state.roundNumber).toBe(2)
         expect(state.roundWinnerPlayerId).toBeNull()
         expect(state.discardPile).toEqual([])
         expect(state.hasAnyCardBeenPlayed).toBe(true)

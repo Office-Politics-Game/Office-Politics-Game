@@ -34,6 +34,8 @@ async function unlockGameEndAchievements(state, viewerPlayerId) {
         return []
     }
 
+    const unlockedAchievements = []
+
     if (state.winnerPlayerId) {
         const unlockedAchievement = await unlockAchievement(
             state.winnerPlayerId,
@@ -182,7 +184,7 @@ async function playCardAction({
         effectResult,
     )
 
-    const { showdownResult } = finishTurn(state, numericPlayerId)
+    const { showdownResult, roundEndState } = finishTurn(state, numericPlayerId)
 
     await pool.query(
         `UPDATE game_sessions
@@ -232,6 +234,7 @@ async function playCardAction({
         result: effectResult,
         animationResult,
         showdownResult,
+        roundEndState,
         discardedCard,
         actionLog,
         matchProgress,

@@ -45,10 +45,9 @@ let previouslyFocusedElement = null;
 const confirmationContent = computed(() => {
   if (confirmationAction.value === "return-lobby") {
     return {
-      title: "返回大廳？",
-      description:
-        "目前對局將會中斷。這個版本只會送出返回大廳事件，不會直接切換頁面。",
-      confirmLabel: "確認返回",
+      title: "確認投降",
+      description: "放棄對局無法領取結算獎勵，確認返回大廳？",
+      confirmLabel: "投降",
     };
   }
 
@@ -177,7 +176,7 @@ watch(
         >
           <header class="settings-header">
             <div>
-              <p class="settings-eyebrow">OFFICE POLITICS</p>
+              <p class="settings-eyebrow">遊戲設定</p>
               <h2 id="game-settings-title" class="settings-title">
                 {{ confirmationContent?.title ?? "遊戲設定" }}
               </h2>
@@ -202,7 +201,7 @@ watch(
             >
               <div class="section-heading">
                 <div>
-                  <p class="section-kicker">AUDIO</p>
+                  <p class="section-kicker">音效</p>
                   <h3 id="audio-settings-title">音訊</h3>
                 </div>
                 <span>各項音量獨立控制</span>
@@ -286,7 +285,7 @@ watch(
             <section class="game-actions" aria-labelledby="game-actions-title">
               <div class="section-heading compact">
                 <div>
-                  <p class="section-kicker">GAME</p>
+                  <p class="section-kicker">對局</p>
                   <h3 id="game-actions-title">對局操作</h3>
                 </div>
               </div>
@@ -295,9 +294,9 @@ watch(
                 <button
                   type="button"
                   class="glass-button"
-                  @click="$router.push('/Lobby')"
+                  @click="openConfirmation('return-lobby')"
                 >
-                  返回大廳
+                  投降
                 </button>
                 <button
                   type="button"
@@ -311,7 +310,7 @@ watch(
           </div>
 
           <div v-else class="confirmation-content">
-            <p class="confirmation-eyebrow">CONFIRM ACTION</p>
+            <p class="confirmation-eyebrow">確認操作</p>
             <p>{{ confirmationContent.description }}</p>
 
             <div class="confirmation-actions">
@@ -702,22 +701,138 @@ watch(
 }
 
 @media (max-width: 760px) {
-  .settings-dialog {
-    width: 100%;
+  .settings-overlay {
+    padding: 6px;
   }
 
-  .settings-header,
+  .settings-dialog {
+    width: min(420px, 100%);
+    max-height: calc(100dvh - 12px);
+    overflow: hidden;
+  }
+
   .settings-content {
-    padding-right: 14px;
-    padding-left: 14px;
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .settings-header {
+    gap: 10px;
+    min-height: 48px;
+    padding: 8px 10px;
+  }
+
+  .settings-eyebrow,
+  .section-kicker,
+  .section-heading > span {
+    display: none;
+  }
+
+  .settings-title {
+    font-size: var(--text-lg);
+  }
+
+  .icon-button {
+    min-width: 46px;
+    height: 34px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .settings-content {
+    gap: 8px;
+    padding-top: 8px;
+    padding-bottom: 10px;
+  }
+
+  .section-heading {
+    gap: 8px;
+    margin-bottom: 5px;
+  }
+
+  .section-heading.compact {
+    margin-bottom: 5px;
+  }
+
+  .section-heading h3 {
+    font-size: 14px;
   }
 
   .audio-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .audio-control {
+    padding: 8px;
+  }
+
+  .audio-label {
+    gap: 5px;
+    font-size: 12px;
+  }
+
+  .toggle-button {
+    min-width: 44px;
+    min-height: 30px;
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+
+  .volume-control {
+    gap: 4px;
+    margin-top: 6px;
+    font-size: 12px;
+  }
+
+  .volume-control input {
+    height: 16px;
+  }
+
+  .volume-control input::-webkit-slider-runnable-track {
+    height: 4px;
+  }
+
+  .volume-control input::-webkit-slider-thumb {
+    width: 14px;
+    height: 14px;
+    margin-top: -6px;
+  }
+
+  .volume-control input::-moz-range-track {
+    height: 4px;
+  }
+
+  .volume-control input::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+  }
+
+  .action-grid {
+    gap: 8px;
   }
 
   .glass-button {
     width: 100%;
+    min-width: 0;
+    min-height: 34px;
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+
+  .confirmation-content {
+    min-height: 150px;
+    gap: 8px;
+    padding: 14px 10px;
+  }
+
+  .confirmation-content p {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .confirmation-actions {
+    gap: 8px;
   }
 }
 

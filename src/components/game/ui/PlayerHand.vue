@@ -133,12 +133,12 @@ defineExpose({
       tabindex="0"
       :aria-hidden="isCardTemporarilyHidden(card) ? 'true' : undefined"
       :aria-disabled="isCardDisabled(card) ? 'true' : undefined"
-      :aria-label="`檢視卡牌：${card.name}`"
+      :aria-label="`檢視卡牌：${card.displayName ?? card.name}`"
       @pointerdown="emit('card-pointerdown', card, $event)"
     >
       <div class="game-card-motion size-full">
         <GameCard
-          :name="card.name"
+          :name="card.displayName ?? card.name"
           :background-url="card.backgroundUrl"
           :frame-url="card.frameUrl"
         />

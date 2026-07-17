@@ -56,6 +56,8 @@ test('deck and discard piles keep distinct tabletop rotations and shadows', asyn
   assert.match(source, /class="table-card-pile table-card-pile--deck/)
   assert.match(source, /class="table-card-pile table-card-pile--discard/)
   assert.match(source, /class="table-card-pile__card/)
+  assert.match(source, /table-card-pile__label/)
+  assert.match(source, /@media \(max-width: 767px\) \{[\s\S]*\.table-card-pile__label \{[\s\S]*font-size:\s*10px;/)
   assert.match(source, /\.table-card-pile::after/)
   assert.match(source, /rotateX\(58deg\) rotateZ\(-2deg\)/)
   assert.match(source, /rotateX\(58deg\) rotateZ\(2deg\)/)

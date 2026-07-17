@@ -88,6 +88,7 @@ function mapRoomPlayer(player) {
   return {
     playerId: player.player_id,
     username: player.username,
+    level: player.level,
     avatarId: player.avatar_id,
     avatarUrl: player.avatar_url || "",
     cardSkinUrl: player.card_skin_url || "",
@@ -274,6 +275,7 @@ async function getRoomState({ roomCode }) {
       `SELECT
          grp.player_id,
          p.username,
+         p.level,
          p.avatar_id,
          avatar_item.image_url AS avatar_url,
          card_skin_item.image_url AS card_skin_url,
@@ -301,6 +303,7 @@ async function getRoomState({ roomCode }) {
       `SELECT
          grp.player_id,
          p.username,
+         p.level,
          p.avatar_id,
          avatar_item.image_url AS avatar_url,
          card_skin_item.image_url AS card_skin_url,
@@ -544,6 +547,7 @@ async function startGame({ roomCode, playerId }) {
            grp.is_ready,
            (grp.is_computer OR grp.role = 'computer') AS is_computer,
            p.username,
+           p.level,
            p.avatar_id,
            avatar_item.image_url AS avatar_url,
            card_skin_item.image_url AS card_skin_url,
@@ -569,6 +573,7 @@ async function startGame({ roomCode, playerId }) {
            grp.is_ready,
            (grp.is_computer OR grp.role = 'computer') AS is_computer,
            p.username,
+           p.level,
            p.avatar_id,
            avatar_item.image_url AS avatar_url,
            card_skin_item.image_url AS card_skin_url

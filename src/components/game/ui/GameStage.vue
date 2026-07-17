@@ -8,7 +8,7 @@ import { useGameStageCardPlay } from "@/composables/useGameStageCardPlay";
 import { useGameStageCardVisibility } from "@/composables/useGameStageCardVisibility";
 import { useGameStageDrawSequence } from "@/composables/useGameStageDrawSequence";
 import { useGameStageEffectAnimation } from "@/composables/useGameStageEffectAnimation";
-import { CARD_INFO_BY_RANK } from "@/constants/cardInfo";
+import { CARD_INFO_BY_RANK, getCardDisplayName } from "@/constants/cardInfo";
 import {
   getEliminatedSnapshot,
   getRoundWinSnapshot,
@@ -47,6 +47,10 @@ const props = defineProps({
   currentPhase: {
     type: String,
     required: true,
+  },
+  gamePhase: {
+    type: String,
+    default: "playing",
   },
   currentStep: {
     type: String,
@@ -104,6 +108,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  isSkippingComputerFinish: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits([
@@ -111,6 +119,8 @@ const emit = defineEmits([
   "restart-game",
   "draw-request",
   "play-card",
+  "auto-play-timeout",
+  "skip-computer-finish",
   "round-sequence-complete",
 ]);
 
@@ -129,6 +139,7 @@ const roundShowdownAnimation = ref(null);
 const roundShowdownHiddenPlayerIds = ref([]);
 const activeEffectResult = ref(null);
 const isInitialRoundDrawAnimating = ref(false);
+const turnSecondsLeft = ref(30);
 const initialRoundDealtPlayerIds = ref([]);
 const lastInitialRoundDealSignature = ref(null);
 const resolvedCurrentPlayerId = computed(
@@ -141,6 +152,7 @@ const {
   startTutorial,
   waitForTutorialSettlement,
   disposeTutorial,
+  isBlocking: isTutorialBlocking,
 } = useGameTutorial();
 
 function getGameTutorialTargets() {
@@ -167,7 +179,7 @@ const animationRects = useGameAnimationRects({
 const guessOptions = Object.entries(CARD_INFO_BY_RANK).map(
   ([rank, cardInfo]) => ({
     rank: Number(rank),
-    name: cardInfo.chinese,
+    name: getCardDisplayName(cardInfo),
   }),
 );
 
@@ -196,8 +208,39 @@ const isExplicitCurrentPlayerTurn = computed(
     Boolean(props.currentTurnPlayerId && resolvedCurrentPlayerId.value) &&
     String(props.currentTurnPlayerId) === String(resolvedCurrentPlayerId.value),
 );
+const currentTurnPlayer = computed(
+  () =>
+    props.players.find(
+      (player) => String(player.id) === String(props.currentTurnPlayerId),
+    ) ?? null,
+);
+const canSkipComputerFinish = computed(() => {
+  const humans = props.players.filter((player) => !player.isComputer);
+  const computers = props.players.filter((player) => player.isComputer);
+  const selfPlayer = props.players.find((player) => player.isCurrentPlayer);
+
+  return (
+    humans.length === 1 &&
+    computers.length === 3 &&
+    Boolean(selfPlayer?.isEliminated) &&
+    !props.isSkippingComputerFinish &&
+    !isSkipSettlementActive.value
+  );
+});
 
 let getInitialRoundDealSignature = () => null;
+let turnTimer = null;
+const isSkipSettlementActive = ref(false);
+const areAutoNoticesSuppressed = computed(
+  () => props.isSkippingComputerFinish || isSkipSettlementActive.value,
+);
+
+function stopTurnTimer() {
+  if (turnTimer) {
+    window.clearInterval(turnTimer);
+    turnTimer = null;
+  }
+}
 
 const {
   isTurnNoticeOpen,
@@ -219,6 +262,8 @@ const {
   resolveNoticeIdleIfIdle,
   holdNoticeAckAfterClose,
   cleanupNotices,
+  pendingNoticeOpenCount,
+  pendingNoticeAckDelayCount,
 } = useGameStageNotices({
   props,
   isInitialRoundDrawAnimating,
@@ -226,6 +271,30 @@ const {
   getInitialRoundDealSignature: () => getInitialRoundDealSignature(),
   lastInitialRoundDealSignature,
 });
+
+const areTurnStartAnimationsIdle = computed(
+  () =>
+    !isTutorialBlocking.value &&
+    !isInitialRoundDrawAnimating.value &&
+    !isDrawAnimating.value &&
+    !activeEffectResult.value &&
+    !isRoundStartNoticeOpen.value &&
+    !isTurnNoticeOpen.value &&
+    !isRoundWinnerNoticeOpen.value &&
+    !isPlayerEliminatedNoticeOpen.value &&
+    pendingNoticeOpenCount.value === 0 &&
+    pendingNoticeAckDelayCount.value === 0,
+);
+const shouldRunTurnTimer = computed(
+  () =>
+    props.gamePhase === "playing" &&
+    Boolean(currentTurnPlayer.value) &&
+    !currentTurnPlayer.value.isComputer &&
+    !currentTurnPlayer.value.isEliminated &&
+    !props.isSkippingComputerFinish &&
+    !isSkipSettlementActive.value &&
+    areTurnStartAnimationsIdle.value,
+);
 
 const {
   playEffectAnimation,
@@ -322,6 +391,9 @@ const {
 const protectedPlayers = computed(() =>
   props.players.filter((player) => player.isProtected),
 );
+const protectedPlayerIds = computed(() =>
+  protectedPlayers.value.map((player) => String(player.id)),
+);
 function resolvePlayerName(playerId) {
   return (
     props.players.find(
@@ -399,6 +471,7 @@ const activeProtectionAnimationPlayer = computed(() => {
 });
 
 onBeforeUnmount(() => {
+  stopTurnTimer();
   disposeTutorial();
   cleanupCardPlay();
   cardPlayAnimation.value?.stop?.();
@@ -406,6 +479,33 @@ onBeforeUnmount(() => {
   stopEffectAnimation();
   cleanupNotices();
 });
+
+watch(
+  () => [
+    props.currentTurnPlayerId,
+    props.gamePhase,
+    shouldRunTurnTimer.value,
+    props.isLoading,
+  ],
+  () => {
+    stopTurnTimer();
+    turnSecondsLeft.value = 30;
+
+    if (!shouldRunTurnTimer.value || props.isLoading) {
+      return;
+    }
+
+    turnTimer = window.setInterval(() => {
+      turnSecondsLeft.value = Math.max(0, turnSecondsLeft.value - 1);
+
+      if (turnSecondsLeft.value === 0) {
+        stopTurnTimer();
+        emit("auto-play-timeout", props.currentTurnPlayerId);
+      }
+    }, 1000);
+  },
+  { immediate: true },
+);
 
 watch(
   () => [
@@ -443,6 +543,10 @@ watch(
 watch(
   getInitialRoundDealSignature,
   (signature) => {
+    if (areAutoNoticesSuppressed.value) {
+      return;
+    }
+
     if (!signature || signature === lastInitialRoundDealSignature.value) {
       return;
     }
@@ -456,6 +560,10 @@ watch(
 watch(
   () => props.roundNumber,
   () => {
+    if (areAutoNoticesSuppressed.value) {
+      return;
+    }
+
     const signature = getInitialRoundDealSignature();
 
     if (
@@ -473,6 +581,10 @@ watch(
 watch(
   () => getRoundWinSnapshot(props.players),
   (nextWins, previousWins = {}) => {
+    if (areAutoNoticesSuppressed.value) {
+      return;
+    }
+
     const winner = props.players.find((player) => {
       const playerId = String(player.id);
       const nextWinCount = Number(nextWins[playerId] ?? 0);
@@ -490,6 +602,10 @@ watch(
 watch(
   () => getEliminatedSnapshot(props.players),
   (nextEliminated, previousEliminated = {}) => {
+    if (areAutoNoticesSuppressed.value) {
+      return;
+    }
+
     const eliminatedPlayer = props.players.find((player) => {
       const playerId = String(player.id);
 
@@ -513,6 +629,33 @@ watch(
 );
 
 defineExpose({
+  playSkippedRoundSettlement: async (playerId, applyNextRoundState) => {
+    isSkipSettlementActive.value = true;
+    try {
+      const winner = props.players.find(
+        (player) => String(player.id) === String(playerId),
+      );
+
+      if (winner) {
+        playRoundWinnerNotice(winner);
+        await waitForNoticeIdle();
+      }
+
+      await applyNextRoundState?.();
+      await nextTick();
+
+      const signature = getInitialRoundDealSignature();
+
+      if (signature) {
+        lastInitialRoundDealSignature.value = signature;
+        await playInitialRoundDrawSequence(signature);
+      } else {
+        emit("round-sequence-complete");
+      }
+    } finally {
+      isSkipSettlementActive.value = false;
+    }
+  },
   playDrawAnimation,
   playEffectAnimation,
   playRemoteCardPlayAnimation,
@@ -557,6 +700,7 @@ defineExpose({
         :is-target-selection-active="isPendingTargetSelectionActive"
         :selectable-player-ids="selectableTargetPlayerIds"
         :selected-target-player-id="selectedTargetPlayerId"
+        :protected-player-ids="protectedPlayerIds"
         @target-select="selectTargetPlayer"
       />
 
@@ -566,6 +710,30 @@ defineExpose({
           :current-phase="currentPhase"
           :current-step="currentStep"
         />
+      </div>
+
+      <div v-if="shouldRunTurnTimer" class="turn-countdown" role="timer">
+        <span class="turn-countdown__hourglass" aria-hidden="true"></span>
+        <span>倒數 {{ turnSecondsLeft }} 秒</span>
+      </div>
+
+      <button
+        v-if="canSkipComputerFinish"
+        type="button"
+        class="skip-computer-button"
+        :disabled="isSkippingComputerFinish"
+        @click="emit('skip-computer-finish')"
+      >
+        {{ isSkippingComputerFinish ? "結算中" : "跳過後續對戰" }}
+      </button>
+
+      <div
+        v-if="isSkippingComputerFinish && !isSkipSettlementActive"
+        class="skip-settlement-overlay"
+        role="status"
+        aria-live="polite"
+      >
+        結算中
       </div>
 
       <div
@@ -613,6 +781,7 @@ defineExpose({
           :key="`protection-aura-${player.id}`"
           screen-anchored
           :position="player.position"
+          :show-label="!player.isCurrentPlayer"
         />
       </TransitionGroup>
 
@@ -621,9 +790,9 @@ defineExpose({
           v-if="activeProtectionAnimationPlayer"
           :key="`protection-block-${activeEffectResult.id}`"
           :success-key="activeEffectResult.id"
-          :show-success-label="Boolean(activeEffectResult.sourceType) && activeEffectResult.sourceType !== 'senior'"
           screen-anchored
           :position="activeProtectionAnimationPlayer.position"
+          :show-label="!activeProtectionAnimationPlayer.isCurrentPlayer"
         />
       </Transition>
 
@@ -835,6 +1004,160 @@ defineExpose({
   line-height: 1.1;
   text-align: center;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.skip-computer-button {
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 0;
+  background: rgba(0, 19, 50, 0.72);
+  box-shadow: 0 8px 20px rgba(0, 19, 50, 0.22);
+  font-size: var(--text-sm);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.turn-countdown {
+  position: absolute;
+  z-index: 44;
+  left: 14px;
+  bottom: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 0;
+  padding: 8px 13px;
+  color: white;
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.turn-countdown__hourglass {
+  position: relative;
+  display: inline-block;
+  width: 18px;
+  height: 24px;
+  flex: 0 0 auto;
+  border-top: 2px solid #facc15;
+  border-bottom: 2px solid #facc15;
+  animation: turn-hourglass-spin 4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+.turn-countdown__hourglass::before,
+.turn-countdown__hourglass::after {
+  position: absolute;
+  left: 50%;
+  width: 0;
+  height: 0;
+  content: "";
+  transform: translateX(-50%);
+}
+
+.turn-countdown__hourglass::before {
+  top: 3px;
+  border-right: 7px solid transparent;
+  border-left: 7px solid transparent;
+  border-top: 8px solid rgba(250, 204, 21, 0.95);
+}
+
+.turn-countdown__hourglass::after {
+  bottom: 3px;
+  border-right: 7px solid transparent;
+  border-left: 7px solid transparent;
+  border-bottom: 8px solid rgba(250, 204, 21, 0.45);
+}
+
+.skip-computer-button {
+  position: absolute;
+  z-index: 46;
+  right: 18px;
+  bottom: 92px;
+  min-height: 40px;
+  padding: 9px 16px;
+  font-size: 13px;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+@keyframes turn-hourglass-spin {
+  0%,
+  38% {
+    transform: rotate(0deg);
+  }
+
+  50%,
+  88% {
+    transform: rotate(180deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 767px) {
+  .turn-countdown {
+    left: 6px;
+    bottom: 6px;
+    gap: 5px;
+    min-height: 28px;
+    padding: 3px 7px;
+    font-size: 11px;
+  }
+
+  .turn-countdown__hourglass {
+    width: 10px;
+    height: 14px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+  }
+
+  .turn-countdown__hourglass::before {
+    top: 2px;
+    border-right-width: 4px;
+    border-left-width: 4px;
+    border-top-width: 5px;
+  }
+
+  .turn-countdown__hourglass::after {
+    bottom: 2px;
+    border-right-width: 4px;
+    border-left-width: 4px;
+    border-bottom-width: 5px;
+  }
+}
+
+.skip-computer-button:hover {
+  border-color: var(--brand-hover);
+  background: var(--brand-hover);
+  transform: translateY(-1px);
+}
+
+.skip-computer-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 5px var(--brand-focus);
+}
+
+.skip-settlement-overlay {
+  position: absolute;
+  z-index: 70;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: white;
+  background: rgba(0, 19, 50, 0.64);
+  backdrop-filter: blur(6px);
+  font-size: var(--text-lg);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  pointer-events: auto;
 }
 
 @media (orientation: landscape), (min-width: 768px) {
