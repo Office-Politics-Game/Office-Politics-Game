@@ -6,6 +6,7 @@ import { useRoute, useRouter } from "vue-router";
 import InviteFriendModal from "@/components/gameRoom/InviteFriendModal.vue";
 import PlayerList from "@/components/gameRoom/CustomRoomPlayerList.vue";
 import BG from "@/assets/images/bg-dashboard.webp";
+import { createGuestNickname } from "@/constants/guestOptions.js";
 import { useCurrentPlayerId } from "@/composables/useCurrentPlayerId.js";
 import { useFriendStore } from "@/stores/friendStore.js";
 import { useRoomInvitationStore } from "@/stores/roomInvitationStore.js";
@@ -25,6 +26,8 @@ const { roomCode, players, errorMessage, isLoading, isRoomReadyToStart } =
 const showInviteFriendModal = ref(false);
 const invitingSlotIndex = ref(null);
 const isRestoringRoomState = ref(false);
+const pendingComputerSlots = ref({});
+const COMPUTER_JOIN_MIN_DISPLAY_MS = 900;
 
 const requestedRoomCode = computed(() =>
   typeof route.query.roomCode === "string" ? route.query.roomCode.trim().toUpperCase() : "",
@@ -183,15 +186,60 @@ function createUniqueComputerNickname() {
       .filter(Boolean),
   );
 
-  for (let index = 1; index <= 12; index += 1) {
-    const name = `Computer ${index}`;
+  Object.values(pendingComputerSlots.value).forEach((slot) => {
+    if (slot?.name) {
+      usedNames.add(slot.name);
+    }
+  });
 
-    if (!usedNames.has(name)) {
-      return name;
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const nickname = createGuestNickname()?.trim();
+
+    if (nickname && !usedNames.has(nickname)) {
+      return nickname;
     }
   }
 
-  return `Computer ${Date.now().toString().slice(-4)}`;
+  return `訪客${Date.now().toString().slice(-4)}`;
+}
+
+function setPendingComputerSlot(index, name) {
+  pendingComputerSlots.value = {
+    ...pendingComputerSlots.value,
+    [index]: {
+      name,
+      startedAt: Date.now(),
+    },
+  };
+}
+
+function clearPendingComputerSlot(index) {
+  if (!(index in pendingComputerSlots.value)) {
+    return;
+  }
+
+  const nextPendingSlots = { ...pendingComputerSlots.value };
+  delete nextPendingSlots[index];
+  pendingComputerSlots.value = nextPendingSlots;
+}
+
+async function clearPendingComputerSlotWithDelay(index) {
+  const pendingState = pendingComputerSlots.value[index];
+
+  if (!pendingState) {
+    return;
+  }
+
+  const elapsed = Date.now() - pendingState.startedAt;
+  const remainingDelay = Math.max(0, COMPUTER_JOIN_MIN_DISPLAY_MS - elapsed);
+
+  if (remainingDelay > 0) {
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, remainingDelay);
+    });
+  }
+
+  clearPendingComputerSlot(index);
 }
 
 async function toggleReady(slot) {
@@ -236,10 +284,18 @@ async function handleAddComputer(index) {
     return;
   }
 
-  await roomStore.addComputerPlayer(roomCode.value, {
-    hostPlayerId: resolvedPlayerId.value,
-    username: createUniqueComputerNickname(),
-  });
+  const computerName = createUniqueComputerNickname();
+  setPendingComputerSlot(index, computerName);
+
+  try {
+    await roomStore.addComputerPlayer(roomCode.value, {
+      hostPlayerId: resolvedPlayerId.value,
+      username: computerName,
+    });
+  } catch (error) {
+    clearPendingComputerSlot(index);
+    throw error;
+  }
 }
 
 function handleRemovePlayer(index) {

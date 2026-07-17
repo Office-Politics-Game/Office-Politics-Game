@@ -15,7 +15,7 @@ function getErrorStatus(error) {
 
 async function handleCreateRoom(req, res) {
   try {
-    const { hostPlayerId, username } = req.body
+    const { hostPlayerId } = req.body
 
     if (!hostPlayerId) {
       return res.status(400).json({ message: "缺少房主玩家 ID" })
@@ -43,6 +43,10 @@ async function handleJoinRoom(req, res) {
 
     await joinRoom({ roomCode, playerId })
 
+    const roomState = await getRoomState({ roomCode })
+    getSocketServer()
+      ?.emit("room:state", roomState)
+
     return res.status(201).json({ message: "加入房間成功" })
   } catch (error) {
     return res.status(getErrorStatus(error)).json({
@@ -55,7 +59,7 @@ async function handleJoinRoom(req, res) {
 async function handleAddComputerPlayer(req, res) {
   try {
     const { roomCode } = req.params
-    const { hostPlayerId } = req.body
+    const { hostPlayerId, username } = req.body
 
     if (!hostPlayerId) {
       return res.status(400).json({ message: "缺少房主玩家 ID" })
@@ -128,7 +132,8 @@ async function handleKickPlayer(req, res) {
       targetPlayerId: numericTargetPlayerId,
     })
 
-    getSocketServer()?.to(roomCode).emit("room:state", roomState)
+    getSocketServer()
+      ?.emit("room:state", roomState)
 
     return res.status(200).json({
       message: "玩家已移出房間",
