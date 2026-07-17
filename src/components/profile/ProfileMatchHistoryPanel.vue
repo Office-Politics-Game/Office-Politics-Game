@@ -93,14 +93,28 @@ function getResultMeta(match) {
   };
 }
 
-function formatDate(value) {
+function parseApiDate(value) {
   if (!value) {
-    return "尚未記錄";
+    return null;
   }
 
-  const date = new Date(value);
+  if (value instanceof Date) {
+    return value;
+  }
 
-  if (Number.isNaN(date.getTime())) {
+  const text = String(value).trim();
+
+  if (/[zZ]$|[+-]\d{2}:\d{2}$/.test(text)) {
+    return new Date(text);
+  }
+
+  return new Date(`${text}Z`);
+}
+
+function formatDate(value) {
+  const date = parseApiDate(value);
+
+  if (!date || Number.isNaN(date.getTime())) {
     return "尚未記錄";
   }
 
@@ -111,6 +125,7 @@ function formatDate(value) {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
+    timeZone: "Asia/Taipei",
   }).format(date);
 }
 

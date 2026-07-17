@@ -179,15 +179,6 @@ const {
   resolveAvatarUrl,
 })
 
-onMounted(() => {
-  void loadInitialRoomState()
-  void subscribeGameSocket()
-})
-
-onBeforeUnmount(() => {
-  cleanupGameSocket()
-})
-
 async function navigateToResult() {
   await gameStage.value?.playGameEndTransition?.()
 
@@ -200,6 +191,15 @@ async function navigateToResult() {
     },
   })
 }
+
+onMounted(() => {
+  void loadInitialRoomState()
+  void subscribeGameSocket()
+})
+
+onBeforeUnmount(() => {
+  cleanupGameSocket()
+})
 
 async function handleReturnLobby() {
   await router.push('/lobby')

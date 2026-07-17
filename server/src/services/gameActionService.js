@@ -2,11 +2,6 @@ import pool from "../db/index.js"
 import { drawCard } from "./drawService.js"
 import { getPublicState } from "./gameStateService.js"
 import { runCardEffect, checkGuess } from "./cardEffectService.js"
-import {
-    buildCardEffectAnimationResult,
-    createCardEffectAnimationResultForViewer,
-    createCardEffectAnimationContext,
-} from "./cardEffectAnimationService.js"
 import { addLog } from "./actionLogService.js"
 import { discardCard } from "./discardService.js"
 import { finishTurn } from "./roundFlowService.js"
@@ -15,6 +10,11 @@ import {
     appendUnlockedAchievements,
     unlockAchievement,
 } from "./achievementService.js"
+import {
+    buildCardEffectAnimationResult,
+    createCardEffectAnimationResultForViewer,
+    createCardEffectAnimationContext,
+} from "./cardEffectAnimationService.js"
 import {
     checkTurn,
     checkPlayer,
