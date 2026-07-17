@@ -1,3 +1,5 @@
+import { cardNamesMatch } from '../game/cardNames.js'
+
 function findPlayerById(state, playerId) {
   return (
     state?.players?.find(
@@ -90,7 +92,9 @@ function buildCardEffectAnimationResult(context, effectResult) {
             targetPlayerId,
             targetCard,
             guessedCardName,
-            outcome: targetCard.name === guessedCardName ? 'correct' : 'incorrect',
+            outcome: cardNamesMatch(targetCard.name, guessedCardName)
+              ? 'correct'
+              : 'incorrect',
           }
         : null
 

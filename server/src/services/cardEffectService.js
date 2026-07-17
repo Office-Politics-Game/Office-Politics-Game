@@ -1,6 +1,7 @@
 import {findPlayer, protectPlayer, killPlayer} from "./playerStateService.js"
 import {addHandCard, removeHandCard, swapHands} from "./handService.js"
 import { drawCard } from "./deckService.js"
+import { cardNamesMatch } from "../game/cardNames.js"
 
 function attachCardOwner(card, playerId) {
     if (!card) {
@@ -73,7 +74,7 @@ function useIntern(state, targetPlayerId, guessedCardName) {
         return null
     }
     const targetCard = targetPlayer.hand[0]
-    if (targetCard && targetCard.name === guessedCardName) {
+    if (targetCard && cardNamesMatch(targetCard.name, guessedCardName)) {
         return killPlayer(state, targetPlayerId)
     }
     return targetPlayer
