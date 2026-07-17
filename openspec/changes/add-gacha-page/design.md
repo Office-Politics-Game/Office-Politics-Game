@@ -54,7 +54,7 @@ Alternative considered: CSS-only animations. CSS-only can work, but GSAP is alre
 
 ## Implementation Contract
 
-The delivered behavior is a frontend-only route named Gacha at /gacha. Opening the route displays a full-screen scene using bg-gacha.webp, a full-viewport-width printer image using gacha-printer.webp anchored to the bottom edge, and a visible return-to-lobby button that routes to /lobby.
+The delivered behavior is a frontend-only route named Gacha at /gacha. Opening the route displays a full-screen scene using bg-gacha.webp, a full-viewport-width printer image using gacha-printer.png anchored to the bottom edge, and a visible return-to-lobby button that routes to /lobby.
 
 The lobby entry contract is: the existing recruit button in LobbyMenu remains visually the same button, including the provided menu-btn placement classes, icon-recruit.png image, recruit label, and disabled binding to isAnyPageTransitioning. When the button is enabled and activated, it navigates to /gacha. When isAnyPageTransitioning is true, the button remains disabled and does not navigate.
 

@@ -35,6 +35,14 @@ defineProps({
     type: Object,
     default: () => ({}),
   },
+  showGuide: {
+    type: Boolean,
+    default: true,
+  },
+  showActions: {
+    type: Boolean,
+    default: true,
+  },
 });
 
 defineEmits([
@@ -44,6 +52,7 @@ defineEmits([
   "printer-pointer-move",
   "printer-pointer-up",
   "printer-pointer-cancel",
+  "stage-click",
 ]);
 
 const printerElement = ref(null);
@@ -61,6 +70,7 @@ defineExpose({
   <main
     class="gacha-view relative h-[100svh] min-h-[100svh] w-screen overflow-hidden bg-[var(--brand-navy)] bg-cover bg-center bg-no-repeat text-white"
     :style="{ backgroundImage: `url(${backgroundUrl})` }"
+    @click="$emit('stage-click')"
   >
     <div class="gacha-shade absolute inset-0" aria-hidden="true"></div>
 
@@ -85,8 +95,8 @@ defineExpose({
     </button>
 
     <div
-      v-if="!isDrawActive"
-      class="chevron-guide pointer-events-none absolute bottom-[clamp(118px,20vw,250px)] left-1/2 z-20 grid justify-items-center gap-2 text-white"
+      v-if="showGuide && !isDrawActive"
+      class="chevron-guide pointer-events-none absolute bottom-[clamp(36px,7svh,76px)] left-1/2 z-20 grid justify-items-center gap-2 text-white lg:bottom-[clamp(52px,9vw,112px)]"
       :style="arrowGuideStyle"
       aria-hidden="true"
     >
@@ -101,6 +111,7 @@ defineExpose({
     <slot></slot>
 
     <div
+      v-if="showActions"
       class="gacha-actions absolute bottom-5 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 lg:bottom-10"
     >
       <button
@@ -138,9 +149,8 @@ defineExpose({
 .printer-button {
   filter: drop-shadow(0 18px 34px rgba(0, 19, 50, 0.42));
   transition:
-    transform 180ms ease,
     filter 180ms ease;
-  will-change: transform;
+  will-change: filter;
 }
 
 .printer-image {
@@ -148,7 +158,7 @@ defineExpose({
   height: 100%;
   max-width: none;
   min-width: 100vw;
-  transform: scale(1.1);
+  transform: scale(1.25);
   transform-origin: 50% 100%;
   width: auto;
 }
