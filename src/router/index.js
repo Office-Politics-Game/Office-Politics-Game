@@ -23,6 +23,7 @@ import NotFoundView from "@/views/NotFoundView.vue";
 import AuthCallbackView from "@/views/AuthCallbackView.vue";
 import PrivacyPolicyView from "@/views/PrivacyPolicyView.vue";
 import DataDeletionView from "@/views/DataDeletionView.vue";
+import IntroView from "@/views/IntroView.vue";
 import { useAuthStore } from "../stores/authStore.js";
 
 const routes = [
@@ -30,6 +31,11 @@ const routes = [
     path: "/",
     name: "Entry",
     component: EntryPage,
+  },
+  {
+    path: "/intro",
+    name: "Intro",
+    component: IntroView,
   },
   {
     path: "/login",
