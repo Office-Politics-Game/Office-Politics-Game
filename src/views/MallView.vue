@@ -38,11 +38,9 @@
           <button
             type="button"
             class="return-icon-button tablet-storebar-return"
-            aria-label="返回大廳"
+            aria-label="&#36820;&#22238;&#22823;&#24237;"
             @click="goLobby"
-          >
-            返回大廳
-          </button>
+          ></button>
         </div>
       </header>
 
@@ -126,11 +124,10 @@
 
         <button
           type="button"
-          class="btn-dark order-2 h-8 translate-y-1 whitespace-nowrap px-2.5 py-1 text-xs font-bold xl:order-none xl:h-11 xl:px-4 xl:py-2 xl:text-sm"
+          class="return-icon-button order-2 xl:order-none"
+          aria-label="&#36820;&#22238;&#22823;&#24237;"
           @click="goLobby"
-        >
-          返回大廳
-        </button>
+        ></button>
       </header>
 
       <div class="grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-hidden xl:grid-cols-[280px_minmax(0,1fr)]">

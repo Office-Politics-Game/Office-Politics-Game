@@ -4,12 +4,18 @@ const mockGetProfile = jest.fn()
 const mockGetProfileMatches = jest.fn()
 const mockSetProfileTitle = jest.fn()
 const mockUpdateProfile = jest.fn()
+const mockSocketEmit = jest.fn()
+const mockGetSocketServer = jest.fn()
 
 jest.unstable_mockModule("../src/services/profileService.js", () => ({
   getProfile: mockGetProfile,
   getProfileMatches: mockGetProfileMatches,
   setProfileTitle: mockSetProfileTitle,
   updateProfile: mockUpdateProfile,
+}))
+
+jest.unstable_mockModule("../src/socket/index.js", () => ({
+  getSocketServer: mockGetSocketServer,
 }))
 
 const {
@@ -37,6 +43,9 @@ describe("profileController", () => {
     mockGetProfileMatches.mockReset()
     mockSetProfileTitle.mockReset()
     mockUpdateProfile.mockReset()
+    mockSocketEmit.mockReset()
+    mockGetSocketServer.mockReset()
+    mockGetSocketServer.mockReturnValue({ emit: mockSocketEmit })
   })
 
   test("returns profile for authenticated player", async () => {
@@ -123,6 +132,10 @@ describe("profileController", () => {
     await handleSetProfileTitle(req, res)
 
     expect(mockSetProfileTitle).toHaveBeenCalledWith(1, "first_game_win")
+    expect(mockSocketEmit).toHaveBeenCalledWith("player:title-updated", {
+      playerId: 1,
+      title: "First Win",
+    })
     expect(res.status).toHaveBeenCalledWith(200)
     expect(res.json).toHaveBeenCalledWith({ profile })
   })
