@@ -86,11 +86,12 @@ function registerRoomHandlers(io, socket) {
 
     socket.on("room:add-computer", async (payload, callback) => {
         try {
-            const { roomCode, hostPlayerId } = payload
+            const { roomCode, hostPlayerId, username } = payload
 
             const roomState = await addComputerPlayer({
                 roomCode,
                 hostPlayerId,
+                username,
             })
 
             io.to(roomCode).emit("room:state", roomState)

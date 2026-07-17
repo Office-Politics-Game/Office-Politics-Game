@@ -176,6 +176,24 @@ const availableInviteFriends = computed(() =>
   ),
 );
 
+function createUniqueComputerNickname() {
+  const usedNames = new Set(
+    players.value
+      .map((player) => player?.username?.trim())
+      .filter(Boolean),
+  );
+
+  for (let index = 1; index <= 12; index += 1) {
+    const name = `Computer ${index}`;
+
+    if (!usedNames.has(name)) {
+      return name;
+    }
+  }
+
+  return `Computer ${Date.now().toString().slice(-4)}`;
+}
+
 async function toggleReady(slot) {
   if (!roomCode.value || slot.isHost || slot.isComputer) {
     return;
@@ -220,6 +238,7 @@ async function handleAddComputer(index) {
 
   await roomStore.addComputerPlayer(roomCode.value, {
     hostPlayerId: resolvedPlayerId.value,
+    username: createUniqueComputerNickname(),
   });
 }
 
