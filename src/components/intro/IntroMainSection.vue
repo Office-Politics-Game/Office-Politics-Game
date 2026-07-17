@@ -100,7 +100,7 @@ function startGame() {
         </div>
 
         <ul
-          class="absolute bottom-2 left-1/2 z-[3] grid h-10 w-[80%] -translate-x-1/2 grid-cols-4 bg-white/25 p-0 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_18px_46px_rgba(0,19,50,0.16)] backdrop-blur-[14px] lg:bottom-[42px] lg:h-[94px]"
+          class="absolute bottom-2 left-1/2 z-[3] grid h-10 w-[80%] -translate-x-1/2 grid-cols-4 bg-white/25 p-0 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_18px_46px_rgba(0,19,50,0.16)] backdrop-blur-[14px] lg:bottom-8 lg:h-18"
           aria-label="遊戲特色"
         >
           <li
@@ -115,11 +115,11 @@ function startGame() {
               aria-hidden="true"
             />
             <span class="grid min-w-0 gap-1 text-left lg:gap-[7px]">
-              <strong class="text-xs font-medium leading-none lg:text-[20px]">
+              <strong class="text-xs font-medium leading-none lg:text-[16px]">
                 {{ feature.title }}
               </strong>
               <span
-                class="text-[8px] font-medium leading-none text-white/75 lg:text-[14px]"
+                class="text-[8px] font-medium leading-none text-white/75 lg:text-[12px]"
               >
                 {{ feature.description }}
               </span>
