@@ -50,6 +50,10 @@ function resetPassword(payload) {
   return apiClient.post(`${AUTH_API_PATH}/reset-password`, payload);
 }
 
+function changePassword(payload) {
+  return apiClient.patch(`${AUTH_API_PATH}/password`, payload);
+}
+
 async function startOAuthLogin(provider) {
   if (!OAUTH_PROVIDERS.has(provider)) {
     throw new Error("不支援的第三方登入方式")
@@ -160,6 +164,7 @@ export {
   logout,
   forgotPassword,
   resetPassword,
+  changePassword,
   startOAuthLogin,
   completeOAuthLogin,
   resolvePasswordResetToken

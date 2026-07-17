@@ -12,6 +12,8 @@ test("profile personal area keeps expected fields and edit entry points", async 
   const matchPanelSource = await readSource("src/components/profile/ProfileMatchHistoryPanel.vue");
   const profileApiSource = await readSource("src/services/profileApi.js");
   const profileStoreSource = await readSource("src/stores/profileStore.js");
+  const authApiSource = await readSource("src/services/authApi.js");
+  const authStoreSource = await readSource("src/stores/authStore.js");
 
   assert.match(infoPanelSource, /KeyRound/);
   assert.match(infoPanelSource, /label:\s*"帳號安全"/);
@@ -33,7 +35,13 @@ test("profile personal area keeps expected fields and edit entry points", async 
   );
 
   assert.match(passwordModalSource, /修改密碼/);
-  assert.match(passwordModalSource, /會員安全流程/);
+  assert.match(passwordModalSource, /authStore\.changePassword/);
+  assert.match(passwordModalSource, /current-password/);
+  assert.match(passwordModalSource, /new-password/);
+  assert.match(passwordModalSource, /PasswordRuleList/);
+  assert.match(profileViewSource, /@changed="handlePasswordChanged"/);
+  assert.match(authApiSource, /patch\(`\$\{AUTH_API_PATH\}\/password`/);
+  assert.match(authStoreSource, /changePasswordApi/);
 
   assert.match(profileApiSource, /PROFILE_API_PATH}\/matches/);
   assert.match(profileStoreSource, /loadMatchHistory/);

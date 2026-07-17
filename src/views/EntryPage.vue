@@ -289,6 +289,10 @@ watch(
         showLoginNotice("信箱驗證完成，請重新登入", "success");
       }
 
+      if (notice === "password-updated") {
+        showLoginNotice("密碼已更新，請重新登入", "success");
+      }
+
       return;
     }
 

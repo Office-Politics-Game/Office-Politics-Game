@@ -129,6 +129,7 @@
   <ProfilePasswordModal
     v-if="isPasswordEditorOpen"
     @close="closePasswordEditor"
+    @changed="handlePasswordChanged"
   />
 </template>
 
@@ -478,6 +479,17 @@ function openPasswordEditor() {
 
 function closePasswordEditor() {
   isPasswordEditorOpen.value = false;
+}
+
+function handlePasswordChanged() {
+  closePasswordEditor();
+  router.push({
+    name: "Entry",
+    query: {
+      auth: "login",
+      notice: "password-updated",
+    },
+  });
 }
 
 async function handleUseAchievementTitle(achievement) {

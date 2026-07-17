@@ -5,29 +5,207 @@
         type="button"
         class="profile-modal__close"
         aria-label="關閉修改密碼視窗"
+        :disabled="isSubmitting"
         @click="$emit('close')"
       >
         ×
       </button>
       <h2 class="profile-modal__title">修改密碼</h2>
-      <p class="profile-modal__message">
-        修改密碼功能將於會員安全流程開放。
-      </p>
-      <div class="profile-modal__actions profile-modal__actions--single">
-        <button
-          type="button"
-          class="profile-modal__button profile-modal__button--primary"
-          @click="$emit('close')"
+      <form class="profile-modal__form" @submit.prevent="submitPasswordChange">
+        <label class="profile-modal__field">
+          <span class="profile-modal__label">目前密碼</span>
+          <span class="profile-modal__input-wrap">
+            <input
+              v-model="currentPassword"
+              class="profile-modal__input"
+              :type="showCurrentPassword ? 'text' : 'password'"
+              autocomplete="current-password"
+              :disabled="isSubmitting"
+              @input="currentPasswordError = ''; clearApiMessage()"
+            />
+            <button
+              type="button"
+              class="profile-modal__toggle"
+              :aria-label="showCurrentPassword ? '隱藏目前密碼' : '顯示目前密碼'"
+              :disabled="isSubmitting"
+              @click="showCurrentPassword = !showCurrentPassword"
+            >
+              <EyeOff v-if="showCurrentPassword" class="profile-modal__toggle-icon" />
+              <Eye v-else class="profile-modal__toggle-icon" />
+            </button>
+          </span>
+          <span v-if="currentPasswordError" class="profile-modal__error">
+            {{ currentPasswordError }}
+          </span>
+        </label>
+        <label class="profile-modal__field">
+          <span class="profile-modal__label">新密碼</span>
+          <span class="profile-modal__input-wrap">
+            <input
+              v-model="password"
+              class="profile-modal__input"
+              :type="showPassword ? 'text' : 'password'"
+              autocomplete="new-password"
+              :disabled="isSubmitting"
+              @input="passwordError = ''; confirmPasswordError = ''; clearApiMessage()"
+            />
+            <button
+              type="button"
+              class="profile-modal__toggle"
+              :aria-label="showPassword ? '隱藏新密碼' : '顯示新密碼'"
+              :disabled="isSubmitting"
+              @click="showPassword = !showPassword"
+            >
+              <EyeOff v-if="showPassword" class="profile-modal__toggle-icon" />
+              <Eye v-else class="profile-modal__toggle-icon" />
+            </button>
+          </span>
+          <span v-if="passwordError" class="profile-modal__error">
+            {{ passwordError }}
+          </span>
+        </label>
+        <label class="profile-modal__field">
+          <span class="profile-modal__label">確認新密碼</span>
+          <span class="profile-modal__input-wrap">
+            <input
+              v-model="confirmPassword"
+              class="profile-modal__input"
+              :type="showConfirmPassword ? 'text' : 'password'"
+              autocomplete="new-password"
+              :disabled="isSubmitting"
+              @input="confirmPasswordError = ''; clearApiMessage()"
+            />
+            <button
+              type="button"
+              class="profile-modal__toggle"
+              :aria-label="showConfirmPassword ? '隱藏確認密碼' : '顯示確認密碼'"
+              :disabled="isSubmitting"
+              @click="showConfirmPassword = !showConfirmPassword"
+            >
+              <EyeOff v-if="showConfirmPassword" class="profile-modal__toggle-icon" />
+              <Eye v-else class="profile-modal__toggle-icon" />
+            </button>
+          </span>
+          <span v-if="confirmPasswordError" class="profile-modal__error">
+            {{ confirmPasswordError }}
+          </span>
+        </label>
+        <PasswordRuleList :password="password" />
+        <p
+          v-if="apiMessage"
+          class="profile-modal__status"
+          :class="`profile-modal__status--${apiStatus}`"
+          role="status"
         >
-          確認
-        </button>
-      </div>
+          {{ apiMessage }}
+        </p>
+        <div class="profile-modal__actions">
+          <button
+            type="button"
+            class="profile-modal__button"
+            :disabled="isSubmitting"
+            @click="$emit('close')"
+          >
+            取消
+          </button>
+          <button
+            type="submit"
+            class="profile-modal__button profile-modal__button--primary"
+            :disabled="isSubmitting"
+          >
+            {{ isSubmitting ? "更新中..." : "更新密碼" }}
+          </button>
+        </div>
+      </form>
     </section>
   </div>
 </template>
 
 <script setup>
-defineEmits(["close"]);
+import { computed, ref } from "vue";
+import { Eye, EyeOff } from "lucide-vue-next";
+import PasswordRuleList from "@/components/login/PasswordRuleList.vue";
+import { getPasswordError } from "@/utils/passwordRules.js";
+import { useAuthStore } from "@/stores/authStore.js";
+
+const emit = defineEmits(["close", "changed"]);
+const authStore = useAuthStore();
+
+const currentPassword = ref("");
+const password = ref("");
+const confirmPassword = ref("");
+const currentPasswordError = ref("");
+const passwordError = ref("");
+const confirmPasswordError = ref("");
+const apiMessage = ref("");
+const apiStatus = ref("");
+const showCurrentPassword = ref(false);
+const showPassword = ref(false);
+const showConfirmPassword = ref(false);
+
+const isSubmitting = computed(() => authStore.isLoading);
+
+function clearApiMessage() {
+  apiMessage.value = "";
+  apiStatus.value = "";
+}
+
+function validateForm() {
+  currentPasswordError.value = currentPassword.value
+    ? ""
+    : "請輸入目前密碼";
+
+  passwordError.value = getPasswordError(password.value);
+
+  if (!confirmPassword.value) {
+    confirmPasswordError.value = "請再次輸入新密碼";
+  } else if (password.value !== confirmPassword.value) {
+    confirmPasswordError.value = "新密碼與確認密碼不一致";
+  } else {
+    confirmPasswordError.value = "";
+  }
+
+  if (
+    currentPassword.value &&
+    password.value &&
+    currentPassword.value === password.value
+  ) {
+    passwordError.value = "新密碼不能與目前密碼相同";
+  }
+
+  return (
+    !currentPasswordError.value &&
+    !passwordError.value &&
+    !confirmPasswordError.value
+  );
+}
+
+async function submitPasswordChange() {
+  clearApiMessage();
+
+  if (!validateForm()) {
+    return;
+  }
+
+  try {
+    const data = await authStore.changePassword({
+      currentPassword: currentPassword.value,
+      password: password.value,
+      confirmPassword: confirmPassword.value,
+    });
+
+    apiStatus.value = "success";
+    apiMessage.value = data?.message || "密碼已更新，請重新登入";
+
+    window.setTimeout(() => {
+      emit("changed");
+    }, 900);
+  } catch (error) {
+    apiStatus.value = "error";
+    apiMessage.value =
+      error?.data?.message || error?.message || "修改密碼失敗";
+  }
+}
 </script>
 
 <style scoped>
@@ -42,7 +220,7 @@ defineEmits(["close"]);
 
 .profile-modal__panel {
   position: relative;
-  width: min(420px, calc(100vw - 32px));
+  width: min(480px, calc(100vw - 32px));
   border: 1px solid var(--brand-primary);
   background: rgba(255, 255, 255, 0.94);
   padding: 32px 28px 28px;
@@ -96,6 +274,88 @@ defineEmits(["close"]);
   font-weight: 800;
   line-height: 1.7;
   text-align: center;
+}
+
+.profile-modal__form {
+  display: grid;
+  gap: 16px;
+}
+
+.profile-modal__field {
+  display: grid;
+  gap: 8px;
+}
+
+.profile-modal__label {
+  color: var(--brand-active);
+  font-size: var(--text-sm);
+  font-weight: 900;
+}
+
+.profile-modal__input-wrap {
+  position: relative;
+  display: block;
+}
+
+.profile-modal__input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--brand-primary);
+  background: white;
+  padding: 0 48px 0 12px;
+  color: var(--brand-active);
+  font-size: var(--text-md);
+  font-weight: 700;
+}
+
+.profile-modal__input:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--brand-focus);
+}
+
+.profile-modal__toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  color: var(--brand-active);
+  transform: translateY(-50%);
+}
+
+.profile-modal__toggle-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.profile-modal__error {
+  color: #b91c1c;
+  font-size: var(--text-xs);
+  font-weight: 800;
+}
+
+.profile-modal__status {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 900;
+  text-align: center;
+}
+
+.profile-modal__status--success {
+  color: #047857;
+}
+
+.profile-modal__status--error {
+  color: #b91c1c;
+}
+
+.profile-modal__button:disabled,
+.profile-modal__toggle:disabled,
+.profile-modal__input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .profile-modal__actions {
