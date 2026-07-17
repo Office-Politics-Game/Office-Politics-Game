@@ -143,7 +143,8 @@
         無法修改密碼
       </h2>
       <p class="profile-password-notice__message">
-        {{ passwordNoticeMessage }}
+        <strong>第三方登入帳號沒有修改密碼權限</strong>
+        <span>請至原登入平台管理密碼</span>
       </p>
       <button
         type="button"
@@ -290,14 +291,10 @@ const isGuestLockedTab = computed(
     profileStore.isGuestProfile && memberOnlyTabIds.includes(activeTab.value),
 );
 
-const canChangePassword = computed(() => {
-  const player = authStore.currentPlayer;
-
-  return (
-    profileStore.isMemberProfile &&
-    (player?.canChangePassword === true || player?.authProvider === "email")
-  );
-});
+const canChangePassword = computed(() =>
+  profileStore.isMemberProfile &&
+  authStore.currentPlayer?.canChangePassword === true
+);
 
 const profilePlayer = computed(() => {
   if (profileStore.isMemberProfile && !profileStore.profile) {
@@ -516,8 +513,7 @@ function openPasswordEditor() {
 }
 
 function showPasswordNotice() {
-  passwordNoticeMessage.value =
-    "第三方登入帳號沒有修改密碼權限，請至原登入平台管理密碼";
+  passwordNoticeMessage.value = "oauth-password-blocked";
 }
 
 function closePasswordNotice() {
@@ -799,16 +795,24 @@ watch(
 .profile-password-notice__title {
   margin: 0 0 16px;
   color: var(--brand-navy);
-  font-size: var(--text-xl);
+  font-size: 28px;
   font-weight: 900;
 }
 
 .profile-password-notice__message {
+  display: grid;
+  gap: 8px;
   margin: 0 0 24px;
   color: var(--brand-active);
   font-size: var(--text-md);
   font-weight: 800;
-  line-height: 1.6;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.profile-password-notice__message strong,
+.profile-password-notice__message span {
+  display: block;
 }
 
 .profile-password-notice__button {

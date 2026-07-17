@@ -17,7 +17,7 @@ test("profile personal area keeps expected fields and edit entry points", async 
 
   assert.match(infoPanelSource, /KeyRound/);
   assert.match(infoPanelSource, /label:\s*"帳號安全"/);
-  assert.match(infoPanelSource, /value:\s*"修改密碼"/);
+  assert.match(infoPanelSource, /修改密碼/);
   assert.match(infoPanelSource, /id:\s*"password"/);
 
   assert.match(infoPanelSource, /id:\s*"title"[\s\S]*?editable:\s*false/);
@@ -42,6 +42,16 @@ test("profile personal area keeps expected fields and edit entry points", async 
   assert.match(profileViewSource, /@changed="handlePasswordChanged"/);
   assert.match(authApiSource, /patch\(`\$\{AUTH_API_PATH\}\/password`/);
   assert.match(authStoreSource, /changePasswordApi/);
+
+  assert.match(profileViewSource, /canChangePassword/);
+  assert.match(profileViewSource, /passwordNoticeMessage/);
+  assert.match(profileViewSource, /showPasswordNotice/);
+  assert.match(profileViewSource, /第三方登入帳號沒有修改密碼權限/);
+  assert.match(profileViewSource, /請至原登入平台管理密碼/);
+  assert.match(profileViewSource, /oauth-password-blocked/);
+  assert.match(passwordModalSource, /handlePasswordInput/);
+  assert.match(passwordModalSource, /applyApiFieldError/);
+  assert.match(passwordModalSource, /目前密碼錯誤/);
 
   assert.match(profileApiSource, /PROFILE_API_PATH}\/matches/);
   assert.match(profileStoreSource, /loadMatchHistory/);

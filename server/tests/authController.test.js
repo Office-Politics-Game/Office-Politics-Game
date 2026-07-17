@@ -300,7 +300,7 @@ describe("auth controller cookie login flow", () => {
     test("修改密碼成功時，從 Cookie 讀取 token 並清除登入 Cookie", async () => {
         mockChangePlayerPassword.mockResolvedValueOnce({
             message: "密碼已更新，請重新登入"
-    })
+        })
 
         const req = {
             cookies: {

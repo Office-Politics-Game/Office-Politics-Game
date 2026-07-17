@@ -28,22 +28,22 @@ function getAuthProvider(user) {
     return (
         user?.app_metadata?.provider ||
         user?.identities?.[0]?.provider ||
-        PASSWORD_AUTH_PROVIDER
+        "unknown"
     )
 }
 
 function canChangePassword(user) {
-    return (
-        getAuthProvider(user) === PASSWORD_AUTH_PROVIDER ||
-        user?.identities?.some((identity) => identity.provider === PASSWORD_AUTH_PROVIDER)
-    )
+    return getAuthProvider(user) === PASSWORD_AUTH_PROVIDER
 }
 
-function formatAuthPlayer(row, authUser) {
+function formatAuthPlayer(row, authUser, fallbackProvider = "unknown") {
+    const authProvider = getAuthProvider(authUser)
+    const resolvedProvider = authProvider === "unknown" ? fallbackProvider : authProvider
+
     return {
         ...formatPlayer(row),
-        authProvider: getAuthProvider(authUser),
-        canChangePassword: canChangePassword(authUser)
+        authProvider: resolvedProvider,
+        canChangePassword: resolvedProvider === PASSWORD_AUTH_PROVIDER
     }
 }
 
@@ -285,7 +285,11 @@ async function loginPlayer({ account, password } = {}) {
     )
 
     return {
-        player: formatAuthPlayer(updatedPlayerResult.rows[0], data.user),
+        player: formatAuthPlayer(
+            updatedPlayerResult.rows[0],
+            data.user,
+            PASSWORD_AUTH_PROVIDER
+        ),
         token,
         expiresIn
     }
@@ -356,7 +360,10 @@ async function syncOAuthPlayer({ accessToken, expiresIn } = {}) {
             )
 
             return {
-                player: formatAuthPlayer(updatedResult.rows[0], authUser),
+                player: {
+                    ...formatAuthPlayer(updatedResult.rows[0], authUser),
+                    canChangePassword: false
+                },
                 token: accessToken,
                 expiresIn
             }
@@ -383,7 +390,10 @@ async function syncOAuthPlayer({ accessToken, expiresIn } = {}) {
         )
 
         return {
-            player: formatAuthPlayer(createdResult.rows[0], authUser),
+            player: {
+                ...formatAuthPlayer(createdResult.rows[0], authUser),
+                canChangePassword: false
+            },
             token: accessToken,
             expiresIn
         }

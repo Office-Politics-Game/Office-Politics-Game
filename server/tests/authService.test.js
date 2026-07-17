@@ -283,6 +283,8 @@ describe("註冊玩家服務", () => {
         expect(player).toEqual({
             id: 1,
             authUserId: "auth-user-001",
+            authProvider: "email",
+            canChangePassword: true,
             username: "測試玩家",
             account: "test@example.com",
             avatarId: 2,
@@ -680,6 +682,8 @@ describe("登入玩家服務", () => {
             player: {
                 id: 1,
                 authUserId: "auth-user-001",
+                authProvider: "email",
+                canChangePassword: true,
                 username: "測試玩家",
                 account: "test@example.com",
                 avatarId: 2,
@@ -1054,7 +1058,15 @@ describe("修改密碼服務", () => {
             data: {
                 user: {
                     id: "auth-user-001",
-                    email: "test@example.com"
+                    email: "test@example.com",
+                    app_metadata: {
+                        provider: "email"
+                    },
+                    identities: [
+                        {
+                            provider: "email"
+                        }
+                    ]
                 }
             },
             error: null
@@ -1086,7 +1098,15 @@ describe("修改密碼服務", () => {
             data: {
                 user: {
                     id: "auth-user-001",
-                    email: "test@example.com"
+                    email: "test@example.com",
+                    app_metadata: {
+                        provider: "email"
+                    },
+                    identities: [
+                        {
+                            provider: "email"
+                        }
+                    ]
                 }
             },
             error: null
@@ -1118,7 +1138,15 @@ describe("修改密碼服務", () => {
             data: {
                 user: {
                     id: "auth-user-001",
-                    email: "test@example.com"
+                    email: "test@example.com",
+                    app_metadata: {
+                        provider: "email"
+                    },
+                    identities: [
+                        {
+                            provider: "email"
+                        }
+                    ]
                 }
             },
             error: null
@@ -1163,6 +1191,70 @@ describe("修改密碼服務", () => {
         expect(result).toEqual({
             message: "密碼已更新，請重新登入"
         })
+    })
+
+    test("第三方登入帳號不能修改密碼", async () => {
+        mockGetUser.mockResolvedValueOnce({
+            data: {
+                user: {
+                    id: "oauth-user-001",
+                    email: "oauth@example.com",
+                    app_metadata: {
+                        provider: "google"
+                    },
+                    identities: [
+                        {
+                            provider: "google"
+                        }
+                    ]
+                }
+            },
+            error: null
+        })
+
+        await expect(
+            changePlayerPassword({
+                token: "oauth-token",
+                currentPassword: "Aa123456!",
+                password: "Bb123456!",
+                confirmPassword: "Bb123456!"
+            })
+        ).rejects.toThrow("第三方登入帳號沒有修改密碼權限，請至原登入平台管理密碼")
+
+        expect(mockSignInWithPassword).not.toHaveBeenCalled()
+        expect(mockUpdateUserById).not.toHaveBeenCalled()
+    })
+
+    test("Discord第三方登入帳號不能修改密碼", async () => {
+        mockGetUser.mockResolvedValueOnce({
+            data: {
+                user: {
+                    id: "discord-user-001",
+                    email: "discord@example.com",
+                    app_metadata: {
+                        provider: "discord"
+                    },
+                    identities: [
+                        {
+                            provider: "discord"
+                        }
+                    ]
+                }
+            },
+            error: null
+        })
+
+        await expect(
+            changePlayerPassword({
+                token: "discord-token",
+                currentPassword: "Aa123456!",
+                password: "Bb123456!",
+                confirmPassword: "Bb123456!"
+            })
+        ).rejects.toThrow("第三方登入帳號沒有修改密碼權限，請至原登入平台管理密碼")
+
+        expect(mockSignInWithPassword).not.toHaveBeenCalled()
+        expect(mockUpdateUserById).not.toHaveBeenCalled()
     })
 })
 
@@ -1248,6 +1340,14 @@ describe("第三方登入玩家同步服務", () => {
                 user: {
                     id: oauthUserId,
                     email: "  TEST@EXAMPLE.COM  ",
+                    app_metadata: {
+                        provider: "google"
+                    },
+                    identities: [
+                        {
+                            provider: "google"
+                        }
+                    ],
                     user_metadata: {
                         full_name: "Google 使用者"
                     }
@@ -1288,6 +1388,8 @@ describe("第三方登入玩家同步服務", () => {
             player: {
                 id: 7,
                 authUserId: oauthUserId,
+                authProvider: "google",
+                canChangePassword: false,
                 username: "既有玩家",
                 account: "test@example.com",
                 avatarId: 2,
@@ -1329,6 +1431,14 @@ describe("第三方登入玩家同步服務", () => {
                 user: {
                     id: oauthUserId,
                     email: "NEW@EXAMPLE.COM",
+                    app_metadata: {
+                        provider: "google"
+                    },
+                    identities: [
+                        {
+                            provider: "google"
+                        }
+                    ],
                     user_metadata: {
                         full_name: "Google 使用者"
                     }
@@ -1374,6 +1484,8 @@ describe("第三方登入玩家同步服務", () => {
             player: {
                 id: 9,
                 authUserId: oauthUserId,
+                authProvider: "google",
+                canChangePassword: false,
                 username: oauthUsername,
                 account: "new@example.com",
                 avatarId: 1,
@@ -1447,7 +1559,15 @@ describe("驗證登入狀態服務", () => {
         mockGetUser.mockResolvedValueOnce({
             data: {
                 user: {
-                    id: "auth-user-001"
+                    id: "auth-user-001",
+                    app_metadata: {
+                        provider: "email"
+                    },
+                    identities: [
+                        {
+                            provider: "email"
+                        }
+                    ]
                 }
             },
             error: null
@@ -1463,6 +1583,8 @@ describe("驗證登入狀態服務", () => {
         expect(player).toEqual({
             id: 1,
             authUserId: "auth-user-001",
+            authProvider: "email",
+            canChangePassword: true,
             username: "測試玩家",
             account: "test@example.com",
             avatarId: 2,
