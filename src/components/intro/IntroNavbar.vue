@@ -16,7 +16,7 @@ const router = useRouter();
 const navItems = [
   { label: "遊戲簡介", sectionId: "intro-background", enabled: true },
   { label: "規則介紹", sectionId: "intro-rules", enabled: true },
-  { label: "卡牌介紹", sectionId: "intro-cards", enabled: false },
+  { label: "卡牌介紹", sectionId: "intro-cards", enabled: true },
   { label: "團隊成員", sectionId: "intro-team", enabled: false },
 ];
 

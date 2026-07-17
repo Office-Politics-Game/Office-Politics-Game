@@ -1,6 +1,7 @@
 <script setup>
 import { nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import IntroBackgroundSection from "@/components/intro/IntroBackgroundSection.vue";
+import IntroCardsSection from "@/components/intro/IntroCardsSection.vue";
 import IntroMainSection from "@/components/intro/IntroMainSection.vue";
 import IntroNavbar from "@/components/intro/IntroNavbar.vue";
 import IntroRulesSection from "@/components/intro/IntroRulesSection.vue";
@@ -34,7 +35,12 @@ onMounted(async () => {
   await nextTick();
 
   const container = scrollContainer.value;
-  const sections = ["intro-main", "intro-background", "intro-rules"]
+  const sections = [
+    "intro-main",
+    "intro-background",
+    "intro-rules",
+    "intro-cards",
+  ]
     .map((id) => document.getElementById(id))
     .filter(Boolean);
 
@@ -46,7 +52,9 @@ onMounted(async () => {
         sectionRatios.set(entry.target.id, entry.intersectionRatio);
       });
 
-      if ((sectionRatios.get("intro-rules") ?? 0) >= 0.6) {
+      if ((sectionRatios.get("intro-cards") ?? 0) >= 0.6) {
+        activeSection.value = "intro-cards";
+      } else if ((sectionRatios.get("intro-rules") ?? 0) >= 0.6) {
         activeSection.value = "intro-rules";
       } else if ((sectionRatios.get("intro-background") ?? 0) >= 0.6) {
         activeSection.value = "intro-background";
@@ -96,6 +104,7 @@ onBeforeUnmount(() => {
       <IntroMainSection />
       <IntroBackgroundSection />
       <IntroRulesSection />
+      <IntroCardsSection />
     </div>
   </main>
 </template>
