@@ -1,6 +1,6 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from "vue-router"
 import { storeToRefs } from 'pinia'
 import LoadingScreen from '@/components/common/LoadingScreen.vue'
 import GameStage from '@/components/game/ui/GameStage.vue'
@@ -21,6 +21,8 @@ import { normalizeCard } from '@/utils/cardUtils'
 import { resolveAvatarUrl } from '@/utils/playerUtils'
 
 const route = useRoute()
+const router = useRouter()
+const hasNavigatedToResult = ref(false)
 const appearanceStore = useAppearanceStore()
 const gameStateStore = useGameStateStore()
 const { gameState, currentPlayer, currentPlayerId, currentTurnPlayerId, isLoading } =
@@ -159,6 +161,19 @@ const {
   resolveAvatarUrl,
 })
 
+async function navigateToResult() {
+  await gameStage.value?.playGameEndTransition?.()
+
+  await router.push({
+    name: "Result",
+    query: {
+      roomCode: normalizedRoomCode.value,
+      playerId: resolvedCurrentPlayerId.value || requestedPlayerId.value || undefined,
+      transition: "game-end",
+    },
+  })
+}
+
 onMounted(() => {
   void loadInitialRoomState()
   void subscribeGameSocket()
@@ -179,6 +194,19 @@ watch(
     void subscribeGameSocket()
   },
 )
+
+watch(
+  () => gameState.value?.phase,
+  (phase) => {
+    if (phase !== "finished" || hasNavigatedToResult.value) {
+      return
+    }
+
+    hasNavigatedToResult.value = true
+
+    void navigateToResult()
+  },
+)
 </script>
 
 <template>
@@ -195,6 +223,7 @@ watch(
     :round-number="turnStatus.roundNumber"
     :current-phase="turnStatus.currentPhase"
     :current-step="turnStatus.currentStep"
+    :is-game-finished="gameState?.phase === 'finished'"
     :deck-count="deckCount"
     :discard-cards="discardCards"
     :players="players"
