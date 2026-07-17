@@ -52,6 +52,10 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  isGameFinished: {
+    type: Boolean,
+    default: false,
+  },
   deckCount: {
     type: [Number, String],
     required: true,
@@ -493,6 +497,10 @@ watch(
 watch(
   () => getEliminatedSnapshot(props.players),
   (nextEliminated, previousEliminated = {}) => {
+    if (props.isGameFinished) {
+      return;
+    }
+
     const eliminatedPlayer = props.players.find((player) => {
       const playerId = String(player.id);
 
@@ -520,6 +528,7 @@ async function playGameEndTransition() {
   clearStagedDiscardCard();
 
   await nextTick();
+  await waitForNoticeIdle();
 
   return playGameEndNotice();
 }

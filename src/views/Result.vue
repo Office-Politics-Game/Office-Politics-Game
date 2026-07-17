@@ -12,6 +12,7 @@ import { resolveAvatarUrl } from "@/utils/playerUtils"
 const route = useRoute()
 const router = useRouter()
 const gameActionStore = useGameActionStore()
+gameActionStore.result = null
 
 const roomCode = computed(() => String(route.query.roomCode || "").trim())
 const currentPlayerId = computed(() => route.query.playerId || "")
@@ -54,6 +55,7 @@ function normalizePlayer(player, index) {
 }
 
 const resultData = computed(() => gameActionStore.result || {})
+const isResultReady = computed(() => Boolean(resultData.value.matchId))
 
 const resultPlayers = computed(() => {
   const players =
@@ -132,7 +134,10 @@ onMounted(async () => {
   >
     <section class="result-stage" aria-label="遊戲結算畫面">
       <img class="result-stage__board" :src="Board" alt="年度績效考核白板" />
-      <div class="result-stage__content">
+      <div
+        v-if="isResultReady"
+        class="result-stage__content"
+      >
         <RankingItems
           class="result-stage__ranking"
           :players="rankingPlayers"

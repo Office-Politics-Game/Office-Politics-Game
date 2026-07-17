@@ -223,6 +223,7 @@ watch(
     :round-number="turnStatus.roundNumber"
     :current-phase="turnStatus.currentPhase"
     :current-step="turnStatus.currentStep"
+    :is-game-finished="gameState?.phase === 'finished'"
     :deck-count="deckCount"
     :discard-cards="discardCards"
     :players="players"
