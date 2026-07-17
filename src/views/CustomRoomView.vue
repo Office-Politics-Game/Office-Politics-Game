@@ -1,11 +1,12 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
-import { Copy, Play } from "@lucide/vue";
+import { CheckCircle, Copy, Play } from "@lucide/vue";
 import { useRoute, useRouter } from "vue-router";
 import InviteFriendModal from "@/components/gameRoom/InviteFriendModal.vue";
 import PlayerList from "@/components/gameRoom/CustomRoomPlayerList.vue";
 import BG from "@/assets/images/bg-dashboard.webp";
+import { createGuestNickname } from "@/constants/guestOptions.js";
 import { useButtonClickAudio } from "@/composables/UseButtonClickAudio.js";
 import { useCurrentPlayerId } from "@/composables/useCurrentPlayerId.js";
 import { useFriendStore } from "@/stores/friendStore.js";
@@ -27,6 +28,13 @@ const { roomCode, players, errorMessage, isLoading, isRoomReadyToStart } =
 const showInviteFriendModal = ref(false);
 const invitingSlotIndex = ref(null);
 const isRestoringRoomState = ref(false);
+const hasJoinedCurrentRoom = ref(false);
+const kickedNotice = ref("");
+const pendingComputerSlots = ref({});
+const pendingRemovalSlots = ref({});
+const REQUIRED_READY_PLAYERS_TO_START = 3;
+const COMPUTER_JOIN_MIN_DISPLAY_MS = 900;
+const PLAYER_REMOVE_MIN_DISPLAY_MS = 700;
 
 const requestedRoomCode = computed(() =>
   typeof route.query.roomCode === "string" ? route.query.roomCode.trim().toUpperCase() : "",
@@ -68,14 +76,11 @@ function createRoomPlayerSlot(player, index) {
     isHost: player.role === "host",
     isReady: Boolean(player.isReady),
     name: player.username,
+    title: player.title || "",
     avatar: player.avatarUrl
       ? player.avatarUrl
       : resolveAvatarUrl(player.avatarId ?? player.avatar_id, index),
     isComputer: Boolean(player.isComputer),
-    canToggleReady:
-      !player.isComputer &&
-      String(player.playerId) === String(resolvedPlayerId.value) &&
-      player.role !== "host",
     canRemovePlayer:
       isHostPlayer.value && String(player.playerId) !== String(resolvedPlayerId.value),
   };
@@ -95,19 +100,173 @@ function createRestoringSlot(slot, index) {
   };
 }
 
+function createPendingComputerSlot(slot, index, pendingState) {
+  return {
+    id: `pending-computer-${index}`,
+    isHost: false,
+    isReady: false,
+    name: pendingState.name,
+    avatar: null,
+    isComputer: true,
+    isPendingComputer: true,
+    placeholderLabel: "電腦玩家加入中",
+    canAddComputer: false,
+    canInviteFriend: false,
+    ...slot,
+  };
+}
+
+function createPendingRemovalSlot(player, index, pendingState) {
+  return {
+    id: `pending-removal-${player.playerId}`,
+    isHost: player.role === "host",
+    isReady: false,
+    name: player.username,
+    title: player.title || "",
+    avatar: player.avatarUrl
+      ? player.avatarUrl
+      : resolveAvatarUrl(player.avatarId ?? player.avatar_id, index),
+    isComputer: Boolean(player.isComputer),
+    isPendingRemoval: true,
+    placeholderLabel: "移除中",
+    canRemovePlayer: false,
+  };
+}
+
+function createUniqueComputerNickname() {
+  const usedNames = new Set(
+    players.value
+      .map((player) => player?.username?.trim())
+      .filter(Boolean),
+  );
+
+  Object.values(pendingComputerSlots.value).forEach((slot) => {
+    if (slot?.name) {
+      usedNames.add(slot.name);
+    }
+  });
+
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const nickname = createGuestNickname()?.trim();
+
+    if (nickname && !usedNames.has(nickname)) {
+      return nickname;
+    }
+  }
+
+  return `訪客${Date.now().toString().slice(-4)}`;
+}
+
+function setPendingComputerSlot(index, name) {
+  pendingComputerSlots.value = {
+    ...pendingComputerSlots.value,
+    [index]: {
+      name,
+      startedAt: Date.now(),
+    },
+  };
+}
+
+function clearPendingComputerSlot(index) {
+  if (!(index in pendingComputerSlots.value)) {
+    return;
+  }
+
+  const nextPendingSlots = { ...pendingComputerSlots.value };
+  delete nextPendingSlots[index];
+  pendingComputerSlots.value = nextPendingSlots;
+}
+
+function setPendingRemovalSlot(index, player) {
+  pendingRemovalSlots.value = {
+    ...pendingRemovalSlots.value,
+    [index]: {
+      playerId: player.playerId,
+      startedAt: Date.now(),
+    },
+  };
+}
+
+function clearPendingRemovalSlot(index) {
+  if (!(index in pendingRemovalSlots.value)) {
+    return;
+  }
+
+  const nextPendingSlots = { ...pendingRemovalSlots.value };
+  delete nextPendingSlots[index];
+  pendingRemovalSlots.value = nextPendingSlots;
+}
+
+async function clearPendingRemovalSlotWithDelay(index) {
+  const pendingState = pendingRemovalSlots.value[index];
+
+  if (!pendingState) {
+    return;
+  }
+
+  const elapsed = Date.now() - pendingState.startedAt;
+  const remainingDelay = Math.max(0, PLAYER_REMOVE_MIN_DISPLAY_MS - elapsed);
+
+  if (remainingDelay > 0) {
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, remainingDelay);
+    });
+  }
+
+  clearPendingRemovalSlot(index);
+}
+
+async function clearPendingComputerSlotWithDelay(index) {
+  const pendingState = pendingComputerSlots.value[index];
+
+  if (!pendingState) {
+    return;
+  }
+
+  const elapsed = Date.now() - pendingState.startedAt;
+  const remainingDelay = Math.max(0, COMPUTER_JOIN_MIN_DISPLAY_MS - elapsed);
+
+  if (remainingDelay > 0) {
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, remainingDelay);
+    });
+  }
+
+  clearPendingComputerSlot(index);
+}
+
 const playerSlots = computed(() =>
   emptyPlayerSlots.map((slot, index) => {
     const roomPlayer = players.value[index];
+    const displaySlot =
+      index === 0
+        ? { ...slot, option1: "等待玩家" }
+        : { ...slot, option1: "加入電腦", option2: "邀請好友" };
 
     if (roomPlayer) {
+      const pendingRemovalState = pendingRemovalSlots.value[index];
+
+      if (
+        pendingRemovalState &&
+        String(pendingRemovalState.playerId) === String(roomPlayer.playerId)
+      ) {
+        return createPendingRemovalSlot(roomPlayer, index, pendingRemovalState);
+      }
+
       return createRoomPlayerSlot(roomPlayer, index);
     }
 
+    const pendingComputerState = pendingComputerSlots.value[index];
+
+    if (pendingComputerState) {
+      return createPendingComputerSlot(displaySlot, index, pendingComputerState);
+    }
+
     return {
-      ...slot,
+      ...displaySlot,
       canAddComputer: index !== 0 && Boolean(roomCode.value) && isHostPlayer.value,
       canInviteFriend:
-        Boolean(slot.option2) && Boolean(roomCode.value) && isHostPlayer.value,
+        Boolean(displaySlot.option2) && Boolean(roomCode.value) && isHostPlayer.value,
     };
   }),
 );
@@ -131,6 +290,35 @@ const currentPlayerEntry = computed(() =>
 );
 
 const isHostPlayer = computed(() => currentPlayerEntry.value?.role === "host");
+const canCurrentPlayerToggleReady = computed(
+  () =>
+    Boolean(currentPlayerEntry.value) &&
+    !isHostPlayer.value &&
+    !currentPlayerEntry.value?.isComputer,
+);
+const isCurrentPlayerReady = computed(() => Boolean(currentPlayerEntry.value?.isReady));
+const primaryActionLabel = computed(() => {
+  if (isLoading.value) {
+    return "載入中";
+  }
+
+  if (isHostPlayer.value) {
+    return "開始遊戲";
+  }
+
+  return isCurrentPlayerReady.value ? "取消準備" : "準備";
+});
+const isPrimaryActionDisabled = computed(() => {
+  if (isRestoringRoomState.value || isLoading.value) {
+    return true;
+  }
+
+  if (isHostPlayer.value) {
+    return !isRoomReadyToStart.value;
+  }
+
+  return !canCurrentPlayerToggleReady.value;
+});
 
 const occupiedSlotCount = computed(
   () => displayPlayerSlots.value.filter((slot) => slot.name && !slot.isPlaceholder).length,
@@ -139,8 +327,12 @@ const occupiedSlotCount = computed(
 const readySlotCount = computed(
   () =>
     displayPlayerSlots.value.filter(
-      (slot) => slot.name && slot.isReady && !slot.isPlaceholder,
+      (slot) => slot.name && slot.isReady && !slot.isPlaceholder && !slot.isHost,
     ).length,
+);
+
+const remainingReadySlotCount = computed(() =>
+  Math.max(0, REQUIRED_READY_PLAYERS_TO_START - readySlotCount.value),
 );
 
 const inviteePlayerIds = computed(() =>
@@ -164,6 +356,32 @@ async function toggleReady(slot) {
   });
 }
 
+async function toggleCurrentPlayerReady() {
+  if (!currentPlayerEntry.value) {
+    return;
+  }
+
+  await toggleReady({
+    id: currentPlayerEntry.value.playerId,
+    isHost: isHostPlayer.value,
+    isComputer: Boolean(currentPlayerEntry.value.isComputer),
+    isReady: Boolean(currentPlayerEntry.value.isReady),
+  });
+}
+
+async function handlePrimaryRoomAction() {
+  if (isPrimaryActionDisabled.value) {
+    return;
+  }
+
+  if (isHostPlayer.value) {
+    await handleStartRoom();
+    return;
+  }
+
+  await toggleCurrentPlayerReady();
+}
+
 async function handleAddComputer(index) {
   if (index === 0 || players.value[index]) {
     return;
@@ -173,14 +391,41 @@ async function handleAddComputer(index) {
     return;
   }
 
-  await roomStore.addComputerPlayer(roomCode.value, {
-    hostPlayerId: resolvedPlayerId.value,
-  });
+  const computerName = createUniqueComputerNickname();
+  setPendingComputerSlot(index, computerName);
+
+  try {
+    await roomStore.addComputerPlayer(roomCode.value, {
+      hostPlayerId: resolvedPlayerId.value,
+      username: computerName,
+    });
+  } catch (error) {
+    clearPendingComputerSlot(index);
+    throw error;
+  }
 }
 
-function handleRemovePlayer(index) {
+async function handleRemovePlayer(index) {
   if (index === 0 || !isHostPlayer.value) {
     return;
+  }
+
+  const targetPlayer = players.value[index];
+
+  if (!roomCode.value || !resolvedPlayerId.value || !targetPlayer?.playerId) {
+    return;
+  }
+
+  setPendingRemovalSlot(index, targetPlayer);
+
+  try {
+    await roomStore.removePlayer(roomCode.value, {
+      requesterPlayerId: resolvedPlayerId.value,
+      targetPlayerId: targetPlayer.playerId,
+    });
+  } catch (error) {
+    clearPendingRemovalSlot(index);
+    throw error;
   }
 }
 
@@ -250,6 +495,37 @@ async function copyRoomCode() {
   await navigator.clipboard.writeText(roomCode.value);
 }
 
+function isCurrentPlayerInRoom() {
+  if (!resolvedPlayerId.value) {
+    return false;
+  }
+
+  return players.value.some(
+    (player) => String(player.playerId) === String(resolvedPlayerId.value),
+  );
+}
+
+async function handleKickedFromRoom() {
+  if (kickedNotice.value) {
+    return;
+  }
+
+  kickedNotice.value = "你已被房主移出房間";
+  showInviteFriendModal.value = false;
+
+  const leavingRoomCode = roomCode.value || requestedRoomCode.value;
+
+  if (leavingRoomCode) {
+    roomStore.unsubscribeFromRoom(leavingRoomCode).catch(() => null);
+  }
+}
+
+function confirmKickedNotice() {
+  kickedNotice.value = "";
+  roomStore.resetRoom();
+  router.replace({ name: "LobbyHome" });
+}
+
 onMounted(async () => {
   const roomCodeToRestore = requestedRoomCode.value || roomCode.value;
 
@@ -287,6 +563,65 @@ onBeforeUnmount(() => {
     roomStore.unsubscribeFromRoom(subscribedRoom);
   }
 });
+
+watch(
+  [displayRoomCode, resolvedPlayerId],
+  ([nextRoomCode, nextPlayerId]) => {
+    if (!nextRoomCode || nextRoomCode === "------" || !nextPlayerId || kickedNotice.value) {
+      return;
+    }
+
+    roomStore.subscribeToRoom({
+      roomCode: nextRoomCode,
+      playerId: nextPlayerId,
+      force: true,
+    }).catch(() => null);
+  },
+  { immediate: true },
+);
+
+watch(
+  [players, resolvedPlayerId],
+  () => {
+    if (!resolvedPlayerId.value || isRestoringRoomState.value || kickedNotice.value) {
+      return;
+    }
+
+    if (isCurrentPlayerInRoom()) {
+      hasJoinedCurrentRoom.value = true;
+      return;
+    }
+
+    if (hasJoinedCurrentRoom.value && players.value.length > 0) {
+      handleKickedFromRoom();
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  players,
+  (nextPlayers) => {
+    Object.keys(pendingComputerSlots.value).forEach((slotIndex) => {
+      const index = Number(slotIndex);
+      const nextPlayer = nextPlayers[index];
+
+      if (nextPlayer) {
+        clearPendingComputerSlotWithDelay(index).catch(() => null);
+      }
+    });
+
+    Object.entries(pendingRemovalSlots.value).forEach(([slotIndex, pendingState]) => {
+      const index = Number(slotIndex);
+      const nextPlayer = nextPlayers[index];
+
+      if (!nextPlayer || String(nextPlayer.playerId) !== String(pendingState.playerId)) {
+        clearPendingRemovalSlotWithDelay(index).catch(() => null);
+      }
+    });
+  },
+  { deep: true },
+);
 
 watch(
   () => roomStore.room?.status,
@@ -346,7 +681,6 @@ watch(
         @add-computer="handleAddComputer"
         @invite-friend="openInviteFriendModal"
         @remove-player="handleRemovePlayer"
-        @toggle-ready="toggleReady"
         class="mt-3 lg:mt-5"
       />
 
@@ -368,8 +702,13 @@ watch(
           正在還原房間與玩家狀態
         </template>
         <template v-else>
-          {{ occupiedSlotCount }}/4 players
-          <span class="ml-3">{{ readySlotCount }} ready</span>
+          <span>
+            {{
+              remainingReadySlotCount === 0
+                ? "已達開始遊戲的打卡條件"
+                : `還需要 ${remainingReadySlotCount} 名玩家打卡才可開始遊戲`
+            }}
+          </span>
         </template>
       </div>
       <div
@@ -383,27 +722,101 @@ watch(
           返回大廳
         </button>
         <button
-          class="btn-dark tap-pop pointer-events-auto flex h-9 cursor-pointer items-center justify-center gap-2 overflow-hidden text-sm font-bold lg:h-12 lg:text-base"
+          :class="[
+            'primary-room-action flex h-9 items-center justify-center gap-2 overflow-hidden text-sm font-bold transition-opacity lg:h-12 lg:text-base',
+            isPrimaryActionDisabled
+              ? 'pointer-events-auto opacity-50'
+              : 'btn-dark tap-pop pointer-events-auto',
+          ]"
           type="button"
-          :disabled="
-            isRestoringRoomState ||
-            isLoading ||
-            (!isHostPlayer || !isRoomReadyToStart)
-          "
-          @click="handleStartRoom"
+          :disabled="isPrimaryActionDisabled"
+          @click="handlePrimaryRoomAction"
         >
           <Play
+            v-if="isHostPlayer"
             class="h-4 w-4 fill-current lg:h-5 lg:w-5"
             :stroke-width="2.4"
           />
-          {{ isLoading ? "載入中" : "開始遊戲" }}
+          <CheckCircle
+            v-else
+            class="h-4 w-4 lg:h-5 lg:w-5"
+            :stroke-width="2.4"
+          />
+          {{ primaryActionLabel }}
         </button>
       </div>
     </section>
+
+    <div
+      v-if="kickedNotice"
+      class="kicked-modal-backdrop pointer-events-auto fixed inset-0 z-50 grid place-items-center px-5"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="kicked-modal-title"
+    >
+      <section class="kicked-modal-card w-full max-w-[460px] text-center">
+        <p class="kicked-modal-kicker m-0 text-xs font-black tracking-[0.24em]">
+          ROOM NOTICE
+        </p>
+        <h2
+          id="kicked-modal-title"
+          class="m-0 mt-3 text-3xl font-black tracking-[0.06em]"
+        >
+          已離開房間
+        </h2>
+        <p class="m-0 mt-5 text-lg font-bold leading-8">
+          {{ kickedNotice }}
+        </p>
+        <p class="m-0 mt-2 text-sm font-bold leading-6 text-slate-500">
+          按下確定後會返回大廳。
+        </p>
+        <button
+          class="btn-dark tap-pop mt-7 h-12 w-full cursor-pointer text-base font-black"
+          type="button"
+          @click="confirmKickedNotice"
+        >
+          確定
+        </button>
+      </section>
+    </div>
   </main>
 </template>
 
 <style scoped>
+.kicked-modal-backdrop {
+  background: rgba(0, 19, 50, 0.58);
+  backdrop-filter: blur(5px);
+}
+
+.kicked-modal-card {
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: var(--radius-md, 0);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(236, 242, 248, 0.94));
+  padding: 34px 32px 30px;
+  color: var(--brand-active, #465563);
+  box-shadow:
+    0 28px 70px rgba(0, 19, 50, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.kicked-modal-kicker {
+  color: var(--brand-hover, #0046f4);
+}
+
+.primary-room-action:disabled,
+.primary-room-action:disabled:hover,
+.primary-room-action:disabled:active {
+  pointer-events: auto;
+  cursor: not-allowed;
+  transform: none;
+  border: 1px solid var(--brand-disabled, #a0a6b3);
+  border-color: var(--brand-disabled, #a0a6b3);
+  background: var(--brand-disabled, #a0a6b3);
+  color: white;
+  box-shadow: none;
+}
+
 @media (max-width: 900px) and (max-height: 520px) and (orientation: landscape) {
   .custom-room-status {
     position: relative;

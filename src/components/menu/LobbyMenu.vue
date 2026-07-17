@@ -243,21 +243,13 @@ async function openProfilePage() {
   router.push("/profile");
 }
 
-async function leaveLobby() {
+function leaveLobby() {
   if (isAnyPageTransitioning.value) {
     return;
   }
 
   playPreGameSound("login-button-click");
-  const didLogout = await authStore.logout();
-
-  if (!didLogout) {
-    return;
-  }
-
   stopPreGameBackground({ fadeOut: false });
-  playerStore.resetPlayer();
-  currencyStore.resetCurrency();
   router.push("/");
 }
 

@@ -99,7 +99,7 @@
 
 - [x] 17.1 依照 **Player elimination notice plays a dedicated sound** 與 **玩家淘汰提示開啟時播放語意化音效**，先擴充 `tests/game-table-audio.test.mjs`，要求非空的 `game-player-eliminated.mp3`、`playPlayerEliminatedSound()` 單一 Audio、共享 `soundEnabled`／`soundVolume`、0.45 增益、從 0 秒安全播放，以及 `GameStage` 將 callback 注入 `useGameStageNotices()`、notice 只在 `isPlayerEliminatedNoticeOpen` 實際開啟時呼叫一次；執行 `node --test --test-name-pattern="player elimination notice" tests/game-table-audio.test.mjs`，確認測試因來源檔仍為非語意化名稱且控制器與 notice 尚未接線而失敗。
 - [x] 17.2 實作 **玩家淘汰提示開啟時播放語意化音效**：將來源素材改名為 `game-player-eliminated.mp3`，在 `UseGameTableAudio` 延遲建立單一 Audio 並提供 `playPlayerEliminatedSound()`，以 bounded `soundVolume × 0.45` 從 0 秒安全播放；`GameStage` 將 callback 注入 `useGameStageNotices()`，由 `playPlayerEliminatedNotice()` 排定的開啟 callback 在提示設為 open 時呼叫一次，保留 false-to-true 快照判定與 no-op 預設，且音效停用、音量為 0、Audio 不可用或 play Promise 拒絕時不中斷提示；執行聚焦測試確認資產、設定、單次觸發、同步時機與安全 no-op assertions 全部通過。
-- [ ] 17.3 重新驗證 **Player elimination notice plays a dedicated sound** 沒有破壞既有淘汰提示與牌桌音訊：執行 `node --test tests/game-table-audio.test.mjs tests/round-start-notice.test.mjs`、`npm run build` 與 `git diff --check`，確認測試零失敗、Vite production build 成功且輸出包含 `game-player-eliminated-*.mp3`。
+- [x] 17.3 重新驗證 **Player elimination notice plays a dedicated sound** 沒有破壞既有淘汰提示與牌桌音訊：執行 `node --test tests/game-table-audio.test.mjs tests/round-start-notice.test.mjs`、`npm run build` 與 `git diff --check`，確認測試零失敗、Vite production build 成功且輸出包含 `game-player-eliminated-*.mp3`。
 
 ## 18. 人資主管換牌動作 whoosh 音效
 

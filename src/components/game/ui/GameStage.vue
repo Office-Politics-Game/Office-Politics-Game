@@ -23,20 +23,20 @@ import CardDrawAnimation from "../animations/CardDrawAnimation.vue";
 import CardPlayAnimation from "../animations/CardPlayAnimation.vue";
 import CardShuffleAnimation from "../animations/CardShuffleAnimation.vue";
 import CardSwapAnimation from "../animations/CardSwapAnimation.vue";
-import CardInspectionOverlay from "./CardInspectionOverlay.vue";
 import CleanerAnimation from "../animations/CleanerAnimation.vue";
 import FlyInTextModal from "../animations/FlyInTextModal.vue";
 import InternAnimation from "../animations/InternAnimation.vue";
 import ManagerAnimation from "../animations/ManagerAnimation.vue";
 import PMAnimation from "../animations/PMAnimation.vue";
 import ProtectionAura from "../animations/ProtectionAura.vue";
+import RoundShowdownAnimation from "../animations/RoundShowdownAnimation.vue";
+import CardInspectionOverlay from "./CardInspectionOverlay.vue";
 import CardPlayConfirmPanel from "./CardPlayConfirmPanel.vue";
 import GameCard from "./GameCard.vue";
 import GameSettingsIcon from "./GameSettingsIcon.vue";
 import GameSettingsModal from "./GameSettingsModal.vue";
 import PlayerHand from "./PlayerHand.vue";
 import PlayerSeats from "./PlayerSeats.vue";
-import RoundShowdownAnimation from "../animations/RoundShowdownAnimation.vue";
 import RotateDeviceNotice from "./RotateDeviceNotice.vue";
 import TableCardPiles from "./TableCardPiles.vue";
 import TurnStatus from "./TurnStatus.vue";
@@ -53,6 +53,10 @@ const props = defineProps({
   currentStep: {
     type: String,
     required: true,
+  },
+  isGameFinished: {
+    type: Boolean,
+    default: false,
   },
   deckCount: {
     type: [Number, String],
@@ -157,7 +161,6 @@ function getGameTutorialTargets() {
       ) ?? [],
   };
 }
-
 const resolvedTableBackgroundUrl = computed(
   () => boardSkinUrl.value || gameTableBackgroundUrl,
 );
@@ -219,15 +222,18 @@ const {
   roundWinnerNotice,
   isPlayerEliminatedNoticeOpen,
   playerEliminatedNotice,
+  isGameEndNoticeOpen,
   roundStartNoticeText,
   playRoundStartNotice,
   playTurnNotice,
   playRoundWinnerNotice,
   playPlayerEliminatedNotice,
+  playGameEndNotice,
   closeRoundStartNotice,
   closeTurnNotice,
   closeRoundWinnerNotice,
   closePlayerEliminatedNotice,
+  closeGameEndNotice,
   waitForNoticeIdle,
   resolveNoticeIdleIfIdle,
   holdNoticeAckAfterClose,
@@ -508,6 +514,10 @@ watch(
 watch(
   () => getEliminatedSnapshot(props.players),
   (nextEliminated, previousEliminated = {}) => {
+    if (props.isGameFinished) {
+      return;
+    }
+
     const eliminatedPlayer = props.players.find((player) => {
       const playerId = String(player.id);
 
@@ -530,6 +540,16 @@ watch(
   },
 );
 
+async function playGameEndTransition() {
+  stopEffectAnimation();
+  clearStagedDiscardCard();
+
+  await nextTick();
+  await waitForNoticeIdle();
+
+  return playGameEndNotice();
+}
+
 defineExpose({
   playDrawAnimation,
   playEffectAnimation,
@@ -538,6 +558,7 @@ defineExpose({
   clearStagedDiscardCard,
   playRoundShowdownAnimation: (result) =>
     roundShowdownAnimation.value?.play?.(result) ?? Promise.resolve(false),
+  playGameEndTransition,
   waitForNoticeIdle,
 });
 </script>
@@ -791,6 +812,14 @@ defineExpose({
       tone="danger"
       :duration="2400"
       @close="closePlayerEliminatedNotice"
+    />
+
+    <FlyInTextModal
+      :is-open="isGameEndNoticeOpen"
+      text="遊戲結束"
+      modal-class="fly-in-text-modal--game-end"
+      :duration="2400"
+      @close="closeGameEndNotice"
     />
 
     <RotateDeviceNotice />

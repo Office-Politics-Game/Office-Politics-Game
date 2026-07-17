@@ -8,6 +8,7 @@ function getErrorMessage(error, fallbackMessage) {
 export const useAchievementStore = defineStore("achievement", {
   state: () => ({
     achievements: [],
+    unlockedAchievements: [],
     isLoading: false,
     errorMessage: "",
   }),
@@ -35,8 +36,19 @@ export const useAchievementStore = defineStore("achievement", {
       this.errorMessage = ""
     },
 
+    showUnlockedAchievements(achievements) {
+      this.unlockedAchievements = Array.isArray(achievements)
+        ? achievements.filter(Boolean)
+        : []
+    },
+
+    clearUnlockedAchievements() {
+      this.unlockedAchievements = []
+    },
+
     resetAchievements() {
       this.achievements = []
+      this.unlockedAchievements = []
       this.isLoading = false
       this.errorMessage = ""
     },

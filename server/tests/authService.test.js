@@ -38,6 +38,7 @@ jest.unstable_mockModule("../src/db/supabaseClient.js", () => ({
 const {
     registerPlayer,
     loginPlayer,
+    syncOAuthPlayer,
     verifyToken,
     requestPasswordReset,
     resetPlayerPassword
@@ -50,7 +51,7 @@ const SELECT_DUPLICATE_PLAYER_SQL = `SELECT username, account
 
 const PLAYER_SELECT_SQL = `id, auth_user_id, username, account, avatar_id,
     level, exp, coins, gems, tickets,
-    win_count, lose_count, total_games,
+    win_count, lose_count, total_games, title,
     is_online, last_login_at, created_at, updated_at`
 
 const INSERT_PLAYER_SQL = `INSERT INTO players (auth_user_id, username, account, avatar_id)
@@ -88,6 +89,7 @@ function createPlayerRow(overrides = {}) {
         win_count: 0,
         lose_count: 0,
         total_games: 0,
+        title: null,
         is_online: false,
         last_login_at: null,
         created_at: "2026-07-01T00:00:00.000Z",
@@ -263,7 +265,7 @@ describe("註冊玩家服務", () => {
             email: "test@example.com",
             password: VALID_PASSWORD,
             options: {
-                emailRedirectTo: "http://localhost:5173/?auth=login",
+                emailRedirectTo: "http://localhost:5173/?auth=login&notice=email-verified",
                 data: {
                     username: "測試玩家",
                     avatarId: 2
@@ -291,6 +293,7 @@ describe("註冊玩家服務", () => {
             winCount: 0,
             loseCount: 0,
             totalGames: 0,
+            title: null,
             isOnline: false,
             lastLoginAt: null,
             createdAt: "2026-07-01T00:00:00.000Z",
@@ -334,7 +337,7 @@ describe("註冊玩家服務", () => {
             email: "test@example.com",
             password: VALID_PASSWORD,
             options: {
-                emailRedirectTo: "http://localhost:5173/?auth=login",
+                emailRedirectTo: "http://localhost:5173/?auth=login&notice=email-verified",
                 data: {
                     username: "測試玩家",
                     avatarId: 1
@@ -384,7 +387,7 @@ describe("註冊玩家服務", () => {
             email: "test@example.com",
             password: VALID_PASSWORD,
             options: {
-                emailRedirectTo: "http://localhost:5173/?auth=login",
+                emailRedirectTo: "http://localhost:5173/?auth=login&notice=email-verified",
                 data: {
                     username: "測試玩家",
                     avatarId: 2
@@ -418,7 +421,7 @@ describe("註冊玩家服務", () => {
                 password: VALID_PASSWORD,
                 avatarId: 1
             })
-        ).rejects.toThrow("該用戶已存在")
+        ).rejects.toThrow("會員建立失敗，請稍後再試")
 
         expect(mockQuery).toHaveBeenCalledTimes(1)
         expect(mockSignUp).toHaveBeenCalledTimes(1)
@@ -481,7 +484,7 @@ describe("註冊玩家服務", () => {
                 password: VALID_PASSWORD,
                 avatarId: 1
             })
-        ).rejects.toThrow("db資料表寫入失敗")
+        ).rejects.toThrow("註冊失敗，請稍後再試")
 
         expect(mockSignUp).toHaveBeenCalledTimes(1)
         expect(mockDeleteUser).toHaveBeenCalledTimes(1)
@@ -515,7 +518,7 @@ describe("註冊玩家服務", () => {
                 password: VALID_PASSWORD,
                 avatarId: 1
             })
-        ).rejects.toThrow("db資料表寫入失敗")
+        ).rejects.toThrow("註冊失敗，請稍後再試")
 
         expect(mockSignUp).toHaveBeenCalledTimes(1)
         expect(mockDeleteUser).toHaveBeenCalledWith("auth-user-001")
@@ -687,6 +690,7 @@ describe("登入玩家服務", () => {
                 winCount: 0,
                 loseCount: 0,
                 totalGames: 0,
+                title: null,
                 isOnline: true,
                 lastLoginAt: "2026-07-01T03:30:00.000Z",
                 createdAt: "2026-07-01T00:00:00.000Z",
@@ -750,7 +754,7 @@ describe("忘記密碼服務", () => {
 
     test("有設定PASSWORD_RESET_REDIRECT_URL時，使用指定的重設密碼網址", async () => {
         process.env.PASSWORD_RESET_REDIRECT_URL =
-            "https://office-politics-game.vercel.app/?auth=reset-password"
+            "https://office-politics-game-fawn.vercel.app/?auth=reset-password"
 
         mockResetPasswordForEmail.mockResolvedValueOnce({
             data: {},
@@ -764,7 +768,7 @@ describe("忘記密碼服務", () => {
         expect(mockResetPasswordForEmail).toHaveBeenCalledWith(
             "test@example.com",
             {
-                redirectTo: "https://office-politics-game.vercel.app/?auth=reset-password"
+                redirectTo: "https://office-politics-game-fawn.vercel.app/?auth=reset-password"
             }
         )
     })
@@ -963,6 +967,237 @@ describe("重設密碼服務", () => {
     })
 })
 
+describe("第三方登入玩家同步服務", () => {
+    beforeEach(() => {
+        resetMocks()
+    })
+
+    test("未提供access token時，丟出錯誤", async () => {
+        await expect(
+            syncOAuthPlayer({
+                accessToken: ""
+            })
+        ).rejects.toThrow("缺少第三方登入憑證")
+
+        expect(mockGetUser).not.toHaveBeenCalled()
+        expect(mockQuery).not.toHaveBeenCalled()
+    })
+
+    test("Supabase驗證第三方登入token失敗時，丟出錯誤", async () => {
+        mockGetUser.mockResolvedValueOnce({
+            data: {
+                user: null
+            },
+            error: new Error("oauth token invalid")
+        })
+
+        await expect(
+            syncOAuthPlayer({
+                accessToken: "invalid-oauth-token"
+            })
+        ).rejects.toThrow("第三方登入驗證失敗")
+
+        expect(mockGetUser).toHaveBeenCalledWith("invalid-oauth-token")
+        expect(mockQuery).not.toHaveBeenCalled()
+    })
+
+    test("第三方登入未提供Email時，丟出錯誤", async () => {
+        const oauthUserId = "33333333-3333-4333-8333-333333333333"
+
+        mockGetUser.mockResolvedValueOnce({
+            data: {
+                user: {
+                    id: oauthUserId,
+                    email: ""
+                }
+            },
+            error: null
+        })
+
+        await expect(
+            syncOAuthPlayer({
+                accessToken: "oauth-access-token"
+            })
+        ).rejects.toThrow("第三方登入未提供Email，請改用其他登入方式")
+
+        expect(mockGetUser).toHaveBeenCalledWith("oauth-access-token")
+        expect(mockQuery).not.toHaveBeenCalled()
+    })
+
+    test("Email已存在時，會綁定既有player並更新登入狀態", async () => {
+        const oauthUserId = "11111111-1111-4111-8111-111111111111"
+
+        const existingPlayer = createPlayerRow({
+            id: 7,
+            auth_user_id: null,
+            username: "既有玩家",
+            account: "test@example.com"
+        })
+
+        const updatedPlayer = createPlayerRow({
+            id: 7,
+            auth_user_id: oauthUserId,
+            username: "既有玩家",
+            account: "test@example.com",
+            is_online: true,
+            last_login_at: "2026-07-10T12:00:00.000Z",
+            updated_at: "2026-07-10T12:00:00.000Z"
+        })
+
+        mockGetUser.mockResolvedValueOnce({
+            data: {
+                user: {
+                    id: oauthUserId,
+                    email: "  TEST@EXAMPLE.COM  ",
+                    user_metadata: {
+                        full_name: "Google 使用者"
+                    }
+                }
+            },
+            error: null
+        })
+
+        mockQuery
+            .mockResolvedValueOnce({
+                rows: [existingPlayer]
+            })
+            .mockResolvedValueOnce({
+                rows: [updatedPlayer]
+            })
+
+        const result = await syncOAuthPlayer({
+            accessToken: "oauth-access-token",
+            expiresIn: 3600
+        })
+
+        expect(mockGetUser).toHaveBeenCalledWith("oauth-access-token")
+        expect(mockQuery).toHaveBeenCalledTimes(2)
+
+        expect(mockQuery).toHaveBeenNthCalledWith(
+            1,
+            expect.stringContaining("WHERE account = $1 OR auth_user_id = $2"),
+            ["test@example.com", oauthUserId]
+        )
+
+        expect(mockQuery).toHaveBeenNthCalledWith(
+            2,
+            expect.stringContaining("UPDATE players"),
+            [oauthUserId, "test@example.com", 7]
+        )
+
+        expect(result).toEqual({
+            player: {
+                id: 7,
+                authUserId: oauthUserId,
+                username: "既有玩家",
+                account: "test@example.com",
+                avatarId: 2,
+                level: 1,
+                exp: 0,
+                coins: 0,
+                gems: 0,
+                tickets: 0,
+                winCount: 0,
+                loseCount: 0,
+                totalGames: 0,
+                title: null,
+                isOnline: true,
+                lastLoginAt: "2026-07-10T12:00:00.000Z",
+                createdAt: "2026-07-01T00:00:00.000Z",
+                updatedAt: "2026-07-10T12:00:00.000Z"
+            },
+            token: "oauth-access-token",
+            expiresIn: 3600
+        })
+    })
+
+    test("Email不存在時，自動建立新player", async () => {
+        const oauthUserId = "22222222-2222-4222-8222-222222222222"
+        const oauthUsername = "Google使用者-22222222"
+
+        const createdPlayer = createPlayerRow({
+            id: 9,
+            auth_user_id: oauthUserId,
+            username: oauthUsername,
+            account: "new@example.com",
+            avatar_id: 1,
+            is_online: true,
+            last_login_at: "2026-07-10T12:00:00.000Z"
+        })
+
+        mockGetUser.mockResolvedValueOnce({
+            data: {
+                user: {
+                    id: oauthUserId,
+                    email: "NEW@EXAMPLE.COM",
+                    user_metadata: {
+                        full_name: "Google 使用者"
+                    }
+                }
+            },
+            error: null
+        })
+
+        mockQuery
+            .mockResolvedValueOnce({
+                rows: []
+            })
+            .mockResolvedValueOnce({
+                rows: [createdPlayer]
+            })
+
+        const result = await syncOAuthPlayer({
+            accessToken: "oauth-access-token",
+            expiresIn: 3600
+        })
+
+        expect(mockGetUser).toHaveBeenCalledWith("oauth-access-token")
+        expect(mockQuery).toHaveBeenCalledTimes(2)
+
+        expect(mockQuery).toHaveBeenNthCalledWith(
+            1,
+            expect.stringContaining("WHERE account = $1 OR auth_user_id = $2"),
+            ["new@example.com", oauthUserId]
+        )
+
+        expect(mockQuery).toHaveBeenNthCalledWith(
+            2,
+            expect.stringContaining("INSERT INTO players"),
+            [
+                oauthUserId,
+                oauthUsername,
+                "new@example.com",
+                1
+            ]
+        )
+
+        expect(result).toEqual({
+            player: {
+                id: 9,
+                authUserId: oauthUserId,
+                username: oauthUsername,
+                account: "new@example.com",
+                avatarId: 1,
+                level: 1,
+                exp: 0,
+                coins: 0,
+                gems: 0,
+                tickets: 0,
+                winCount: 0,
+                loseCount: 0,
+                totalGames: 0,
+                title: null,
+                isOnline: true,
+                lastLoginAt: "2026-07-10T12:00:00.000Z",
+                createdAt: "2026-07-01T00:00:00.000Z",
+                updatedAt: "2026-07-01T00:00:00.000Z"
+            },
+            token: "oauth-access-token",
+            expiresIn: 3600
+        })
+    })
+})
+
 describe("驗證登入狀態服務", () => {
     beforeEach(() => {
         resetMocks()
@@ -1040,6 +1275,7 @@ describe("驗證登入狀態服務", () => {
             winCount: 0,
             loseCount: 0,
             totalGames: 0,
+            title: null,
             isOnline: false,
             lastLoginAt: null,
             createdAt: "2026-07-01T00:00:00.000Z",

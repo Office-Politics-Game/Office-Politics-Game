@@ -45,6 +45,8 @@
       >
         <LoginContent
           v-if="authModalMode === 'login'"
+          :notice-message="loginNoticeMessage"
+          :notice-type="loginNoticeType"
           @close="closeAuthModal"
           @open-guest="openGuestModal"
           @open-register="openRegisterModal"
@@ -95,6 +97,7 @@ import bgEntryVideo from "@/assets/videos/EntryPage_BgVideo.mp4";
 import { usePreGameAudio } from "@/composables/UsePreGameAudio";
 import ForgotPasswordContent from "@/components/login/ForgotPasswordContent.vue";
 import ResetPasswordContent from "@/components/login/ResetPasswordContent.vue";
+import { resolvePasswordResetToken } from "@/services/authApi.js";
 
 const route = useRoute();
 const router = useRouter();
@@ -109,6 +112,8 @@ const showLoginModal = ref(false);
 const showGuestLoginModal = ref(false);
 const authModalMode = ref("login");
 const resetPasswordToken = ref("");
+const loginNoticeMessage = ref("");
+const loginNoticeType = ref("success");
 
 const isMemberLoggedIn = computed(
   () => authStore.isLoggedIn && Boolean(authStore.currentPlayer),
@@ -142,6 +147,7 @@ async function handleSecondaryAction() {
 
     stopPreGameBackground({ fadeOut: false });
     playerStore.resetPlayer();
+    localStorage.removeItem("guestPlayer");
     showLoginModal.value = false;
     showGuestLoginModal.value = false;
     router.push("/");
@@ -185,11 +191,32 @@ function showLoginMode() {
 }
 
 function clearAuthQuery() {
-  if (route.name !== "Entry" || !route.query.auth) {
+  if (route.name !== "Entry") {
     return;
   }
 
-  const { auth, ...nextQuery } = route.query;
+  const authQueryKeys = new Set([
+    "auth",
+    "notice",
+    "code",
+    "access_token",
+    "refresh_token",
+    "type",
+    "error",
+    "error_description",
+  ]);
+
+  const hasAuthQuery = Object.keys(route.query).some((key) =>
+    authQueryKeys.has(key),
+  );
+
+  if (!hasAuthQuery) {
+    return;
+  }
+
+  const nextQuery = Object.fromEntries(
+    Object.entries(route.query).filter(([key]) => !authQueryKeys.has(key)),
+  );
 
   router.replace({
     name: "Entry",
@@ -198,18 +225,34 @@ function clearAuthQuery() {
   });
 }
 
-function getResetPasswordTokenFromUrl() {
-  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  const queryToken = route.query.access_token;
-  const hashToken = hashParams.get("access_token");
+function clearLoginNotice() {
+  loginNoticeMessage.value = "";
+  loginNoticeType.value = "success";
+}
 
-  return typeof queryToken === "string" ? queryToken : hashToken || "";
+function showLoginNotice(message, type = "success") {
+  loginNoticeMessage.value = message;
+  loginNoticeType.value = type;
+}
+
+async function openResetPasswordModalFromRoute() {
+  resetPasswordToken.value = "";
+  authModalMode.value = "reset-password";
+  showLoginModal.value = true;
+  clearLoginNotice();
+
+  try {
+    resetPasswordToken.value = await resolvePasswordResetToken();
+  } catch {
+    resetPasswordToken.value = "";
+  }
 }
 
 function closeAuthModal() {
   showLoginModal.value = false;
   authModalMode.value = "login";
   resetPasswordToken.value = "";
+  clearLoginNotice();
   clearAuthQuery();
 }
 
@@ -248,24 +291,28 @@ onMounted(async () => {
 });
 
 watch(
-  () => route.query.auth,
-  (auth) => {
+  () => [route.query.auth, route.query.notice],
+  ([auth, notice]) => {
     if (auth === "login") {
       authModalMode.value = "login";
       showLoginModal.value = true;
+
+      if (notice === "email-verified") {
+        showLoginNotice("信箱驗證完成，請重新登入", "success");
+      }
+
       return;
     }
 
     if (auth === "forgot-password") {
+      clearLoginNotice();
       authModalMode.value = "forgot-password";
       showLoginModal.value = true;
       return;
     }
 
     if (auth === "reset-password") {
-      resetPasswordToken.value = getResetPasswordTokenFromUrl();
-      authModalMode.value = "reset-password";
-      showLoginModal.value = true;
+      void openResetPasswordModalFromRoute();
     }
   },
   { immediate: true },

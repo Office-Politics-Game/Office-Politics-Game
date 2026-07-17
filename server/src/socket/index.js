@@ -1,4 +1,5 @@
 import { Server } from "socket.io"
+import { getChatPlayerRoom, registerChatHandlers } from "./chatHandlers.js"
 import { registerRoomHandlers } from "./roomHandlers.js"
 import { registerGameHandlers } from "./gameHandlers.js"
 
@@ -18,6 +19,7 @@ function initializeSocket(httpServer) {
 
     registerRoomHandlers(io, socket)
     registerGameHandlers(io, socket)
+    registerChatHandlers(socket)
 
     socket.on("socket:ping", (payload, callback) => {
         if (typeof callback === "function") {
@@ -43,4 +45,4 @@ function getSocketServer() {
   return activeSocketServer
 }
 
-export { getSocketServer, initializeSocket }
+export { getChatPlayerRoom, getSocketServer, initializeSocket }

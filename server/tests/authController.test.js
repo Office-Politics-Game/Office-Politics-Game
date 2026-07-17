@@ -5,17 +5,23 @@ const mockLoginPlayer = jest.fn()
 const mockVerifyToken = jest.fn()
 const mockRequestPasswordReset = jest.fn()
 const mockResetPlayerPassword = jest.fn()
+const mockSyncOAuthPlayer = jest.fn()
+const mockLogoutPlayer = jest.fn()
 
 jest.unstable_mockModule("../src/services/authService.js", () => ({
     registerPlayer: mockRegisterPlayer,
     loginPlayer: mockLoginPlayer,
+    syncOAuthPlayer: mockSyncOAuthPlayer,
+    logoutPlayer: mockLogoutPlayer,
     verifyToken: mockVerifyToken,
     requestPasswordReset: mockRequestPasswordReset,
     resetPlayerPassword: mockResetPlayerPassword
 }))
 
 const {
+    handleRegisterPlayer,
     handleLoginPlayer,
+    handleOAuthCallback,
     handleVerifyToken,
     handleLogoutPlayer
 } = await import("../src/controllers/authController.js")
@@ -51,11 +57,41 @@ describe("auth controller cookie login flow", () => {
         mockRegisterPlayer.mockReset()
         mockLoginPlayer.mockReset()
         mockVerifyToken.mockReset()
+        mockLogoutPlayer.mockReset()
         mockRequestPasswordReset.mockReset()
         mockResetPlayerPassword.mockReset()
+        mockSyncOAuthPlayer.mockReset()
 
         delete process.env.AUTH_COOKIE_SAME_SITE
         delete process.env.AUTH_COOKIE_SECURE
+    })
+
+    test("註冊發生未知錯誤時，不回傳內部錯誤訊息", async () => {
+        const consoleErrorSpy = jest
+            .spyOn(console, "error")
+            .mockImplementation(() => {})
+
+        mockRegisterPlayer.mockRejectedValueOnce(
+            new Error('insert or update on table "players" violates foreign key constraint')
+        )
+
+        const req = {
+            body: {
+                username: "測試玩家",
+                account: "test@example.com",
+                password: "Aa123456!"
+            }
+        }
+        const res = createMockResponse()
+
+        await handleRegisterPlayer(req, res)
+
+        expect(res.status).toHaveBeenCalledWith(500)
+        expect(res.json).toHaveBeenCalledWith({
+            message: "註冊失敗，請稍後再試"
+        })
+
+        consoleErrorSpy.mockRestore()
     })
 
     test("登入成功時設定 HttpOnly Cookie，且 response 不回傳 token", async () => {
@@ -130,6 +166,43 @@ describe("auth controller cookie login flow", () => {
         )
     })
 
+    test("第三方登入成功時設定 HttpOnly Cookie，且 response 不回傳 token", async () => {
+        const player = createPlayer()
+
+        mockSyncOAuthPlayer.mockResolvedValueOnce({
+            player,
+            token: "oauth-access-token",
+            expiresIn: 3600
+        })
+
+        const req = {
+            body: {
+                accessToken: "oauth-access-token",
+                expiresIn: 3600
+            }
+        }
+        const res = createMockResponse()
+
+        await handleOAuthCallback(req, res)
+
+        expect(mockSyncOAuthPlayer).toHaveBeenCalledWith(req.body)
+        expect(res.cookie).toHaveBeenCalledWith(
+            "officePoliticsAuthToken",
+            "oauth-access-token",
+            {
+                httpOnly: true,
+                secure: false,
+                sameSite: "lax",
+                path: "/",
+                maxAge: 3600 * 1000
+            }
+        )
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({
+            player
+        })
+    })
+
     test("驗證登入狀態時，從 Cookie 讀取 token", async () => {
         const player = createPlayer()
 
@@ -168,6 +241,34 @@ describe("auth controller cookie login flow", () => {
         expect(res.status).toHaveBeenCalledWith(401)
         expect(res.json).toHaveBeenCalledWith({
             message: "缺少登入驗證token"
+        })
+    })
+
+    test("登出時同步玩家離線並清除 HttpOnly Cookie", async () => {
+        mockLogoutPlayer.mockResolvedValueOnce(true)
+
+        const req = {
+            cookies: {
+                officePoliticsAuthToken: "cookie-access-token"
+            }
+        }
+        const res = createMockResponse()
+
+        await handleLogoutPlayer(req, res)
+
+        expect(mockLogoutPlayer).toHaveBeenCalledWith("cookie-access-token")
+        expect(res.clearCookie).toHaveBeenCalledWith(
+            "officePoliticsAuthToken",
+            {
+                httpOnly: true,
+                secure: false,
+                sameSite: "lax",
+                path: "/"
+            }
+        )
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({
+            message: "登出成功"
         })
     })
 

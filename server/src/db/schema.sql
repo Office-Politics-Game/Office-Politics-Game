@@ -1,8 +1,9 @@
-CREATE TABLE players (
+﻿CREATE TABLE players (
   id SERIAL PRIMARY KEY,
   auth_user_id UUID UNIQUE,
   username VARCHAR(50) NOT NULL UNIQUE,
   avatar_id INTEGER,
+  bio TEXT DEFAULT '',
   level INTEGER NOT NULL DEFAULT 1 CHECK (level >= 1),
   exp INTEGER NOT NULL DEFAULT 0 CHECK (exp >= 0),
   coins INTEGER NOT NULL DEFAULT 0 CHECK (coins >= 0 AND coins <= 99999),
@@ -11,6 +12,7 @@ CREATE TABLE players (
   win_count INTEGER NOT NULL DEFAULT 0 CHECK (win_count >= 0),
   lose_count INTEGER NOT NULL DEFAULT 0 CHECK (lose_count >= 0),
   total_games INTEGER NOT NULL DEFAULT 0 CHECK (total_games >= 0),
+  title VARCHAR(100),
   is_online BOOLEAN NOT NULL DEFAULT false,
   last_login_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -19,6 +21,16 @@ CREATE TABLE players (
 
 ALTER TABLE players
 ADD COLUMN IF NOT EXISTS account VARCHAR(255) UNIQUE;
+
+ALTER TABLE players
+ADD COLUMN IF NOT EXISTS title VARCHAR(100);
+
+ALTER TABLE players
+ADD COLUMN IF NOT EXISTS bio TEXT DEFAULT '';
+
+UPDATE players
+SET bio = ''
+WHERE bio IS NULL;
 
 ALTER TABLE players
 ALTER COLUMN avatar_id SET DEFAULT 1;
@@ -82,6 +94,7 @@ CREATE TABLE player_achievements (
   player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
   achievement_id INTEGER NOT NULL REFERENCES achievements(id) ON DELETE CASCADE,
   unlocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  source_match_id INTEGER,
   UNIQUE (player_id, achievement_id)
 );
 
@@ -232,6 +245,36 @@ CREATE TABLE matches (
   ended_at TIMESTAMP
 );
 
+ALTER TABLE player_achievements
+ADD CONSTRAINT player_achievements_source_match_id_fkey
+FOREIGN KEY (source_match_id)
+REFERENCES matches(id)
+ON DELETE SET NULL;
+
+CREATE INDEX player_achievements_source_match_idx
+ON player_achievements(source_match_id, player_id);
+
+CREATE TABLE match_participants (
+  id SERIAL PRIMARY KEY,
+  match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  username_snapshot VARCHAR(50) NOT NULL,
+  avatar_id_snapshot INTEGER,
+  round_wins INTEGER NOT NULL DEFAULT 0 CHECK (round_wins >= 0),
+  result VARCHAR(10) NOT NULL,
+  exp_gained INTEGER NOT NULL DEFAULT 0 CHECK (exp_gained >= 0),
+  coins_gained INTEGER NOT NULL DEFAULT 0 CHECK (coins_gained >= 0),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CHECK (result IN ('win', 'lose')),
+  UNIQUE (match_id, player_id)
+);
+
+CREATE INDEX match_participants_player_idx
+ON match_participants(player_id, match_id);
+
+CREATE INDEX match_participants_match_idx
+ON match_participants(match_id);
+
 CREATE TABLE cards (
   id SERIAL PRIMARY KEY,
   name VARCHAR(50) NOT NULL,
@@ -241,6 +284,95 @@ CREATE TABLE cards (
   description TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE gacha_pools (
+  id SERIAL PRIMARY KEY,
+  code VARCHAR(50) NOT NULL UNIQUE,
+  name VARCHAR(100) NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE gacha_cards (
+  id SERIAL PRIMARY KEY,
+  code VARCHAR(50) NOT NULL UNIQUE,
+  name VARCHAR(100) NOT NULL,
+  rank INTEGER NOT NULL,
+  type VARCHAR(30),
+  description TEXT,
+  image_key VARCHAR(100),
+  frame_key VARCHAR(100),
+  image_url TEXT,
+  frame_url TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE gacha_pool_cards (
+  id SERIAL PRIMARY KEY,
+  pool_id INTEGER NOT NULL REFERENCES gacha_pools(id) ON DELETE CASCADE,
+  gacha_card_id INTEGER NOT NULL REFERENCES gacha_cards(id) ON DELETE CASCADE,
+  weight INTEGER NOT NULL CHECK (weight > 0),
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (pool_id, gacha_card_id)
+);
+
+CREATE TABLE player_gacha_cards (
+  id SERIAL PRIMARY KEY,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  gacha_card_id INTEGER NOT NULL REFERENCES gacha_cards(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (player_id, gacha_card_id)
+);
+
+CREATE TABLE gacha_draw_logs (
+  id SERIAL PRIMARY KEY,
+  batch_id UUID NOT NULL,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  pool_id INTEGER NOT NULL REFERENCES gacha_pools(id),
+  gacha_card_id INTEGER NOT NULL REFERENCES gacha_cards(id),
+  ticket_cost INTEGER NOT NULL CHECK (ticket_cost > 0),
+  is_duplicate BOOLEAN NOT NULL DEFAULT false,
+  compensation_coins INTEGER NOT NULL DEFAULT 0 CHECK (compensation_coins >= 0),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO gacha_pools (code, name)
+VALUES ('role_cards', '樂高角色卡池')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO gacha_cards (code, name, rank, type, description, image_key, frame_key, image_url, frame_url)
+VALUES
+  ('card_001', '樂高實習生', 1, 'role', '樂高實習生', 'intern', 'intern', 'https://res.cloudinary.com/pumy6qez/image/upload/v1784016294/lego-intern-card-skin_yeap7f.webp', 'https://res.cloudinary.com/pumy6qez/image/upload/v1784016293/lego-intern-card-frame_ejahmh.webp'),
+  ('card_002', '樂高打掃阿姨', 2, 'role', '樂高打掃阿姨', 'cleaner', 'cleaner', 'https://res.cloudinary.com/pumy6qez/image/upload/v1784016291/lego-cleaner-card-skin_ko1tbt.webp', 'https://res.cloudinary.com/pumy6qez/image/upload/v1784016291/lego-cleaner-card-frame_k2l66z.webp'),
+  ('card_003', '樂高部門主管', 3, 'role', '樂高部門主管', 'manager', 'manager', 'https://res.cloudinary.com/pumy6qez/image/upload/v1784016295/lego-manager-card-skin_wkq4hg.webp', 'https://res.cloudinary.com/pumy6qez/image/upload/v1784016294/lego-manager-card-frame_nhuarb.webp'),
+  ('card_004', '樂高職場老鳥', 4, 'role', '樂高職場老鳥', 'senior', 'senior', 'https://res.cloudinary.com/pumy6qez/image/upload/v1784016298/lego-senior-card-skin_auanea.webp', 'https://res.cloudinary.com/pumy6qez/image/upload/v1784016296/lego-senior-card-frame_axweus.webp'),
+  ('card_005', '樂高專案經理', 5, 'role', '樂高專案經理', 'pm', 'pm', 'https://res.cloudinary.com/pumy6qez/image/upload/v1784016297/lego-pm-card-skin_is3lyw.webp', 'https://res.cloudinary.com/pumy6qez/image/upload/v1784016296/lego-pm-card-frame_hlsid9.webp'),
+  ('card_006', '樂高人資主管', 6, 'role', '樂高人資主管', 'hr', 'hr', 'https://res.cloudinary.com/pumy6qez/image/upload/v1784016293/lego-hr-card-skin_wir4jw.webp', 'https://res.cloudinary.com/pumy6qez/image/upload/v1784016292/lego-hr-card-frame_qofkeq.webp'),
+  ('card_007', '樂高資深顧問', 7, 'role', '樂高資深顧問', 'advisor', 'advisor', 'https://res.cloudinary.com/pumy6qez/image/upload/v1784016288/lego-advisor-card-skin_r7dqww.webp', 'https://res.cloudinary.com/pumy6qez/image/upload/v1784016288/lego-advisor-card-frame_y52pim.webp'),
+  ('card_008', '樂高執行長', 8, 'role', '樂高執行長', 'ceo', 'ceo', 'https://res.cloudinary.com/pumy6qez/image/upload/v1784016290/lego-ceo-card-skin_msw96k.webp', 'https://res.cloudinary.com/pumy6qez/image/upload/v1784016289/lego-ceo-card-frame_nmieox.webp')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO gacha_pool_cards (pool_id, gacha_card_id, weight)
+SELECT gp.id, gc.id, weights.weight
+FROM gacha_pools gp
+JOIN (
+  VALUES
+    ('card_001', 400),
+    ('card_002', 250),
+    ('card_003', 150),
+    ('card_004', 100),
+    ('card_005', 50),
+    ('card_006', 30),
+    ('card_007', 15),
+    ('card_008', 5)
+) AS weights(code, weight) ON true
+JOIN gacha_cards gc ON gc.code = weights.code
+WHERE gp.code = 'role_cards'
+ON CONFLICT (pool_id, gacha_card_id) DO NOTHING;
 
 CREATE TABLE game_cards (
   id SERIAL PRIMARY KEY,
@@ -270,3 +402,4 @@ CREATE TABLE game_sessions (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+

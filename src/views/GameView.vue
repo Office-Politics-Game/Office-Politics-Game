@@ -10,7 +10,7 @@ import { useGameRoomState } from '@/composables/useGameRoomState'
 import { useGameSocketActions } from '@/composables/useGameSocketActions'
 import { useGameViewModel } from '@/composables/useGameViewModel'
 import { cardAssetKeyByRank, cardAssetsByKey } from '@/constants/cardAssets'
-import { getCardSkinThemeSlotImage } from '@/constants/cardSkinThemes'
+import { getCardSkinThemeSlotAsset } from '@/constants/cardSkinThemes'
 import {
   drawCard as drawGameCard,
   getRoomGameState,
@@ -24,6 +24,7 @@ import { resolveAvatarUrl } from '@/utils/playerUtils'
 
 const route = useRoute()
 const router = useRouter()
+const hasNavigatedToResult = ref(false)
 const appearanceStore = useAppearanceStore()
 const gameStateStore = useGameStateStore()
 const { gameState, currentPlayer, currentPlayerId, currentTurnPlayerId, isLoading } =
@@ -35,7 +36,7 @@ const {
 } = storeToRefs(appearanceStore)
 const gameStage = ref(null)
 
-function getViewerCardSkinUrl(cardKey = '') {
+function getViewerCardSkinSource(cardKey = '') {
   const overrideUrl =
     cardKey &&
     cardSkinOverrides.value &&
@@ -44,35 +45,34 @@ function getViewerCardSkinUrl(cardKey = '') {
       : ''
 
   if (typeof overrideUrl === 'string' && overrideUrl) {
-    const overrideThemeSlotUrl = getCardSkinThemeSlotImage(overrideUrl, cardKey)
-
-    if (overrideThemeSlotUrl) {
-      return overrideThemeSlotUrl
-    }
-
     return overrideUrl
-  }
-
-  const themeSlotUrl = getCardSkinThemeSlotImage(cardSkinUrl.value, cardKey)
-
-  if (themeSlotUrl) {
-    return themeSlotUrl
   }
 
   return typeof cardSkinUrl.value === 'string' ? cardSkinUrl.value : ''
 }
 
+function getViewerCardAssetUrls(cardKey = '') {
+  const source = getViewerCardSkinSource(cardKey)
+  const themeAssets = getCardSkinThemeSlotAsset(source, cardKey)
+
+  return {
+    backgroundUrl: themeAssets.backgroundUrl || source,
+    frameUrl: themeAssets.frameUrl,
+  }
+}
+
 function normalizeCardForViewer(rawCard = {}, fallbackIndex = 0) {
   const normalizedCard = normalizeCard(rawCard, fallbackIndex)
-  const viewerCardSkinUrl = getViewerCardSkinUrl(normalizedCard.assetKey)
+  const viewerAssets = getViewerCardAssetUrls(normalizedCard.assetKey)
 
-  if (!viewerCardSkinUrl) {
+  if (!viewerAssets.backgroundUrl && !viewerAssets.frameUrl) {
     return normalizedCard
   }
 
   return {
     ...normalizedCard,
-    backgroundUrl: viewerCardSkinUrl,
+    ...(viewerAssets.backgroundUrl ? { backgroundUrl: viewerAssets.backgroundUrl } : {}),
+    ...(viewerAssets.frameUrl ? { frameUrl: viewerAssets.frameUrl } : {}),
   }
 }
 
@@ -172,6 +172,19 @@ function handleReturnLobby() {
   router.push({ name: 'LobbyHome' })
 }
 
+async function navigateToResult() {
+  await gameStage.value?.playGameEndTransition?.()
+
+  await router.push({
+    name: "Result",
+    query: {
+      roomCode: normalizedRoomCode.value,
+      playerId: resolvedCurrentPlayerId.value || requestedPlayerId.value || undefined,
+      transition: "game-end",
+    },
+  })
+}
+
 onMounted(() => {
   void loadInitialRoomState()
   void subscribeGameSocket()
@@ -203,6 +216,19 @@ watch(
     void subscribeGameSocket()
   },
 )
+
+watch(
+  () => gameState.value?.phase,
+  (phase) => {
+    if (phase !== "finished" || hasNavigatedToResult.value) {
+      return
+    }
+
+    hasNavigatedToResult.value = true
+
+    void navigateToResult()
+  },
+)
 </script>
 
 <template>
@@ -219,6 +245,7 @@ watch(
     :round-number="turnStatus.roundNumber"
     :current-phase="turnStatus.currentPhase"
     :current-step="turnStatus.currentStep"
+    :is-game-finished="gameState?.phase === 'finished'"
     :deck-count="deckCount"
     :discard-cards="discardCards"
     :players="players"

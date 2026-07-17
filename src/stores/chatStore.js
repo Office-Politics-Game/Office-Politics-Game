@@ -1,11 +1,99 @@
 import { defineStore } from "pinia";
+import { toRaw } from "vue";
 import {
   getDirectMessages as getDirectMessagesApi,
   sendDirectMessage as sendDirectMessageApi,
 } from "@/services/chatApi.js";
+import { emitWithAck, getSocket } from "@/services/socketClient.js";
 import { useAuthStore } from "@/stores/authStore.js";
 
 const CHAT_LOGIN_REQUIRED_MESSAGE = "登入後才能使用好友聊天";
+const CHAT_REALTIME_UNAVAILABLE_MESSAGE = "好友聊天即時連線失敗";
+const CHAT_REALTIME_DISCONNECTED_MESSAGE = "即時連線已中斷，正在重新連線";
+const CHAT_REALTIME_RETRY_DELAY_MS = 250;
+const CHAT_REALTIME_MAX_RETRIES = 3;
+const realtimeHandlersByStore = new WeakMap();
+const realtimeGenerationByStore = new WeakMap();
+const realtimeRetryTimersByStore = new WeakMap();
+const realtimeRetryCountsByStore = new WeakMap();
+
+function getRealtimeStoreKey(store) {
+  return toRaw(store);
+}
+
+function advanceRealtimeGeneration(store) {
+  const storeKey = getRealtimeStoreKey(store);
+  const generation = (realtimeGenerationByStore.get(storeKey) ?? 0) + 1;
+  realtimeGenerationByStore.set(storeKey, generation);
+  return generation;
+}
+
+function isRealtimeGenerationActive(store, generation) {
+  return (
+    store.isRealtimeStarted &&
+    realtimeGenerationByStore.get(getRealtimeStoreKey(store)) === generation
+  );
+}
+
+function clearRealtimeRetry(store, { resetCount = false } = {}) {
+  const storeKey = getRealtimeStoreKey(store);
+  const retryTimer = realtimeRetryTimersByStore.get(storeKey);
+
+  if (retryTimer) {
+    clearTimeout(retryTimer);
+    realtimeRetryTimersByStore.delete(storeKey);
+  }
+
+  if (resetCount) {
+    realtimeRetryCountsByStore.delete(storeKey);
+  }
+}
+
+function scheduleRealtimeRetry(store, generation) {
+  const storeKey = getRealtimeStoreKey(store);
+
+  if (
+    !isRealtimeGenerationActive(store, generation) ||
+    store.isRealtimeSubscribed ||
+    realtimeRetryTimersByStore.has(storeKey)
+  ) {
+    return;
+  }
+
+  const retryCount = realtimeRetryCountsByStore.get(storeKey) ?? 0;
+
+  if (retryCount >= CHAT_REALTIME_MAX_RETRIES) {
+    return;
+  }
+
+  const retryDelay = CHAT_REALTIME_RETRY_DELAY_MS * 2 ** retryCount;
+  realtimeRetryCountsByStore.set(storeKey, retryCount + 1);
+
+  const retryTimer = setTimeout(() => {
+    realtimeRetryTimersByStore.delete(storeKey);
+
+    if (
+      !isRealtimeGenerationActive(store, generation) ||
+      store.isRealtimeSubscribed
+    ) {
+      return;
+    }
+
+    const handlers = realtimeHandlersByStore.get(storeKey);
+
+    if (!handlers?.socket.connected) {
+      handlers?.socket.connect();
+      return;
+    }
+
+    store.subscribeRealtime({
+      recoverSelected: true,
+      generation,
+    });
+  }, retryDelay);
+
+  realtimeRetryTimersByStore.set(storeKey, retryTimer);
+}
 
 function toPositiveInteger(value) {
   const numberValue = Number(value);
@@ -19,6 +107,37 @@ function toPositiveInteger(value) {
 
 function normalizeMessageContent(value) {
   return String(value ?? "").trim();
+}
+
+function isValidDirectMessage(message) {
+  return Boolean(
+    toPositiveInteger(message?.id) &&
+      toPositiveInteger(message?.senderPlayerId) &&
+      toPositiveInteger(message?.receiverPlayerId),
+  );
+}
+
+function compareDirectMessages(left, right) {
+  const leftTime = Date.parse(left.createdAt);
+  const rightTime = Date.parse(right.createdAt);
+
+  if (Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime !== rightTime) {
+    return leftTime - rightTime;
+  }
+
+  return Number(left.id) - Number(right.id);
+}
+
+function mergeDirectMessages(...messageGroups) {
+  const messagesById = new Map();
+
+  messageGroups.flat().forEach((message) => {
+    if (isValidDirectMessage(message)) {
+      messagesById.set(String(message.id), message);
+    }
+  });
+
+  return [...messagesById.values()].sort(compareDirectMessages);
 }
 
 function getAuthenticatedPlayerId() {
@@ -39,6 +158,9 @@ export const useChatStore = defineStore("chat", {
     errorMessage: "",
     isLoading: false,
     isSending: false,
+    isRealtimeStarted: false,
+    isRealtimeSubscribed: false,
+    realtimeErrorMessage: "",
   }),
 
   getters: {
@@ -62,12 +184,154 @@ export const useChatStore = defineStore("chat", {
 
   actions: {
     clearChatData() {
+      this.stopRealtime();
       this.currentPlayerId = null;
       this.conversations = {};
       this.selectedFriendId = null;
       this.errorMessage = "";
       this.isLoading = false;
       this.isSending = false;
+      this.realtimeErrorMessage = "";
+    },
+
+    async subscribeRealtime({
+      recoverSelected = false,
+      generation = realtimeGenerationByStore.get(getRealtimeStoreKey(this)),
+    } = {}) {
+      const authStore = useAuthStore();
+
+      if (!isRealtimeGenerationActive(this, generation)) {
+        return false;
+      }
+
+      if (!authStore.isLoggedIn || !authStore.token) {
+        this.isRealtimeSubscribed = false;
+        this.realtimeErrorMessage = CHAT_LOGIN_REQUIRED_MESSAGE;
+        return false;
+      }
+
+      try {
+        await emitWithAck("chat:subscribe", { token: authStore.token });
+
+        if (!isRealtimeGenerationActive(this, generation)) {
+          return false;
+        }
+
+        this.isRealtimeSubscribed = true;
+        this.realtimeErrorMessage = "";
+        clearRealtimeRetry(this, { resetCount: true });
+
+        if (recoverSelected && this.selectedFriendId) {
+          await this.loadMessages(this.selectedFriendId, {
+            realtimeGeneration: generation,
+          });
+        }
+
+        return true;
+      } catch (error) {
+        if (!isRealtimeGenerationActive(this, generation)) {
+          return false;
+        }
+
+        this.isRealtimeSubscribed = false;
+        this.realtimeErrorMessage =
+          error?.message || CHAT_REALTIME_UNAVAILABLE_MESSAGE;
+        scheduleRealtimeRetry(this, generation);
+        return false;
+      }
+    },
+
+    async startRealtime() {
+      if (this.isRealtimeStarted) {
+        if (this.isRealtimeSubscribed) {
+          return true;
+        }
+
+        const storeKey = getRealtimeStoreKey(this);
+        const generation = realtimeGenerationByStore.get(storeKey);
+        const handlers = realtimeHandlersByStore.get(storeKey);
+        clearRealtimeRetry(this, { resetCount: true });
+
+        if (!handlers?.socket.connected) {
+          handlers?.socket.connect();
+          return false;
+        }
+
+        return this.subscribeRealtime({
+          recoverSelected: true,
+          generation,
+        });
+      }
+
+      const socket = getSocket();
+      const storeKey = getRealtimeStoreKey(this);
+      const generation = advanceRealtimeGeneration(this);
+      const handleMessage = (message) => this.handleRealtimeMessage(message);
+      const handleConnect = () => {
+        clearRealtimeRetry(this);
+        return this.subscribeRealtime({ recoverSelected: true, generation });
+      };
+      const handleDisconnect = () => {
+        if (!isRealtimeGenerationActive(this, generation)) {
+          return;
+        }
+
+        this.isRealtimeSubscribed = false;
+        this.realtimeErrorMessage = CHAT_REALTIME_DISCONNECTED_MESSAGE;
+      };
+      const handleConnectError = (error) => {
+        if (!isRealtimeGenerationActive(this, generation)) {
+          return;
+        }
+
+        this.isRealtimeSubscribed = false;
+        this.realtimeErrorMessage =
+          error?.message || CHAT_REALTIME_UNAVAILABLE_MESSAGE;
+      };
+
+      realtimeHandlersByStore.set(storeKey, {
+        socket,
+        handleMessage,
+        handleConnect,
+        handleDisconnect,
+        handleConnectError,
+      });
+      socket.on("chat:message", handleMessage);
+      socket.on("connect", handleConnect);
+      socket.on("disconnect", handleDisconnect);
+      socket.on("connect_error", handleConnectError);
+      this.isRealtimeStarted = true;
+
+      if (!socket.connected) {
+        socket.connect();
+        return false;
+      }
+
+      return this.subscribeRealtime({ generation });
+    },
+
+    stopRealtime() {
+      advanceRealtimeGeneration(this);
+      clearRealtimeRetry(this, { resetCount: true });
+      const storeKey = getRealtimeStoreKey(this);
+      const handlers = realtimeHandlersByStore.get(storeKey);
+
+      if (handlers) {
+        handlers.socket.off("chat:message", handlers.handleMessage);
+        handlers.socket.off("connect", handlers.handleConnect);
+        handlers.socket.off("disconnect", handlers.handleDisconnect);
+        handlers.socket.off("connect_error", handlers.handleConnectError);
+        realtimeHandlersByStore.delete(storeKey);
+
+        if (handlers.socket.connected) {
+          handlers.socket.emit("chat:unsubscribe", {}, () => {});
+        }
+      }
+
+      this.isRealtimeStarted = false;
+      this.isRealtimeSubscribed = false;
+      this.isLoading = false;
+      this.realtimeErrorMessage = "";
     },
 
     getCurrentPlayerId() {
@@ -97,18 +361,42 @@ export const useChatStore = defineStore("chat", {
     setConversation(friendId, messages) {
       this.conversations = {
         ...this.conversations,
-        [String(friendId)]: messages,
+        [String(friendId)]: mergeDirectMessages(messages),
       };
     },
 
-    appendMessage(friendId, message) {
+    mergeMessages(friendId, messages) {
       const key = String(friendId);
-      const messages = this.conversations[key] ?? [];
+      const existingMessages = this.conversations[key] ?? [];
 
-      this.setConversation(friendId, [...messages, message]);
+      this.conversations = {
+        ...this.conversations,
+        [key]: mergeDirectMessages(existingMessages, messages),
+      };
     },
 
-    async loadMessages(friendId) {
+    mergeMessagesForRealtimeGeneration(friendId, messages, generation) {
+      if (!isRealtimeGenerationActive(this, generation)) {
+        return false;
+      }
+
+      this.mergeMessages(friendId, messages);
+      return true;
+    },
+
+    appendMessage(friendId, message) {
+      this.mergeMessages(friendId, [message]);
+    },
+
+    handleRealtimeMessage(message) {
+      if (!isValidDirectMessage(message)) {
+        return;
+      }
+
+      this.mergeMessages(message.senderPlayerId, [message]);
+    },
+
+    async loadMessages(friendId, { realtimeGeneration } = {}) {
       const numericFriendId = this.getValidFriendId(friendId);
 
       if (!numericFriendId) {
@@ -126,11 +414,29 @@ export const useChatStore = defineStore("chat", {
           friendId: numericFriendId,
         });
 
-        this.setConversation(numericFriendId, data.messages ?? []);
+        if (realtimeGeneration === undefined) {
+          this.mergeMessages(numericFriendId, data.messages ?? []);
+        } else {
+          this.mergeMessagesForRealtimeGeneration(
+            numericFriendId,
+            data.messages ?? [],
+            realtimeGeneration,
+          );
+        }
       } catch (error) {
-        this.errorMessage = error.message || "聊天紀錄載入失敗";
+        if (
+          realtimeGeneration === undefined ||
+          isRealtimeGenerationActive(this, realtimeGeneration)
+        ) {
+          this.errorMessage = error.message || "聊天紀錄載入失敗";
+        }
       } finally {
-        this.isLoading = false;
+        if (
+          realtimeGeneration === undefined ||
+          isRealtimeGenerationActive(this, realtimeGeneration)
+        ) {
+          this.isLoading = false;
+        }
       }
     },
 

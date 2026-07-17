@@ -205,7 +205,7 @@ const isSubmitting = ref(false)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 
-const ALERT_VISIBLE_MS = 1200
+const ALERT_VISIBLE_MS = 2000
 const ALERT_FADE_MS = 420
 
 let alertTimer = null

@@ -2,14 +2,15 @@ import pool from "../db/index.js"
 import { drawCard } from "./drawService.js"
 import { getPublicState } from "./gameStateService.js"
 import { runCardEffect, checkGuess } from "./cardEffectService.js"
+import { addLog } from "./actionLogService.js"
+import { discardCard } from "./discardService.js"
+import { finishTurn } from "./roundFlowService.js"
+import { finalizeMatchProgress } from "./playerProgressService.js"
 import {
     buildCardEffectAnimationResult,
     createCardEffectAnimationResultForViewer,
     createCardEffectAnimationContext,
 } from "./cardEffectAnimationService.js"
-import { addLog } from "./actionLogService.js"
-import { discardCard } from "./discardService.js"
-import { finishTurn } from "./roundFlowService.js"
 import {
     checkTurn,
     checkPlayer,
@@ -160,15 +161,49 @@ async function playCardAction({
 
     const { showdownResult } = finishTurn(state, numericPlayerId)
 
-    await pool.query(
-        `UPDATE game_sessions
-        SET state_json = $1,
-            status = $2,
-            current_turn_player_id = $3,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = $4`,
-        [state, state.phase, state.currentTurnPlayerId, gameSession.id]
-    )
+    let matchProgress = { finalized: false }
+
+    if (state.phase === "finished") {
+        const client = await pool.connect()
+
+        try {
+            await client.query("BEGIN")
+
+            await client.query(
+                `UPDATE game_sessions
+                SET state_json = $1,
+                    status = $2,
+                    current_turn_player_id = $3,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = $4`,
+                [state, state.phase, state.currentTurnPlayerId, gameSession.id]
+            )
+
+            matchProgress = await finalizeMatchProgress({
+                matchId: gameSession.match_id,
+                state,
+                client,
+            })
+
+            await client.query("COMMIT")
+        } catch (error) {
+            await client.query("ROLLBACK")
+            throw error
+        } finally {
+            client.release()
+        }
+    } else {
+        await pool.query(
+            `UPDATE game_sessions
+            SET state_json = $1,
+                status = $2,
+                current_turn_player_id = $3,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $4`,
+            [state, state.phase, state.currentTurnPlayerId, gameSession.id]
+        )
+    }
+
     const actionLog = await addLog(
         gameSession.room_id,
         numericPlayerId,
@@ -197,6 +232,7 @@ async function playCardAction({
         showdownResult,
         discardedCard,
         actionLog,
+        matchProgress,
         state,
         publicState,
     }

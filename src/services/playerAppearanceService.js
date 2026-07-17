@@ -1,16 +1,27 @@
 import { getPlayerEquippedItems, getPlayerShopItems } from "@/services/shopApi.js";
 import { normalizePlayerAvatar } from "@/utils/playerUtils.js";
 import { sanitizeCardSkinOverrides } from "@/constants/cardSkinSlots.js";
+import { resolveCardSkinThemeKey } from "@/constants/cardSkinThemes.js";
 import { resolveImageAssetUrl } from "@/utils/assetUrlResolver.js";
 
-function getPreviewImageByItemId(playerItems = [], itemId, type) {
-  const imageSource = (playerItems || []).find(
+function getShopItemById(playerItems = [], itemId, type) {
+  return (playerItems || []).find(
     (entry) =>
       entry?.item?.type === type &&
       Number(entry?.item?.id) === Number(itemId),
   )?.item;
+}
+
+function getPreviewImageByItemId(playerItems = [], itemId, type) {
+  const imageSource = getShopItemById(playerItems, itemId, type);
 
   return resolveImageAssetUrl(imageSource?.imageUrl || imageSource?.image_url);
+}
+
+function getCardSkinSourceByItemId(playerItems = [], itemId) {
+  const item = getShopItemById(playerItems, itemId, "card_skin");
+
+  return resolveCardSkinThemeKey(item) || resolveImageAssetUrl(item?.imageUrl || item?.image_url);
 }
 
 function mapCardSkinOverridesToUrls(playerItems = [], overrides = {}) {
@@ -20,7 +31,7 @@ function mapCardSkinOverridesToUrls(playerItems = [], overrides = {}) {
     Object.entries(normalizedOverrides)
       .map(([slotKey, itemId]) => [
         slotKey,
-        getPreviewImageByItemId(playerItems, itemId, "card_skin"),
+        getCardSkinSourceByItemId(playerItems, itemId),
       ])
       .filter(([, imageUrl]) => Boolean(imageUrl)),
   );
@@ -49,7 +60,7 @@ async function getEquippedAppearance(playerId) {
 
   return {
     avatarUrl: getPreviewImageByItemId(playerItems, equipped.avatarItemId, "avatar"),
-    cardSkinUrl: getPreviewImageByItemId(playerItems, equipped.cardSkinItemId, "card_skin"),
+    cardSkinUrl: getCardSkinSourceByItemId(playerItems, equipped.cardSkinItemId),
     cardSkinOverrides: mapCardSkinOverridesToUrls(playerItems, equipped.cardSkinOverrides),
     cardBackUrl: getPreviewImageByItemId(playerItems, equipped.cardBackItemId, "card_back"),
     boardSkinUrl: getPreviewImageByItemId(playerItems, equipped.boardSkinItemId, "board_skin"),
