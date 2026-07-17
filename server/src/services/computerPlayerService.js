@@ -102,22 +102,29 @@ function chooseCardToPlay(state, player) {
     return playableCards[0] ?? null
 }
 
-function chooseTargetPlayerId(state, player, card) {
+function chooseTargetPlayerId(
+    state,
+    player,
+    card,
+    { random = Math.random } = {}
+) {
     if (!cardNeedsTarget(card)) {
         return undefined
     }
 
-    const target = getAliveTargets(state, player.playerId, card.id)[0]
+    const targets = getAliveTargets(state, player.playerId, card.id)
+    const randomIndex = Math.floor(random() * targets.length)
+    const target = targets[randomIndex]
 
     return target?.playerId
 }
 
-function buildPlayPayload(state, player, card) {
+function buildPlayPayload(state, player, card, options = {}) {
     const payload = {
         roomCode: state.roomCode,
         playerId: Number(player.playerId),
         cardId: card.id,
-        targetPlayerId: chooseTargetPlayerId(state, player, card),
+        targetPlayerId: chooseTargetPlayerId(state, player, card, options),
         guessedCardName: undefined,
     }
 
