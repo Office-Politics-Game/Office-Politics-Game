@@ -47,7 +47,7 @@ async function unlockGameEndAchievements(state, viewerPlayerId) {
         }
     }
 
-    return []
+    return unlockedAchievements
 }
 
 async function drawCardAction({ roomCode, playerId }) {
@@ -186,22 +186,48 @@ async function playCardAction({
 
     const { showdownResult, roundEndState } = finishTurn(state, numericPlayerId)
 
-    await pool.query(
-        `UPDATE game_sessions
-        SET state_json = $1,
-            status = $2,
-            current_turn_player_id = $3,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = $4`,
-        [state, state.phase, state.currentTurnPlayerId, gameSession.id]
-    )
+    let matchProgress = { finalized: false }
 
-    const matchProgress = state.phase === "finished"
-        ? await finalizeMatchProgress({
-            matchId: gameSession.match_id,
-            state,
-        })
-        : { finalized: false }
+    if (state.phase === "finished") {
+        const client = await pool.connect()
+
+        try {
+            await client.query("BEGIN")
+
+            await client.query(
+                `UPDATE game_sessions
+                SET state_json = $1,
+                    status = $2,
+                    current_turn_player_id = $3,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = $4`,
+                [state, state.phase, state.currentTurnPlayerId, gameSession.id]
+            )
+
+            matchProgress = await finalizeMatchProgress({
+                matchId: gameSession.match_id,
+                state,
+                client,
+            })
+
+            await client.query("COMMIT")
+        } catch (error) {
+            await client.query("ROLLBACK")
+            throw error
+        } finally {
+            client.release()
+        }
+    } else {
+        await pool.query(
+            `UPDATE game_sessions
+            SET state_json = $1,
+                status = $2,
+                current_turn_player_id = $3,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $4`,
+            [state, state.phase, state.currentTurnPlayerId, gameSession.id]
+        )
+    }
 
     const actionLog = await addLog(
         gameSession.room_id,

@@ -602,6 +602,10 @@ watch(
 watch(
   () => getEliminatedSnapshot(props.players),
   (nextEliminated, previousEliminated = {}) => {
+    if (props.isGameFinished) {
+      return;
+    }
+
     if (areAutoNoticesSuppressed.value) {
       return;
     }

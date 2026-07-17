@@ -1,7 +1,8 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from "vue-router"
 import { storeToRefs } from 'pinia'
+import { computed, nextTick } from 'vue'
 import LoadingScreen from '@/components/common/LoadingScreen.vue'
 import GameStage from '@/components/game/ui/GameStage.vue'
 import { useGameRoomState } from '@/composables/useGameRoomState'
@@ -25,6 +26,7 @@ import { resolveAvatarUrl } from '@/utils/playerUtils'
 
 const route = useRoute()
 const router = useRouter()
+const hasNavigatedToResult = ref(false)
 const appearanceStore = useAppearanceStore()
 const authStore = useAuthStore()
 const gameStateStore = useGameStateStore()
@@ -186,6 +188,19 @@ onBeforeUnmount(() => {
   cleanupGameSocket()
 })
 
+async function navigateToResult() {
+  await gameStage.value?.playGameEndTransition?.()
+
+  await router.push({
+    name: "Result",
+    query: {
+      roomCode: normalizedRoomCode.value,
+      playerId: resolvedCurrentPlayerId.value || requestedPlayerId.value || undefined,
+      transition: "game-end",
+    },
+  })
+}
+
 async function handleReturnLobby() {
   await router.push('/lobby')
 }
@@ -266,6 +281,19 @@ watch(
     void subscribeGameSocket()
   },
 )
+
+watch(
+  () => gameState.value?.phase,
+  (phase) => {
+    if (phase !== "finished" || hasNavigatedToResult.value) {
+      return
+    }
+
+    hasNavigatedToResult.value = true
+
+    void navigateToResult()
+  },
+)
 </script>
 
 <template>
@@ -283,6 +311,7 @@ watch(
     :current-phase="turnStatus.currentPhase"
     :game-phase="gameState?.phase"
     :current-step="turnStatus.currentStep"
+    :is-game-finished="gameState?.phase === 'finished'"
     :deck-count="deckCount"
     :discard-cards="discardCards"
     :players="players"
