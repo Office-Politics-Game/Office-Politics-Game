@@ -1,7 +1,6 @@
 <script setup>
 import {
   CircleHelp,
-  Info,
   ListChecks,
   Target,
   Trophy,
@@ -34,31 +33,11 @@ import rulesBackgroundUrl from "@/assets/images/intro/rules-bg.webp";
         />
       </header>
 
-      <div class="mt-[30px] grid grid-cols-[auto_auto_auto] gap-[14px]">
+      <div class="mt-[30px] grid grid-cols-2 gap-[14px]">
         <article
           class="flex min-h-[242px] flex-col border border-[rgba(134,179,224,0.42)] bg-white/75 p-[12px] shadow-[0_10px_30px_rgba(0,19,50,0.06)] backdrop-blur-[10px]"
           data-intro-reveal
           style="--intro-reveal-delay: 110ms"
-        >
-          <h3
-            class="m-0 flex items-center gap-[8px] [color:var(--brand-hover)] [font-size:24px] font-extrabold leading-none"
-          >
-            <Info class="h-[20px] w-[20px] stroke-[2.5]" aria-hidden="true" />
-            遊戲資訊
-          </h3>
-          <div
-            class="flex min-h-0 flex-1 flex-col items-center justify-center gap-[8px] [color:var(--brand-active)] [font-size:24px] font-medium leading-[1.5] lg:[font-size:16px]"
-          >
-            <p class="m-0">全遊戲共 16 張卡牌</p>
-            <p class="m-0">8 種職位，各具獨特能力</p>
-            <p class="m-0">每位玩家手上各持 1 張牌</p>
-          </div>
-        </article>
-
-        <article
-          class="flex min-h-[242px] flex-col border border-[rgba(134,179,224,0.42)] bg-white/75 p-[12px] shadow-[0_10px_30px_rgba(0,19,50,0.06)] backdrop-blur-[10px]"
-          data-intro-reveal
-          style="--intro-reveal-delay: 200ms"
         >
           <h3
             class="m-0 flex items-center gap-[8px] [color:var(--brand-hover)] [font-size:24px] font-extrabold leading-none"
@@ -91,7 +70,7 @@ import rulesBackgroundUrl from "@/assets/images/intro/rules-bg.webp";
         <article
           class="flex flex-col border border-[rgba(134,179,224,0.42)] bg-white/75 p-[12px] shadow-[0_10px_30px_rgba(0,19,50,0.06)] backdrop-blur-[10px]"
           data-intro-reveal
-          style="--intro-reveal-delay: 290ms"
+          style="--intro-reveal-delay: 200ms"
         >
           <h3
             class="m-0 flex items-center gap-[8px] [color:var(--brand-hover)] [font-size:24px] font-extrabold leading-none"
@@ -136,7 +115,7 @@ import rulesBackgroundUrl from "@/assets/images/intro/rules-bg.webp";
       <article
         class="mt-[8px] flex min-h-0 flex-1 flex-col border border-[rgba(134,179,224,0.42)] bg-white/75 px-[12px] pt-[12px] shadow-[0_10px_30px_rgba(0,19,50,0.06)] backdrop-blur-[10px]"
         data-intro-reveal
-        style="--intro-reveal-delay: 390ms"
+        style="--intro-reveal-delay: 290ms"
       >
         <h3
           class="m-0 flex items-center gap-[8px] [color:var(--brand-hover)] [font-size:24px] font-extrabold leading-none"

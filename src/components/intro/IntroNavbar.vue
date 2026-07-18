@@ -17,6 +17,7 @@ const navItems = [
   { label: "遊戲簡介", sectionId: "intro-background", enabled: true },
   { label: "規則介紹", sectionId: "intro-rules", enabled: true },
   { label: "卡牌介紹", sectionId: "intro-cards", enabled: true },
+  { label: "特色系統", sectionId: "intro-feature", enabled: true },
   { label: "團隊成員", sectionId: "intro-team", enabled: true },
 ];
 
@@ -27,7 +28,7 @@ function startGame() {
 
 <template>
   <header
-    class="relative z-10 grid h-[48px] w-full flex-[0_0_48px] grid-cols-[128px_minmax(0,1fr)_96px] items-center gap-6 border-b border-[rgba(134,179,224,0.52)] bg-white/95 px-[20px] backdrop-blur-[10px] lg:h-[66px] lg:flex-[0_0_66px] lg:grid-cols-[228px_1fr_132px] lg:gap-12 lg:pl-[70px] lg:pr-[58px]"
+    class="relative z-10 grid h-[48px] w-full flex-[0_0_48px] grid-cols-[128px_minmax(0,1fr)_96px] items-center gap-4 border-b border-[rgba(134,179,224,0.52)] bg-white/95 px-[20px] backdrop-blur-[10px] lg:h-[66px] lg:flex-[0_0_66px] lg:grid-cols-[228px_1fr_132px] lg:gap-10 lg:pl-[70px] lg:pr-[58px]"
     aria-label="介紹頁導覽"
   >
     <button
@@ -44,7 +45,7 @@ function startGame() {
     </button>
 
     <nav
-      class="flex h-full justify-end gap-[18px] lg:gap-[60px]"
+      class="flex h-full justify-end gap-[14px] lg:gap-[42px]"
       aria-label="頁面區塊"
     >
       <template v-for="item in navItems" :key="item.sectionId">

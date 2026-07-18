@@ -2,6 +2,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import IntroBackgroundSection from "@/components/intro/IntroBackgroundSection.vue";
 import IntroCardsSection from "@/components/intro/IntroCardsSection.vue";
+import IntroFeatureSection from "@/components/intro/IntroFeatureSection.vue";
 import IntroMainSection from "@/components/intro/IntroMainSection.vue";
 import IntroNavbar from "@/components/intro/IntroNavbar.vue";
 import IntroRulesSection from "@/components/intro/IntroRulesSection.vue";
@@ -66,6 +67,7 @@ onMounted(async () => {
     "intro-background",
     "intro-rules",
     "intro-cards",
+    "intro-feature",
     "intro-team",
   ]
     .map((id) => document.getElementById(id))
@@ -84,6 +86,9 @@ onMounted(async () => {
       if ((sectionRatios.get("intro-team") ?? 0) >= 0.6) {
         visibleSectionId = "intro-team";
         activeSection.value = "intro-team";
+      } else if ((sectionRatios.get("intro-feature") ?? 0) >= 0.6) {
+        visibleSectionId = "intro-feature";
+        activeSection.value = "intro-feature";
       } else if ((sectionRatios.get("intro-cards") ?? 0) >= 0.6) {
         visibleSectionId = "intro-cards";
         activeSection.value = "intro-cards";
@@ -148,6 +153,7 @@ onBeforeUnmount(() => {
       <IntroBackgroundSection />
       <IntroRulesSection />
       <IntroCardsSection />
+      <IntroFeatureSection />
       <IntroTeamSection />
     </div>
   </main>
