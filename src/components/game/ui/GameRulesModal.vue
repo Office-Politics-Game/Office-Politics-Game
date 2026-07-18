@@ -137,6 +137,12 @@ watch(isOpen, async (nextIsOpen) => {
   await nextTick();
   triggerButton.value?.focus();
 });
+
+defineExpose({
+  getTriggerElement() {
+    return triggerButton.value;
+  },
+});
 </script>
 
 <template>
