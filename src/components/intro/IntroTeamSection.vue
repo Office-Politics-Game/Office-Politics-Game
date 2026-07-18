@@ -39,7 +39,7 @@ const teamMembers = [
       "房間、遊戲回合流程",
       "訪客模式登入後端",
       "註冊/登入/登出功能後端",
-      "登入系統前端權限控管建置",
+      "登入系統前端權限建置",
     ],
   },
   {
@@ -144,7 +144,7 @@ const repositoryUrl =
           </div>
 
           <ul
-            class="m-0 grid list-none grid-cols-2 gap-x-[10px] gap-y-[6px] px-[12px] py-[14px] [color:var(--brand-active)] [font-size:12px] font-medium leading-[1.35]"
+            class="m-0 grid list-none grid-cols-2 gap-x-[10px] gap-y-[6px] px-[12px] py-[14px] [color:var(--brand-active)] [font-size:14px] font-medium leading-[1.35]"
           >
             <li v-for="task in member.tasks" :key="task" class="flex gap-[6px]">
               <span class="shrink-0 [color:var(--gray-300)]" aria-hidden="true">
@@ -182,7 +182,7 @@ const repositoryUrl =
               <h3
                 class="mb-0 mt-[18px] [font-size:20px] font-bold leading-[1.1]"
               >
-                Office Politics《職場風雲》
+                《Office Politics: 職場風雲》
               </h3>
               <p
                 class="mb-0 mt-[18px] [font-size:15px] font-medium leading-[1.6] text-white/86"

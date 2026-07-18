@@ -38,6 +38,41 @@
           {{ isMemberLoggedIn ? "登出" : "訪客遊玩" }}
         </button>
       </div>
+
+      <RouterLink
+        class="mt-5 text-[13px] font-medium text-white/78 transition-colors duration-[180ms] ease-out hover:text-white focus-visible:outline-0 focus-visible:shadow-[0_0_0_4px_var(--brand-focus)] lg:mt-6 lg:text-[15px]"
+        to="/intro"
+      >
+        關於遊戲
+      </RouterLink>
+
+      <footer
+        class="absolute inset-x-0 bottom-4 z-10 flex items-center justify-center px-4 text-white/62 lg:bottom-6"
+        aria-label="頁尾資訊"
+      >
+        <div
+          class="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-[11px] font-normal leading-none lg:text-[12px]"
+        >
+          <span>ver 1.0.0</span>
+          <span aria-hidden="true">|</span>
+          <span>© 2026 Office Politics Game Team</span>
+          <span aria-hidden="true">|</span>
+          <RouterLink
+            class="transition-colors duration-[180ms] ease-out hover:text-white focus-visible:outline-0 focus-visible:shadow-[0_0_0_4px_var(--brand-focus)]"
+            to="/privacy"
+          >
+            隱私權政策
+          </RouterLink>
+          <span aria-hidden="true">|</span>
+          <a
+            class="transition-colors duration-[180ms] ease-out hover:text-white focus-visible:outline-0 focus-visible:shadow-[0_0_0_4px_var(--brand-focus)]"
+            href="#"
+            @click.prevent
+          >
+            會員條款
+          </a>
+        </div>
+      </footer>
       <div
         v-if="showLoginModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
