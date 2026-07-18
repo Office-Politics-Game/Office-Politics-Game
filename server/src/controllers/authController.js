@@ -11,6 +11,21 @@ import { AUTH_COOKIE_NAME } from "../constants/auth.js"
 
 const DEFAULT_AUTH_COOKIE_MAX_AGE = 60 * 60 * 1000
 
+function sendAuthError(res, error, fallbackMessage) {
+    if (error?.isPublic === true || Number.isInteger(error?.statusCode)) {
+        res.status(error.statusCode || 500).json({
+            message: error.message || fallbackMessage
+        })
+        return
+    }
+
+    console.error(fallbackMessage, error)
+
+    res.status(500).json({
+        message: fallbackMessage
+    })
+}
+
 function getBooleanEnv(value, fallback = false) {
     if (value === "true") return true
     if (value === "false") return false
@@ -56,9 +71,7 @@ async function handleRegisterPlayer(req, res) {
             message: "註冊成功，請至信箱完成驗證後再登入"
         })
     } catch (error) {
-        res.status(error.statusCode || 500).json({
-            message: error.message || "註冊失敗"
-        })
+        sendAuthError(res, error, "註冊失敗，請稍後再試")
     }
 }
 
@@ -70,9 +83,7 @@ async function handleLoginPlayer(req, res) {
 
         res.status(200).json({ player })
     } catch (error) {
-        res.status(error.statusCode || 500).json({
-            message: error.message || "登入失敗"
-        })
+        sendAuthError(res, error, "登入失敗，請稍後再試")
     }
 }
 
@@ -84,9 +95,7 @@ async function handleOAuthCallback(req, res) {
 
         res.status(200).json({ player })
     } catch (error) {
-        res.status(error.statusCode || 500).json({
-            message: error.message || "第三方登入失敗"
-        })
+        sendAuthError(res, error, "第三方登入失敗，請稍後再試")
     }
 }
 
@@ -97,9 +106,7 @@ async function handleVerifyToken(req, res) {
 
         res.status(200).json({ player })
     } catch (error) {
-        res.status(error.statusCode || 500).json({
-            message: error.message || "登入驗證失敗"
-        })
+        sendAuthError(res, error, "登入驗證失敗")
     }
 }
 
@@ -124,9 +131,7 @@ async function handleForgotPassword(req, res) {
 
         res.status(200).json(result)
     } catch (error) {
-        res.status(error.statusCode || 500).json({
-            message: error.message || "重設密碼信寄送失敗"
-        })
+        sendAuthError(res, error, "重設密碼信寄送失敗，請稍後再試")
     }
 }
 
@@ -136,9 +141,7 @@ async function handleResetPassword(req, res) {
 
         res.status(200).json(result)
     } catch (error) {
-        res.status(error.statusCode || 500).json({
-            message: error.message || "密碼重設失敗"
-        })
+        sendAuthError(res, error, "密碼重設失敗，請稍後再試")
     }
 }
 

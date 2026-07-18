@@ -7,7 +7,8 @@ export const usePlayerStore = defineStore("player", {
   }),
 
   getters: {
-    currentPlayerId: (state) => state.currentPlayer?.id ?? null,
+    currentPlayerId: (state) =>
+      state.currentPlayer?.id ?? state.currentPlayer?.playerId ?? null,
   },
 
   actions: {

@@ -13,8 +13,17 @@ async function requireAuth(req, res, next) {
         req.player = player
         next()
     } catch (error) {
-        res.status(error.statusCode || 401).json({
-            message: error.message || "請先登入"
+        if (error?.isPublic === true || Number.isInteger(error?.statusCode)) {
+            res.status(error.statusCode || 401).json({
+                message: error.message || "請先登入"
+            })
+            return
+        }
+
+        console.error("登入驗證失敗", error)
+
+        res.status(401).json({
+            message: "請先登入"
         })
     }
 }

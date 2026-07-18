@@ -105,7 +105,9 @@ function normalizeMatchHistoryItem(match) {
     result: match.result,
     winnerPlayerId: match.winnerPlayerId,
     winnerUsername: match.winnerUsername || UNSET_TEXT,
-    xpGained: toNumber(match.xpGained ?? match.xp_gained, 0),
+    xpGained: toNumber(match.xpGained ?? match.xp_gained ?? match.expGained ?? match.exp_gained, 0),
+    expGained: toNumber(match.expGained ?? match.exp_gained ?? match.xpGained ?? match.xp_gained, 0),
+    coinsGained: toNumber(match.coinsGained ?? match.coins_gained, 0),
     startedAt: match.startedAt,
     endedAt: match.endedAt,
     participants: Array.isArray(match.participants)
@@ -115,6 +117,8 @@ function normalizeMatchHistoryItem(match) {
           avatarId: toNumber(participant.avatarId, DEFAULT_AVATAR_ID),
           roundWins: toNumber(participant.roundWins, 0),
           result: participant.result,
+          expGained: toNumber(participant.expGained ?? participant.exp_gained, 0),
+          coinsGained: toNumber(participant.coinsGained ?? participant.coins_gained, 0),
         }))
       : [],
   };

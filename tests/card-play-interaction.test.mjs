@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { access, readFile } from 'node:fs/promises'
 import test from 'node:test'
+import { reactive, readonly } from 'vue'
+import { filterVisibleHandCards } from '../src/composables/useGameStageCardPlay.js'
 
 const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
@@ -74,10 +76,74 @@ test('game stage prunes hidden played cards through extracted card-play state', 
   const source = await readSource('src/components/game/ui/GameStage.vue')
   const cardPlaySource = await readSource('src/composables/useGameStageCardPlay.js')
 
-  assert.match(cardPlaySource, /function pruneHiddenPlayedCards\(cardIds\)/)
-  assert.match(source, /pruneHiddenPlayedCards\(cardIds\)/)
+  assert.match(cardPlaySource, /function pruneHiddenPlayedCards\(handCards\)/)
+  assert.match(source, /pruneHiddenPlayedCards\(handCards\)/)
   assert.doesNotMatch(source, /locallyHiddenPlayedCardIds/)
   assert.doesNotMatch(source, /clearHiddenPlayedCard/)
+})
+
+test('playing one of two equal cards hides only the selected card instance', () => {
+  const firstCard = { id: '1', name: 'Intern' }
+  const secondCard = { id: '1', name: 'Intern' }
+  const handCards = [firstCard, secondCard]
+
+  assert.deepEqual(
+    filterVisibleHandCards(handCards, secondCard, []),
+    [firstCard],
+  )
+  assert.deepEqual(
+    filterVisibleHandCards(handCards, null, [secondCard]),
+    [firstCard],
+  )
+})
+
+test('submitted card stays hidden when Vue wraps the same card with another proxy', () => {
+  const playedCard = { id: '1', name: 'Intern' }
+  const otherEqualCard = { id: '1', name: 'Intern' }
+  const handCards = reactive([playedCard, otherEqualCard])
+  const submittedCard = readonly(playedCard)
+
+  assert.deepEqual(
+    filterVisibleHandCards(handCards, null, [submittedCard]),
+    [handCards[1]],
+  )
+})
+
+test('submitted cards stay hidden while their effect or staged discard is active', async () => {
+  const source = await readSource('src/composables/useGameStageCardPlay.js')
+
+  assert.match(source, /const HIDDEN_PLAYED_CARD_FALLBACK_MS = 5000/)
+  assert.match(source, /const HIDDEN_PLAYED_CARD_RETRY_MS = 250/)
+  assert.match(source, /function scheduleHiddenPlayedCardCleanup/)
+  assert.match(source, /stagedDiscardCard\.value\?\.id === card\.id/)
+  assert.match(source, /Boolean\(activeEffectResult\.value\)/)
+  assert.match(
+    source,
+    /scheduleHiddenPlayedCardCleanup\(card, HIDDEN_PLAYED_CARD_RETRY_MS\)/,
+  )
+  assert.match(source, /scheduleHiddenPlayedCardCleanup\(cardInstance\)/)
+})
+
+test('remote players lose one visible hand card as soon as they play it', async () => {
+  const stage = await readSource('src/components/game/ui/GameStage.vue')
+  const cardPlaySource = await readSource('src/composables/useGameStageCardPlay.js')
+
+  assert.match(cardPlaySource, /const stagedRemotePlayedCard = ref\(null\)/)
+  assert.match(cardPlaySource, /const visiblePlayerHandCardCounts = computed/)
+  assert.match(
+    cardPlaySource,
+    /remainingCount: currentCount - 1/,
+  )
+  assert.match(
+    cardPlaySource,
+    /Math\.min\([\s\S]*currentCount,[\s\S]*stagedPlay\.remainingCount/,
+  )
+  assert.match(
+    cardPlaySource,
+    /stagedRemotePlayedCard\.value = null/,
+  )
+  assert.match(stage, /resolvedPlayerHandCardCounts,/)
+  assert.match(stage, /:player-hand-card-counts="visiblePlayerHandCardCounts"/)
 })
 
 test('intern animation normalization requires and preserves the submitted guess', async () => {
@@ -100,14 +166,29 @@ test('game stage resolves the intern target name with a stable fallback', async 
 
 test('intern animation shows the submitted position before a persistent outcome', async () => {
   const source = await readSource('src/components/game/animations/InternAnimation.vue')
+  const incorrectSource = source.slice(
+    source.indexOf('async function playIncorrect'),
+    source.indexOf('async function playCorrect'),
+  )
+  const correctSource = source.slice(
+    source.indexOf('async function playCorrect'),
+    source.indexOf('async function play(result)'),
+  )
+  const outcomeRevealSequence = /\.to\(\{\}, \{ duration: GUESS_PROMPT_HOLD_SECONDS \}\)\s*\.call\(\(\) => \{\s*emit\("outcome-reveal", result\.outcome\);\s*\}\)\s*\.set\(outcomeRef\.value/
 
+  assert.match(source, /defineEmits\(\["complete", "outcome-reveal"\]\)/)
   assert.match(source, /targetPlayerName: \{ type: String, default: ['"]玩家['"] \}/)
   assert.match(source, /intern-animation__prompt-value">[\s\S]*?targetPlayerName[\s\S]*?<\/span>/)
   assert.match(source, /intern-animation__prompt-value">[\s\S]*?activeResult\.guessedCardName[\s\S]*?<\/span>/)
   assert.match(source, /\.intern-animation__prompt \{[\s\S]*font-size: clamp\(14\.4px, 2\.7vw, 32\.4px\)/)
   assert.match(source, /\.intern-animation__prompt-value \{[\s\S]*color: #facc15;[\s\S]*\}/)
   assert.match(source, /const GUESS_PROMPT_HOLD_SECONDS = 1/)
-  assert.match(source, /\.to\(\{\}, \{ duration: GUESS_PROMPT_HOLD_SECONDS \}\)[\s\S]*\.set\(outcomeRef\.value/)
+  assert.match(incorrectSource, outcomeRevealSequence)
+  assert.match(correctSource, outcomeRevealSequence)
+  assert.equal(
+    (source.match(/emit\("outcome-reveal", result\.outcome\)/g) ?? []).length,
+    2,
+  )
   assert.match(source, /\[glowRef\.value, promptRef\.value, outcomeRef\.value\]/)
   assert.match(source, /isReducedMotion\(\)/)
   assert.match(source, /\.intern-animation__prompt \{[\s\S]*width: min\(92vw, 900px\)[\s\S]*overflow-wrap: anywhere/)

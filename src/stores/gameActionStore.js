@@ -94,6 +94,7 @@ export const useGameActionStore = defineStore("gameAction", {
     async fetchGameResult(roomCode, payload = {}) {
       this.isLoading = true
       this.errorMessage = ""
+      this.result = null
 
       try {
         const data = await getGameResult(roomCode, payload)

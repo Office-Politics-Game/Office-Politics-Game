@@ -19,6 +19,21 @@ test('round showdown reveals survivor cards and emphasizes only the winner', asy
   assert.match(source, /duration: SHOWDOWN_HOLD_SECONDS/)
 })
 
+test('round showdown hides original opponent card backs while proxy cards flip', async () => {
+  const animation = await readSource('src/components/game/animations/RoundShowdownAnimation.vue')
+  const stage = await readSource('src/components/game/ui/GameStage.vue')
+  const visibility = await readSource('src/composables/useGameStageCardVisibility.js')
+
+  assert.match(animation, /defineEmits\(\['hidden-player-ids-change'\]\)/)
+  assert.match(animation, /entries[\s\S]*\.filter\(\(entry\) => !entry\.isSelf\)/)
+  assert.match(animation, /emit\('hidden-player-ids-change', hiddenPlayerIds\)/)
+  assert.match(animation, /emit\('hidden-player-ids-change', \[\]\)/)
+  assert.match(stage, /roundShowdownHiddenPlayerIds/)
+  assert.match(stage, /@hidden-player-ids-change="handleShowdownHiddenPlayerIdsChange"/)
+  assert.match(visibility, /roundShowdownHiddenPlayerIds/)
+  assert.match(visibility, /new Set\(\[\.\.\.effectPlayerIds, \.\.\.showdownPlayerIds\]\)/)
+})
+
 test('round showdown supports reduced motion without shortening the result hold', async () => {
   const source = await readSource('src/components/game/animations/RoundShowdownAnimation.vue')
 

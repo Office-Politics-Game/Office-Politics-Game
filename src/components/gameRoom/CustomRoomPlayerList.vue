@@ -1,5 +1,5 @@
 <script setup>
-import { Crown, UserPlus, X } from "@lucide/vue";
+import { Award, Crown, UserPlus, X } from "@lucide/vue";
 import waitingRoomPlayer from "@/assets/images/waiting-room-player.webp";
 
 defineProps({
@@ -19,7 +19,7 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
 <template>
   <section
     class="pointer-events-none flex justify-center"
-    aria-label="玩家列表"
+    aria-label="等待房間玩家列表"
   >
     <div
       class="flex h-[232px] w-[572px] items-center justify-center gap-5 lg:h-[420px] lg:w-[1034px] lg:gap-4"
@@ -41,8 +41,8 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
           v-if="slot.name && !slot.isPlaceholder && slot.canRemovePlayer"
           class="room-remove-button tap-pop col-start-1 row-start-1"
           type="button"
-          aria-label="剔除玩家"
-          title="剔除玩家"
+          aria-label="移除玩家"
+          title="移除玩家"
           @click="$emit('remove-player', index)"
         >
           <X class="h-3.5 w-3.5 lg:h-5 lg:w-5" :stroke-width="3" />
@@ -50,15 +50,27 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
 
         <div
           class="room-player-safe-zone col-start-1 row-start-1 mx-auto mt-[20%] flex h-[70%] w-[80%] flex-col items-center text-center"
-          :class="{ 'room-player-safe-zone--restoring': slot.isPlaceholder }"
+          :class="{
+            'room-player-safe-zone--restoring': slot.isPlaceholder,
+            'room-player-safe-zone--removing': slot.isPendingRemoval,
+          }"
         >
-          <div class="room-player-avatar-wrap mt-10 lg:mt-20">
+          <div class="room-player-avatar-wrap mt-[23px] lg:mt-[52px]">
             <img
               v-if="slot.avatar"
               class="room-player-avatar-image h-[42px] w-[42px] flex-none rounded-full border-2 border-white/70 object-cover lg:h-[76px] lg:w-[76px]"
               :src="slot.avatar"
               :alt="slot.name"
             />
+            <div
+              v-else-if="slot.isPendingComputer"
+              class="room-player-avatar room-player-avatar--pending h-[42px] w-[42px] lg:h-[76px] lg:w-[76px]"
+            >
+              <UserPlus
+                class="h-[34px] w-[34px] flex-none lg:h-[68px] lg:w-[68px]"
+                :stroke-width="1.9"
+              />
+            </div>
             <UserPlus
               v-else
               class="room-player-avatar h-[34px] w-[34px] flex-none lg:h-[68px] lg:w-[68px]"
@@ -77,13 +89,32 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
 
           <div
             v-if="slot.name"
-            class="room-player-info mt-[10px] flex w-full flex-col items-center gap-[6px] lg:mt-[24px] lg:gap-[14px]"
+            class="room-player-info mt-[6px] flex w-full flex-col items-center gap-[6px] lg:mt-[14px] lg:gap-[14px]"
+            :class="{
+              'room-player-info--with-title': slot.title && !slot.isPlaceholder,
+            }"
           >
             <p
-              class="room-player-title m-0 w-full whitespace-nowrap text-center text-[14px] font-black leading-[1.12] lg:text-[28px]"
-              :class="{ 'room-player-title--restoring': slot.isPlaceholder }"
+              class="room-player-title m-0 w-full text-center text-[10px] font-black leading-[1.12] lg:text-[20px]"
+              :title="slot.name ?? slot.option1"
+              :class="{
+                'room-player-title--restoring': slot.isPlaceholder,
+                'room-player-title--removing': slot.isPendingRemoval,
+              }"
             >
               {{ slot.name ?? slot.option1 }}
+            </p>
+            <p
+              v-if="slot.title && !slot.isPlaceholder"
+              class="room-player-achievement-title m-0"
+              :title="slot.title"
+            >
+              <Award
+                class="room-player-achievement-icon h-[11px] w-[11px] flex-none lg:h-[18px] lg:w-[18px]"
+                :stroke-width="2.4"
+                aria-hidden="true"
+              />
+              <span class="min-w-0 truncate">{{ slot.title }}</span>
             </p>
             <p
               v-if="slot.level"
@@ -94,9 +125,18 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
             <p
               v-else-if="slot.placeholderLabel"
               class="room-player-level m-0 text-[10px] font-extrabold leading-none lg:text-[14px]"
-              :class="{ 'room-player-level--restoring': slot.isPlaceholder }"
+              :class="{
+                'room-player-level--restoring': slot.isPlaceholder,
+                'room-player-level--pending': slot.isPendingComputer,
+                'room-player-level--removing': slot.isPendingRemoval,
+              }"
             >
               {{ slot.placeholderLabel }}
+              <span
+                v-if="slot.isPendingComputer || slot.isPendingRemoval"
+                class="room-player-loading-dots"
+                aria-hidden="true"
+              ></span>
             </p>
           </div>
 
@@ -124,8 +164,8 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
           </div>
 
           <div
-            v-if="slot.name && !slot.isHost && !slot.isPlaceholder"
-            class="room-ready-stamp mt-3 lg:mt-6"
+            v-if="slot.name && !slot.isHost && !slot.isPlaceholder && !slot.isPendingRemoval"
+            class="room-ready-stamp mt-[6px] lg:mt-[14px]"
             :class="{ 'room-ready-stamp--pending': !slot.isReady }"
             :aria-label="slot.isReady ? '已打卡' : '未打卡'"
           >
@@ -147,6 +187,7 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
 }
 
 .room-player-safe-zone {
+  position: relative;
   color: var(--brand-active, #465563);
 }
 
@@ -154,11 +195,30 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
   color: var(--brand-active, #465563);
 }
 
+.room-player-avatar--pending {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 2px dashed rgba(70, 85, 99, 0.38);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.6);
+  animation: room-pending-avatar-pulse 1.15s ease-in-out infinite;
+}
+
 .room-player-avatar--restoring,
 .room-player-title--restoring,
 .room-player-level--restoring,
 .room-player-safe-zone--restoring .room-host-badge {
   animation: room-slot-breathe 1.2s ease-in-out infinite;
+}
+
+.room-player-safe-zone--removing {
+  animation: room-removing-slot 0.9s ease-in-out infinite alternate;
+}
+
+.room-player-title--removing,
+.room-player-level--removing {
+  color: #8b4c48;
 }
 
 .room-remove-button {
@@ -210,8 +270,8 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
 
 .room-host-badge {
   position: absolute;
-  right: -2px;
-  bottom: -5px;
+  top: -5px;
+  right: -7px;
   display: grid;
   place-items: center;
   width: 19px;
@@ -229,6 +289,19 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
 .room-player-option-button {
   border-radius: var(--radius-md, 0);
   color: var(--brand-active, #465563);
+}
+
+.room-player-title {
+  display: -webkit-box;
+  min-height: 2.3em;
+  overflow: hidden;
+  padding-inline: 6px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .room-player-option-button {
@@ -312,8 +385,70 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
   color: #fff8f7;
 }
 
+.room-player-info--with-title .room-player-title {
+  display: block;
+  min-height: 1.12em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .room-player-level {
   color: var(--brand-active, #465563);
+}
+
+.room-player-achievement-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: max-content;
+  max-width: 112px;
+  padding: 1px 3px;
+  color: #657487;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  text-align: center;
+}
+
+.room-player-achievement-icon {
+  color: #f17822;
+}
+
+.room-player-level--pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+}
+
+.room-player-level--removing {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+}
+
+.room-player-loading-dots::after {
+  content: "...";
+  display: inline-block;
+  width: 1.8em;
+  overflow: hidden;
+  vertical-align: bottom;
+  animation: room-loading-dots 1s steps(4, end) infinite;
+}
+
+@media (min-width: 1024px) {
+  .room-player-achievement-title {
+    gap: 7px;
+    max-width: 180px;
+    padding: 2px 5px;
+    font-size: 15px;
+  }
+
+  .room-player-title {
+    min-height: 2.45em;
+    padding-inline: 10px;
+  }
 }
 
 .room-player-level--restoring {
@@ -328,6 +463,41 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
 
   50% {
     opacity: 1;
+  }
+}
+
+@keyframes room-pending-avatar-pulse {
+  0%,
+  100% {
+    transform: scale(0.96);
+    opacity: 0.7;
+  }
+
+  50% {
+    transform: scale(1.03);
+    opacity: 1;
+  }
+}
+
+@keyframes room-loading-dots {
+  0% {
+    width: 0;
+  }
+
+  100% {
+    width: 1.8em;
+  }
+}
+
+@keyframes room-removing-slot {
+  0% {
+    opacity: 0.55;
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    opacity: 0.92;
+    transform: translateY(-2px) scale(0.985);
   }
 }
 

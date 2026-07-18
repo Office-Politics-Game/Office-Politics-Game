@@ -4,6 +4,7 @@ import {
   setProfileTitle,
   updateProfile,
 } from "../services/profileService.js"
+import { getSocketServer } from "../socket/index.js"
 
 function getErrorStatus(error) {
   return error.statusCode || 500
@@ -24,6 +25,11 @@ async function handleGetProfile(req, res) {
 async function handleSetProfileTitle(req, res) {
   try {
     const profile = await setProfileTitle(req.player.id, req.body?.achievementCode)
+
+    getSocketServer()?.emit("player:title-updated", {
+      playerId: profile.id,
+      title: profile.title || "",
+    })
 
     res.status(200).json({ profile })
   } catch (error) {

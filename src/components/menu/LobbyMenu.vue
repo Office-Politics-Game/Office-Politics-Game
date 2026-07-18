@@ -276,7 +276,7 @@ function openGameMenu() {
     return;
   }
 
-  playPreGameSound("login-button-click");
+  playLobbyNavigationSound();
   router.push({ name: "LobbyGameMenu" });
 }
 
