@@ -64,7 +64,12 @@ function startGame() {
               <div
                 class="flex w-[540px] origin-top scale-[var(--intro-scale)] flex-col items-center text-center"
               >
-                <h1 id="intro-main-title" class="m-0">
+                <h1
+                  id="intro-main-title"
+                  class="m-0"
+                  data-intro-reveal
+                  style="--intro-reveal-delay: 0ms"
+                >
                   <img
                     class="block w-[540px] brightness-0 invert"
                     :src="mainLogoUrl"
@@ -74,26 +79,35 @@ function startGame() {
 
                 <p
                   class="mb-0 mt-[34px] text-[28px] font-black leading-[1.2] text-white drop-shadow-[0_6px_18px_rgba(0,19,50,0.22)]"
+                  data-intro-reveal
+                  style="--intro-reveal-delay: 90ms"
                 >
                   策略・心機・人際・勝負
                 </p>
                 <p
                   class="mb-[44px] mt-[12px] text-[length:var(--text-md)] font-bold leading-[1.2] text-white/85 drop-shadow-[0_6px_18px_rgba(0,19,50,0.2)]"
+                  data-intro-reveal
+                  style="--intro-reveal-delay: 160ms"
                 >
                   每一步決策，都將左右你的職場命運
                 </p>
 
-                <button
-                  class="inline-flex h-[58px] w-[246px] items-center justify-center gap-[14px] bg-[var(--brand-hover)] text-[23px]! font-bold text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.32),0_0_24px_rgba(255,255,255,0.5),0_20px_46px_rgba(0,70,244,0.32)] transition-[transform,background,border-color,box-shadow] duration-[180ms] ease-out hover:-translate-y-px hover:border-[var(--brand-active)] hover:bg-[var(--brand-active)] active:translate-y-px active:border-[var(--brand-active)] active:bg-[var(--brand-active)] focus-visible:outline-0 focus-visible:shadow-[0_0_0_5px_var(--brand-focus),0_0_24px_rgba(255,255,255,0.5),0_20px_46px_rgba(0,70,244,0.28)]"
-                  type="button"
-                  @click="startGame"
+                <div
+                  data-intro-reveal
+                  style="--intro-reveal-delay: 240ms"
                 >
-                  <Play
-                    class="h-[24px] w-[24px] fill-current stroke-[3]"
-                    aria-hidden="true"
-                  />
-                  <span>開始遊戲</span>
-                </button>
+                  <button
+                    class="inline-flex h-[58px] w-[246px] items-center justify-center gap-[14px] bg-[var(--brand-hover)] text-[23px]! font-bold text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.32),0_0_24px_rgba(255,255,255,0.5),0_20px_46px_rgba(0,70,244,0.32)] transition-[transform,background,border-color,box-shadow] duration-[180ms] ease-out hover:-translate-y-px hover:border-[var(--brand-active)] hover:bg-[var(--brand-active)] active:translate-y-px active:border-[var(--brand-active)] active:bg-[var(--brand-active)] focus-visible:outline-0 focus-visible:shadow-[0_0_0_5px_var(--brand-focus),0_0_24px_rgba(255,255,255,0.5),0_20px_46px_rgba(0,70,244,0.28)]"
+                    type="button"
+                    @click="startGame"
+                  >
+                    <Play
+                      class="h-[24px] w-[24px] fill-current stroke-[3]"
+                      aria-hidden="true"
+                    />
+                    <span>開始遊戲</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -108,6 +122,8 @@ function startGame() {
             :key="feature.title"
             class="flex min-w-0 items-center justify-center gap-[10px] text-white lg:gap-[18px]"
             :class="{ 'border-l border-white/30': index > 0 }"
+            data-intro-reveal
+            :style="{ '--intro-reveal-delay': `${320 + index * 70}ms` }"
           >
             <component
               :is="feature.icon"

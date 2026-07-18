@@ -18,24 +18,32 @@ import backgroundImageUrl from "@/assets/images/intro/background-bg.webp";
     >
       <p
         class="m-0 [color:var(--gray-300)] [font-size:24px] font-bold leading-none"
+        data-intro-reveal
+        style="--intro-reveal-delay: 0ms"
       >
         遊戲背景 BACKGROUND
       </p>
       <h2
         id="intro-background-title"
         class="mb-0 mt-[16px] [color:var(--brand-hover)] [font-size:42px] font-black leading-[1.2]"
+        data-intro-reveal
+        style="--intro-reveal-delay: 90ms"
       >
         歡迎加入職場的權力遊戲
       </h2>
       <div
         class="mt-[28px] h-[6px] w-[88px] bg-[var(--brand-hover)]"
+        data-intro-reveal
+        style="--intro-reveal-delay: 160ms"
         aria-hidden="true"
       />
     </div>
 
     <div
       class="absolute w-[680px] [color:var(--brand-active)] [font-size:14px] font-medium leading-[1.9] lg:[font-size:20px]"
+      data-intro-reveal
       style="
+        --intro-reveal-delay: 260ms;
         left: calc(72px * var(--intro-scale));
         bottom: calc(50px * var(--intro-scale));
       "

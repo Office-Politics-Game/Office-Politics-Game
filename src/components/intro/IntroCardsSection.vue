@@ -3,6 +3,7 @@ import { ref } from "vue";
 import CardInspectionOverlay from "@/components/game/ui/CardInspectionOverlay.vue";
 import GameCard from "@/components/game/ui/GameCard.vue";
 import cardsIllustrationUrl from "@/assets/images/intro/cards.webp";
+import rulesBackgroundUrl from "@/assets/images/intro/rules-bg.webp";
 import { cardAssetsByKey } from "@/constants/cardAssets.js";
 
 const cardOrder = [
@@ -35,7 +36,8 @@ function closeCardInspection() {
 <template>
   <section
     id="intro-cards"
-    class="flex h-full min-h-full w-full justify-center snap-start snap-always overflow-hidden bg-[linear-gradient(90deg,#ffffff_0%,#f4f7fb_58%,rgba(134,179,224,0.62)_100%)]"
+    class="flex h-full min-h-full w-full justify-center snap-start snap-always overflow-hidden bg-white bg-cover bg-center bg-no-repeat"
+    :style="{ backgroundImage: `url(${rulesBackgroundUrl})` }"
     aria-labelledby="intro-cards-title"
   >
     <div
@@ -45,7 +47,7 @@ function closeCardInspection() {
         class="flex h-[560px] w-85 shrink-0 flex-col justify-between"
         aria-labelledby="intro-cards-title"
       >
-        <header>
+        <header data-intro-reveal style="--intro-reveal-delay: 0ms">
           <p
             class="m-0 [color:var(--gray-300)] [font-size:24px] font-bold leading-none"
           >
@@ -61,11 +63,15 @@ function closeCardInspection() {
           class="ml-[4px] mt-[38px] block w-[300px] object-contain"
           :src="cardsIllustrationUrl"
           alt="職場風雲卡牌牌庫與未知手牌"
+          data-intro-reveal
+          style="--intro-reveal-delay: 110ms"
         />
 
         <ul
           class="m-0 grid list-none gap-[18px] p-0 [color:var(--brand-active)] [font-size:22px] font-bold leading-none"
           aria-label="卡牌資訊"
+          data-intro-reveal
+          style="--intro-reveal-delay: 220ms"
         >
           <li class="flex items-baseline gap-[12px]">
             <span class="[color:var(--brand-hover)]" aria-hidden="true">-</span>
@@ -110,18 +116,24 @@ function closeCardInspection() {
         aria-label="職位卡牌一覽"
       >
         <button
-          v-for="card in cards"
+          v-for="(card, index) in cards"
           :key="card.key"
           class="h-[224px] w-[164px] bg-transparent p-0 transition-transform duration-[180ms] ease-out hover:-translate-y-px active:translate-y-px focus-visible:outline-0 focus-visible:shadow-[0_0_0_5px_var(--brand-focus)]"
           type="button"
           :aria-label="`檢視卡牌：${card.name}`"
           @click="openCardInspection(card)"
         >
-          <GameCard
-            :name="card.name"
-            :background-url="card.backgroundUrl"
-            :frame-url="card.frameUrl"
-          />
+          <div
+            class="size-full"
+            data-intro-reveal
+            :style="{ '--intro-reveal-delay': `${120 + index * 45}ms` }"
+          >
+            <GameCard
+              :name="card.name"
+              :background-url="card.backgroundUrl"
+              :frame-url="card.frameUrl"
+            />
+          </div>
         </button>
       </div>
     </div>

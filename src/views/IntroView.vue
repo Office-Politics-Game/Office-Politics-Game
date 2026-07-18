@@ -5,11 +5,14 @@ import IntroCardsSection from "@/components/intro/IntroCardsSection.vue";
 import IntroMainSection from "@/components/intro/IntroMainSection.vue";
 import IntroNavbar from "@/components/intro/IntroNavbar.vue";
 import IntroRulesSection from "@/components/intro/IntroRulesSection.vue";
+import IntroTeamSection from "@/components/intro/IntroTeamSection.vue";
 
 const scrollContainer = ref(null);
 const activeSection = ref("");
 const sectionRatios = new Map();
 let sectionObserver;
+let revealedSectionId = "";
+let revealAnimationFrame = 0;
 
 function navigateToSection(sectionId) {
   const target = document.getElementById(sectionId);
@@ -31,6 +34,29 @@ function navigateToSection(sectionId) {
   });
 }
 
+function revealSection(sectionId, sections) {
+  if (revealedSectionId === sectionId) return;
+
+  if (revealAnimationFrame) {
+    window.cancelAnimationFrame(revealAnimationFrame);
+    revealAnimationFrame = 0;
+  }
+
+  sections.forEach((section) => {
+    section.classList.remove("intro-section--revealed");
+  });
+
+  revealedSectionId = sectionId;
+  const target = sections.find((section) => section.id === sectionId);
+
+  if (!target) return;
+
+  revealAnimationFrame = window.requestAnimationFrame(() => {
+    target.classList.add("intro-section--revealed");
+    revealAnimationFrame = 0;
+  });
+}
+
 onMounted(async () => {
   await nextTick();
 
@@ -40,6 +66,7 @@ onMounted(async () => {
     "intro-background",
     "intro-rules",
     "intro-cards",
+    "intro-team",
   ]
     .map((id) => document.getElementById(id))
     .filter(Boolean);
@@ -52,15 +79,28 @@ onMounted(async () => {
         sectionRatios.set(entry.target.id, entry.intersectionRatio);
       });
 
-      if ((sectionRatios.get("intro-cards") ?? 0) >= 0.6) {
+      let visibleSectionId = "";
+
+      if ((sectionRatios.get("intro-team") ?? 0) >= 0.6) {
+        visibleSectionId = "intro-team";
+        activeSection.value = "intro-team";
+      } else if ((sectionRatios.get("intro-cards") ?? 0) >= 0.6) {
+        visibleSectionId = "intro-cards";
         activeSection.value = "intro-cards";
       } else if ((sectionRatios.get("intro-rules") ?? 0) >= 0.6) {
+        visibleSectionId = "intro-rules";
         activeSection.value = "intro-rules";
       } else if ((sectionRatios.get("intro-background") ?? 0) >= 0.6) {
+        visibleSectionId = "intro-background";
         activeSection.value = "intro-background";
+      } else if ((sectionRatios.get("intro-main") ?? 0) >= 0.6) {
+        visibleSectionId = "intro-main";
+        activeSection.value = "";
       } else {
         activeSection.value = "";
       }
+
+      revealSection(visibleSectionId, sections);
     },
     {
       root: container,
@@ -72,6 +112,9 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  if (revealAnimationFrame) {
+    window.cancelAnimationFrame(revealAnimationFrame);
+  }
   sectionObserver?.disconnect();
 });
 </script>
@@ -105,6 +148,42 @@ onBeforeUnmount(() => {
       <IntroBackgroundSection />
       <IntroRulesSection />
       <IntroCardsSection />
+      <IntroTeamSection />
     </div>
   </main>
 </template>
+
+<style>
+[data-intro-reveal] {
+  opacity: 0;
+  transform: translateY(18px);
+}
+
+.intro-section--revealed [data-intro-reveal] {
+  animation: introRevealIn 760ms cubic-bezier(0.16, 0.84, 0.22, 1) both;
+  animation-delay: var(--intro-reveal-delay, 0ms);
+}
+
+@keyframes introRevealIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-intro-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+
+  .intro-section--revealed [data-intro-reveal] {
+    animation: none;
+  }
+}
+</style>

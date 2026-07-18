@@ -17,7 +17,7 @@ const navItems = [
   { label: "遊戲簡介", sectionId: "intro-background", enabled: true },
   { label: "規則介紹", sectionId: "intro-rules", enabled: true },
   { label: "卡牌介紹", sectionId: "intro-cards", enabled: true },
-  { label: "團隊成員", sectionId: "intro-team", enabled: false },
+  { label: "團隊成員", sectionId: "intro-team", enabled: true },
 ];
 
 function startGame() {
@@ -30,11 +30,18 @@ function startGame() {
     class="relative z-10 grid h-[48px] w-full flex-[0_0_48px] grid-cols-[128px_minmax(0,1fr)_96px] items-center gap-6 border-b border-[rgba(134,179,224,0.52)] bg-white/95 px-[20px] backdrop-blur-[10px] lg:h-[66px] lg:flex-[0_0_66px] lg:grid-cols-[228px_1fr_132px] lg:gap-12 lg:pl-[70px] lg:pr-[58px]"
     aria-label="介紹頁導覽"
   >
-    <img
-      class="block w-[112px] lg:w-[148px]"
-      :src="navLogoUrl"
-      alt="職場風雲 Office Politics"
-    />
+    <button
+      class="inline-flex w-fit items-center bg-transparent p-0 transition-opacity duration-[180ms] ease-out hover:opacity-80 active:opacity-70 focus-visible:outline-0 focus-visible:shadow-[0_0_0_5px_var(--brand-focus)]"
+      type="button"
+      aria-label="回到主視覺"
+      @click="emit('navigate', 'intro-main')"
+    >
+      <img
+        class="block w-[112px] lg:w-[148px]"
+        :src="navLogoUrl"
+        alt="職場風雲 Office Politics"
+      />
+    </button>
 
     <nav
       class="flex h-full justify-end gap-[18px] lg:gap-[60px]"

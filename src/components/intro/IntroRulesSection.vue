@@ -22,7 +22,7 @@ import rulesBackgroundUrl from "@/assets/images/intro/rules-bg.webp";
     <div
       class="flex h-[654px] w-[calc(90%/var(--intro-scale))] min-w-[calc(600px/var(--intro-scale))] max-w-[calc(1180px/var(--intro-scale))] origin-top scale-[var(--intro-scale)] flex-col py-6"
     >
-      <header>
+      <header data-intro-reveal style="--intro-reveal-delay: 0ms">
         <p
           class="m-0 [color:var(--gray-300)] [font-size:22px] font-bold leading-none"
         >
@@ -37,6 +37,8 @@ import rulesBackgroundUrl from "@/assets/images/intro/rules-bg.webp";
       <div class="mt-[30px] grid grid-cols-[auto_auto_auto] gap-[14px]">
         <article
           class="flex min-h-[242px] flex-col border border-[rgba(134,179,224,0.42)] bg-white/75 p-[12px] shadow-[0_10px_30px_rgba(0,19,50,0.06)] backdrop-blur-[10px]"
+          data-intro-reveal
+          style="--intro-reveal-delay: 110ms"
         >
           <h3
             class="m-0 flex items-center gap-[8px] [color:var(--brand-hover)] [font-size:24px] font-extrabold leading-none"
@@ -55,6 +57,8 @@ import rulesBackgroundUrl from "@/assets/images/intro/rules-bg.webp";
 
         <article
           class="flex min-h-[242px] flex-col border border-[rgba(134,179,224,0.42)] bg-white/75 p-[12px] shadow-[0_10px_30px_rgba(0,19,50,0.06)] backdrop-blur-[10px]"
+          data-intro-reveal
+          style="--intro-reveal-delay: 200ms"
         >
           <h3
             class="m-0 flex items-center gap-[8px] [color:var(--brand-hover)] [font-size:24px] font-extrabold leading-none"
@@ -86,6 +90,8 @@ import rulesBackgroundUrl from "@/assets/images/intro/rules-bg.webp";
 
         <article
           class="flex flex-col border border-[rgba(134,179,224,0.42)] bg-white/75 p-[12px] shadow-[0_10px_30px_rgba(0,19,50,0.06)] backdrop-blur-[10px]"
+          data-intro-reveal
+          style="--intro-reveal-delay: 290ms"
         >
           <h3
             class="m-0 flex items-center gap-[8px] [color:var(--brand-hover)] [font-size:24px] font-extrabold leading-none"
@@ -129,6 +135,8 @@ import rulesBackgroundUrl from "@/assets/images/intro/rules-bg.webp";
 
       <article
         class="mt-[8px] flex min-h-0 flex-1 flex-col border border-[rgba(134,179,224,0.42)] bg-white/75 px-[12px] pt-[12px] shadow-[0_10px_30px_rgba(0,19,50,0.06)] backdrop-blur-[10px]"
+        data-intro-reveal
+        style="--intro-reveal-delay: 390ms"
       >
         <h3
           class="m-0 flex items-center gap-[8px] [color:var(--brand-hover)] [font-size:24px] font-extrabold leading-none"
