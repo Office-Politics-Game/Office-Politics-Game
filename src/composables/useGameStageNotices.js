@@ -21,6 +21,7 @@ export function useGameStageNotices({
   activeEffectResult,
   getInitialRoundDealSignature,
   lastInitialRoundDealSignature,
+  playPlayerEliminatedSound = () => {},
 } = {}) {
   const isTurnNoticeOpen = ref(false);
   const isRoundStartNoticeOpen = ref(false);
@@ -246,6 +247,7 @@ export function useGameStageNotices({
 
     scheduleNoticeOpen(() => {
       isPlayerEliminatedNoticeOpen.value = true;
+      playPlayerEliminatedSound();
     });
   }
 

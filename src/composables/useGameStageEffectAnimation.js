@@ -4,6 +4,7 @@ import { MANAGER_EFFECT_ACK_BUFFER_MS } from "@/composables/useGameStageNotices"
 export function useGameStageEffectAnimation({
   activeEffectResult = ref(null),
   holdNoticeAckAfterClose,
+  playSeniorProtectionActivateSound = () => {},
   resolveNoticeIdleIfIdle,
 } = {}) {
   let effectAnimationResolve = null;
@@ -52,6 +53,9 @@ export function useGameStageEffectAnimation({
 
     return new Promise((resolve) => {
       effectAnimationResolve = resolve;
+      if (nextResult.type === "protection" && nextResult.sourceType === "senior") {
+        playSeniorProtectionActivateSound();
+      }
       activeEffectResult.value = nextResult;
 
       effectAnimationTimeout = window.setTimeout(

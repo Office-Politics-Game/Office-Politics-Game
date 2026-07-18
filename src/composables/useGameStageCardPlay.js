@@ -77,6 +77,7 @@ export function useGameStageCardPlay({
   isDrawAnimating,
   activeEffectResult,
   resolvedPlayerHandCardCounts,
+  playGameCardPlaySound = () => {},
 } = {}) {
   const activeCard = ref(null);
   const originRect = ref(null);
@@ -494,6 +495,7 @@ export function useGameStageCardPlay({
     const targetRect = discardRect.value;
 
     try {
+      playGameCardPlaySound();
       const didPlay = await cardPlayAnimation.value?.play({
         card,
         originRect: releaseRect,
@@ -667,6 +669,7 @@ export function useGameStageCardPlay({
       return false;
     }
 
+    playGameCardPlaySound();
     return Boolean(
       await cardPlayAnimation.value?.play({
         card,
