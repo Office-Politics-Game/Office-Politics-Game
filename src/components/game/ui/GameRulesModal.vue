@@ -144,19 +144,19 @@ watch(isOpen, async (nextIsOpen) => {
     <button
       v-if="isOpen"
       type="button"
-      class="absolute inset-0 z-[43] cursor-default border-0 bg-[rgba(0,19,50,0.62)] p-0 focus:outline-none"
+      class="absolute inset-0 z-[200] cursor-default border-0 bg-[rgba(0,19,50,0.62)] p-0 focus:outline-none"
       aria-label="關閉遊戲規則"
       @click="closeRules"
     />
 
     <div
-      class="rules-drawer-shell absolute top-0 right-0 bottom-0 z-[44] w-[400px] transition-transform duration-[260ms] ease-[ease] lg:w-[480px]"
+      class="rules-drawer-shell absolute top-0 right-0 bottom-0 z-[201] w-[400px] transition-transform duration-[260ms] ease-[ease] lg:w-[480px]"
       :class="isOpen ? 'translate-x-0' : 'translate-x-full'"
     >
       <button
         ref="triggerButton"
         type="button"
-        class="game-rules-trigger absolute bottom-1/3 left-[-28px] z-[45] grid h-14 w-7 translate-y-1/2 place-items-center rounded-l-full border-0 bg-[var(--brand-hover)] p-0 text-white shadow-[0_16px_36px_rgba(0,19,50,0.32),inset_0_1px_0_rgba(255,255,255,0.42)] transition-[transform,background,color,box-shadow] duration-[180ms] hover:translate-y-[calc(50%-1px)] hover:bg-[var(--brand-hover)] active:translate-y-[calc(50%+1px)] active:bg-[var(--brand-active)] focus-visible:outline-none focus-visible:shadow-[0_0_0_5px_var(--brand-focus)] lg:left-[-40px] lg:h-20 lg:w-10"
+        class="game-rules-trigger absolute bottom-1/5 left-[-28px] z-[45] grid h-14 w-7 translate-y-1/2 place-items-center rounded-l-full border-0 bg-[var(--brand-hover)] p-0 text-white shadow-[0_16px_36px_rgba(0,19,50,0.32),inset_0_1px_0_rgba(255,255,255,0.42)] transition-[transform,background,color,box-shadow] duration-[180ms] hover:translate-y-[calc(50%-1px)] hover:bg-[var(--brand-hover)] active:translate-y-[calc(50%+1px)] active:bg-[var(--brand-active)] focus-visible:outline-none focus-visible:shadow-[0_0_0_5px_var(--brand-focus)] lg:left-[-40px] lg:h-20 lg:w-10"
         :aria-label="isOpen ? '收起遊戲規則' : '查看遊戲規則'"
         aria-haspopup="dialog"
         :aria-expanded="isOpen"
@@ -185,7 +185,7 @@ watch(isOpen, async (nextIsOpen) => {
         tabindex="-1"
       >
         <header
-        class="relative flex items-center border-b border-[rgba(70,85,99,0.18)] bg-white/50 px-3 py-2 lg:px-[18px] lg:py-3"
+          class="relative flex items-center border-b border-[rgba(70,85,99,0.18)] bg-white/50 px-3 py-2 lg:px-[18px] lg:py-3"
         >
           <div class="flex items-center gap-2 lg:gap-3">
             <BookOpen
@@ -200,7 +200,7 @@ watch(isOpen, async (nextIsOpen) => {
             </h2>
           </div>
           <div
-          class="ml-auto flex items-center gap-1 lg:gap-2"
+            class="ml-auto flex items-center gap-1 lg:gap-2"
             aria-label="切換規則頁面"
           >
             <button
