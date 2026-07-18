@@ -41,6 +41,15 @@ function addComputerPlayer(roomCode, payload) {
   return apiClient.post(buildRoomPath(roomCode, "computer-players"), payload);
 }
 
+function removePlayer(roomCode, targetPlayerId, payload) {
+  return apiClient.delete(
+    buildRoomPath(roomCode, `players/${encodeURIComponent(targetPlayerId)}`),
+    {
+      data: payload,
+    },
+  );
+}
+
 function getRoomGameState(roomCode, playerId) {
   return apiClient.get(
     `${GAME_STATE_API_PATH}/room/${encodeURIComponent(roomCode)}`,
@@ -57,5 +66,6 @@ export {
   getRoomGameState,
   updateRoomState,
   addComputerPlayer,
+  removePlayer,
   startRoom,
 };

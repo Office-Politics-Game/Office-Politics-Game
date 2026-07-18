@@ -12,7 +12,7 @@ jest.unstable_mockModule("../src/db/index.js", () => ({
   },
 }))
 
-const { kickPlayer } = await import("../src/services/roomService.js")
+const { getRoomState, kickPlayer } = await import("../src/services/roomService.js")
 
 const room = {
   id: 10,
@@ -40,6 +40,35 @@ beforeEach(() => {
 })
 
 describe("roomService kickPlayer", () => {
+  test("waiting-room state includes the equipped achievement title", async () => {
+    queryMock
+      .mockResolvedValueOnce({ rows: [room] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            player_id: 1,
+            username: "A",
+            title: "First Win",
+            avatar_id: 1,
+            role: "host",
+            seat_order: 1,
+            is_ready: true,
+            is_alive: true,
+            is_computer: false,
+            card_skin_overrides: {},
+          },
+        ],
+      })
+
+    const result = await getRoomState({ roomCode: "ROOM01" })
+
+    expect(queryMock.mock.calls[1][0]).toContain("p.title")
+    expect(result.players[0]).toMatchObject({
+      playerId: 1,
+      title: "First Win",
+    })
+  })
+
   test.each([undefined, "abc", 0, -1])(
     "Input and resource errors are explicit: requesterPlayerId=%p 回傳 400",
     async (requesterPlayerId) => {

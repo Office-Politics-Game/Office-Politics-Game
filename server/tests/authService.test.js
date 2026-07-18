@@ -421,7 +421,7 @@ describe("註冊玩家服務", () => {
                 password: VALID_PASSWORD,
                 avatarId: 1
             })
-        ).rejects.toThrow("該用戶已存在")
+        ).rejects.toThrow("會員建立失敗，請稍後再試")
 
         expect(mockQuery).toHaveBeenCalledTimes(1)
         expect(mockSignUp).toHaveBeenCalledTimes(1)
@@ -484,7 +484,7 @@ describe("註冊玩家服務", () => {
                 password: VALID_PASSWORD,
                 avatarId: 1
             })
-        ).rejects.toThrow("db資料表寫入失敗")
+        ).rejects.toThrow("註冊失敗，請稍後再試")
 
         expect(mockSignUp).toHaveBeenCalledTimes(1)
         expect(mockDeleteUser).toHaveBeenCalledTimes(1)
@@ -518,7 +518,7 @@ describe("註冊玩家服務", () => {
                 password: VALID_PASSWORD,
                 avatarId: 1
             })
-        ).rejects.toThrow("db資料表寫入失敗")
+        ).rejects.toThrow("註冊失敗，請稍後再試")
 
         expect(mockSignUp).toHaveBeenCalledTimes(1)
         expect(mockDeleteUser).toHaveBeenCalledWith("auth-user-001")
@@ -1100,6 +1100,7 @@ describe("第三方登入玩家同步服務", () => {
                 winCount: 0,
                 loseCount: 0,
                 totalGames: 0,
+                title: null,
                 isOnline: true,
                 lastLoginAt: "2026-07-10T12:00:00.000Z",
                 createdAt: "2026-07-01T00:00:00.000Z",
@@ -1185,6 +1186,7 @@ describe("第三方登入玩家同步服務", () => {
                 winCount: 0,
                 loseCount: 0,
                 totalGames: 0,
+                title: null,
                 isOnline: true,
                 lastLoginAt: "2026-07-10T12:00:00.000Z",
                 createdAt: "2026-07-01T00:00:00.000Z",

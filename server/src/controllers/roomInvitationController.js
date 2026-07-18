@@ -82,7 +82,7 @@ async function handleAcceptRoomInvitation(req, res){
       const roomState = await getRoomState({ roomCode: result.room.roomCode })
       const io = getSocketServer()
 
-      io?.to(result.room.roomCode).emit("room:state", roomState)
+      io?.emit("room:state", roomState)
     }
 
     return res.status(200).json({

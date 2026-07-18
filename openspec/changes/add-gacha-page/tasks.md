@@ -2,7 +2,7 @@
 
 - [x] 1.1 Deliver Gacha route is available by registering the /gacha route with name Gacha and rendering src/views/GachaView.vue; verify with tests/gacha-view.test.mjs checking router registration and with npm run build.
 - [x] 1.2 Implement Use the existing lobby recruit button as the gacha entry by adding enabled-state navigation from the recruit button in src/components/menu/LobbyMenu.vue to /gacha while preserving its menu-btn placement classes, icon-recruit.png image, recruit label, and isAnyPageTransitioning disabled binding; verify with tests/gacha-view.test.mjs checking the recruit button target and with a manual click from the lobby menu.
-- [x] 1.3 Build the full-screen gacha scene in src/views/GachaView.vue using bg-gacha.webp as the background, gacha-printer.webp as the anchored printer foreground, and a return-to-lobby control that routes to /lobby; verify manually by opening /gacha and activating the return control.
+- [x] 1.3 Build the full-screen gacha scene in src/views/GachaView.vue using bg-gacha.webp as the background, gacha-printer.png as the anchored printer foreground, and a return-to-lobby control that routes to /lobby; verify manually by opening /gacha and activating the return control.
 - [x] 1.4 Keep the scene responsive and Square UI compliant with no rounded- utility classes, no horizontal overflow, and keyboard-visible focus on controls; verify with tests/gacha-view.test.mjs source assertions and a manual mobile viewport check.
 
 ## 2. Printer interaction state

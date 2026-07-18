@@ -61,6 +61,8 @@ function normalizeShopItem(item, options = {}) {
       (item.type === "card_skin" ? getCardSkinThemeLogo(item) : "") ||
       resolveImageAssetUrl(item.imageUrl || item.image_url) ||
       fallbackImage,
+    previewImageClass:
+      item.type === "gacha_ticket" ? "item-card__preview-image--ticket" : "",
     shopItem: item,
   };
 }
