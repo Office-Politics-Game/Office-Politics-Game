@@ -11,6 +11,10 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  controlsDisabled: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 defineEmits(["add-computer", "invite-friend", "remove-player"]);
@@ -43,6 +47,7 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
           type="button"
           aria-label="移除玩家"
           title="移除玩家"
+          :disabled="controlsDisabled || !slot.canRemovePlayer"
           @click="$emit('remove-player', index)"
         >
           <X class="h-3.5 w-3.5 lg:h-5 lg:w-5" :stroke-width="3" />
@@ -147,7 +152,7 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
             <button
               class="room-player-option-button m-0 w-full whitespace-nowrap border-0 bg-transparent text-center text-[14px] font-black leading-[1.12] lg:text-[28px]"
               type="button"
-              :disabled="!slot.canAddComputer"
+              :disabled="controlsDisabled || !slot.canAddComputer"
               @click="$emit('add-computer', index)"
             >
               {{ slot.option1 }}
@@ -156,7 +161,7 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
               v-if="slot.option2"
               class="room-player-option-button m-0 w-full whitespace-nowrap border-0 bg-transparent text-center text-[14px] font-black leading-[1.12] lg:text-[28px]"
               type="button"
-              :disabled="!slot.canInviteFriend"
+              :disabled="controlsDisabled || !slot.canInviteFriend"
               @click="$emit('invite-friend', index)"
             >
               {{ slot.option2 }}

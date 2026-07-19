@@ -22,12 +22,13 @@ const roomStore = useRoomStore();
 const { handleButtonClick } = useButtonClickAudio();
 const { currentPlayerId } = useCurrentPlayerId();
 
-const { roomCode, players, errorMessage, isLoading, isRoomReadyToStart } =
+const { room, roomCode, players, errorMessage, isLoading, isRoomReadyToStart } =
   storeToRefs(roomStore);
 
 const showInviteFriendModal = ref(false);
 const invitingSlotIndex = ref(null);
 const isRestoringRoomState = ref(false);
+const isStartingRoom = ref(false);
 const hasJoinedCurrentRoom = ref(false);
 const kickedNotice = ref("");
 const pendingComputerSlots = ref({});
@@ -177,28 +178,31 @@ function clearPendingComputerSlot(index) {
   pendingComputerSlots.value = nextPendingSlots;
 }
 
-function setPendingRemovalSlot(index, player) {
+function setPendingRemovalSlot(player) {
+  const playerId = String(player.playerId);
   pendingRemovalSlots.value = {
     ...pendingRemovalSlots.value,
-    [index]: {
+    [playerId]: {
       playerId: player.playerId,
       startedAt: Date.now(),
     },
   };
 }
 
-function clearPendingRemovalSlot(index) {
-  if (!(index in pendingRemovalSlots.value)) {
+function clearPendingRemovalSlot(playerId) {
+  const pendingKey = String(playerId);
+
+  if (!(pendingKey in pendingRemovalSlots.value)) {
     return;
   }
 
   const nextPendingSlots = { ...pendingRemovalSlots.value };
-  delete nextPendingSlots[index];
+  delete nextPendingSlots[pendingKey];
   pendingRemovalSlots.value = nextPendingSlots;
 }
 
-async function clearPendingRemovalSlotWithDelay(index) {
-  const pendingState = pendingRemovalSlots.value[index];
+async function clearPendingRemovalSlotWithDelay(playerId) {
+  const pendingState = pendingRemovalSlots.value[String(playerId)];
 
   if (!pendingState) {
     return;
@@ -213,7 +217,7 @@ async function clearPendingRemovalSlotWithDelay(index) {
     });
   }
 
-  clearPendingRemovalSlot(index);
+  clearPendingRemovalSlot(playerId);
 }
 
 async function clearPendingComputerSlotWithDelay(index) {
@@ -235,16 +239,31 @@ async function clearPendingComputerSlotWithDelay(index) {
   clearPendingComputerSlot(index);
 }
 
+const playersBySeatOrder = computed(() => {
+  const mappedPlayers = new Map();
+
+  players.value.forEach((player) => {
+    const seatOrder = Number(player?.seatOrder);
+
+    if (Number.isInteger(seatOrder) && seatOrder >= 1 && seatOrder <= emptyPlayerSlots.length) {
+      mappedPlayers.set(seatOrder, player);
+    }
+  });
+
+  return mappedPlayers;
+});
+
 const playerSlots = computed(() =>
   emptyPlayerSlots.map((slot, index) => {
-    const roomPlayer = players.value[index];
+    const roomPlayer = playersBySeatOrder.value.get(index + 1);
     const displaySlot =
       index === 0
         ? { ...slot, option1: "等待玩家" }
         : { ...slot, option1: "加入電腦", option2: "邀請好友" };
 
     if (roomPlayer) {
-      const pendingRemovalState = pendingRemovalSlots.value[index];
+      const pendingRemovalState =
+        pendingRemovalSlots.value[String(roomPlayer.playerId)];
 
       if (
         pendingRemovalState &&
@@ -290,6 +309,13 @@ const currentPlayerEntry = computed(() =>
 );
 
 const isHostPlayer = computed(() => currentPlayerEntry.value?.role === "host");
+const isWaitingRoomInteractive = computed(
+  () =>
+    room.value?.status === "waiting" &&
+    !isRestoringRoomState.value &&
+    !isLoading.value &&
+    !isStartingRoom.value,
+);
 const canCurrentPlayerToggleReady = computed(
   () =>
     Boolean(currentPlayerEntry.value) &&
@@ -298,6 +324,10 @@ const canCurrentPlayerToggleReady = computed(
 );
 const isCurrentPlayerReady = computed(() => Boolean(currentPlayerEntry.value?.isReady));
 const primaryActionLabel = computed(() => {
+  if (isStartingRoom.value) {
+    return "開始中";
+  }
+
   if (isLoading.value) {
     return "載入中";
   }
@@ -309,7 +339,7 @@ const primaryActionLabel = computed(() => {
   return isCurrentPlayerReady.value ? "取消準備" : "準備";
 });
 const isPrimaryActionDisabled = computed(() => {
-  if (isRestoringRoomState.value || isLoading.value) {
+  if (!isWaitingRoomInteractive.value) {
     return true;
   }
 
@@ -346,7 +376,7 @@ const availableInviteFriends = computed(() =>
 );
 
 async function toggleReady(slot) {
-  if (!roomCode.value || slot.isHost || slot.isComputer) {
+  if (!isWaitingRoomInteractive.value || !roomCode.value || slot.isHost || slot.isComputer) {
     return;
   }
 
@@ -383,7 +413,7 @@ async function handlePrimaryRoomAction() {
 }
 
 async function handleAddComputer(index) {
-  if (index === 0 || players.value[index]) {
+  if (!isWaitingRoomInteractive.value || index === 0 || playersBySeatOrder.value.has(index + 1)) {
     return;
   }
 
@@ -406,17 +436,17 @@ async function handleAddComputer(index) {
 }
 
 async function handleRemovePlayer(index) {
-  if (index === 0 || !isHostPlayer.value) {
+  if (!isWaitingRoomInteractive.value || index === 0 || !isHostPlayer.value) {
     return;
   }
 
-  const targetPlayer = players.value[index];
+  const targetPlayer = playersBySeatOrder.value.get(index + 1);
 
   if (!roomCode.value || !resolvedPlayerId.value || !targetPlayer?.playerId) {
     return;
   }
 
-  setPendingRemovalSlot(index, targetPlayer);
+  setPendingRemovalSlot(targetPlayer);
 
   try {
     await roomStore.removePlayer(roomCode.value, {
@@ -424,31 +454,61 @@ async function handleRemovePlayer(index) {
       targetPlayerId: targetPlayer.playerId,
     });
   } catch (error) {
-    clearPendingRemovalSlot(index);
+    clearPendingRemovalSlot(targetPlayer.playerId);
     throw error;
   }
 }
 
 async function handleStartRoom() {
+  if (!isWaitingRoomInteractive.value) {
+    return;
+  }
+
   if (!roomCode.value) {
     roomStore.errorMessage = "找不到房間，無法開始遊戲";
     return;
   }
 
-  await roomStore.startRoom(roomCode.value, {
-    playerId: resolvedPlayerId.value,
-  });
+  isStartingRoom.value = true;
 
-  router.push({
-    name: "Loading",
-    query: {
-      roomCode: roomCode.value,
-      playerId: String(resolvedPlayerId.value ?? ""),
-    },
-  });
+  try {
+    await roomStore.startRoom(roomCode.value, {
+      playerId: resolvedPlayerId.value,
+    });
+
+    router.push({
+      name: "Loading",
+      query: {
+        roomCode: roomCode.value,
+        playerId: String(resolvedPlayerId.value ?? ""),
+      },
+    });
+  } catch (error) {
+    isStartingRoom.value = false;
+    throw error;
+  }
+}
+
+async function handleLeaveRoom() {
+  if (!isWaitingRoomInteractive.value || !roomCode.value || !resolvedPlayerId.value) {
+    return;
+  }
+
+  try {
+    await roomStore.leaveRoom(roomCode.value, {
+      playerId: resolvedPlayerId.value,
+    });
+    await router.push({ name: "LobbyHome" });
+  } catch {
+    // roomStore preserves the room and exposes the service error in errorMessage.
+  }
 }
 
 async function openInviteFriendModal(index) {
+  if (!isWaitingRoomInteractive.value) {
+    return;
+  }
+
   if (!isHostPlayer.value) {
     roomInvitationStore.sendErrorMessage = "只有房主可以邀請好友";
     return;
@@ -477,6 +537,10 @@ function closeInviteFriendModal() {
 }
 
 async function sendRoomInvitation(friend) {
+  if (!isWaitingRoomInteractive.value) {
+    return;
+  }
+
   const invitation = await roomInvitationStore.sendInvitation({
     roomCode: roomCode.value,
     inviteePlayerId: friend?.playerId,
@@ -602,21 +666,26 @@ watch(
 watch(
   players,
   (nextPlayers) => {
+    const nextPlayersBySeatOrder = new Map(
+      nextPlayers.map((player) => [Number(player?.seatOrder), player]),
+    );
+
     Object.keys(pendingComputerSlots.value).forEach((slotIndex) => {
       const index = Number(slotIndex);
-      const nextPlayer = nextPlayers[index];
+      const nextPlayer = nextPlayersBySeatOrder.get(index + 1);
 
       if (nextPlayer) {
         clearPendingComputerSlotWithDelay(index).catch(() => null);
       }
     });
 
-    Object.entries(pendingRemovalSlots.value).forEach(([slotIndex, pendingState]) => {
-      const index = Number(slotIndex);
-      const nextPlayer = nextPlayers[index];
+    Object.values(pendingRemovalSlots.value).forEach((pendingState) => {
+      const nextPlayer = nextPlayers.find(
+        (player) => String(player.playerId) === String(pendingState.playerId),
+      );
 
-      if (!nextPlayer || String(nextPlayer.playerId) !== String(pendingState.playerId)) {
-        clearPendingRemovalSlotWithDelay(index).catch(() => null);
+      if (!nextPlayer) {
+        clearPendingRemovalSlotWithDelay(pendingState.playerId).catch(() => null);
       }
     });
   },
@@ -678,6 +747,7 @@ watch(
       <PlayerList
         :slots="displayPlayerSlots"
         :is-restoring="isRestoringRoomState"
+        :controls-disabled="!isWaitingRoomInteractive"
         @add-computer="handleAddComputer"
         @invite-friend="openInviteFriendModal"
         @remove-player="handleRemovePlayer"
@@ -689,6 +759,7 @@ watch(
         :friends="availableInviteFriends"
         :is-loading="friendStore.isLoading"
         :is-sending="roomInvitationStore.isSending"
+        :disabled="!isWaitingRoomInteractive"
         :error-message="
           roomInvitationStore.sendErrorMessage || friendStore.errorMessage
         "
@@ -717,7 +788,8 @@ watch(
         <button
           class="btn-glass tap-pop pointer-events-auto flex h-9 cursor-pointer items-center justify-center overflow-hidden text-sm lg:h-12 lg:text-base"
           type="button"
-          @click="router.push({ name: 'LobbyHome' })"
+          :disabled="!isWaitingRoomInteractive"
+          @click="handleLeaveRoom"
         >
           返回大廳
         </button>

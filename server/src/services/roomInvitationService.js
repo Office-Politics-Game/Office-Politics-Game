@@ -196,9 +196,20 @@ async function getPendingRoomInvitations({ playerId }){
      FROM room_invitations ri
      JOIN game_rooms gr ON gr.id = ri.room_id
      JOIN players inviter ON inviter.id = ri.inviter_player_id
+     JOIN game_room_players host_member
+       ON host_member.room_id = gr.id
+      AND host_member.player_id = gr.host_player_id
+      AND host_member.role = 'host'
+      AND host_member.is_computer = false
      WHERE ri.invitee_player_id = $1
        AND ri.status = 'pending'
        AND ri.expires_at > CURRENT_TIMESTAMP
+       AND gr.status = 'waiting'
+       AND (
+         SELECT COUNT(*)
+         FROM game_room_players room_member
+         WHERE room_member.room_id = gr.id
+       ) < 4
      ORDER BY ri.created_at DESC`,
     [playerId]
   )
@@ -247,13 +258,28 @@ async function acceptRoomInvitation({ invitationId, playerId }){
     const roomPlayerResult = await client.query(
       `SELECT
          COUNT(*)::integer AS player_count,
-         COALESCE(BOOL_OR(player_id = $2), false) AS player_in_room
-       FROM game_room_players
-       WHERE room_id = $1`,
+         COALESCE(BOOL_OR(grp.player_id = $2), false) AS player_in_room,
+         EXISTS (
+           SELECT 1
+           FROM game_rooms gr
+           JOIN game_room_players host_member
+             ON host_member.room_id = gr.id
+            AND host_member.player_id = gr.host_player_id
+            AND host_member.role = 'host'
+            AND host_member.is_computer = false
+           WHERE gr.id = $1
+             AND gr.status = 'waiting'
+         ) AS has_valid_host
+       FROM game_room_players grp
+       WHERE grp.room_id = $1`,
       [invitation.room_id, playerId]
     )
     const roomPlayerSummary = roomPlayerResult.rows[0] ?? {}
     const playerCount = getPlayerCount(roomPlayerSummary)
+
+    if (!roomPlayerSummary.has_valid_host){
+      throw createServiceError("房間沒有有效房主，無法加入", 409)
+    }
 
     if (roomPlayerSummary.player_in_room){
       throw createServiceError("玩家已在房間內", 409)

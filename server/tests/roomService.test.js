@@ -12,7 +12,7 @@ jest.unstable_mockModule("../src/db/index.js", () => ({
   },
 }))
 
-const { getRoomState, kickPlayer } = await import("../src/services/roomService.js")
+const { getRoomState, kickPlayer, leaveRoom } = await import("../src/services/roomService.js")
 
 const room = {
   id: 10,
@@ -228,5 +228,160 @@ describe("roomService kickPlayer", () => {
     expect(clientQueryMock).toHaveBeenCalledWith("ROLLBACK")
     expect(clientQueryMock).not.toHaveBeenCalledWith("COMMIT")
     expect(releaseMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("roomService leaveRoom", () => {
+  test.each([undefined, "abc", 0, -1])(
+    "rejects invalid playerId %p with 400",
+    async (playerId) => {
+      await expect(leaveRoom({ roomCode: "ROOM01", playerId })).rejects.toMatchObject({
+        statusCode: 400,
+      })
+      expect(connectMock).not.toHaveBeenCalled()
+    },
+  )
+
+  test("removes a non-host and compacts remaining seats", async () => {
+    const nonHostMembers = members.slice(0, 3)
+    const roomState = {
+      room: { roomCode: "ROOM01", hostPlayerId: 1, status: "waiting" },
+      players: [
+        { playerId: 1, seatOrder: 1 },
+        { playerId: 3, seatOrder: 2 },
+      ],
+    }
+
+    clientQueryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [room] })
+      .mockResolvedValueOnce({ rows: nonHostMembers })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+    queryMock
+      .mockResolvedValueOnce({ rows: [room] })
+      .mockResolvedValueOnce({
+        rows: roomState.players.map((player) => ({
+          player_id: player.playerId,
+          username: String(player.playerId),
+          role: player.playerId === 1 ? "host" : "player",
+          seat_order: player.seatOrder,
+          is_ready: false,
+          is_alive: true,
+          is_computer: false,
+        })),
+      })
+
+    const result = await leaveRoom({ roomCode: "ROOM01", playerId: 2 })
+
+    expect(clientQueryMock).toHaveBeenCalledWith(
+      expect.stringContaining("DELETE FROM game_room_players"),
+      [10, 2],
+    )
+    expect(clientQueryMock).toHaveBeenCalledWith(
+      expect.stringContaining("SET seat_order = $1"),
+      [2, 10, 3],
+    )
+    expect(result).toMatchObject({ dissolved: false })
+    expect(result.roomState.players.map((player) => player.seatOrder)).toEqual([1, 2])
+  })
+
+  test("transfers host to the lowest-seat human and skips computers", async () => {
+    const transferMembers = [
+      members[0],
+      { ...members[1], role: "computer", is_computer: true },
+      { ...members[2], player_id: 30 },
+      { ...members[3], player_id: 40 },
+    ]
+
+    clientQueryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [room] })
+      .mockResolvedValueOnce({ rows: transferMembers })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ ...room, host_player_id: 30 }] })
+      .mockResolvedValueOnce({
+        rows: [
+          { player_id: 2, username: "CPU", role: "computer", seat_order: 1, is_computer: true },
+          { player_id: 30, username: "C", role: "host", seat_order: 2, is_computer: false },
+          { player_id: 40, username: "D", role: "player", seat_order: 3, is_computer: false },
+        ],
+      })
+
+    const result = await leaveRoom({ roomCode: "ROOM01", playerId: 1 })
+
+    expect(clientQueryMock).toHaveBeenCalledWith(
+      expect.stringContaining("UPDATE game_rooms"),
+      [30, 10],
+    )
+    expect(clientQueryMock).toHaveBeenCalledWith(
+      expect.stringContaining("role = CASE"),
+      [30, 10],
+    )
+    expect(result).toMatchObject({
+      dissolved: false,
+      roomState: { room: { hostPlayerId: 30 } },
+    })
+  })
+
+  test("dissolves the room when the host has no human successor", async () => {
+    clientQueryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [room] })
+      .mockResolvedValueOnce({
+        rows: [members[0], { ...members[1], role: "computer", is_computer: true }],
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+
+    const result = await leaveRoom({ roomCode: "ROOM01", playerId: 1 })
+
+    const membershipDeleteIndex = clientQueryMock.mock.calls.findIndex(([sql]) =>
+      String(sql).includes("DELETE FROM game_room_players"),
+    )
+    const roomDeleteIndex = clientQueryMock.mock.calls.findIndex(([sql]) =>
+      String(sql).includes("DELETE FROM game_rooms"),
+    )
+    expect(membershipDeleteIndex).toBeGreaterThan(-1)
+    expect(roomDeleteIndex).toBeGreaterThan(membershipDeleteIndex)
+    expect(result).toEqual({ dissolved: true, roomCode: "ROOM01" })
+  })
+
+  test("rejects leave outside a waiting room with 409", async () => {
+    clientQueryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ ...room, status: "playing" }] })
+      .mockResolvedValueOnce({ rows: [] })
+
+    await expect(leaveRoom({ roomCode: "ROOM01", playerId: 2 })).rejects.toMatchObject({
+      statusCode: 409,
+    })
+    expect(clientQueryMock).toHaveBeenCalledWith("ROLLBACK")
+  })
+
+  test("rolls back when seat compaction fails", async () => {
+    clientQueryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [room] })
+      .mockResolvedValueOnce({ rows: members.slice(0, 3) })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockRejectedValueOnce(new Error("seat update failed"))
+      .mockResolvedValueOnce({ rows: [] })
+
+    await expect(leaveRoom({ roomCode: "ROOM01", playerId: 2 })).rejects.toThrow(
+      "seat update failed",
+    )
+    expect(clientQueryMock).toHaveBeenCalledWith("ROLLBACK")
+    expect(clientQueryMock).not.toHaveBeenCalledWith("COMMIT")
   })
 })

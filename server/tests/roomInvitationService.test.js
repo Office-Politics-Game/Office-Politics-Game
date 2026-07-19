@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises"
 import { jest } from "@jest/globals"
 
 const queryMock = jest.fn()
@@ -194,6 +195,18 @@ describe("getPendingRoomInvitations", ()=>{
       [2]
     )
   })
+
+  test("query filters rooms that are not joinable or lack a valid human host", async ()=>{
+    queryMock.mockResolvedValueOnce({ rows: [] })
+
+    await getPendingRoomInvitations({ playerId: 2 })
+
+    const [sql] = queryMock.mock.calls[0]
+    expect(sql).toContain("gr.status = 'waiting'")
+    expect(sql).toMatch(/SELECT COUNT\(\*\)[\s\S]*\) < 4/)
+    expect(sql).toContain("host_member.role = 'host'")
+    expect(sql).toContain("host_member.is_computer = false")
+  })
 })
 
 describe("acceptRoomInvitation", ()=>{
@@ -216,7 +229,7 @@ describe("acceptRoomInvitation", ()=>{
         ],
       })
       .mockResolvedValueOnce({
-        rows: [{ player_count: 2, player_in_room: false }],
+        rows: [{ player_count: 2, player_in_room: false, has_valid_host: true }],
       })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({
@@ -249,6 +262,35 @@ describe("acceptRoomInvitation", ()=>{
     expect(clientQueryMock).toHaveBeenLastCalledWith("COMMIT")
   })
 
+  test("rejects acceptance when the room has no valid human host", async ()=>{
+    clientQueryMock
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({
+        rows: [{
+          id: 10,
+          room_id: 8,
+          inviter_player_id: 1,
+          invitee_player_id: 2,
+          status: "pending",
+          room_code: "ABCD12",
+          room_status: "waiting",
+          is_expired: false,
+        }],
+      })
+      .mockResolvedValueOnce({
+        rows: [{ player_count: 2, player_in_room: false, has_valid_host: false }],
+      })
+      .mockResolvedValueOnce({})
+
+    await expect(
+      acceptRoomInvitation({ invitationId: 10, playerId: 2 }),
+    ).rejects.toMatchObject({ statusCode: 409 })
+    expect(clientQueryMock).not.toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO game_room_players"),
+      expect.anything(),
+    )
+  })
+
   test("過期邀請不能接受", async ()=>{
     clientQueryMock
       .mockResolvedValueOnce({})
@@ -277,6 +319,13 @@ describe("acceptRoomInvitation", ()=>{
 
     expect(clientQueryMock).toHaveBeenLastCalledWith("ROLLBACK")
   })
+})
+
+test("start game invalidates pending room invitations in the same service transaction", async ()=>{
+  const source = await readFile(new URL("../src/services/roomService.js", import.meta.url), "utf8")
+
+  expect(source).toMatch(/UPDATE room_invitations[\s\S]*SET status = 'expired'/)
+  expect(source).toMatch(/responded_at = CURRENT_TIMESTAMP/)
 })
 
 describe("rejectRoomInvitation", ()=>{

@@ -1,6 +1,7 @@
 import { jest } from "@jest/globals"
 
 const kickPlayerMock = jest.fn()
+const leaveRoomMock = jest.fn()
 const emitMock = jest.fn()
 const toMock = jest.fn(() => ({ emit: emitMock }))
 
@@ -10,6 +11,7 @@ jest.unstable_mockModule("../src/services/roomService.js", () => ({
   updateReady: jest.fn(),
   getRoomState: jest.fn(),
   kickPlayer: kickPlayerMock,
+  leaveRoom: leaveRoomMock,
   startGame: jest.fn(),
   addComputerPlayer: jest.fn(),
 }))
@@ -20,7 +22,7 @@ jest.unstable_mockModule("../src/socket/index.js", () => ({
   })),
 }))
 
-const { handleKickPlayer } = await import("../src/controllers/roomController.js")
+const { handleKickPlayer, handleLeaveRoom } = await import("../src/controllers/roomController.js")
 
 function createMockResponse() {
   const res = {
@@ -36,9 +38,42 @@ function createMockResponse() {
 
 beforeEach(() => {
   kickPlayerMock.mockReset()
+  leaveRoomMock.mockReset()
   emitMock.mockReset()
   toMock.mockReset()
   toMock.mockReturnValue({ emit: emitMock })
+})
+
+describe("roomController handleLeaveRoom", () => {
+  test("returns the leave result and broadcasts retained room state", async () => {
+    const roomState = {
+      room: { roomCode: "ROOM01", hostPlayerId: 1, status: "waiting" },
+      players: [{ playerId: 1, role: "host", seatOrder: 1 }],
+    }
+    leaveRoomMock.mockResolvedValueOnce({ dissolved: false, roomState })
+    const req = { params: { roomCode: "ROOM01" }, body: { playerId: 2 } }
+    const res = createMockResponse()
+
+    await handleLeaveRoom(req, res)
+
+    expect(leaveRoomMock).toHaveBeenCalledWith({ roomCode: "ROOM01", playerId: 2 })
+    expect(toMock).toHaveBeenCalledWith("ROOM01")
+    expect(emitMock).toHaveBeenCalledWith("room:state", roomState)
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(res.json).toHaveBeenCalledWith({ dissolved: false, roomState })
+  })
+
+  test("returns dissolved room contract without requesting room state", async () => {
+    leaveRoomMock.mockResolvedValueOnce({ dissolved: true, roomCode: "ROOM01" })
+    const req = { params: { roomCode: "ROOM01" }, body: { playerId: 1 } }
+    const res = createMockResponse()
+
+    await handleLeaveRoom(req, res)
+
+    expect(emitMock).toHaveBeenCalledWith("room:dissolved", { roomCode: "ROOM01" })
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(res.json).toHaveBeenCalledWith({ dissolved: true, roomCode: "ROOM01" })
+  })
 })
 
 describe("roomController handleKickPlayer", () => {
