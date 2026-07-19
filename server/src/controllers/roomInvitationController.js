@@ -68,7 +68,6 @@ async function handleGetPendingRoomInvitations(req, res){
 
 async function handleAcceptRoomInvitation(req, res){
   try {
-    const body = req.body ?? {}
     const invitationId = parsePositiveInteger(req.params.id)
     const playerId = parsePositiveInteger(req.player?.id)
 
