@@ -7,6 +7,7 @@
       :style="{ backgroundImage: `url(${bgDashboard})` }"
     >
       <div class="absolute inset-0 bg-black/20"></div>
+      <RoomInvitationNotice />
       <div class="lobby-flip-scene relative h-81 w-144 lg:h-135 lg:w-240">
         <div
           class="lobby-flip-card"
@@ -35,6 +36,7 @@ import { computed } from "vue";
 import { useRoute } from "vue-router";
 import GameMenuPanel from "@/components/gameRoom/GameMenuPanel.vue";
 import LobbyMenu from "@/components/menu/LobbyMenu.vue";
+import RoomInvitationNotice from "@/components/gameRoom/RoomInvitationNotice.vue";
 import bgDashboard from "@/assets/images/bg-dashboard.webp";
 
 const route = useRoute();
