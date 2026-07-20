@@ -6,6 +6,7 @@ import { useRoute, useRouter } from "vue-router";
 import InviteFriendModal from "@/components/gameRoom/InviteFriendModal.vue";
 import PlayerList from "@/components/gameRoom/CustomRoomPlayerList.vue";
 import BG from "@/assets/images/bg-dashboard.webp";
+import loadingBackground from "@/assets/images/bg-loading.webp";
 import { createGuestNickname } from "@/constants/guestOptions.js";
 import { useButtonClickAudio } from "@/composables/UseButtonClickAudio.js";
 import { useCurrentPlayerId } from "@/composables/useCurrentPlayerId.js";
@@ -29,6 +30,7 @@ const showInviteFriendModal = ref(false);
 const invitingSlotIndex = ref(null);
 const isRestoringRoomState = ref(false);
 const isStartingRoom = ref(false);
+const isLeavingRoom = ref(false);
 const hasJoinedCurrentRoom = ref(false);
 const kickedNotice = ref("");
 const pendingComputerSlots = ref({});
@@ -36,6 +38,15 @@ const pendingRemovalSlots = ref({});
 const REQUIRED_READY_PLAYERS_TO_START = 3;
 const COMPUTER_JOIN_MIN_DISPLAY_MS = 900;
 const PLAYER_REMOVE_MIN_DISPLAY_MS = 700;
+const LEAVE_TRANSITION_MIN_DISPLAY_MS = 420;
+const leaveLoadingTips = [
+  "小提示：職場老鳥可以在關鍵回合擋掉指定效果。",
+  "小提示：資深顧問如果撞上人資主管或專案經理，會被迫優先打出。",
+  "小提示：實習生猜牌前，先觀察場上已經出過哪些牌。",
+  "小提示：打掃阿姨最適合幫你確認對手是不是高點數。",
+  "小提示：點數高不一定安全，留牌時機比牌更重要。",
+];
+const activeLeaveTip = ref(leaveLoadingTips[0]);
 
 const requestedRoomCode = computed(() =>
   typeof route.query.roomCode === "string" ? route.query.roomCode.trim().toUpperCase() : "",
@@ -220,6 +231,17 @@ async function clearPendingRemovalSlotWithDelay(playerId) {
   clearPendingRemovalSlot(playerId);
 }
 
+function wait(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function pickLeaveLoadingTip() {
+  const randomIndex = Math.floor(Math.random() * leaveLoadingTips.length);
+  activeLeaveTip.value = leaveLoadingTips[randomIndex];
+}
+
 async function clearPendingComputerSlotWithDelay(index) {
   const pendingState = pendingComputerSlots.value[index];
 
@@ -314,7 +336,8 @@ const isWaitingRoomInteractive = computed(
     room.value?.status === "waiting" &&
     !isRestoringRoomState.value &&
     !isLoading.value &&
-    !isStartingRoom.value,
+    !isStartingRoom.value &&
+    !isLeavingRoom.value,
 );
 const canCurrentPlayerToggleReady = computed(
   () =>
@@ -494,12 +517,20 @@ async function handleLeaveRoom() {
     return;
   }
 
+  pickLeaveLoadingTip();
+  isLeavingRoom.value = true;
+  showInviteFriendModal.value = false;
+
   try {
-    await roomStore.leaveRoom(roomCode.value, {
-      playerId: resolvedPlayerId.value,
-    });
+    await Promise.all([
+      roomStore.leaveRoom(roomCode.value, {
+        playerId: resolvedPlayerId.value,
+      }),
+      wait(LEAVE_TRANSITION_MIN_DISPLAY_MS),
+    ]);
     await router.push({ name: "LobbyHome" });
   } catch {
+    isLeavingRoom.value = false;
     // roomStore preserves the room and exposes the service error in errorMessage.
   }
 }
@@ -647,7 +678,12 @@ watch(
 watch(
   [players, resolvedPlayerId],
   () => {
-    if (!resolvedPlayerId.value || isRestoringRoomState.value || kickedNotice.value) {
+    if (
+      !resolvedPlayerId.value ||
+      isRestoringRoomState.value ||
+      isLeavingRoom.value ||
+      kickedNotice.value
+    ) {
       return;
     }
 
@@ -720,7 +756,12 @@ watch(
     @click.capture="handleButtonClick"
   >
     <section
-      class="flex h-90 w-600 flex-col items-center overflow-hidden pt-5 lg:h-170 lg:w-400 lg:pt-14"
+      :class="[
+        'flex h-90 w-600 flex-col items-center overflow-hidden pt-5 transition duration-300 lg:h-170 lg:w-400 lg:pt-14',
+        isLeavingRoom
+          ? 'scale-[0.985] opacity-80 blur-[2px]'
+          : 'scale-100 opacity-100 blur-0',
+      ]"
       aria-label="自訂房間大廳"
     >
       <div
@@ -819,6 +860,36 @@ watch(
       </div>
     </section>
 
+    <Transition name="leave-room-overlay">
+      <div
+        v-if="isLeavingRoom"
+        class="leave-room-overlay pointer-events-none fixed inset-0 z-40 overflow-hidden text-white"
+        aria-live="polite"
+        :style="{ backgroundImage: `url(${loadingBackground})` }"
+      >
+        <div class="leave-room-shade absolute inset-0" aria-hidden="true"></div>
+        <section
+          class="absolute bottom-20 left-1/2 z-10 flex w-56 -translate-x-1/2 flex-col lg:bottom-40 lg:w-90"
+        >
+          <p class="m-0 text-center text-xs font-black tracking-[0.22em] text-white/80">
+            GAME TIP
+          </p>
+          <p class="m-0 mt-3 text-center text-lg font-bold">
+            {{ activeLeaveTip }}
+          </p>
+          <div
+            class="leave-room-progress mt-3 h-2 w-full overflow-hidden lg:mt-5 lg:h-3"
+            role="progressbar"
+            aria-label="返回大廳載入進度"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <div class="leave-room-progress-bar h-full w-full"></div>
+          </div>
+        </section>
+      </div>
+    </Transition>
+
     <div
       v-if="kickedNotice"
       class="kicked-modal-backdrop pointer-events-auto fixed inset-0 z-50 grid place-items-center px-5"
@@ -855,6 +926,39 @@ watch(
 </template>
 
 <style scoped>
+.leave-room-overlay {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.leave-room-shade {
+  background: #000000;
+  opacity: 0.2;
+}
+
+.leave-room-progress {
+  border: 1px solid rgba(255, 255, 255, 0.76);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.leave-room-progress-bar {
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: #ffffff;
+  animation: leave-room-progress-fill 0.9s linear infinite;
+}
+
+.leave-room-overlay-enter-active,
+.leave-room-overlay-leave-active {
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.leave-room-overlay-enter-from,
+.leave-room-overlay-leave-to {
+  opacity: 0;
+}
+
 .kicked-modal-backdrop {
   background: rgba(0, 19, 50, 0.58);
   backdrop-filter: blur(5px);
@@ -874,6 +978,16 @@ watch(
 
 .kicked-modal-kicker {
   color: var(--brand-hover, #0046f4);
+}
+
+@keyframes leave-room-progress-fill {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
 }
 
 .primary-room-action:disabled,

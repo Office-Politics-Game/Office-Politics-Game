@@ -81,7 +81,7 @@ test("return to lobby explicitly leaves while route unmount only unsubscribes", 
   const viewSource = await readSource("src/views/CustomRoomView.vue");
 
   assert.match(viewSource, /async function handleLeaveRoom/);
-  assert.match(viewSource, /await roomStore\.leaveRoom/);
+  assert.match(viewSource, /roomStore\.leaveRoom\(roomCode\.value/);
   assert.match(viewSource, /@click="handleLeaveRoom"/);
   const unmountHandler = viewSource.slice(viewSource.indexOf("onBeforeUnmount(() =>"));
   assert.match(unmountHandler, /unsubscribeFromRoom/);
@@ -89,4 +89,57 @@ test("return to lobby explicitly leaves while route unmount only unsubscribes", 
   const storeSource = await readSource("src/stores/roomStore.js");
   assert.match(storeSource, /socket\.on\("room:dissolved"/);
   assert.match(storeSource, /handleSocketRoomDissolved/);
+});
+
+test("explicit leave suppresses the kicked modal path while the player is exiting", async () => {
+  const viewSource = await readSource("src/views/CustomRoomView.vue");
+  const leaveHandler = viewSource.slice(
+    viewSource.indexOf("async function handleLeaveRoom"),
+    viewSource.indexOf("async function openInviteFriendModal"),
+  );
+  const kickedWatcher = viewSource.slice(
+    viewSource.indexOf("watch(\n  [players, resolvedPlayerId]"),
+    viewSource.indexOf("watch(\n  players,"),
+  );
+
+  assert.match(viewSource, /const isLeavingRoom = ref\(false\)/);
+  assert.match(leaveHandler, /pickLeaveLoadingTip\(\)/);
+  assert.match(leaveHandler, /isLeavingRoom\.value = true/);
+  assert.match(leaveHandler, /roomStore\.leaveRoom\(roomCode\.value/);
+  assert.match(leaveHandler, /catch \{[\s\S]*isLeavingRoom\.value = false/);
+  assert.match(kickedWatcher, /isLeavingRoom\.value/);
+  assert.ok(
+    kickedWatcher.indexOf("isLeavingRoom.value") <
+      kickedWatcher.indexOf("handleKickedFromRoom()"),
+    "kicked detection must bail out before the kicked modal opens during an explicit leave",
+  );
+});
+
+test("explicit leave shows a full-screen loading tip overlay while the backend request resolves", async () => {
+  const viewSource = await readSource("src/views/CustomRoomView.vue");
+  const leaveHandler = viewSource.slice(
+    viewSource.indexOf("async function handleLeaveRoom"),
+    viewSource.indexOf("async function openInviteFriendModal"),
+  );
+
+  assert.match(viewSource, /const LEAVE_TRANSITION_MIN_DISPLAY_MS = 420/);
+  assert.match(viewSource, /const leaveLoadingTips = \[/);
+  assert.match(viewSource, /const activeLeaveTip = ref\(leaveLoadingTips\[0\]\)/);
+  assert.match(viewSource, /function pickLeaveLoadingTip\(\)/);
+  assert.match(leaveHandler, /showInviteFriendModal\.value = false/);
+  assert.match(leaveHandler, /await Promise\.all\(\[/);
+  assert.match(leaveHandler, /wait\(LEAVE_TRANSITION_MIN_DISPLAY_MS\)/);
+  assert.match(viewSource, /loadingBackground/);
+  assert.match(viewSource, /<Transition name="leave-room-overlay">/);
+  assert.match(
+    viewSource,
+    /class="leave-room-overlay pointer-events-none fixed inset-0 z-40 overflow-hidden text-white"/,
+  );
+  assert.match(viewSource, /GAME TIP/);
+  assert.match(viewSource, /{{ activeLeaveTip }}/);
+  assert.match(viewSource, /class="leave-room-progress mt-3 h-2 w-full overflow-hidden/);
+  assert.match(viewSource, /\.leave-room-progress-bar/);
+  assert.match(viewSource, /@keyframes leave-room-progress-fill/);
+  assert.doesNotMatch(viewSource, /已收到操作，正在同步房間狀態/);
+  assert.doesNotMatch(viewSource, /正在返回大廳/);
 });
