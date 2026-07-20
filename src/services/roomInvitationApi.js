@@ -23,10 +23,10 @@ function acceptRoomInvitation({ invitationId }) {
   );
 }
 
-function rejectRoomInvitation({ invitationId, playerId }) {
+function rejectRoomInvitation({ invitationId }) {
   return apiClient.post(
     `${ROOM_INVITATION_API_PATH}/${encodeURIComponent(invitationId)}/reject`,
-    { playerId },
+    {},
   );
 }
 

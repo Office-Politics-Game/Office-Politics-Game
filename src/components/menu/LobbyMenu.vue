@@ -8,9 +8,6 @@
         class="social-flip-face social-flip-front relative h-full w-full bg-[length:100%_100%] bg-center shadow-2xl"
         :style="{ backgroundImage: `url(${menuBg})` }"
       >
-        <button class="lobby-settings-button" type="button" aria-label="開啟設定">
-          <Settings :stroke-width="2.4" />
-        </button>
         <CurrencyBar
           class="absolute bottom-1.5 right-7 origin-bottom-right scale-[0.6] lg:bottom-3 lg:right-12"
           :items="['coins', 'gems']"
@@ -142,7 +139,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { LockKeyhole, Settings } from "lucide-vue-next";
+import { LockKeyhole } from "lucide-vue-next";
 import friendBg from "@/assets/images/bg-friend-view.webp";
 import profileBg from "@/assets/images/bg-personal.webp";
 import menuBg from "@/assets/images/menu.webp";
@@ -378,50 +375,6 @@ function openStyleStudio() {
   font-weight: 900;
 }
 
-.lobby-settings-button {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 24;
-  display: grid;
-  width: 32px;
-  height: 32px;
-  cursor: pointer;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  backdrop-filter: blur(2px);
-  transition:
-    transform 180ms ease,
-    background-color 180ms ease,
-    border-color 180ms ease,
-    color 180ms ease;
-}
-
-.lobby-settings-button:hover {
-  transform: translateY(-1px);
-  border-color: rgba(255, 255, 255, 0.8);
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
-}
-
-.lobby-settings-button:active {
-  transform: translateY(1px);
-  border-color: #ffffff;
-  background: rgba(255, 255, 255, 0.26);
-}
-
-.lobby-settings-button:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 4px var(--brand-focus, rgba(0, 70, 244, 0.24));
-}
-
-.lobby-settings-button svg {
-  width: 21px;
-  height: 21px;
-}
-
 .guest-member-area-lock {
   position: absolute;
   left: 212px;
@@ -526,33 +479,9 @@ function openStyleStudio() {
     width: 40px;
     height: 40px;
   }
-
-  .lobby-settings-button {
-    top: 10px;
-    right: 10px;
-    width: 40px;
-    height: 40px;
-  }
-
-  .lobby-settings-button svg {
-    width: 32px;
-    height: 32px;
-  }
 }
 
 @media (orientation: landscape) and (max-width: 1023px) and (max-height: 640px) {
-  .lobby-settings-button {
-    top: 8px;
-    right: 6px;
-    width: 28px;
-    height: 28px;
-  }
-
-  .lobby-settings-button svg {
-    width: 20px;
-    height: 20px;
-  }
-
   .guest-member-area-lock__content {
     font-size: 16px;
   }

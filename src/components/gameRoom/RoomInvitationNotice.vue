@@ -222,4 +222,43 @@ onBeforeUnmount(stopPolling);
   cursor: wait;
   opacity: 0.64;
 }
+
+@media (orientation: landscape) and (max-width: 1023px) and (max-height: 640px) {
+  .room-invitation-toast-stack {
+    right: 10px;
+    bottom: 10px;
+    width: 260px;
+    gap: 6px;
+  }
+
+  .room-invitation-toast {
+    grid-template-columns: 16px 1fr;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .room-invitation-toast-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .room-invitation-toast-copy h3 {
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  .room-invitation-toast-copy p {
+    margin-top: 2px;
+    font-size: 11px;
+  }
+
+  .room-invitation-actions {
+    gap: 6px;
+  }
+
+  .room-invitation-actions button {
+    min-height: 28px;
+    font-size: 11px;
+  }
+}
 </style>
