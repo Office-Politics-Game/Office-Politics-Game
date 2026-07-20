@@ -18,6 +18,14 @@ export const GAME_TUTORIAL_STEP_CONTENT = Object.freeze({
     intro:
       "淘汰其他仍存活的玩家可取得回合勝利；率先累積 3 次回合勝利，就能贏得整場遊戲。",
   },
+  settings: {
+    title: "設定按鍵",
+    intro: "調整音效與配樂，或投降離開遊戲。",
+  },
+  rules: {
+    title: "規則側邊欄",
+    intro: "隨時查看遊戲規則。",
+  },
 });
 
 export function isGameTutorialEligible(
@@ -67,9 +75,13 @@ export function createGameTutorialSteps(targets, { isCompactLandscape = false } 
     ["discard", targets?.discard],
   ];
   const opponents = targets?.opponents;
+  const settings = targets?.settings;
+  const rules = targets?.rules;
 
   if (
     anchoredTargets.some(([, element]) => !isHtmlElement(element)) ||
+    !isHtmlElement(settings) ||
+    !isHtmlElement(rules) ||
     !Array.isArray(opponents) ||
     opponents.length !== 3 ||
     opponents.some((element) => !isHtmlElement(element))
@@ -92,6 +104,14 @@ export function createGameTutorialSteps(targets, { isCompactLandscape = false } 
       tooltipClass: isCompactLandscape
         ? "game-tutorial game-tutorial--opponents"
         : "game-tutorial",
+    },
+    {
+      element: settings,
+      ...GAME_TUTORIAL_STEP_CONTENT.settings,
+    },
+    {
+      element: rules,
+      ...GAME_TUTORIAL_STEP_CONTENT.rules,
     },
   ];
 }

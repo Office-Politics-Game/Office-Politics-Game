@@ -11,7 +11,8 @@ const { syncPreGameRouteAudio } = usePreGameAudio();
 watch(
   () => route.name,
   (routeName, previousRouteName) => {
-    const fadeIn = previousRouteName === "Mall";
+    const fadeIn =
+      previousRouteName === "Mall" || previousRouteName === "Game";
     syncPreGameRouteAudio(routeName, { fadeIn });
   },
   { immediate: true },

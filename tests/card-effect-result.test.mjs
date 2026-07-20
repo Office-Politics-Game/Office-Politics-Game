@@ -154,6 +154,24 @@ test('hr swap reveals only the card owned by the viewer at each end of the excha
   assert.match(demo, /targetCardReveal: bystander \? 'never' : 'after-swap'/)
 })
 
+test('HR swap emits one motion-start event after the prompt hold in both motion modes', async () => {
+  const source = await readSource('src/components/game/animations/CardSwapAnimation.vue')
+
+  assert.match(source, /defineEmits\(\['complete', 'swap-motion-start'\]\)/)
+  assert.match(
+    source,
+    /if \(reduced\) \{[\s\S]*?\.to\(\{\}, \{ duration: SWAP_PROMPT_HOLD_SECONDS \}\)\s*\.call\(\(\) => emit\('swap-motion-start'\)\)\s*\.set\(\[sourceFlipperElement, targetFlipperElement\]/,
+  )
+  assert.match(
+    source,
+    /return\s*\}\s*timeline\.value\s*\.to\(\{\}, \{ duration: SWAP_PROMPT_HOLD_SECONDS \}\)\s*\.call\(\(\) => emit\('swap-motion-start'\)\)\s*\.to\(sourceFlipperElement/,
+  )
+  assert.equal(
+    (source.match(/emit\('swap-motion-start'\)/g) ?? []).length,
+    2,
+  )
+})
+
 test('cleaner keeps the current player card face up while moving it out and back', async () => {
   const source = await readSource('src/components/game/animations/CleanerAnimation.vue')
   const stage = await readSource('src/components/game/ui/GameStage.vue')

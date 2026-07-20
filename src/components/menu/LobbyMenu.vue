@@ -63,6 +63,7 @@
         <button
           class="menu-btn right-[40px] top-[126px] h-[70px] w-[96px] lg:right-[67px] lg:top-[210px] lg:h-[117px] lg:w-[160px]"
           :disabled="isAnyPageTransitioning"
+          @click="openStyleStudio"
         >
           <div class="btn-content">
             <img
@@ -276,7 +277,7 @@ function openGameMenu() {
     return;
   }
 
-  playPreGameSound("login-button-click");
+  playLobbyNavigationSound();
   router.push({ name: "LobbyGameMenu" });
 }
 
@@ -287,6 +288,15 @@ function openGachaPage() {
 
   playPreGameSound("login-button-click");
   router.push("/gacha");
+}
+
+function openStyleStudio() {
+  if (isAnyPageTransitioning.value) {
+    return;
+  }
+
+  playLobbyNavigationSound();
+  router.push({ name: "StyleStudio" });
 }
 </script>
 

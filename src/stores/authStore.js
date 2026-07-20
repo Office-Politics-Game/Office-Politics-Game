@@ -6,6 +6,7 @@ import {
   logout as logoutApi,
   forgotPassword as forgotPasswordApi,
   resetPassword as resetPasswordApi,
+  changePassword as changePasswordApi,
   startOAuthLogin as startOAuthLoginApi,
   completeOAuthLogin as completeOAuthLoginApi
 } from "../services/authApi.js"
@@ -142,6 +143,24 @@ export const useAuthStore = defineStore("auth", {
         return await resetPasswordApi(payload)
       } catch (error) {
         this.errorMessage = getErrorMessage(error, "密碼重設失敗")
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async changePassword(payload) {
+      this.isLoading = true
+      this.errorMessage = ""
+      const appearanceStore = useAppearanceStore()
+
+      try {
+        const data = await changePasswordApi(payload)
+        resetAuthState(this)
+        appearanceStore.resetAppearance()
+        return data
+      } catch (error) {
+        this.errorMessage = getErrorMessage(error, "修改密碼失敗")
         throw error
       } finally {
         this.isLoading = false

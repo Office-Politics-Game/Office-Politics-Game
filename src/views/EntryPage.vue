@@ -41,6 +41,7 @@
       <div
         v-if="showLoginModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+        @click.self="handleAuthOverlayClose"
       >
         <LoginContent
           v-if="authModalMode === 'login'"
@@ -73,6 +74,7 @@
       <div
         v-if="showGuestLoginModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+        @click.self="handleGuestOverlayClose"
       >
         <GuestLoginModal
           @close="closeGuestLoginModal"
@@ -254,8 +256,18 @@ function closeAuthModal() {
   clearAuthQuery();
 }
 
+function handleAuthOverlayClose() {
+  playLoginClick();
+  closeAuthModal();
+}
+
 function closeGuestLoginModal() {
   showGuestLoginModal.value = false;
+}
+
+function handleGuestOverlayClose() {
+  playLoginClick();
+  closeGuestLoginModal();
 }
 
 function handleRegisterSuccess() {
@@ -287,6 +299,10 @@ watch(
 
       if (notice === "email-verified") {
         showLoginNotice("信箱驗證完成，請重新登入", "success");
+      }
+
+      if (notice === "password-updated") {
+        showLoginNotice("密碼已更新，請重新登入", "success");
       }
 
       return;

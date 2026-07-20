@@ -38,6 +38,8 @@ const targets = {
   hand: element("hand"),
   discard: element("discard"),
   opponents: opponentSeats,
+  settings: element("settings"),
+  rules: element("rules"),
 };
 const readSource = (path) =>
   readFile(new URL(`../${path}`, import.meta.url), "utf8");
@@ -139,8 +141,13 @@ test("tutorial eligibility requires one human current player and only computer o
 
 test("tutorial steps require all targets and follow the specified gameplay order", () => {
   assert.equal(createGameTutorialSteps({ ...targets, hand: null }), null);
+  assert.equal(createGameTutorialSteps({ ...targets, settings: null }), null);
+  assert.equal(createGameTutorialSteps({ ...targets, rules: null }), null);
   assert.equal(
-    createGameTutorialSteps({ ...targets, opponents: opponentSeats.slice(0, 2) }),
+    createGameTutorialSteps({
+      ...targets,
+      opponents: opponentSeats.slice(0, 2),
+    }),
     null,
   );
 
@@ -154,6 +161,14 @@ test("tutorial steps require all targets and follow the specified gameplay order
   assert.equal(steps[3].title, "其他玩家");
   assert.match(steps[3].intro, /淘汰其他仍存活的玩家/);
   assert.match(steps[3].intro, /3 次回合勝利/);
+  assert.deepEqual(
+    steps.slice(4).map((step) => step.element.name),
+    ["settings", "rules"],
+  );
+  assert.equal(steps[4].title, "設定按鍵");
+  assert.equal(steps[4].intro, "調整音效與配樂，或投降離開遊戲。");
+  assert.equal(steps[5].title, "規則側邊欄");
+  assert.equal(steps[5].intro, "隨時查看遊戲規則。");
   assert.equal(GAME_TUTORIAL_STEP_CONTENT.deck.title, "抽牌區");
 
   const compactSteps = createGameTutorialSteps(targets, {
@@ -184,7 +199,7 @@ test("tutorial starts once, exposes localized controls, and disposes safely", as
   assert.equal(await tutorial.startTutorial(input), false);
   assert.equal(harness.tours.length, 1);
   assert.equal(tutorial.hasStarted, true);
-  assert.equal(harness.tours[0].options.steps.length, 4);
+  assert.equal(harness.tours[0].options.steps.length, 6);
   assert.equal(harness.tours[0].options.nextLabel, "下一步");
   assert.equal(harness.tours[0].options.prevLabel, "上一步");
   assert.equal(harness.tours[0].options.skipLabel, "略過");
@@ -312,10 +327,18 @@ test("missing targets and failed starts remain retryable during the same mount",
   assert.equal(missingTargetHarness.tours.length, 1);
 
   const failedHarness = createTourHarness({ rejectStart: true });
-  const failedTutorial = useGameTutorial({ createTour: failedHarness.createTour });
-  assert.equal(await failedTutorial.startTutorial({ ...baseInput, targets }), false);
+  const failedTutorial = useGameTutorial({
+    createTour: failedHarness.createTour,
+  });
+  assert.equal(
+    await failedTutorial.startTutorial({ ...baseInput, targets }),
+    false,
+  );
   assert.equal(failedTutorial.hasStarted, false);
-  assert.equal(await failedTutorial.startTutorial({ ...baseInput, targets }), false);
+  assert.equal(
+    await failedTutorial.startTutorial({ ...baseInput, targets }),
+    false,
+  );
   assert.equal(failedHarness.tours.length, 2);
 });
 
@@ -355,11 +378,13 @@ test("compact landscape keeps forced side placement and moves opponents below ce
 });
 
 test("game stage resolves component-owned tutorial elements after render and cleans up", async () => {
-  const [stage, piles, hand, seats] = await Promise.all([
+  const [stage, piles, hand, seats, settings, rules] = await Promise.all([
     readSource("src/components/game/ui/GameStage.vue"),
     readSource("src/components/game/ui/TableCardPiles.vue"),
     readSource("src/components/game/ui/PlayerHand.vue"),
     readSource("src/components/game/ui/PlayerSeats.vue"),
+    readSource("src/components/game/ui/GameSettingsIcon.vue"),
+    readSource("src/components/game/ui/GameRulesModal.vue"),
   ]);
 
   assert.match(piles, /getDeckElement\(\)/);
@@ -368,10 +393,16 @@ test("game stage resolves component-owned tutorial elements after render and cle
   assert.match(seats, /ref="seatsRoot"/);
   assert.match(seats, /getOpponentSeatsElement\(\)/);
   assert.match(seats, /getOpponentSeatElements\(currentPlayerId\)/);
+  assert.match(settings, /ref="settingButton"/);
+  assert.match(settings, /getButtonElement/);
+  assert.match(rules, /ref="triggerButton"/);
+  assert.match(rules, /getTriggerElement/);
   assert.match(stage, /import \{ useGameTutorial \}/);
   assert.match(stage, /deck: tableCardPilesRef\.value\?\.getDeckElement/);
   assert.match(stage, /hand: playerHand\.value\?\.getHandElement/);
   assert.match(stage, /discard: tableCardPilesRef\.value\?\.getDiscardElement/);
+  assert.match(stage, /settings: gameSettingsIcon\.value\?\.getButtonElement/);
+  assert.match(stage, /rules: gameRulesModal\.value\?\.getTriggerElement/);
   assert.match(stage, /playerSeats\.value\?\.getOpponentSeatElements/);
   assert.match(stage, /await nextTick\(\)/);
   assert.match(stage, /flush: "post"/);
@@ -407,18 +438,56 @@ test("tutorial styles load after Intro.js and enforce Square UI responsive contr
   assert.match(styles, /padding: 6px 12px 10px/);
   assert.match(
     styles,
-    /\.introjs-tooltip\.game-tutorial--opponents \{[^}]*translateY\(120px\)/,
+    /\.introjs-tooltip\.game-tutorial--opponents \{[^}]*position: fixed !important/,
   );
+  assert.match(
+    styles,
+    /\.introjs-tooltip\.game-tutorial--opponents \{[^}]*bottom: 10px !important/,
+  );
+  assert.match(
+    styles,
+    /\.introjs-tooltip\.game-tutorial--opponents \{[^}]*left: 50% !important/,
+  );
+  assert.match(
+    styles,
+    /\.introjs-tooltip\.game-tutorial--opponents \{[^}]*margin: 0 !important/,
+  );
+  assert.match(
+    styles,
+    /\.introjs-tooltip\.game-tutorial--opponents \{[^}]*translateX\(-50%\) !important/,
+  );
+  assert.doesNotMatch(styles, /translateY\(120px\)/);
   assert.match(styles, /writing-mode: horizontal-tb/);
   assert.match(
     styles,
-    /\.game-tutorial \.introjs-skipbutton \{[^}]*font-size: 18px/,
+    /\.game-tutorial \.introjs-skipbutton \{[^}]*font-size: 12px/,
   );
   assert.match(
     styles,
-    /@media \(min-width: 1024px\)[\s\S]*\.game-tutorial \.introjs-skipbutton \{[^}]*font-size: 22px/,
+    /\.game-tutorial \.introjs-tooltip-title \{[^}]*font-size: 14px/,
+  );
+  assert.match(
+    styles,
+    /\.game-tutorial \.introjs-tooltiptext \{[^}]*font-size: 12px/,
+  );
+  assert.match(
+    styles,
+    /\.game-tutorial \.introjs-button \{[^}]*font-size: 12px/,
+  );
+  assert.match(
+    styles,
+    /@media \(min-width: 1024px\)[\s\S]*\.game-tutorial \.introjs-skipbutton \{[^}]*font-size: 16px/,
   );
   assert.match(styles, /game-tutorial-opponent-highlight/);
+  assert.match(styles, /outline: 2px solid var\(--brand-hover\)/);
+  assert.match(styles, /outline-offset: -2px/);
+  assert.doesNotMatch(styles, /outline-offset: 6px/);
+  assert.match(styles, /0 0 30px 2px rgba\(0, 70, 244, 0\.78\)/);
+  assert.doesNotMatch(styles, /0 0 30px 8px rgba\(0, 70, 244, 0\.78\)/);
+  assert.match(styles, /border: 2px solid var\(--brand-hover\)/);
+  assert.match(styles, /0 0 28px rgba\(0, 70, 244, 0\.82\)/);
   assert.match(styles, /rgba\(0, 19, 50, 0\.72\)/);
+  assert.doesNotMatch(styles, /0 0 0 2px rgba\(134, 179, 224, 0\.72\)/);
+  assert.doesNotMatch(styles, /0 0 0 4px rgba\(134, 179, 224, 0\.56\)/);
   assert.doesNotMatch(styles, /\b(?:clamp|vw|vh)\b|width:\s*100%/);
 });

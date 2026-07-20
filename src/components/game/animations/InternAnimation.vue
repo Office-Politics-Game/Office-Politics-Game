@@ -24,7 +24,7 @@ const props = defineProps({
   getPlayerHandRect: { type: Function, default: null },
   getDiscardRect: { type: Function, default: null },
 });
-const emit = defineEmits(["complete"]);
+const emit = defineEmits(["complete", "outcome-reveal"]);
 
 const veilRef = ref(null);
 const cardLayerRef = ref(null);
@@ -102,6 +102,9 @@ async function playIncorrect(result) {
   setTimeline(gsap.timeline({ onComplete: () => finishAnimation(result) }));
   timeline.value
     .to({}, { duration: GUESS_PROMPT_HOLD_SECONDS })
+    .call(() => {
+      emit("outcome-reveal", result.outcome);
+    })
     .set(outcomeRef.value, { opacity: 1, scale: 1 })
     .to(glowRef.value, { opacity: 1, scale: 1, duration: timing.flash }, "<")
     .to(glowRef.value, { opacity: 0.12, scale: 0.86, duration: timing.flash })
@@ -158,6 +161,9 @@ async function playCorrect(result) {
   setTimeline(gsap.timeline({ onComplete: () => finishAnimation(result) }));
   timeline.value
     .to({}, { duration: GUESS_PROMPT_HOLD_SECONDS })
+    .call(() => {
+      emit("outcome-reveal", result.outcome);
+    })
     .set(outcomeRef.value, { opacity: 1, scale: 1 })
     .to(
       cardElement,
