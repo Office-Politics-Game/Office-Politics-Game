@@ -7,8 +7,9 @@ async function readSource(relativePath) {
 }
 
 function getCssRule(source, selector) {
+  const normalizedSource = source.replace(/\r\n/g, "\n")
   const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  return source.match(new RegExp(`${escapedSelector}\\s*\\{([\\s\\S]*?)\\}`))?.[1] ?? ""
+  return normalizedSource.match(new RegExp(`${escapedSelector}\\s*\\{([\\s\\S]*?)\\}`))?.[1] ?? ""
 }
 
 function getTagClasses(source, tag, requiredClass) {
@@ -88,16 +89,25 @@ test("square message bubbles are narrow and point toward their aligned edge", as
   assert.match(commonTailRule, /position:\s*absolute/)
   assert.match(commonTailRule, /content:\s*""/)
   assert.match(commonTailRule, /pointer-events:\s*none/)
-  assert.match(mineRule, /items-start/)
-  assert.match(friendRule, /items-end/)
-  assert.match(ownOuterTailRule, /left:\s*-9px/)
-  assert.match(ownOuterTailRule, /border-right:\s*9px solid var\(--gray-100\)/)
-  assert.match(ownInnerTailRule, /left:\s*-7px/)
-  assert.match(ownInnerTailRule, /border-right:\s*8px solid white/)
-  assert.match(friendOuterTailRule, /right:\s*-9px/)
-  assert.match(friendOuterTailRule, /border-left:\s*9px solid var\(--gray-200\)/)
-  assert.match(friendInnerTailRule, /right:\s*-7px/)
-  assert.match(friendInnerTailRule, /border-left:\s*8px solid var\(--gray-100\)/)
+  assert.match(mineRule, /items-end/)
+  assert.match(friendRule, /items-start/)
+  assert.match(ownOuterTailRule, /right:\s*-9px/)
+  assert.match(
+    ownOuterTailRule,
+    /border-left:\s*9px solid var\(--brand-primary\)/,
+  )
+  assert.match(ownInnerTailRule, /right:\s*-7px/)
+  assert.match(
+    ownInnerTailRule,
+    /border-left:\s*8px solid var\(--brand-primary\)/,
+  )
+  assert.match(friendOuterTailRule, /left:\s*-9px/)
+  assert.match(
+    friendOuterTailRule,
+    /border-right:\s*9px solid var\(--gray-100\)/,
+  )
+  assert.match(friendInnerTailRule, /left:\s*-7px/)
+  assert.match(friendInnerTailRule, /border-right:\s*8px solid white/)
 })
 
 test("message ownership uses labels and source-specific bubble colors", async () => {
@@ -115,8 +125,10 @@ test("message ownership uses labels and source-specific bubble colors", async ()
     /<p class="message-author">\s*\{\{\s*isMine\(message\) \? "我" : friend\.playerId\s*\}\}\s*<\/p>/,
   )
   assert.match(authorRule, /text-xs/)
-  assert.match(mineBubbleRule, /bg-white/)
-  assert.match(friendBubbleRule, /bg-\[var\(--gray-100\)\]/)
+  assert.match(mineBubbleRule, /bg-\[var\(--brand-primary\)\]/)
+  assert.match(mineBubbleRule, /text-\[var\(--brand-navy\)\]/)
+  assert.match(friendBubbleRule, /bg-white/)
+  assert.match(friendBubbleRule, /text-\[var\(--brand-active\)\]/)
   assert.doesNotMatch(mineBubbleRule, /rounded/)
   assert.doesNotMatch(friendBubbleRule, /rounded/)
 })

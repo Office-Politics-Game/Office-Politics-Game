@@ -1,4 +1,5 @@
 import { Server } from "socket.io"
+import cookieParser from "cookie-parser"
 import { getChatPlayerRoom, registerChatHandlers } from "./chatHandlers.js"
 import { registerRoomHandlers } from "./roomHandlers.js"
 import { registerGameHandlers } from "./gameHandlers.js"
@@ -9,8 +10,11 @@ function initializeSocket(httpServer) {
   const io = new Server(httpServer, {
     cors: {
       origin: process.env.CORS_ORIGIN,
+      credentials: true,
     },
   })
+
+  io.engine.use(cookieParser())
 
   activeSocketServer = io
 

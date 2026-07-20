@@ -22,12 +22,17 @@ test('chat api wrapper targets the backend direct chat routes', async () => {
   const source = await readSource('src/services/chatApi.js')
 
   assert.match(source, /const CHAT_API_PATH = "\/chats"/)
-  assert.match(source, /getDirectMessages\(\{ playerId, friendId \}\)/)
+  assert.match(source, /getDirectMessages\(friendId\)/)
   assert.match(source, /apiClient\.get\(`\$\{CHAT_API_PATH\}\/direct\/\$\{friendId\}\/messages`/)
-  assert.match(source, /params: \{ playerId \}/)
-  assert.match(source, /sendDirectMessage\(\{ playerId, friendId, content \}\)/)
+  assert.match(source, /sendDirectMessage\(\{ friendId, content \}\)/)
   assert.match(source, /apiClient\.post\(`\$\{CHAT_API_PATH\}\/direct\/\$\{friendId\}\/messages`/)
-  assert.match(source, /playerId,\s*content,/)
+  assert.doesNotMatch(source, /playerId/)
+})
+
+test('socket client sends HttpOnly Cookies on cross-origin connections', async () => {
+  const source = await readSource('src/services/socketClient.js')
+
+  assert.match(source, /withCredentials:\s*true/)
 })
 
 test('friend store uses real api data instead of friend mock data', async () => {
@@ -77,7 +82,8 @@ test('chat store manages direct chat state through real api data', async () => {
   assert.match(source, /請輸入訊息內容/)
   assert.match(source, /登入後才能使用好友聊天/)
   assert.match(source, /from "@\/services\/socketClient\.js"/)
-  assert.match(source, /emitWithAck\("chat:subscribe"/)
+  assert.match(source, /emitWithAck\("chat:subscribe", \{\}\)/)
+  assert.doesNotMatch(source, /authStore\.token/)
   assert.match(source, /startRealtime\(\)/)
   assert.match(source, /stopRealtime\(\)/)
   assert.doesNotMatch(source, /chat:send/)

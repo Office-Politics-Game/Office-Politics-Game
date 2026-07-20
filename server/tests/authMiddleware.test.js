@@ -30,10 +30,30 @@ describe("requireAuth middleware", () => {
         error.statusCode = 401
         mockVerifyToken.mockRejectedValueOnce(error)
 
-        const req = {
-            cookies: {}
-        }
+        const req = { cookies: {} }
+        const res = createMockResponse()
+        const next = jest.fn()
 
+        await requireAuth(req, res, next)
+
+        expect(mockVerifyToken).toHaveBeenCalledWith("")
+        expect(next).not.toHaveBeenCalled()
+        expect(res.status).toHaveBeenCalledWith(401)
+        expect(res.json).toHaveBeenCalledWith({
+            message: "缺少登入驗證token"
+        })
+    })
+
+    test("只有 Authorization header、沒有 Cookie 時回傳 401", async () => {
+        const error = new Error("缺少登入驗證token")
+        mockVerifyToken.mockRejectedValueOnce(error)
+
+        const req = {
+            cookies: {},
+            headers: {
+                authorization: "Token invalid-token"
+            }
+        }
         const res = createMockResponse()
         const next = jest.fn()
 

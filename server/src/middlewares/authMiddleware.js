@@ -1,6 +1,5 @@
 import { verifyToken } from "../services/authService.js"
-
-const AUTH_COOKIE_NAME = "officePoliticsAuthToken"
+import { AUTH_COOKIE_NAME } from "../constants/auth.js"
 
 function getCookieToken(req) {
     return req.cookies?.[AUTH_COOKIE_NAME] || ""

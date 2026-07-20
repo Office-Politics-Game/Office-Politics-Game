@@ -7,6 +7,7 @@ import {
   handleGetPlayerItems,
   handleGetShopItems,
   handlePurchaseShopItem,
+  handleUnequipShopItem,
   handleUpdateCardSkinLoadout,
 } from "../controllers/shopController.js"
 
@@ -17,6 +18,7 @@ router.get("/players/:playerId/items", handleGetPlayerItems)
 router.post("/purchase", handlePurchaseShopItem)
 router.get("/players/:playerId/equipped", handleGetPlayerEquippedItems)
 router.post("/equip", handleEquipShopItem)
+router.post("/unequip", handleUnequipShopItem)
 router.post("/equip-card-skins", handleUpdateCardSkinLoadout)
 router.get("/cloudinary/config", handleGetCloudinaryUploadConfig)
 router.post("/cloudinary/sign-upload", handleCreateCloudinaryUploadSignature)
