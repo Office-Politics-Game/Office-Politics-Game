@@ -38,7 +38,7 @@ function emitDirectMessage(directMessage) {
 async function handleSendDirectMessage(req, res) {
   try {
     const body = req.body ?? {}
-    const playerId = parsePositiveInteger(body.playerId)
+    const playerId = parsePositiveInteger(req.player?.id)
     const friendId = parsePositiveInteger(req.params.friendId)
 
     if (!playerId || !friendId || body.content == null) {
@@ -67,7 +67,7 @@ async function handleSendDirectMessage(req, res) {
 
 async function handleGetDirectMessages(req, res) {
   try {
-    const playerId = parsePositiveInteger(req.query.playerId)
+    const playerId = parsePositiveInteger(req.player?.id)
     const friendId = parsePositiveInteger(req.params.friendId)
 
     if (!playerId || !friendId) {

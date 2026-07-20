@@ -79,3 +79,27 @@ test("FriendChatPanel 只在可送出時沿用一次既有送出流程", () => {
     "鍵盤處理函式只能呼叫一次 submitMessage",
   );
 });
+
+test("FriendChatPanel 立即清空輸入框並在送出失敗時還原內容", () => {
+  const submitMatch = friendChatPanelSource.match(
+    /async function submitMessage\(\) \{([\s\S]*?)\n\}/,
+  );
+  assert.ok(submitMatch, "FriendChatPanel 應定義 submitMessage");
+
+  const body = submitMatch[1];
+  const preserveIndex = body.indexOf("const originalMessage = messageText.value;");
+  const dispatchIndex = body.indexOf("const sendRequest = chatStore.sendMessage({");
+  const clearIndex = body.indexOf('messageText.value = "";');
+  const awaitIndex = body.indexOf("const sentMessage = await sendRequest;");
+  const restoreIndex = body.indexOf("messageText.value = originalMessage;");
+
+  assert.ok(preserveIndex >= 0);
+  assert.ok(dispatchIndex > preserveIndex);
+  assert.ok(clearIndex > dispatchIndex);
+  assert.ok(awaitIndex > clearIndex);
+  assert.ok(restoreIndex > awaitIndex);
+  assert.match(
+    body,
+    /if \(!sentMessage\) \{[\s\S]*messageText\.value = originalMessage;/,
+  );
+});

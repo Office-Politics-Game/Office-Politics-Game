@@ -1,4 +1,5 @@
 import { verifyToken } from "../services/authService.js"
+import { AUTH_COOKIE_NAME } from "../constants/auth.js"
 
 const chatOperationQueues = new WeakMap()
 
@@ -42,13 +43,17 @@ function sendCancelledSubscription(callback) {
   })
 }
 
+function getSocketAuthToken(socket) {
+  return socket.request?.cookies?.[AUTH_COOKIE_NAME] || ""
+}
+
 function registerChatHandlers(socket) {
-  socket.on("chat:subscribe", (payload = {}, callback) => {
+  socket.on("chat:subscribe", (_payload = {}, callback) => {
     const generation = beginChatOperation(socket)
 
     return enqueueChatOperation(socket, async () => {
       try {
-        const player = await verifyToken(payload.token)
+        const player = await verifyToken(getSocketAuthToken(socket))
 
         if (!isCurrentChatOperation(socket, generation)) {
           sendCancelledSubscription(callback)

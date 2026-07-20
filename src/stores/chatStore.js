@@ -16,6 +16,7 @@ const realtimeHandlersByStore = new WeakMap();
 const realtimeGenerationByStore = new WeakMap();
 const realtimeRetryTimersByStore = new WeakMap();
 const realtimeRetryCountsByStore = new WeakMap();
+let nextOptimisticMessageId = -1;
 
 function getRealtimeStoreKey(store) {
   return toRaw(store);
@@ -109,12 +110,42 @@ function normalizeMessageContent(value) {
   return String(value ?? "").trim();
 }
 
+function hasValidDirectMessageId(message) {
+  if (toPositiveInteger(message?.id)) {
+    return true;
+  }
+
+  return Boolean(
+    message?.isOptimistic === true &&
+      Number.isInteger(message.id) &&
+      message.id < 0,
+  );
+}
+
 function isValidDirectMessage(message) {
   return Boolean(
-    toPositiveInteger(message?.id) &&
+    hasValidDirectMessageId(message) &&
       toPositiveInteger(message?.senderPlayerId) &&
       toPositiveInteger(message?.receiverPlayerId),
   );
+}
+
+function createOptimisticDirectMessage({
+  senderPlayerId,
+  receiverPlayerId,
+  content,
+}) {
+  const optimisticMessage = {
+    id: nextOptimisticMessageId,
+    senderPlayerId,
+    receiverPlayerId,
+    content,
+    createdAt: new Date().toISOString(),
+    isOptimistic: true,
+  };
+
+  nextOptimisticMessageId -= 1;
+  return optimisticMessage;
 }
 
 function compareDirectMessages(left, right) {
@@ -143,7 +174,7 @@ function mergeDirectMessages(...messageGroups) {
 function getAuthenticatedPlayerId() {
   const authStore = useAuthStore();
 
-  if (!authStore.isLoggedIn || !authStore.token) {
+  if (!authStore.isLoggedIn) {
     return null;
   }
 
@@ -204,14 +235,14 @@ export const useChatStore = defineStore("chat", {
         return false;
       }
 
-      if (!authStore.isLoggedIn || !authStore.token) {
+      if (!authStore.isLoggedIn || !authStore.currentPlayer?.id) {
         this.isRealtimeSubscribed = false;
         this.realtimeErrorMessage = CHAT_LOGIN_REQUIRED_MESSAGE;
         return false;
       }
 
       try {
-        await emitWithAck("chat:subscribe", { token: authStore.token });
+        await emitWithAck("chat:subscribe", {});
 
         if (!isRealtimeGenerationActive(this, generation)) {
           return false;
@@ -388,6 +419,21 @@ export const useChatStore = defineStore("chat", {
       this.mergeMessages(friendId, [message]);
     },
 
+    replaceMessage(friendId, previousMessageId, replacementMessage = null) {
+      const key = String(friendId);
+      const remainingMessages = (this.conversations[key] ?? []).filter(
+        (message) => String(message.id) !== String(previousMessageId),
+      );
+
+      this.conversations = {
+        ...this.conversations,
+        [key]: mergeDirectMessages(
+          remainingMessages,
+          replacementMessage ? [replacementMessage] : [],
+        ),
+      };
+    },
+
     handleRealtimeMessage(message) {
       if (!isValidDirectMessage(message)) {
         return;
@@ -408,11 +454,8 @@ export const useChatStore = defineStore("chat", {
       this.errorMessage = "";
 
       try {
-        const playerId = this.getCurrentPlayerId();
-        const data = await getDirectMessagesApi({
-          playerId,
-          friendId: numericFriendId,
-        });
+        this.getCurrentPlayerId();
+        const data = await getDirectMessagesApi(numericFriendId);
 
         if (realtimeGeneration === undefined) {
           this.mergeMessages(numericFriendId, data.messages ?? []);
@@ -458,21 +501,33 @@ export const useChatStore = defineStore("chat", {
       this.isSending = true;
       this.errorMessage = "";
 
+      let optimisticMessage = null;
+
       try {
-        const playerId = this.getCurrentPlayerId();
+        const currentPlayerId = this.getCurrentPlayerId();
+        optimisticMessage = createOptimisticDirectMessage({
+          senderPlayerId: currentPlayerId,
+          receiverPlayerId: numericFriendId,
+          content: normalizedContent,
+        });
+        this.appendMessage(numericFriendId, optimisticMessage);
+
         const data = await sendDirectMessageApi({
-          playerId,
           friendId: numericFriendId,
           content: normalizedContent,
         });
         const directMessage = data.directMessage;
 
-        if (directMessage) {
-          this.appendMessage(numericFriendId, directMessage);
+        if (!isValidDirectMessage(directMessage) || directMessage.isOptimistic) {
+          throw new Error("訊息送出失敗");
         }
 
-        return directMessage ?? null;
+        this.replaceMessage(numericFriendId, optimisticMessage.id, directMessage);
+        return directMessage;
       } catch (error) {
+        if (optimisticMessage) {
+          this.replaceMessage(numericFriendId, optimisticMessage.id);
+        }
         this.errorMessage = error.message || "訊息送出失敗";
         return null;
       } finally {

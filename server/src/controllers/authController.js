@@ -7,8 +7,8 @@ import {
     requestPasswordReset,
     resetPlayerPassword
 } from "../services/authService.js"
+import { AUTH_COOKIE_NAME } from "../constants/auth.js"
 
-const AUTH_COOKIE_NAME = "officePoliticsAuthToken"
 const DEFAULT_AUTH_COOKIE_MAX_AGE = 60 * 60 * 1000
 
 function sendAuthError(res, error, fallbackMessage) {
