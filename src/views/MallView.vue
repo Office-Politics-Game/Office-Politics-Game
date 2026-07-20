@@ -12,7 +12,7 @@
             OFFICE POLITICS
           </p>
           <div class="mt-0.5 flex items-center">
-            <h1 class="font-display text-2xl font-black tracking-[0.05em] text-slate-900">
+            <h1 class="font-sans text-2xl font-bold tracking-[0.05em] text-slate-900">
               商城
             </h1>
           </div>
@@ -38,9 +38,11 @@
           <button
             type="button"
             class="return-icon-button tablet-storebar-return"
-            aria-label="&#36820;&#22238;&#22823;&#24237;"
+            aria-label="返回大廳"
             @click="goLobby"
-          ></button>
+          >
+            <X :size="26" :stroke-width="1.8" />
+          </button>
         </div>
       </header>
 
@@ -56,7 +58,7 @@
                 <p class="m-0 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
                   OFFICE POLITICS
                 </p>
-                <h2 class="mt-1 font-display text-xl font-black tracking-[0.06em] text-slate-900">
+                <h2 class="mt-1 font-sans text-xl font-bold tracking-[0.06em] text-slate-900">
                   商城
                 </h2>
                 <p class="mt-1 text-xs font-semibold text-slate-600">
@@ -80,11 +82,11 @@
               tooltip-size="small"
             />
 
-            <div class="mt-3 border border-slate-300 bg-[linear-gradient(180deg,#f9fbfd,#eef4f9)] p-3">
+            <div class="mt-3 border border-slate-300 bg-slate-100 p-3">
               <div class="text-[10px] font-bold tracking-[0.12em] text-slate-500">
                 目前分類
               </div>
-              <div class="mt-1 text-base font-black text-slate-900">
+              <div class="mt-1 text-base font-bold text-slate-900">
                 {{ activeCategoryMeta.name }}
               </div>
             </div>
@@ -105,7 +107,7 @@
           <p class="hidden text-[11px] font-bold uppercase tracking-[0.28em] text-slate-500 xl:block xl:text-xs">
             OFFICE POLITICS
           </p>
-          <h1 class="font-display text-xl font-black tracking-[0.06em] text-slate-900 xl:mt-1 xl:text-5xl xl:tracking-[0.08em]">
+          <h1 class="font-sans text-xl font-bold tracking-[0.06em] text-slate-900 xl:mt-1 xl:text-5xl xl:tracking-[0.08em]">
             商城
           </h1>
           <p class="hidden mt-1 text-xs font-semibold tracking-[0.04em] text-slate-600 xl:mt-2 xl:block xl:text-base xl:tracking-[0.06em]">
@@ -125,18 +127,20 @@
         <button
           type="button"
           class="return-icon-button order-2 xl:order-none"
-          aria-label="&#36820;&#22238;&#22823;&#24237;"
+          aria-label="返回大廳"
           @click="goLobby"
-        ></button>
+        >
+          <X :size="26" :stroke-width="1.8" />
+        </button>
       </header>
 
       <div class="grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-hidden xl:grid-cols-[280px_minmax(0,1fr)]">
-        <aside class="scroll-area min-h-0 overflow-y-auto border-b border-slate-300/80 bg-[linear-gradient(180deg,rgba(238,244,251,0.96),rgba(221,230,241,0.9))] xl:border-b-0 xl:border-r">
+        <aside class="scroll-area min-h-0 overflow-y-auto border-b border-slate-300/80 bg-slate-950/95 xl:border-b-0 xl:border-r">
           <div class="hidden border-b border-slate-300/80 px-3 py-3 xl:block xl:px-5 xl:py-4">
             <div class="text-[11px] font-bold tracking-[0.16em] text-slate-500 xl:text-xs xl:tracking-[0.2em]">
               分類導覽
             </div>
-            <div class="mt-1 text-base font-black text-slate-900 xl:mt-2 xl:text-lg">
+            <div class="mt-1 text-base font-bold text-slate-900 xl:mt-2 xl:text-lg">
               商品分類
             </div>
           </div>
@@ -153,7 +157,7 @@
             >
               <div class="flex items-start justify-between gap-3">
                 <div>
-                  <div class="text-xs font-black tracking-[0.06em] xl:text-sm xl:tracking-[0.08em]">
+                  <div class="text-xs font-bold tracking-[0.06em] xl:text-sm xl:tracking-[0.08em]">
                     {{ category.name }}
                   </div>
                   <div class="hidden mt-1 text-[11px] leading-4 text-slate-500 xl:block xl:text-xs xl:leading-5">
@@ -168,15 +172,15 @@
           </nav>
         </aside>
 
-        <section class="scroll-area min-h-0 overflow-y-auto bg-[linear-gradient(180deg,rgba(247,250,253,0.92),rgba(235,241,247,0.9))]">
+        <section class="scroll-area min-h-0 overflow-y-auto bg-slate-950/90">
           <div class="product-area grid gap-2 p-2 xl:gap-2.5 xl:p-3">
-            <article class="featured-panel overflow-hidden border border-slate-300/80 bg-[linear-gradient(130deg,rgba(6,29,55,0.96),rgba(69,87,104,0.92))] text-white">
-              <div class="grid gap-2 p-2.5 xl:grid-cols-[minmax(0,1fr)_150px] xl:gap-2.5 xl:p-3">
+            <article class="featured-panel overflow-hidden border border-slate-300/80 bg-slate-950 text-white">
+              <div class="grid gap-2 p-2.5 xl:gap-2.5 xl:p-3">
                 <div>
                   <div class="inline-flex border border-white/25 bg-white/10 px-2 py-0.5 text-[9px] font-bold tracking-[0.1em] text-slate-100 md:text-[9px] md:tracking-[0.14em]">
                     精選推薦
                   </div>
-                  <h2 class="mt-1 font-display text-base font-black tracking-[0.04em] md:mt-1.5 md:text-xl md:tracking-[0.05em]">
+                  <h2 class="mt-1 font-sans text-base font-bold tracking-[0.04em] md:mt-1.5 md:text-xl md:tracking-[0.05em]">
                     {{ featuredItem.name }}
                   </h2>
                   <p class="featured-summary hidden mt-1 max-w-[38rem] text-[11px] leading-4 text-slate-200 xl:block">
@@ -184,24 +188,6 @@
                   </p>
                 </div>
 
-                <div class="hidden content-between gap-1.5 border border-white/16 bg-white/10 p-2.5 backdrop-blur-sm xl:grid">
-                  <div>
-                    <div class="text-[9px] font-bold tracking-[0.1em] text-slate-200">
-                      可用代幣
-                    </div>
-                    <div class="mt-0.5 text-xl font-black text-white">
-                      {{ budgetDisplay }}
-                    </div>
-                  </div>
-                  <div>
-                    <div class="text-[9px] font-bold tracking-[0.1em] text-slate-300">
-                      目前分類
-                    </div>
-                    <div class="mt-0.5 inline-flex border border-white/25 bg-white/10 px-2 py-0.5 text-[11px] font-bold text-white">
-                      {{ activeCategoryMeta.name }}
-                    </div>
-                  </div>
-                </div>
               </div>
             </article>
 
@@ -217,7 +203,7 @@
               v-if="isShopLoading"
               class="empty-state border border-dashed border-slate-300 bg-white/70 px-4 py-8 text-center md:px-6 md:py-12"
             >
-              <div class="text-lg font-black tracking-[0.06em] text-slate-900 md:text-xl md:tracking-[0.08em]">
+              <div class="text-lg font-bold tracking-[0.06em] text-slate-900 md:text-xl md:tracking-[0.08em]">
                 商城資料載入中
               </div>
               <p class="mt-2 text-xs leading-5 text-slate-500 md:mt-3 md:text-sm md:leading-6">
@@ -229,7 +215,7 @@
               v-else-if="filteredItems.length === 0"
               class="empty-state border border-dashed border-slate-300 bg-white/70 px-4 py-8 text-center md:px-6 md:py-12"
             >
-              <div class="text-lg font-black tracking-[0.06em] text-slate-900 md:text-xl md:tracking-[0.08em]">
+              <div class="text-lg font-bold tracking-[0.06em] text-slate-900 md:text-xl md:tracking-[0.08em]">
                 這個分類目前沒有商品
               </div>
               <p class="mt-2 text-xs leading-5 text-slate-500 md:mt-3 md:text-sm md:leading-6">
@@ -265,7 +251,7 @@
                 商品明細
               </div>
               <div class="mt-1 flex flex-wrap items-center gap-1.5 md:mt-2 md:gap-2">
-                <h3 class="font-display text-xl font-black tracking-[0.03em] text-slate-900 md:text-3xl md:tracking-[0.05em]">
+                <h3 class="font-sans text-xl font-bold tracking-[0.03em] text-slate-900 md:text-3xl md:tracking-[0.05em]">
                   {{ selectedItem.name }}
                 </h3>
                 <span class="border border-slate-300 bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700 md:px-2 md:py-1 md:text-[11px]">
@@ -279,11 +265,11 @@
 
             <button
               type="button"
-              class="close-button"
+              class="return-icon-button modal-detail-close"
               aria-label="關閉商品明細"
               @click="closeItemDetail"
             >
-              ×
+              <X :size="26" :stroke-width="1.8" />
             </button>
           </header>
 
@@ -321,11 +307,14 @@
                 </div>
 
                 <aside class="modal-detail-card__purchase">
-                  <div class="border border-slate-300 bg-[linear-gradient(180deg,#f9fbfd,#eef4f9)] p-2.5 md:p-4">
-                    <div class="text-[9px] font-bold tracking-[0.1em] text-slate-500 md:text-[11px] md:tracking-[0.16em]">
-                      可用代幣
-                    </div>
-                    <div class="mt-0.5 text-lg font-black text-slate-900 md:mt-1 md:text-3xl">
+                  <div class="modal-budget-row border border-slate-300 bg-slate-900 p-2.5 md:p-4">
+                    <img
+                      :src="selectedItem.currency === 'coin' ? officeToken : stockToken"
+                      :alt="selectedItem.currency === 'coin' ? '金幣' : '股份'"
+                      class="modal-budget-row__icon"
+                      :class="{ 'modal-budget-row__icon--stock': selectedItem.currency !== 'coin' }"
+                    />
+                    <div class="modal-budget-row__amount text-lg font-bold text-slate-900 md:text-3xl">
                       {{ budgetDisplay }}
                     </div>
                   </div>
@@ -373,11 +362,13 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { X } from "lucide-vue-next";
 import CurrencyBar from "@/components/common/CurrencyBar.vue";
 import MallProductCard from "@/components/mall/MallProductCard.vue";
 import { useButtonClickAudio } from "@/composables/UseButtonClickAudio";
 import { usePreGameAudio } from "@/composables/UsePreGameAudio";
 import bgDashboard from "@/assets/images/bg-dashboard.webp";
+import officeToken from "@/assets/images/office-token.webp";
 import stockToken from "@/assets/images/stock-token.webp";
 import stockTokenBundle from "@/assets/images/stock-token-bundle.webp";
 import stockTokenStack from "@/assets/images/stock-token-stack.webp";
@@ -833,11 +824,7 @@ onBeforeUnmount(() => {
   position: absolute;
   inset: 0;
   content: "";
-  background:
-    linear-gradient(116deg, transparent 0 31%, rgba(54, 83, 143, 0.38) 31.2% 55%, transparent 55.2%),
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 5px),
-    radial-gradient(circle at 78% 24%, rgba(0, 70, 244, 0.18), transparent 28%),
-    radial-gradient(circle at 18% 80%, rgba(168, 85, 247, 0.18), transparent 30%);
+  background: rgba(0, 19, 50, 0.18);
   pointer-events: none;
 }
 
@@ -850,18 +837,14 @@ onBeforeUnmount(() => {
 
 .mall-shell {
   border-color: rgba(148, 163, 184, 0.38);
-  background:
-    linear-gradient(135deg, rgba(4, 12, 24, 0.94), rgba(13, 22, 42, 0.9)),
-    rgba(3, 7, 18, 0.92);
+  background: rgba(3, 7, 18, 0.94);
 }
 
 .mall-topbar {
   position: relative;
   overflow: hidden;
   border-color: rgba(148, 163, 184, 0.32);
-  background:
-    linear-gradient(108deg, rgba(2, 6, 23, 0.98) 0 42%, rgba(30, 58, 138, 0.72) 42.2% 64%, rgba(2, 6, 23, 0.96) 64.2%),
-    rgba(2, 6, 23, 0.94);
+  background: rgba(2, 6, 23, 0.98);
 }
 
 .mall-topbar::after {
@@ -871,7 +854,7 @@ onBeforeUnmount(() => {
   left: 0;
   height: 3px;
   content: "";
-  background: linear-gradient(90deg, transparent, rgba(0, 70, 244, 0.95), transparent);
+  background: var(--brand-hover);
 }
 
 .mall-topbar h1,
@@ -885,7 +868,7 @@ onBeforeUnmount(() => {
 
 .mall-topbar > div:nth-child(2) > div {
   border-color: rgba(148, 163, 184, 0.36);
-  background: linear-gradient(180deg, rgba(71, 85, 105, 0.82), rgba(15, 23, 42, 0.9));
+  background: rgba(15, 23, 42, 0.9);
 }
 
 .mall-topbar > div:nth-child(2) > div > div:first-child {
@@ -901,7 +884,7 @@ onBeforeUnmount(() => {
 .tablet-storebar-actions .btn-dark,
 .mobile-menu-panel .btn-dark {
   border-color: rgba(0, 70, 244, 0.7);
-  background: linear-gradient(180deg, rgba(0, 70, 244, 0.95), rgba(70, 85, 99, 0.95));
+  background: var(--brand-hover);
   color: white;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
 }
@@ -923,24 +906,20 @@ onBeforeUnmount(() => {
 
 .scroll-area::-webkit-scrollbar-thumb {
   border: 2px solid rgba(15, 23, 42, 0.75);
-  background: linear-gradient(180deg, rgba(0, 70, 244, 0.9), rgba(70, 85, 99, 0.88));
+  background: var(--brand-hover);
 }
 
 .scroll-area::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(134, 179, 224, 0.95), rgba(0, 70, 244, 0.92));
+  background: var(--brand-primary);
 }
 
 .mall-shell > .grid > aside {
   border-color: rgba(148, 163, 184, 0.24);
-  background:
-    linear-gradient(180deg, rgba(2, 6, 23, 0.95), rgba(15, 23, 42, 0.9)),
-    rgba(2, 6, 23, 0.92);
+  background: rgba(2, 6, 23, 0.95);
 }
 
 .mall-shell > .grid > section {
-  background:
-    linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(3, 7, 18, 0.9)),
-    rgba(2, 6, 23, 0.9);
+  background: rgba(3, 7, 18, 0.94);
 }
 
 .mall-shell > .grid > aside > div:first-child {
@@ -1019,9 +998,7 @@ onBeforeUnmount(() => {
 
 .featured-panel {
   border-color: rgba(0, 70, 244, 0.28);
-  background:
-    linear-gradient(110deg, rgba(2, 6, 23, 0.96) 0 42%, rgba(30, 58, 138, 0.42) 42.2% 67%, rgba(2, 6, 23, 0.94) 67.2%),
-    rgba(2, 6, 23, 0.9);
+  background: rgba(2, 6, 23, 0.96);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     0 18px 34px rgba(0, 0, 0, 0.32);
@@ -1043,9 +1020,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 12px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.32);
-  background:
-    linear-gradient(108deg, rgba(2, 6, 23, 0.98) 0 58%, rgba(30, 58, 138, 0.78) 58.2% 72%, rgba(2, 6, 23, 0.96) 72.2%),
-    rgba(2, 6, 23, 0.94);
+  background: rgba(2, 6, 23, 0.98);
   padding: 8px 10px 8px 12px;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
 }
@@ -1085,32 +1060,27 @@ onBeforeUnmount(() => {
   box-shadow: none;
   transition:
     transform 0.18s ease,
+    background 0.18s ease,
     color 0.18s ease,
-    opacity 0.18s ease;
+    box-shadow 0.18s ease;
   cursor: pointer;
-}
-
-.return-icon-button::before {
-  width: 30px;
-  height: 30px;
-  content: "";
-  background: currentColor;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'%3E%3Cpath d='M576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576C461.4 576 576 461.4 576 320zM188.7 308.7L292.7 204.7C297.3 200.1 304.2 198.8 310.1 201.2C316 203.6 320 209.5 320 216L320 272L416 272C433.7 272 448 286.3 448 304L448 336C448 353.7 433.7 368 416 368L320 368L320 424C320 430.5 316.1 436.3 310.1 438.8C304.1 441.3 297.2 439.9 292.7 435.3L188.7 331.3C182.5 325.1 182.5 314.9 188.7 308.7z'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 .return-icon-button:hover {
   transform: translateY(-1px);
-  color: var(--brand-hover);
+  background: var(--brand-hover);
+  color: white;
 }
 
 .return-icon-button:active {
   transform: translateY(1px);
-  color: var(--brand-active);
+  background: var(--brand-active);
+  color: white;
 }
 
 .return-icon-button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 5px var(--brand-focus);
+  box-shadow: inset 0 0 0 4px var(--brand-focus);
 }
 
 .mall-topbar > .return-icon-button {
@@ -1119,11 +1089,6 @@ onBeforeUnmount(() => {
   width: 34px;
   height: 34px;
   flex-basis: 34px;
-}
-
-.mall-topbar > .return-icon-button::before {
-  width: 30px;
-  height: 30px;
 }
 
 .mall-topbar-tools {
@@ -1209,9 +1174,7 @@ onBeforeUnmount(() => {
   height: 100%;
   overflow-y: auto;
   border-left: 1px solid rgba(0, 70, 244, 0.38);
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(2, 6, 23, 0.96)),
-    rgba(2, 6, 23, 0.96);
+  background: rgba(2, 6, 23, 0.98);
   padding: 14px;
   box-shadow: -18px 0 42px rgba(0, 0, 0, 0.42);
 }
@@ -1342,16 +1305,13 @@ onBeforeUnmount(() => {
 
 .modal-panel {
   border-color: rgba(148, 163, 184, 0.38);
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(2, 6, 23, 0.95)),
-    rgba(2, 6, 23, 0.96);
+  background: rgba(2, 6, 23, 0.98);
   color: rgba(226, 232, 240, 0.92);
 }
 
 .modal-panel > header {
   border-color: rgba(148, 163, 184, 0.26);
-  background:
-    linear-gradient(108deg, rgba(2, 6, 23, 0.98), rgba(30, 58, 138, 0.56), rgba(2, 6, 23, 0.96));
+  background: rgba(2, 6, 23, 0.98);
 }
 
 .modal-panel h3 {
@@ -1370,17 +1330,39 @@ onBeforeUnmount(() => {
 
 .modal-detail-card__purchase > div {
   border-color: rgba(148, 163, 184, 0.36);
-  background:
-    linear-gradient(180deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+  background: rgba(15, 23, 42, 0.94);
 }
 
-.modal-detail-card__purchase > div > div:first-child {
-  color: rgba(203, 213, 225, 0.78);
+.modal-budget-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.modal-detail-card__purchase > div > div:last-child {
+.modal-budget-row__icon {
+  display: block;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  object-fit: contain;
+  object-position: center;
+}
+
+.modal-budget-row__icon--stock {
+  transform: scale(1.25);
+  transform-origin: center;
+}
+
+.modal-budget-row__amount {
   color: rgb(134, 179, 224);
+  line-height: 1;
+  text-align: right;
   text-shadow: 0 0 14px rgba(0, 70, 244, 0.45);
+}
+
+.modal-detail-close {
+  flex: 0 0 38px;
 }
 
 .modal-preview {
@@ -1394,9 +1376,7 @@ onBeforeUnmount(() => {
   aspect-ratio: auto;
   padding: 0;
   border: 1px solid rgba(148, 163, 184, 0.36);
-  background:
-    linear-gradient(135deg, rgba(15, 23, 42, 0.72), rgba(30, 58, 138, 0.34)),
-    rgba(2, 6, 23, 0.76);
+  background: rgba(2, 6, 23, 0.9);
   cursor: zoom-in;
 }
 
@@ -1422,9 +1402,7 @@ onBeforeUnmount(() => {
 .modal-preview__overlay {
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(180deg, rgba(0, 19, 50, 0.08), rgba(0, 19, 50, 0.48)),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 48%);
+  background: rgba(0, 19, 50, 0.28);
 }
 
 .image-preview-layer {
@@ -1470,13 +1448,13 @@ onBeforeUnmount(() => {
 
 .item-action--buy {
   border-color: rgba(0, 70, 244, 0.75);
-  background: linear-gradient(180deg, rgba(0, 70, 244, 0.95), rgba(70, 85, 99, 0.95));
+  background: var(--brand-hover);
   color: white;
   cursor: pointer;
 }
 
 .item-action--buy:hover {
-  background: linear-gradient(180deg, rgba(134, 179, 224, 0.98), rgba(0, 70, 244, 0.95));
+  background: var(--brand-primary);
 }
 
 .item-action--owned {

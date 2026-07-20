@@ -16,7 +16,7 @@
     </div>
 
     <div class="item-card__content mt-4">
-      <div class="item-card__title text-lg font-black tracking-[0.05em] text-slate-900">
+      <div class="item-card__title text-lg font-bold tracking-[0.05em] text-slate-900">
         {{ item.name }}
       </div>
     </div>
@@ -26,8 +26,17 @@
         <div class="item-card__price-label text-[11px] font-bold tracking-[0.16em] text-slate-500">
           價格
         </div>
-        <div class="item-card__price mt-1 text-2xl font-black text-slate-900">
-          {{ item.price }}
+        <div class="item-card__price-row">
+          <img
+            v-if="['coin', 'ticket'].includes(item.currency)"
+            :src="item.currency === 'ticket' ? stockTokenImage : officeTokenImage"
+            :alt="item.currency === 'ticket' ? '抽卡券' : '金幣'"
+            class="item-card__price-icon"
+            :class="{ 'item-card__price-icon--stock': item.currency === 'ticket' }"
+          />
+          <div class="item-card__price text-2xl font-bold text-slate-900">
+            {{ item.price }}
+          </div>
         </div>
       </div>
 
@@ -45,6 +54,9 @@
 </template>
 
 <script setup>
+import officeTokenImage from "@/assets/images/office-token.webp";
+import stockTokenImage from "@/assets/images/stock-token.webp";
+
 defineProps({
   item: {
     type: Object,
@@ -65,8 +77,9 @@ defineEmits(["purchase", "select"]);
   align-content: start;
   overflow: hidden;
   border: 1px solid rgba(12, 24, 38, 0.86);
-  background:
-    linear-gradient(180deg, rgba(8, 17, 30, 0.96), rgba(2, 8, 18, 0.98));
+  background: #000000;
+  color: white;
+  font-weight: 700;
   padding: 0;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.08),
@@ -102,9 +115,7 @@ defineEmits(["purchase", "select"]);
   border: 0;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  background:
-    linear-gradient(135deg, rgba(10, 132, 255, 0.34), rgba(111, 215, 255, 0.16)),
-    linear-gradient(180deg, rgba(199, 210, 224, 0.92), rgba(139, 153, 170, 0.85));
+  background: rgba(15, 23, 42, 0.96);
 }
 
 .item-card__preview-image {
@@ -131,15 +142,14 @@ defineEmits(["purchase", "select"]);
 }
 
 .item-card__preview-image--ticket {
-  transform: translateY(10px);
+  padding: 12px;
+  transform: none;
 }
 
 .item-card__preview-overlay {
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(180deg, rgba(0, 19, 50, 0.08), rgba(0, 19, 50, 0.48)),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 48%);
+  background: rgba(0, 19, 50, 0.28);
 }
 
 .item-card__content {
@@ -159,6 +169,7 @@ defineEmits(["purchase", "select"]);
   font-size: 15px;
   line-height: 1.25;
   letter-spacing: 0.04em;
+  font-weight: 700;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -178,13 +189,39 @@ defineEmits(["purchase", "select"]);
   color: rgba(203, 213, 225, 0.78);
   font-size: 10px;
   letter-spacing: 0.1em;
+  font-weight: 700;
 }
 
 .item-card__price {
-  margin-top: 2px;
   color: rgb(134, 179, 224);
   font-size: 22px;
+  font-weight: 700;
   text-shadow: 0 0 12px rgba(0, 70, 244, 0.45);
+}
+
+.item-card__price-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.item-card__price-icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  object-fit: contain;
+  object-position: center;
+}
+
+.item-card__price-icon--stock {
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+  margin-block: -4px;
+  transform: scale(1.25);
+  transform-origin: center;
 }
 
 .item-action {
@@ -192,7 +229,7 @@ defineEmits(["purchase", "select"]);
   min-width: 82px;
   min-height: 34px;
   border: 1px solid rgba(0, 70, 244, 0.75);
-  background: linear-gradient(180deg, rgba(0, 70, 244, 0.95), rgba(70, 85, 99, 0.95));
+  background: var(--brand-hover);
   padding: 7px 8px;
   color: white;
   font-size: 11px;
@@ -217,7 +254,7 @@ defineEmits(["purchase", "select"]);
 }
 
 .item-action--buy {
-  background: linear-gradient(180deg, rgba(0, 70, 244, 0.95), rgba(70, 85, 99, 0.95));
+  background: var(--brand-hover);
   color: white;
   cursor: pointer;
 }
@@ -227,18 +264,18 @@ defineEmits(["purchase", "select"]);
 }
 
 .item-action--buy:hover {
-  background: linear-gradient(180deg, rgba(134, 179, 224, 0.98), rgba(0, 70, 244, 0.95));
+  background: var(--brand-primary);
 }
 
 .item-action--owned {
   border-color: rgba(148, 163, 184, 0.72);
-  background: linear-gradient(180deg, rgba(226, 232, 240, 0.95), rgba(148, 163, 184, 0.95));
+  background: var(--gray-200);
   color: rgb(30, 41, 59);
 }
 
 .item-action--coming {
   border-color: rgba(245, 158, 11, 0.75);
-  background: linear-gradient(180deg, rgba(254, 215, 170, 0.95), rgba(217, 119, 6, 0.95));
+  background: var(--brand-active);
   color: rgb(67, 20, 7);
 }
 
