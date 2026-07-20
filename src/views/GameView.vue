@@ -1,9 +1,11 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import LoadingScreen from '@/components/common/LoadingScreen.vue'
 import GameStage from '@/components/game/ui/GameStage.vue'
+import { useGameTableAudio } from '@/composables/UseGameTableAudio'
+import { usePreGameAudio } from '@/composables/UsePreGameAudio'
 import { useGameRoomState } from '@/composables/useGameRoomState'
 import { useGameSocketActions } from '@/composables/useGameSocketActions'
 import { useGameViewModel } from '@/composables/useGameViewModel'
@@ -21,6 +23,8 @@ import { normalizeCard } from '@/utils/cardUtils'
 import { resolveAvatarUrl } from '@/utils/playerUtils'
 
 const route = useRoute()
+const router = useRouter()
+const hasNavigatedToResult = ref(false)
 const appearanceStore = useAppearanceStore()
 const gameStateStore = useGameStateStore()
 const { gameState, currentPlayer, currentPlayerId, currentTurnPlayerId, isLoading } =
@@ -115,6 +119,10 @@ const {
   beforeRefresh: ensureViewerAppearanceHydrated,
 })
 
+const { startGameTableBackground, stopGameTableBackground } =
+  useGameTableAudio()
+const { requestPreGameBackgroundResume } = usePreGameAudio()
+
 const {
   isDrawing,
   isSocketActionSubmitting,
@@ -159,14 +167,43 @@ const {
   resolveAvatarUrl,
 })
 
+function handleReturnLobby() {
+  requestPreGameBackgroundResume()
+  router.push({ name: 'LobbyHome' })
+}
+
+async function navigateToResult() {
+  await gameStage.value?.playGameEndTransition?.()
+
+  await router.push({
+    name: "Result",
+    query: {
+      roomCode: normalizedRoomCode.value,
+      playerId: resolvedCurrentPlayerId.value || requestedPlayerId.value || undefined,
+      transition: "game-end",
+    },
+  })
+}
+
 onMounted(() => {
   void loadInitialRoomState()
   void subscribeGameSocket()
 })
 
 onBeforeUnmount(() => {
+  stopGameTableBackground()
   cleanupGameSocket()
 })
+
+watch(
+  hasLoadedInitialState,
+  (isGameStageReady) => {
+    if (isGameStageReady) {
+      startGameTableBackground()
+    }
+  },
+  { flush: 'post' },
+)
 
 watch(
   () => [normalizedRoomCode.value, requestedPlayerId.value],
@@ -177,6 +214,19 @@ watch(
 
     void loadInitialRoomState()
     void subscribeGameSocket()
+  },
+)
+
+watch(
+  () => gameState.value?.phase,
+  (phase) => {
+    if (phase !== "finished" || hasNavigatedToResult.value) {
+      return
+    }
+
+    hasNavigatedToResult.value = true
+
+    void navigateToResult()
   },
 )
 </script>
@@ -195,6 +245,7 @@ watch(
     :round-number="turnStatus.roundNumber"
     :current-phase="turnStatus.currentPhase"
     :current-step="turnStatus.currentStep"
+    :is-game-finished="gameState?.phase === 'finished'"
     :deck-count="deckCount"
     :discard-cards="discardCards"
     :players="players"
@@ -208,6 +259,7 @@ watch(
     :is-loading="isLoading || isDrawing || isSocketActionSubmitting || isPlayingSocketAction"
     @draw-request="handleDrawRequest"
     @play-card="handlePlayCard"
+    @return-lobby="handleReturnLobby"
     @round-sequence-complete="handleRoundSequenceComplete"
   />
 </template>

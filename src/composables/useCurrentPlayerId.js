@@ -7,7 +7,11 @@ export function useCurrentPlayerId() {
   const playerStore = usePlayerStore();
 
   const currentPlayerId = computed(
-    () => authStore.currentPlayer?.id ?? playerStore.currentPlayerId ?? null,
+    () =>
+      authStore.currentPlayer?.id ??
+      authStore.currentPlayer?.playerId ??
+      playerStore.currentPlayerId ??
+      null,
   );
 
   return {

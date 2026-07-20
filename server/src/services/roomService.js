@@ -6,12 +6,9 @@ import {
 } from "./achievementService.js"
 
 const MAX_ROOM_PLAYERS = 4
-const COMPUTER_PLAYER_NAMES = [
-  "Computer 1",
-  "Computer 2",
-  "Computer 3",
-  "Computer 4",
-]
+const MIN_READY_PLAYERS_TO_START = 3
+const COMPUTER_USERNAME_MAX_LENGTH = 50
+const MAX_COMPUTER_USERNAME_INSERT_ATTEMPTS = 8
 
 function createServiceError(message, statusCode = 400) {
   const error = new Error(message)
@@ -31,6 +28,36 @@ function parsePositiveInteger(value, fieldName) {
   }
 
   return parsedValue
+}
+
+function normalizeComputerUsername(username) {
+  const normalizedUsername = String(username ?? "").trim()
+
+  if (!normalizedUsername) {
+    throw createServiceError("Computer username is required")
+  }
+
+  return normalizedUsername.slice(0, COMPUTER_USERNAME_MAX_LENGTH)
+}
+
+function createComputerAccountToken() {
+  return `computer-player-${Date.now().toString(36)}-${Math.random()
+    .toString(36)
+    .slice(2, 10)}`
+}
+
+function createComputerUsernameCandidate(baseUsername, attempt) {
+  if (attempt === 0) {
+    return baseUsername
+  }
+
+  const suffix = `-${Math.random().toString(36).slice(2, 6)}`
+  const allowedBaseLength = Math.max(
+    1,
+    COMPUTER_USERNAME_MAX_LENGTH - suffix.length,
+  )
+
+  return `${baseUsername.slice(0, allowedBaseLength)}${suffix}`
 }
 
 function normalizeCardSkinOverrides(overrides) {
@@ -88,6 +115,7 @@ function mapRoomPlayer(player) {
   return {
     playerId: player.player_id,
     username: player.username,
+    title: player.title || "",
     avatarId: player.avatar_id,
     avatarUrl: player.avatar_url || "",
     cardSkinUrl: player.card_skin_url || "",
@@ -102,31 +130,37 @@ function mapRoomPlayer(player) {
   }
 }
 
-async function findOrCreateComputerPlayer(client, index) {
-  const username = COMPUTER_PLAYER_NAMES[index] ?? `Computer ${index + 1}`
-  const account = `computer-player-${index + 1}`
+async function findOrCreateComputerPlayer(client, preferredUsername, index) {
+  const baseUsername = normalizeComputerUsername(preferredUsername)
+  const avatarId = (Number(index) % MAX_ROOM_PLAYERS) + 1
 
-  const existingResult = await client.query(
-    `SELECT id, username, avatar_id
-     FROM players
-     WHERE account = $1 OR username = $2
-     ORDER BY id ASC
-     LIMIT 1`,
-    [account, username],
-  )
+  for (
+    let attempt = 0;
+    attempt < MAX_COMPUTER_USERNAME_INSERT_ATTEMPTS;
+    attempt += 1
+  ) {
+    const username = createComputerUsernameCandidate(baseUsername, attempt)
+    const account = createComputerAccountToken()
 
-  if (existingResult.rows.length > 0) {
-    return existingResult.rows[0]
+    try {
+      const playerResult = await client.query(
+        `INSERT INTO players (username, account, avatar_id, is_online)
+         VALUES ($1, $2, $3, false)
+         RETURNING id, username, avatar_id`,
+        [username, account, avatarId],
+      )
+
+      return playerResult.rows[0]
+    } catch (error) {
+      if (error.code === "23505") {
+        continue
+      }
+
+      throw error
+    }
   }
 
-  const playerResult = await client.query(
-    `INSERT INTO players (username, account, avatar_id, is_online)
-     VALUES ($1, $2, $3, false)
-     RETURNING id, username, avatar_id`,
-    [username, account, index + 1],
-  )
-
-  return playerResult.rows[0]
+  throw createServiceError("Computer username already exists", 409)
 }
 
 function getNextSeatOrder(players) {
@@ -274,6 +308,7 @@ async function getRoomState({ roomCode }) {
       `SELECT
          grp.player_id,
          p.username,
+         p.title,
          p.avatar_id,
          avatar_item.image_url AS avatar_url,
          card_skin_item.image_url AS card_skin_url,
@@ -301,6 +336,7 @@ async function getRoomState({ roomCode }) {
       `SELECT
          grp.player_id,
          p.username,
+         p.title,
          p.avatar_id,
          avatar_item.image_url AS avatar_url,
          card_skin_item.image_url AS card_skin_url,
@@ -337,7 +373,8 @@ async function getRoomState({ roomCode }) {
   }
 }
 
-async function addComputerPlayer({ roomCode, hostPlayerId }) {
+async function addComputerPlayer({ roomCode, hostPlayerId, username }) {
+  const normalizedUsername = normalizeComputerUsername(username)
   const client = await pool.connect()
 
   try {
@@ -379,7 +416,11 @@ async function addComputerPlayer({ roomCode, hostPlayerId }) {
     }
 
     const computerIndex = roomPlayers.filter((player) => player.is_computer).length
-    const computerPlayer = await findOrCreateComputerPlayer(client, computerIndex)
+    const computerPlayer = await findOrCreateComputerPlayer(
+      client,
+      normalizedUsername,
+      computerIndex,
+    )
     const alreadyInRoom = roomPlayers.some((player) => {
       return Number(player.player_id) === Number(computerPlayer.id)
     })
@@ -593,10 +634,12 @@ async function startGame({ roomCode, playerId }) {
       throw createServiceError("玩家人數需滿 4 人")
     }
 
-    const allReady = players.every((player) => player.is_ready)
+    const readyPlayerCount = players.filter(
+      (player) => player.role !== "host" && player.is_ready,
+    ).length
 
-    if (!allReady) {
-      throw createServiceError("所有玩家都必須準備完成")
+    if (readyPlayerCount < MIN_READY_PLAYERS_TO_START) {
+      throw createServiceError("至少需要 3 名玩家打卡才可開始遊戲")
     }
 
     const matchResult = await client.query(

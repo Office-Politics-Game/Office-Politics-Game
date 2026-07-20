@@ -130,6 +130,10 @@ defineEmits(["purchase", "select"]);
   transform: translate(10px, 8px) scale(1.18);
 }
 
+.item-card__preview-image--ticket {
+  transform: translateY(10px);
+}
+
 .item-card__preview-overlay {
   position: absolute;
   inset: 0;

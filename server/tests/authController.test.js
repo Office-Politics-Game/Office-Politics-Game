@@ -19,6 +19,7 @@ jest.unstable_mockModule("../src/services/authService.js", () => ({
 }))
 
 const {
+    handleRegisterPlayer,
     handleLoginPlayer,
     handleOAuthCallback,
     handleVerifyToken,
@@ -63,6 +64,34 @@ describe("auth controller cookie login flow", () => {
 
         delete process.env.AUTH_COOKIE_SAME_SITE
         delete process.env.AUTH_COOKIE_SECURE
+    })
+
+    test("註冊發生未知錯誤時，不回傳內部錯誤訊息", async () => {
+        const consoleErrorSpy = jest
+            .spyOn(console, "error")
+            .mockImplementation(() => {})
+
+        mockRegisterPlayer.mockRejectedValueOnce(
+            new Error('insert or update on table "players" violates foreign key constraint')
+        )
+
+        const req = {
+            body: {
+                username: "測試玩家",
+                account: "test@example.com",
+                password: "Aa123456!"
+            }
+        }
+        const res = createMockResponse()
+
+        await handleRegisterPlayer(req, res)
+
+        expect(res.status).toHaveBeenCalledWith(500)
+        expect(res.json).toHaveBeenCalledWith({
+            message: "註冊失敗，請稍後再試"
+        })
+
+        consoleErrorSpy.mockRestore()
     })
 
     test("登入成功時設定 HttpOnly Cookie，且 response 不回傳 token", async () => {

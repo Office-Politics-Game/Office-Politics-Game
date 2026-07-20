@@ -13,9 +13,12 @@ jest.unstable_mockModule("../src/db/index.js", () => ({
 const {
   MATCH_COMPLETE_EXP,
   MATCH_WIN_BONUS_EXP,
+  MATCH_COMPLETE_COINS,
+  MATCH_WIN_BONUS_COINS,
   applyExperience,
   finalizeMatchProgress,
   getNextExp,
+  getPlayerReward,
 } = await import("../src/services/playerProgressService.js")
 
 function createClient() {
@@ -65,6 +68,18 @@ describe("playerProgressService", () => {
     })
   })
 
+  test("getPlayerReward() 會依勝敗回傳本場經驗值與遊戲幣", () => {
+    expect(getPlayerReward(false)).toEqual({
+      expGained: MATCH_COMPLETE_EXP,
+      coinsGained: MATCH_COMPLETE_COINS,
+    })
+
+    expect(getPlayerReward(true)).toEqual({
+      expGained: MATCH_COMPLETE_EXP + MATCH_WIN_BONUS_EXP,
+      coinsGained: MATCH_COMPLETE_COINS + MATCH_WIN_BONUS_COINS,
+    })
+  })
+
   test("finalizeMatchProgress() 會更新勝敗場、XP、等級與對戰參與紀錄", async () => {
     queryMock
       .mockResolvedValueOnce({ rows: [] })
@@ -91,6 +106,46 @@ describe("playerProgressService", () => {
       matchId: 10,
       winnerPlayerId: 2,
       playerIds: [1, 2, 3, 4],
+      rewardsByPlayerId: {
+        1: {
+          playerId: 1,
+          expGained: 100,
+          coinsGained: MATCH_COMPLETE_COINS,
+          level: 1,
+          exp: 100,
+          result: "lose",
+        },
+        2: {
+          playerId: 2,
+          expGained: 300,
+          coinsGained: 1000,
+          level: 2,
+          exp: 200,
+          result: "win",
+        },
+        3: {
+          playerId: 3,
+          expGained: 100,
+          coinsGained: MATCH_COMPLETE_COINS,
+          level: 2,
+          exp: 200,
+          result: "lose",
+        },
+        4: {
+          playerId: 4,
+          expGained: 100,
+          coinsGained: MATCH_COMPLETE_COINS,
+          level: 3,
+          exp: 1300,
+          result: "lose",
+        },
+      },
+      unlockedAchievementsByPlayerId: {
+        1: [],
+        2: [],
+        3: [],
+        4: [],
+      },
     })
 
     expect(queryMock).toHaveBeenCalledWith("BEGIN")
@@ -98,22 +153,30 @@ describe("playerProgressService", () => {
 
     expect(queryMock).toHaveBeenCalledWith(
       expect.stringContaining("UPDATE players"),
-      [0, 1, 1, MATCH_COMPLETE_EXP, 1]
+      [0, 1, 1, MATCH_COMPLETE_EXP, MATCH_COMPLETE_COINS, 99999, 1]
     )
 
     expect(queryMock).toHaveBeenCalledWith(
       expect.stringContaining("UPDATE players"),
-      [1, 0, 2, 200, 2]
+      [
+        1,
+        0,
+        2,
+        200,
+        MATCH_COMPLETE_COINS + MATCH_WIN_BONUS_COINS,
+        99999,
+        2,
+      ]
     )
 
     expect(queryMock).toHaveBeenCalledWith(
       expect.stringContaining("INSERT INTO match_participants"),
-      [10, 2, "玩家二", 2, 3, "win"]
+      [10, 2, "玩家二", 2, 3, "win", 300, 1000]
     )
 
     expect(queryMock).toHaveBeenCalledWith(
       expect.stringContaining("INSERT INTO match_participants"),
-      [10, 1, "玩家一", 1, 1, "lose"]
+      [10, 1, "玩家一", 1, 1, "lose", 100, MATCH_COMPLETE_COINS]
     )
 
     expect(queryMock).toHaveBeenCalledWith(

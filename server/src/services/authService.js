@@ -13,7 +13,13 @@ const PLAYER_SELECT_SQL = `id, auth_user_id, username, account, avatar_id,
 function createAuthError(statusCode, message) {
     const error = new Error(message)
     error.statusCode = statusCode;
+    error.isPublic = true
     return error;
+}
+
+function createInternalAuthError(error, logMessage, publicMessage = "服務暫時異常，請稍後再試") {
+    console.error(logMessage, error)
+    return createAuthError(500, publicMessage)
 }
 
 function formatPlayer(row) {
@@ -151,7 +157,8 @@ async function registerPlayer({ username, account, password, avatarId } = {}) {
     })
 
     if (error) {
-        throw createAuthError(400, error.message || "會員建立失敗")
+        console.error("Supabase註冊帳號建立失敗", error)
+        throw createAuthError(400, "會員建立失敗，請稍後再試")
     }
 
     const authUserId = data.user?.id
@@ -176,7 +183,11 @@ async function registerPlayer({ username, account, password, avatarId } = {}) {
         return formatPlayer(result.rows[0])
     } catch (error) {
         await deleteSupabaseUserQuietly(authUserId)
-        throw error
+        throw createInternalAuthError(
+            error,
+            "註冊玩家資料寫入失敗",
+            "註冊失敗，請稍後再試"
+        )
     }
 }
 
@@ -302,41 +313,57 @@ async function syncOAuthPlayer({ accessToken, expiresIn } = {}) {
     const existingPlayer = existingResult.rows[0]
 
     if (existingPlayer) {
-        const updatedResult = await pool.query(
-            `UPDATE players
-             SET auth_user_id = COALESCE(auth_user_id, $1),
-                 account = $2,
-                 is_online = true,
-                 last_login_at = CURRENT_TIMESTAMP,
-                 updated_at = CURRENT_TIMESTAMP
-             WHERE id = $3
-             RETURNING ${PLAYER_SELECT_SQL}`,
-            [authUser.id, email, existingPlayer.id]
-        )
+        try {
+            const updatedResult = await pool.query(
+                `UPDATE players
+                 SET auth_user_id = COALESCE(auth_user_id, $1),
+                     account = $2,
+                     is_online = true,
+                     last_login_at = CURRENT_TIMESTAMP,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $3
+                 RETURNING ${PLAYER_SELECT_SQL}`,
+                [authUser.id, email, existingPlayer.id]
+            )
 
-        return {
-            player: formatPlayer(updatedResult.rows[0]),
-            token: accessToken,
-            expiresIn
+            return {
+                player: formatPlayer(updatedResult.rows[0]),
+                token: accessToken,
+                expiresIn
+            }
+        } catch (error) {
+            throw createInternalAuthError(
+                error,
+                "第三方登入玩家資料更新失敗",
+                "第三方登入失敗，請稍後再試"
+            )
         }
     }
 
-    const createdResult = await pool.query(
-        `INSERT INTO players (auth_user_id, username, account, avatar_id, is_online, last_login_at)
-         VALUES ($1, $2, $3, $4, true, CURRENT_TIMESTAMP)
-         RETURNING ${PLAYER_SELECT_SQL}`,
-        [
-            authUser.id,
-            createOAuthUsername(authUser, email),
-            email,
-            DEFAULT_AVATAR_ID
-        ]
-    )
+    try {
+        const createdResult = await pool.query(
+            `INSERT INTO players (auth_user_id, username, account, avatar_id, is_online, last_login_at)
+             VALUES ($1, $2, $3, $4, true, CURRENT_TIMESTAMP)
+             RETURNING ${PLAYER_SELECT_SQL}`,
+            [
+                authUser.id,
+                createOAuthUsername(authUser, email),
+                email,
+                DEFAULT_AVATAR_ID
+            ]
+        )
 
-    return {
-        player: formatPlayer(createdResult.rows[0]),
-        token: accessToken,
-        expiresIn
+        return {
+            player: formatPlayer(createdResult.rows[0]),
+            token: accessToken,
+            expiresIn
+        }
+    } catch (error) {
+        throw createInternalAuthError(
+            error,
+            "第三方登入玩家資料建立失敗",
+            "第三方登入失敗，請稍後再試"
+        )
     }
 }
 

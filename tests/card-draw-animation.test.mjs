@@ -108,16 +108,19 @@ test('game stage requests a draw and animates the real card supplied by its pare
 })
 
 test('game view sends draws through socket actions and keeps REST fallback', async () => {
-  const source = await readSource('src/views/GameView.vue')
-  const handlerSource = source.slice(
-    source.indexOf('async function handleDrawRequest'),
-    source.indexOf('async function handlePlayCard'),
+  const viewSource = await readSource('src/views/GameView.vue')
+  const socketSource = await readSource(
+    'src/composables/useGameSocketActions.js',
+  )
+  const handlerSource = socketSource.slice(
+    socketSource.indexOf('async function handleDrawRequest'),
+    socketSource.indexOf('async function handlePlayCard'),
   )
 
-  assert.match(source, /const gameStage = ref\(null\)/)
-  assert.match(source, /const isDrawing = ref\(false\)/)
-  assert.match(source, /const canDraw = computed\(/)
-  assert.match(handlerSource, /if \([\s\S]*isDrawing\.value[\s\S]*!canDraw\.value/)
+  assert.match(viewSource, /const gameStage = ref\(null\)/)
+  assert.match(socketSource, /const isDrawing = ref\(false\)/)
+  assert.match(viewSource, /canDraw: \(\) => canDraw\.value/)
+  assert.match(handlerSource, /if \([\s\S]*isDrawing\.value[\s\S]*!canDraw\(\)/)
   assert.match(handlerSource, /isDrawing\.value = true/)
   assert.match(handlerSource, /await emitWithAck\('game:draw-card'/)
   assert.match(handlerSource, /applyGameStatePayload\(data\)/)
@@ -125,8 +128,8 @@ test('game view sends draws through socket actions and keeps REST fallback', asy
   assert.match(handlerSource, /data\?\.drawnCard \?\? data\?\.card/)
   assert.match(handlerSource, /normalizeCard\(rawDrawnCard\)/)
   assert.match(handlerSource, /await gameStage\.value\.playDrawAnimation\(/)
-  assert.match(source, /pendingSocketGameStatesByActionId = new Map\(\)/)
-  assert.match(source, /completeSocketAction\(event\.id\)/)
+  assert.match(socketSource, /pendingSocketGameStatesByActionId = new Map\(\)/)
+  assert.match(socketSource, /completeSocketAction\(event\.id\)/)
   assert.match(handlerSource, /catch \(error\)[\s\S]*await refreshRoomState\(\)/)
   assert.match(handlerSource, /finally \{[\s\S]*isDrawing\.value = false/)
   assert.ok(
@@ -137,11 +140,11 @@ test('game view sends draws through socket actions and keeps REST fallback', asy
     handlerSource.indexOf('await drawGameCard(') <
       handlerSource.indexOf('await gameStage.value.playDrawAnimation('),
   )
-  assert.doesNotMatch(source, /id:\s*'draw-preview'/)
-  assert.doesNotMatch(source, /backgroundUrlKey:\s*'intern'/)
-  assert.match(source, /ref="gameStage"/)
-  assert.match(source, /:can-draw="canDraw"/)
-  assert.match(source, /@draw-request="handleDrawRequest"/)
+  assert.doesNotMatch(socketSource, /id:\s*'draw-preview'/)
+  assert.doesNotMatch(socketSource, /backgroundUrlKey:\s*'intern'/)
+  assert.match(viewSource, /ref="gameStage"/)
+  assert.match(viewSource, /:can-draw="canDraw"/)
+  assert.match(viewSource, /@draw-request="handleDrawRequest"/)
 })
 
 test('table card piles expose the current deck rectangle', async () => {

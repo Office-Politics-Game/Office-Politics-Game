@@ -21,6 +21,7 @@ export function useGameStageNotices({
   activeEffectResult,
   getInitialRoundDealSignature,
   lastInitialRoundDealSignature,
+  playPlayerEliminatedSound = () => {},
 } = {}) {
   const isTurnNoticeOpen = ref(false);
   const isRoundStartNoticeOpen = ref(false);
@@ -28,11 +29,13 @@ export function useGameStageNotices({
   const roundWinnerNotice = ref(null);
   const isPlayerEliminatedNoticeOpen = ref(false);
   const playerEliminatedNotice = ref(null);
+  const isGameEndNoticeOpen = ref(false);
   const lastRoundStartNoticeKey = ref(null);
   const pendingNoticeOpenCount = ref(0);
   const pendingNoticeAckDelayCount = ref(0);
 
   let roundStartNoticeResolve = null;
+  let gameEndNoticeResolve = null;
   const noticeIdleResolvers = [];
   const noticeAckDelayTimers = new Set();
 
@@ -45,6 +48,13 @@ export function useGameStageNotices({
   function settleRoundStartNotice(completed = false) {
     const resolve = roundStartNoticeResolve;
     roundStartNoticeResolve = null;
+    resolve?.(completed);
+    resolveNoticeIdleIfIdle();
+  }
+
+  function settleGameEndNotice(completed = false) {
+    const resolve = gameEndNoticeResolve;
+    gameEndNoticeResolve = null;
     resolve?.(completed);
     resolveNoticeIdleIfIdle();
   }
@@ -66,6 +76,7 @@ export function useGameStageNotices({
       !isRoundStartNoticeOpen.value &&
       !isRoundWinnerNoticeOpen.value &&
       !isPlayerEliminatedNoticeOpen.value &&
+      !isGameEndNoticeOpen.value &&
       !isInitialRoundDrawAnimating.value &&
       !activeEffectResult.value
     );
@@ -140,6 +151,15 @@ export function useGameStageNotices({
 
     isPlayerEliminatedNoticeOpen.value = false;
     resolveNoticeIdleIfIdle();
+  }
+
+  function closeGameEndNotice() {
+    if (isGameEndNoticeOpen.value) {
+      holdNoticeAckAfterClose();
+    }
+
+    isGameEndNoticeOpen.value = false;
+    settleGameEndNotice(true);
   }
 
   async function playRoundStartNotice(signature = getInitialRoundDealSignature()) {
@@ -227,11 +247,31 @@ export function useGameStageNotices({
 
     scheduleNoticeOpen(() => {
       isPlayerEliminatedNoticeOpen.value = true;
+      playPlayerEliminatedSound();
+    });
+  }
+
+  async function playGameEndNotice() {
+    isRoundStartNoticeOpen.value = false;
+    settleRoundStartNotice(false);
+    isTurnNoticeOpen.value = false;
+    isRoundWinnerNoticeOpen.value = false;
+    isPlayerEliminatedNoticeOpen.value = false;
+    isGameEndNoticeOpen.value = false;
+    settleGameEndNotice(false);
+
+    await nextTick();
+
+    return new Promise((resolve) => {
+      gameEndNoticeResolve = resolve;
+      isGameEndNoticeOpen.value = true;
     });
   }
 
   function cleanupNotices() {
     settleRoundStartNotice(false);
+    settleGameEndNotice(false);
+    isGameEndNoticeOpen.value = false;
     noticeAckDelayTimers.forEach((timer) => window.clearTimeout(timer));
     noticeAckDelayTimers.clear();
     pendingNoticeAckDelayCount.value = 0;
@@ -259,6 +299,9 @@ export function useGameStageNotices({
     resolveNoticeIdleIfIdle,
     holdNoticeAckAfterClose,
     cleanupNotices,
+    isGameEndNoticeOpen,
+    playGameEndNotice,
+    closeGameEndNotice,
   };
 }
 
