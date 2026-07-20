@@ -41,7 +41,8 @@ const {
     syncOAuthPlayer,
     verifyToken,
     requestPasswordReset,
-    resetPlayerPassword
+    resetPlayerPassword,
+    changePlayerPassword
 } = await import("../src/services/authService.js")
 
 const SELECT_DUPLICATE_PLAYER_SQL = `SELECT username, account
@@ -286,6 +287,8 @@ describe("註冊玩家服務", () => {
         expect(player).toEqual({
             id: 1,
             authUserId: "auth-user-001",
+            authProvider: "email",
+            canChangePassword: true,
             username: "測試玩家",
             account: "test@example.com",
             avatarId: 2,
@@ -683,6 +686,8 @@ describe("登入玩家服務", () => {
             player: {
                 id: 1,
                 authUserId: "auth-user-001",
+                authProvider: "email",
+                canChangePassword: true,
                 username: "測試玩家",
                 account: "test@example.com",
                 avatarId: 2,
@@ -971,6 +976,292 @@ describe("重設密碼服務", () => {
     })
 })
 
+describe("修改密碼服務", () => {
+    beforeEach(() => {
+        resetMocks()
+    })
+
+    test("未登入時，丟出錯誤", async () => {
+        await expect(
+            changePlayerPassword({
+                token: "",
+                currentPassword: "Aa123456!",
+                password: "Bb123456!",
+                confirmPassword: "Bb123456!"
+            })
+        ).rejects.toThrow("請先登入後再修改密碼")
+
+        expect(mockGetUser).not.toHaveBeenCalled()
+        expect(mockSignInWithPassword).not.toHaveBeenCalled()
+        expect(mockUpdateUserById).not.toHaveBeenCalled()
+    })
+
+    test("未輸入目前密碼時，丟出錯誤", async () => {
+        await expect(
+            changePlayerPassword({
+                token: "valid-token",
+                currentPassword: "",
+                password: "Bb123456!",
+                confirmPassword: "Bb123456!"
+            })
+        ).rejects.toThrow("請輸入目前密碼")
+
+        expect(mockGetUser).not.toHaveBeenCalled()
+    })
+
+    test("新密碼格式不符合規則時，丟出錯誤", async () => {
+        await expect(
+            changePlayerPassword({
+                token: "valid-token",
+                currentPassword: "Aa123456!",
+                password: "123456",
+                confirmPassword: "123456"
+            })
+        ).rejects.toThrow("密碼格式不符合規則")
+
+        expect(mockGetUser).not.toHaveBeenCalled()
+    })
+
+    test("確認新密碼不一致時，丟出錯誤", async () => {
+        await expect(
+            changePlayerPassword({
+                token: "valid-token",
+                currentPassword: "Aa123456!",
+                password: "Bb123456!",
+                confirmPassword: "Cc123456!"
+            })
+        ).rejects.toThrow("新密碼與確認密碼不一致")
+
+        expect(mockGetUser).not.toHaveBeenCalled()
+    })
+
+    test("token無效時，丟出錯誤", async () => {
+        mockGetUser.mockResolvedValueOnce({
+            data: {
+                user: null
+            },
+            error: new Error("token無效")
+        })
+
+        await expect(
+            changePlayerPassword({
+                token: "invalid-token",
+                currentPassword: "Aa123456!",
+                password: "Bb123456!",
+                confirmPassword: "Bb123456!"
+            })
+        ).rejects.toThrow("登入狀態已失效，請重新登入")
+
+        expect(mockGetUser).toHaveBeenCalledWith("invalid-token")
+        expect(mockSignInWithPassword).not.toHaveBeenCalled()
+        expect(mockUpdateUserById).not.toHaveBeenCalled()
+    })
+
+    test("目前密碼錯誤時，丟出錯誤", async () => {
+        mockGetUser.mockResolvedValueOnce({
+            data: {
+                user: {
+                    id: "auth-user-001",
+                    email: "test@example.com",
+                    app_metadata: {
+                        provider: "email"
+                    },
+                    identities: [
+                        {
+                            provider: "email"
+                        }
+                    ]
+                }
+            },
+            error: null
+        })
+
+        mockSignInWithPassword.mockResolvedValueOnce({
+            data: null,
+            error: new Error("帳號或密碼錯誤")
+        })
+
+        await expect(
+            changePlayerPassword({
+                token: "valid-token",
+                currentPassword: "Wrong123!",
+                password: "Bb123456!",
+                confirmPassword: "Bb123456!"
+            })
+        ).rejects.toThrow("目前密碼錯誤")
+
+        expect(mockSignInWithPassword).toHaveBeenCalledWith({
+            email: "test@example.com",
+            password: "Wrong123!"
+        })
+        expect(mockUpdateUserById).not.toHaveBeenCalled()
+    })
+
+    test("新密碼與目前密碼相同時，丟出錯誤", async () => {
+        mockGetUser.mockResolvedValueOnce({
+            data: {
+                user: {
+                    id: "auth-user-001",
+                    email: "test@example.com",
+                    app_metadata: {
+                        provider: "email"
+                    },
+                    identities: [
+                        {
+                            provider: "email"
+                        }
+                    ]
+                }
+            },
+            error: null
+        })
+
+        mockSignInWithPassword.mockResolvedValueOnce({
+            data: {
+                user: {
+                    id: "auth-user-001"
+                }
+            },
+            error: null
+        })
+
+        await expect(
+            changePlayerPassword({
+                token: "valid-token",
+                currentPassword: "Aa123456!",
+                password: "Aa123456!",
+                confirmPassword: "Aa123456!"
+            })
+        ).rejects.toThrow("新密碼不可與目前密碼相同")
+
+        expect(mockUpdateUserById).not.toHaveBeenCalled()
+    })
+
+    test("修改密碼成功時，更新Supabase使用者密碼", async () => {
+        mockGetUser.mockResolvedValueOnce({
+            data: {
+                user: {
+                    id: "auth-user-001",
+                    email: "test@example.com",
+                    app_metadata: {
+                        provider: "email"
+                    },
+                    identities: [
+                        {
+                            provider: "email"
+                        }
+                    ]
+                }
+            },
+            error: null
+        })
+
+        mockSignInWithPassword.mockResolvedValueOnce({
+            data: {
+                user: {
+                    id: "auth-user-001"
+                }
+            },
+            error: null
+        })
+
+        mockUpdateUserById.mockResolvedValueOnce({
+            data: {
+                user: {
+                    id: "auth-user-001"
+                }
+            },
+            error: null
+        })
+
+        const result = await changePlayerPassword({
+            token: "valid-token",
+            currentPassword: "Aa123456!",
+            password: "Bb123456!",
+            confirmPassword: "Bb123456!"
+        })
+
+        expect(mockGetUser).toHaveBeenCalledWith("valid-token")
+        expect(mockSignInWithPassword).toHaveBeenCalledWith({
+            email: "test@example.com",
+            password: "Aa123456!"
+        })
+        expect(mockUpdateUserById).toHaveBeenCalledWith(
+            "auth-user-001",
+            {
+                password: "Bb123456!"
+            }
+        )
+        expect(result).toEqual({
+            message: "密碼已更新，請重新登入"
+        })
+    })
+
+    test("第三方登入帳號不能修改密碼", async () => {
+        mockGetUser.mockResolvedValueOnce({
+            data: {
+                user: {
+                    id: "oauth-user-001",
+                    email: "oauth@example.com",
+                    app_metadata: {
+                        provider: "google"
+                    },
+                    identities: [
+                        {
+                            provider: "google"
+                        }
+                    ]
+                }
+            },
+            error: null
+        })
+
+        await expect(
+            changePlayerPassword({
+                token: "oauth-token",
+                currentPassword: "Aa123456!",
+                password: "Bb123456!",
+                confirmPassword: "Bb123456!"
+            })
+        ).rejects.toThrow("第三方登入帳號沒有修改密碼權限，請至原登入平台管理密碼")
+
+        expect(mockSignInWithPassword).not.toHaveBeenCalled()
+        expect(mockUpdateUserById).not.toHaveBeenCalled()
+    })
+
+    test("Discord第三方登入帳號不能修改密碼", async () => {
+        mockGetUser.mockResolvedValueOnce({
+            data: {
+                user: {
+                    id: "discord-user-001",
+                    email: "discord@example.com",
+                    app_metadata: {
+                        provider: "discord"
+                    },
+                    identities: [
+                        {
+                            provider: "discord"
+                        }
+                    ]
+                }
+            },
+            error: null
+        })
+
+        await expect(
+            changePlayerPassword({
+                token: "discord-token",
+                currentPassword: "Aa123456!",
+                password: "Bb123456!",
+                confirmPassword: "Bb123456!"
+            })
+        ).rejects.toThrow("第三方登入帳號沒有修改密碼權限，請至原登入平台管理密碼")
+
+        expect(mockSignInWithPassword).not.toHaveBeenCalled()
+        expect(mockUpdateUserById).not.toHaveBeenCalled()
+    })
+})
+
 describe("第三方登入玩家同步服務", () => {
     beforeEach(() => {
         resetMocks()
@@ -1053,6 +1344,14 @@ describe("第三方登入玩家同步服務", () => {
                 user: {
                     id: oauthUserId,
                     email: "  TEST@EXAMPLE.COM  ",
+                    app_metadata: {
+                        provider: "google"
+                    },
+                    identities: [
+                        {
+                            provider: "google"
+                        }
+                    ],
                     user_metadata: {
                         full_name: "Google 使用者"
                     }
@@ -1093,6 +1392,8 @@ describe("第三方登入玩家同步服務", () => {
             player: {
                 id: 7,
                 authUserId: oauthUserId,
+                authProvider: "google",
+                canChangePassword: false,
                 username: "既有玩家",
                 account: "test@example.com",
                 avatarId: 2,
@@ -1137,6 +1438,14 @@ describe("第三方登入玩家同步服務", () => {
                 user: {
                     id: oauthUserId,
                     email: "NEW@EXAMPLE.COM",
+                    app_metadata: {
+                        provider: "google"
+                    },
+                    identities: [
+                        {
+                            provider: "google"
+                        }
+                    ],
                     user_metadata: {
                         full_name: "Google 使用者"
                     }
@@ -1185,6 +1494,8 @@ describe("第三方登入玩家同步服務", () => {
             player: {
                 id: 9,
                 authUserId: oauthUserId,
+                authProvider: "google",
+                canChangePassword: false,
                 username: oauthUsername,
                 account: "new@example.com",
                 avatarId: 1,
@@ -1258,7 +1569,15 @@ describe("驗證登入狀態服務", () => {
         mockGetUser.mockResolvedValueOnce({
             data: {
                 user: {
-                    id: "auth-user-001"
+                    id: "auth-user-001",
+                    app_metadata: {
+                        provider: "email"
+                    },
+                    identities: [
+                        {
+                            provider: "email"
+                        }
+                    ]
                 }
             },
             error: null
@@ -1274,6 +1593,8 @@ describe("驗證登入狀態服務", () => {
         expect(player).toEqual({
             id: 1,
             authUserId: "auth-user-001",
+            authProvider: "email",
+            canChangePassword: true,
             username: "測試玩家",
             account: "test@example.com",
             avatarId: 2,
