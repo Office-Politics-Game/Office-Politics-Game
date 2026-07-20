@@ -3,11 +3,13 @@ import {
   handleGetDirectMessages,
   handleSendDirectMessage,
 } from "../controllers/chatController.js"
-import { requireAuth } from "../middlewares/authMiddleware.js"
+import { requireMemberAuth } from "../middlewares/authMiddleware.js"
 
 const router = express.Router()
 
-router.get("/direct/:friendId/messages", requireAuth, handleGetDirectMessages)
-router.post("/direct/:friendId/messages", requireAuth, handleSendDirectMessage)
+router.use(requireMemberAuth)
+
+router.get("/direct/:friendId/messages", handleGetDirectMessages)
+router.post("/direct/:friendId/messages", handleSendDirectMessage)
 
 export { router }

@@ -5,13 +5,13 @@ import {
   handleSetProfileTitle,
   handleUpdateProfile,
 } from "../controllers/profileController.js"
-import { requireAuth } from "../middlewares/authMiddleware.js"
+import { requireMemberAuth } from "../middlewares/authMiddleware.js"
 
 const router = express.Router()
 
-router.get("/", requireAuth, handleGetProfile)
-router.patch("/", requireAuth, handleUpdateProfile)
-router.patch("/title", requireAuth, handleSetProfileTitle)
-router.get("/matches", requireAuth, handleGetProfileMatches)
+router.get("/", requireMemberAuth, handleGetProfile)
+router.patch("/", requireMemberAuth, handleUpdateProfile)
+router.patch("/title", requireMemberAuth, handleSetProfileTitle)
+router.get("/matches", requireMemberAuth, handleGetProfileMatches)
 
 export { router }

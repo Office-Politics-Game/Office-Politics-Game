@@ -27,7 +27,7 @@ test('room invitation schema and backend routes are registered', async () => {
   assert.match(routeSource, /rooms\/:roomCode\/invitations/)
   assert.match(routeSource, /room-invitations\/:id\/accept/)
   assert.match(routeSource, /room-invitations\/:id\/reject/)
-  assert.match(routeSource, /requireAuth/)
+  assert.match(routeSource, /requireMemberAuth/)
   assert.match(controllerSource, /const inviterPlayerId = parsePositiveInteger\(req\.player\?\.id\)/)
   assert.match(controllerSource, /const playerId = parsePositiveInteger\(req\.player\?\.id\)/)
   assert.doesNotMatch(controllerSource, /const playerId = parsePositiveInteger\(body\.playerId\)/)
