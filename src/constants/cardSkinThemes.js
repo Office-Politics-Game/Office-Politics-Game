@@ -233,6 +233,42 @@ const CARD_SKIN_THEMES = {
       ceo: "https://res.cloudinary.com/pumy6qez/image/upload/v1784184983/pixel-office-ceo-card-frame_mcr7pa.webp",
     },
   }),
+  windows98: createTheme({
+    key: "windows98",
+    aliases: ["windows 98", "win98", "retro office", "windows 98 style"],
+    logoUrl:
+      "https://res.cloudinary.com/pumy6qez/image/upload/v1784280652/windows98-logo_vqk7kn.webp",
+    slotImages: {
+      intern:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280651/windows98-intern-card-skin_m3yqvv.webp",
+      cleaner:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280650/windows98-cleaner-card-skin_nm8a2x.webp",
+      manager:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280651/windows98-manager-card-skin_uounb6.webp",
+      senior:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280652/windows98-senior-card-skin_dlqnng.webp",
+      pm: "https://res.cloudinary.com/pumy6qez/image/upload/v1784280652/windows98-pm-card-skin_obtd3l.webp",
+      hr: "https://res.cloudinary.com/pumy6qez/image/upload/v1784280651/windows98-hr-card-skin_zbgiw0.webp",
+      advisor:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280650/windows98-advisor-card-skin_zlmoue.webp",
+      ceo: "https://res.cloudinary.com/pumy6qez/image/upload/v1784280651/windows98-ceo-card-skin_ysgxhw.webp",
+    },
+    slotFrames: {
+      intern:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280651/windows98-intern-card-frame_jarvbj.webp",
+      cleaner:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280651/windows98-cleaner-card-frame_qs3qh4.webp",
+      manager:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280651/windows98-manager-card-frame_tfav4f.webp",
+      senior:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280652/windows98-senior-card-frame_ct4pzo.webp",
+      pm: "https://res.cloudinary.com/pumy6qez/image/upload/v1784280651/windows98-pm-card-frame_hmklqj.webp",
+      hr: "https://res.cloudinary.com/pumy6qez/image/upload/v1784280650/windows98-hr-card-frame_jcqi3i.webp",
+      advisor:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280650/windows98-advisor-card-frame_sdssbc.webp",
+      ceo: "https://res.cloudinary.com/pumy6qez/image/upload/v1784280650/windows98-ceo-card-frame_jyjd5z.webp",
+    },
+  }),
 };
 
 function normalizeThemeKey(value) {
