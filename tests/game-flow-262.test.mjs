@@ -35,6 +35,8 @@ test('game stage exposes turn timeout and computer-finish controls', () => {
   assert.match(gameStageSource, /:protected-player-ids="protectedPlayerIds"/)
   assert.match(gameStageSource, /v-if="isSkippingComputerFinish && !isSkipSettlementActive"/)
   assert.match(gameStageSource, /skip-settlement-overlay/)
+  assert.match(gameStageSource, /SKIPPED_SETTLEMENT_NOTICE_DURATION_MS = 1000/)
+  assert.match(gameStageSource, /showRoundStartNotice: false/)
   assert.match(gameViewSource, /game:auto-play-timeout/)
   assert.match(gameViewSource, /game:simulate-computer-finish/)
   assert.match(gameViewSource, /\{ timeout: 30000 \}/)

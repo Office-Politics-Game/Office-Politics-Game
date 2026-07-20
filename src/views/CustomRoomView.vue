@@ -381,7 +381,12 @@ async function handlePrimaryRoomAction() {
 }
 
 async function handleAddComputer(index) {
-  if (index === 0 || players.value[index]) {
+  if (
+    index === 0 ||
+    players.value[index] ||
+    pendingComputerSlots.value[index] ||
+    isLoading.value
+  ) {
     return;
   }
 

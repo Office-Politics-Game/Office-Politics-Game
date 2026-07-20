@@ -134,9 +134,9 @@ export function useGameStageNotices({
     resolveNoticeIdleIfIdle();
   }
 
-  function closeRoundWinnerNotice() {
+  function closeRoundWinnerNotice(ackBufferMs = NOTICE_CLOSE_ACK_BUFFER_MS) {
     if (isRoundWinnerNoticeOpen.value) {
-      holdNoticeAckAfterClose();
+      holdNoticeAckAfterClose(ackBufferMs);
     }
 
     isRoundWinnerNoticeOpen.value = false;

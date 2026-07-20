@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
+import { FastForward } from "lucide-vue-next";
 import gameTableBackgroundUrl from "@/assets/images/bg-game-table.webp";
 import gameLogoUrl from "@/assets/images/logo-en-white.png";
 import { useAudioSettings } from "@/composables/UseAudioSettings";
@@ -38,6 +39,9 @@ import PlayerSeats from "./PlayerSeats.vue";
 import RotateDeviceNotice from "./RotateDeviceNotice.vue";
 import TableCardPiles from "./TableCardPiles.vue";
 import TurnStatus from "./TurnStatus.vue";
+
+const SKIPPED_SETTLEMENT_NOTICE_DURATION_MS = 1000;
+const SKIPPED_SETTLEMENT_ACK_BUFFER_MS = 150;
 
 const props = defineProps({
   roundNumber: {
@@ -669,7 +673,9 @@ defineExpose({
 
       if (signature) {
         lastInitialRoundDealSignature.value = signature;
-        await playInitialRoundDrawSequence(signature);
+        await playInitialRoundDrawSequence(signature, {
+          showRoundStartNotice: false,
+        });
       } else {
         emit("round-sequence-complete");
       }
@@ -746,7 +752,8 @@ defineExpose({
         :disabled="isSkippingComputerFinish"
         @click="emit('skip-computer-finish')"
       >
-        {{ isSkippingComputerFinish ? "結算中" : "跳過後續對戰" }}
+        <FastForward class="skip-computer-button__icon" aria-hidden="true" />
+        <span>{{ isSkippingComputerFinish ? "結算中" : "跳過後續對戰" }}</span>
       </button>
 
       <div
@@ -949,8 +956,14 @@ defineExpose({
       text="回合獲勝"
       :player-name="roundWinnerNotice?.name ?? ''"
       :avatar-url="roundWinnerNotice?.avatarUrl ?? ''"
-      :duration="2400"
-      @close="closeRoundWinnerNotice"
+      :duration="
+        isSkipSettlementActive ? SKIPPED_SETTLEMENT_NOTICE_DURATION_MS : 2400
+      "
+      @close="
+        closeRoundWinnerNotice(
+          isSkipSettlementActive ? SKIPPED_SETTLEMENT_ACK_BUFFER_MS : undefined,
+        )
+      "
     />
 
     <FlyInTextModal
@@ -1037,14 +1050,27 @@ defineExpose({
 }
 
 .skip-computer-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.82);
   border-radius: 0;
-  background: rgba(0, 19, 50, 0.72);
-  box-shadow: 0 8px 20px rgba(0, 19, 50, 0.22);
+  background: var(--brand-hover);
+  box-shadow:
+    0 8px 20px rgba(0, 19, 50, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
   font-size: var(--text-sm);
   font-weight: 900;
   letter-spacing: 0.04em;
+}
+
+.skip-computer-button__icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  stroke-width: 2.6;
 }
 
 .turn-countdown {
@@ -1165,14 +1191,32 @@ defineExpose({
 }
 
 .skip-computer-button:hover {
-  border-color: var(--brand-hover);
+  border-color: rgba(255, 255, 255, 0.95);
   background: var(--brand-hover);
+  box-shadow:
+    0 10px 24px rgba(0, 19, 50, 0.34),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.32);
   transform: translateY(-1px);
+}
+
+.skip-computer-button:active {
+  border-color: var(--brand-active);
+  background: var(--brand-active);
+  transform: translateY(1px);
 }
 
 .skip-computer-button:focus-visible {
   outline: none;
   box-shadow: 0 0 0 5px var(--brand-focus);
+}
+
+.skip-computer-button:disabled {
+  color: white;
+  border-color: transparent;
+  background: rgba(160, 166, 179, 0.62);
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .skip-settlement-overlay {
