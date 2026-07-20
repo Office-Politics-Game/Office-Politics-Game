@@ -161,13 +161,17 @@ function handleMessageKeydown(event) {
 }
 
 async function submitMessage() {
-  const sentMessage = await chatStore.sendMessage({
+  const originalMessage = messageText.value;
+  const sendRequest = chatStore.sendMessage({
     friendId: props.friend.playerId,
-    content: messageText.value,
+    content: originalMessage,
   });
+  messageText.value = "";
 
-  if (sentMessage) {
-    messageText.value = "";
+  const sentMessage = await sendRequest;
+
+  if (!sentMessage) {
+    messageText.value = originalMessage;
   }
 }
 
