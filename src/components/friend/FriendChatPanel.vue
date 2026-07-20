@@ -234,11 +234,11 @@ watch(
 }
 
 .chat-message--mine {
-  @apply items-start;
+  @apply items-end;
 }
 
 .chat-message--friend {
-  @apply items-end;
+  @apply items-start;
 }
 
 .message-author {
@@ -262,10 +262,27 @@ watch(
 }
 
 .chat-message--mine .message-bubble {
-  @apply border-[var(--gray-100)] bg-white text-[var(--brand-active)];
+  @apply border-[var(--brand-primary)] bg-[var(--brand-primary)] text-[var(--brand-navy)];
 }
 
 .chat-message--mine .message-bubble::before {
+  top: 11px;
+  right: -9px;
+  border-top-width: 8px;
+  border-bottom-width: 8px;
+  border-left: 9px solid var(--brand-primary);
+}
+
+.chat-message--mine .message-bubble::after {
+  right: -7px;
+  border-left: 8px solid var(--brand-primary);
+}
+
+.chat-message--friend .message-bubble {
+  @apply border-[var(--gray-100)] bg-white text-[var(--brand-active)];
+}
+
+.chat-message--friend .message-bubble::before {
   top: 11px;
   left: -9px;
   border-top-width: 8px;
@@ -273,26 +290,9 @@ watch(
   border-right: 9px solid var(--gray-100);
 }
 
-.chat-message--mine .message-bubble::after {
+.chat-message--friend .message-bubble::after {
   left: -7px;
   border-right: 8px solid white;
-}
-
-.chat-message--friend .message-bubble {
-  @apply border-[var(--gray-200)] bg-[var(--gray-100)] text-[var(--brand-active)];
-}
-
-.chat-message--friend .message-bubble::before {
-  top: 11px;
-  right: -9px;
-  border-top-width: 8px;
-  border-bottom-width: 8px;
-  border-left: 9px solid var(--gray-200);
-}
-
-.chat-message--friend .message-bubble::after {
-  right: -7px;
-  border-left: 8px solid var(--gray-100);
 }
 
 .message-content {
