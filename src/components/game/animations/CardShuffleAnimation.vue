@@ -3,9 +3,11 @@ import { nextTick, onUnmounted, ref } from 'vue'
 import { gsap } from 'gsap'
 import { storeToRefs } from 'pinia'
 import defaultCardBackUrl from '@/assets/images/card-bg-back.webp'
+import { useGameTableAudio } from '@/composables/UseGameTableAudio'
 import { deckPoseToFixedStyle } from '@/composables/useGameAnimationRects'
 import { useAppearanceStore } from '@/stores/appearanceStore.js'
 
+const { playGameCardShuffleSound } = useGameTableAudio()
 const shuffleCardElements = ref([])
 const shuffleDeckStyle = ref({ display: 'none' })
 const visibleCardCount = ref(0)
@@ -46,6 +48,7 @@ async function play({ deckPose, deckRect, deckCount }) {
     return
   }
 
+  playGameCardShuffleSound()
   visibleCardCount.value = Math.min(deckCount, 6)
   shuffleDeckStyle.value = deckPoseToFixedStyle(resolvedDeckPose)
   await nextTick()

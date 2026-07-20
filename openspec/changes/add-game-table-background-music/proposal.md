@@ -1,0 +1,81 @@
+## Why
+
+目前進入遊戲牌桌的 Loading 與正式牌桌階段缺少能配合場景轉換的牌桌主題音樂；此外，從進行中的牌桌返回大廳時，pre-game 大廳主題沒有恢復，現有洗牌效果音長達約 3 秒、單層且增益過高，`game-card-play-rise.mp3` 開頭約有 0.69 秒靜音，使正式牌桌出牌回饋聽起來延遲，正式牌桌的初始發牌、一般抽牌與所有玩家出牌動畫、「職場老鳥」保護啟動、任何玩家的小局勝利，以及牌桌選擇、設定操作與自訂房間等待室按鈕也缺少一致的聲音回饋。需要讓 Loading 成為明確的音樂過渡區、在牌桌真正可互動時以較長淡入建立開場氛圍、讓牌桌返回大廳後重新淡入 pre-game 主題，並讓牌桌動畫與遊戲前後的 UI 操作各自取得即時、一致且受共享設定控制的音效。
+
+## What Changes
+
+- 進入 Loading 路由時，讓 `pre-game-lobby-theme.mp3` 以 4000ms 淡出後停止並重設。
+- 新增獨立牌桌背景音樂控制器，播放 `game-table-start-theme.mp3`；每次該檔案自然播放完畢後，從 0 秒手動重播並重新執行 5000ms 淡入。
+- 僅在 `GameView` 完成初始資料載入並顯示 `GameStage` 時，以 5000ms 淡入牌桌主題。
+- 牌桌主題共用現有音樂啟用狀態與音量設定，使用與大廳背景音樂一致的 0.2 基礎增益。
+- 離開 `GameView` 時停止並重設牌桌主題，避免音樂外溢到其他頁面。
+- 在進入遊戲前已啟動大廳音樂的前提下，Loading 與 Game 期間保留 pre-game 音樂 activation；從 `Game` 返回大廳時，讓 `pre-game-lobby-theme.mp3` 以既有 900ms 淡入恢復播放。
+- 設定視窗的「返回大廳」改由既有 `return-lobby` 元件事件鏈交給 `GameView` 導向 `LobbyHome`，不再由 Teleport 子元件直接寫死路徑；確認返回時先登記一次 pre-game 恢復意圖，確保即使牌桌期間的模組 activation 遺失，`Game → LobbyHome` 路由轉場仍會觸發 pre-game 音樂恢復流程。
+- 重播淡入只套用於 `game-table-start-theme.mp3`，不改變其他背景音樂或全域音效。
+- 洗牌動畫開始時使用兩個 `game-card-shuffle.ogg` Audio 實例：主層立即播放、第二層延遲 100ms，兩層各播放 1200ms，並分別套用共享音效音量的 0.25 與 0.15 增益。
+- 新一輪洗牌開始前清除舊計時器、停止並歸零兩層洗牌音效，避免短時間重播留下殘音。
+- 正式牌桌每次確認抽牌來源與目標位置有效、即將開始飛牌時播放一次 `game-card-draw.mp3`，使用共享音效音量乘以 0.35；初始發牌與所有玩家的一般抽牌共用此觸發點，角色效果抽牌與動畫展示頁不觸發。
+- 將來源檔 `Cheesy force field on and off Sound effect.mp3` 改為語意化的 `game-senior-protection-activate.mp3`，並僅在「職場老鳥」的保護啟動動畫開始時播放一次，使用共享音效設定與 0.45 增益；保護解除及其他卡牌被保護擋下時不播放。
+- 牌桌可用的選單選項、玩家目標頭像、右上角設定齒輪，以及 Teleport 設定視窗內的按鈕統一播放既有 `login-button-click`；音量滑桿、停用控制與音效關閉狀態不播放。
+- 自訂房間等待室的複製房號、玩家槽操作、邀請好友視窗、返回大廳與開始遊戲等可用按鈕統一播放既有 `login-button-click`；非按鈕區域與停用控制不播放。
+- 正式牌桌中任何玩家的有效出牌動畫開始前播放一次 `game-card-play-rise.mp3`，使用共享音效音量乘以 0.4；本地玩家與遠端玩家共用相同出牌協調層，無效動畫與展示頁不觸發。
+- 將 `game-card-play-rise.mp3` 的前 0.65 秒裁除並保留完整尾音，使輸出長度低於 1.5 秒、前置靜音低於 0.06 秒，同時維持 MP3 與 192 kbps，消除出牌動畫與聽覺回饋之間的素材延遲。
+- 正式牌桌打出實習生並揭露猜牌結果時，猜對播放一次 `intern-guess-correct.mp3`、猜錯播放一次 `intern-guess-incorrect.mp3`；兩者皆使用共享音效音量乘以 0.45，並與「猜對啦／猜錯啦」文字同步揭露。
+- 正式牌桌的人資主管換牌動畫在既有 1 秒提示結束、兩張牌開始翻轉與移動時先播放 `game-card-swap-whoosh-04.mp3`，04 自然結束後立即銜接 `game-card-swap-whoosh-05.mp3`，兩段皆使用共享音效音量乘以 0.45；reduced-motion 維持相同觸發與銜接行為，動畫展示頁不播放。
+- 將 `floraphonic-classic-game-action-negative-18-224576.mp3` 改為語意化的 `game-player-eliminated.mp3`；任何玩家首次進入淘汰狀態並開啟「玩家淘汰」提示時播放一次，使用共享音效設定與 0.45 增益。
+- 從 `kids_cheering.mp3` 選取能保留完整起音與主要歡呼的前 3 秒，最後 180ms 淡出並改名為 `game-round-win-cheer.mp3`；任何玩家的 `roundWins` 增加並觸發「回合獲勝」提示時播放一次，使用共享音效設定與 0.45 增益。
+- 以聚焦的 Node 測試覆蓋 Loading 淡出、正式牌桌淡入、循環播放、設定同步及離場清理契約。
+- 以回歸測試覆蓋設定視窗返回事件從 `GameSettingsModal` 經 `GameStage` 傳到 `GameView`，並由命名路由進入 `LobbyHome` 的完整接線。
+
+## Capabilities
+
+### New Capabilities
+
+- `game-table-background-music`: 定義從大廳經 Loading 進入正式牌桌時的背景音樂切換，以及牌桌洗牌、正式牌桌抽牌與出牌、「職場老鳥」保護啟動、牌桌與自訂房間等待室 UI 點擊音效的觸發、音量設定與清理行為。
+- `game-table-background-music`: 同時定義實習生猜牌結果在正式牌桌揭露時的正確／錯誤語意音效與展示頁隔離行為。
+- `game-table-background-music`: 同時定義人資主管換牌動作起點的 04 → 05 whoosh 音效序列、共享設定、重入清理與展示頁隔離行為。
+- `game-table-background-music`: 同時定義任何玩家首次進入淘汰狀態時，淘汰提示與語意化淘汰音效同步播放的行為。
+- `game-table-background-music`: 同時定義任何玩家取得小局勝利時，回合獲勝提示與三秒歡呼音效同步播放的行為。
+
+### Modified Capabilities
+
+（無）
+
+## Impact
+
+- Affected specs: game-table-background-music
+- Affected code:
+  - New:
+    - src/assets/audio/game-table-start-theme.mp3
+    - src/assets/audio/game-card-shuffle.ogg
+    - src/assets/audio/game-card-draw.mp3
+    - src/assets/audio/game-card-play-rise.mp3
+    - src/assets/audio/intern-guess-correct.mp3
+    - src/assets/audio/intern-guess-incorrect.mp3
+    - src/assets/audio/game-card-swap-whoosh-04.mp3
+    - src/assets/audio/game-card-swap-whoosh-05.mp3
+    - src/assets/audio/game-player-eliminated.mp3
+    - src/assets/audio/game-round-win-cheer.mp3
+    - src/assets/audio/game-senior-protection-activate.mp3
+    - src/composables/UseGameTableAudio.js
+    - tests/game-table-audio.test.mjs
+  - Modified:
+    - src/App.vue
+    - src/components/game/animations/CardShuffleAnimation.vue
+    - src/components/game/animations/InternAnimation.vue
+    - src/components/game/animations/CardSwapAnimation.vue
+    - src/components/game/ui/GameStage.vue
+    - src/components/game/ui/GameSettingsModal.vue
+    - src/composables/useGameStageEffectAnimation.js
+    - src/composables/useGameStageCardPlay.js
+    - src/composables/useGameStageDrawSequence.js
+    - src/composables/useGameStageNotices.js
+    - src/composables/UsePreGameAudio.js
+    - src/views/CustomRoomView.vue
+    - src/views/GameView.vue
+    - tests/pre-game-audio.test.mjs
+    - tests/card-effect-result.test.mjs
+  - Removed:
+    - src/assets/audio/floraphonic-classic-game-action-negative-18-224576.mp3
+    - src/assets/audio/kids_cheering.mp3
+- APIs and dependencies: no backend API, Socket.IO contract, package dependency, or database change

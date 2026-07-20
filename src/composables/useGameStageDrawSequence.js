@@ -17,6 +17,7 @@ export function useGameStageDrawSequence({
   lastInitialRoundDealSignature = ref(null),
   playRoundStartNotice,
   playTurnNotice,
+  playGameCardDealSound = () => {},
   waitForTutorialSettlement = () => Promise.resolve(false),
   resolveNoticeIdleIfIdle,
 } = {}) {
@@ -105,6 +106,8 @@ export function useGameStageDrawSequence({
       isDrawAnimating.value = false;
       return false;
     }
+
+    playGameCardDealSound();
 
     try {
       if (shouldDrawSelf) {
