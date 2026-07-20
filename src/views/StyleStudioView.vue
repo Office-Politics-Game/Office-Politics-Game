@@ -299,9 +299,11 @@ import { cardAssetsByKey } from "@/constants/cardAssets.js";
 import { guestAvatars } from "@/constants/guestOptions.js";
 import { CARD_SKIN_SLOT_LABELS, CARD_SKIN_SLOT_ORDER } from "@/constants/cardSkinSlots.js";
 import {
+  CARD_SKIN_THEMES,
   getCardSkinThemeLogo,
   getCardSkinThemeSlotFrame,
   getCardSkinThemeSlotImage,
+  resolveCardSkinThemeKey,
 } from "@/constants/cardSkinThemes.js";
 import {
   buildEquipmentSections,
@@ -357,6 +359,18 @@ const DEFAULT_ITEM_SELECTIONS = {
   card_back: "default-card-back",
   card_skin: "default-card-skin",
   board_skin: "default-board-skin",
+};
+
+const CARD_SKIN_THEME_DISPLAY_NAMES = {
+  "neon-hustle": "霓虹職場風格卡面",
+  beach: "夏日風格卡面",
+  lego: "樂高風格卡面",
+  mario: "瑪利歐風格卡面",
+  ukiyo: "浮世繪風格卡面",
+  minimal: "簡約風格卡面",
+  "pixel-office": "像素辦公室風格卡面",
+  windows98: "Windows 98 風格卡面",
+  tarot: "塔羅牌風格卡面",
 };
 
 const pageStyle = {
@@ -430,6 +444,45 @@ function createDefaultEquipmentItem(categoryId, categoryLabel) {
 
   return null;
 }
+
+function createFallbackCardSkinThemeItem(themeKey, categoryLabel) {
+  const theme = CARD_SKIN_THEMES[themeKey];
+
+  if (!theme) {
+    return null;
+  }
+
+  return {
+    selectionId: `theme-${themeKey}`,
+    inventoryId: null,
+    shopItemId: null,
+    shopItem: {
+      id: null,
+      type: "card_skin",
+      key: themeKey,
+      name: CARD_SKIN_THEME_DISPLAY_NAMES[themeKey] || themeKey,
+      description: `${CARD_SKIN_THEME_DISPLAY_NAMES[themeKey] || themeKey}尚未解鎖`,
+      imageUrl: theme.logoUrl,
+      image_url: theme.logoUrl,
+    },
+    playerId: resolvedPlayerId.value,
+    quantity: 0,
+    type: "card_skin",
+    categoryId: "card_skin",
+    categoryLabel,
+    name: CARD_SKIN_THEME_DISPLAY_NAMES[themeKey] || themeKey,
+    description: `${CARD_SKIN_THEME_DISPLAY_NAMES[themeKey] || themeKey}尚未解鎖`,
+    previewImage: theme.logoUrl,
+    price: null,
+    currency: "gacha",
+    isOwned: false,
+    isLocked: true,
+    isEquipped: false,
+    themeKey,
+    key: themeKey,
+  };
+}
+
 const equipmentSections = computed(() => {
   const baseSections = buildEquipmentSections(inventoryItems.value, equippedItems.value);
   const sectionsById = Object.fromEntries(baseSections.map((section) => [section.id, section]));
@@ -461,10 +514,26 @@ const equipmentSections = computed(() => {
         isLocked: true,
         isEquipped: false,
       }));
+
+    const mergedThemeItems =
+      section.id === "card_skin"
+        ? Object.keys(CARD_SKIN_THEMES)
+            .filter((themeKey) => {
+              const alreadyListed = [...section.items, ...lockedItems].some((item) => {
+                const source = item.shopItem || item;
+                return resolveCardSkinThemeKey(source) === themeKey;
+              });
+
+              return !alreadyListed;
+            })
+            .map((themeKey) => createFallbackCardSkinThemeItem(themeKey, label))
+            .filter(Boolean)
+        : [];
+
     const mergedSection = {
       ...section,
-      count: section.items.length + lockedItems.length,
-      items: [...section.items, ...lockedItems],
+      count: section.items.length + lockedItems.length + mergedThemeItems.length,
+      items: [...section.items, ...lockedItems, ...mergedThemeItems],
     };
 
     if (section.id !== "avatar") {
