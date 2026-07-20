@@ -738,7 +738,9 @@ async function saveSelection() {
         selectedItem.value.categoryId === "avatar"
           ? "Mall"
           : selectedItem.value.categoryId === "card_skin" &&
-              selectedItem.value.name?.includes("樂高")
+              (selectedItem.value.name?.includes("樂高") ||
+                selectedItem.value.name?.includes("塔羅牌") ||
+                selectedItem.value.name?.toLowerCase?.().includes("tarot"))
             ? "Gacha"
             : "Mall";
       await router.push({ name: routeName });
