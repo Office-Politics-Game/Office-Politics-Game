@@ -42,7 +42,8 @@ function normalizeShopItem(item, options = {}) {
   const id = Number(item.id);
   const category = shopTypeCategoryMap[item.type] ?? item.type;
   const categoryMeta = categories.find((candidate) => candidate.id === category);
-  const isOwned = ownedShopItemIds.has(id);
+  const isRepeatable = item.type === "gacha_ticket";
+  const isOwned = !isRepeatable && ownedShopItemIds.has(id);
   const isAvailable = item.isActive !== false;
 
   return {
