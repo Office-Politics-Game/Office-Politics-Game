@@ -1,5 +1,6 @@
 import { nextTick, ref } from 'vue'
 
+const COMPUTER_TURN_ACK_TIMEOUT_MS = 15000
 const SWAP_REVEAL_STAGES = new Set(['before-swap', 'after-swap', 'never'])
 
 export function useGameSocketActions({
@@ -223,7 +224,7 @@ export function useGameSocketActions({
         roomCode: normalizedRoomCode.value,
         playerId: resolvedCurrentPlayerId.value,
         reason,
-      })
+      }, { timeout: COMPUTER_TURN_ACK_TIMEOUT_MS })
     } catch (error) {
       console.warn('[game:view] ready-for-computer-turn:failed', {
         roomCode: normalizedRoomCode.value,

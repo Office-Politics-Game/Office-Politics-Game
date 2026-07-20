@@ -1,4 +1,5 @@
 import pool from "../db/index.js"
+import { createDeck } from "../game/gameDeck.js"
 import { drawCardAction, playCardAction } from "./gameActionService.js"
 
 const TARGET_REQUIRED_CARD_IDS = [1, 2, 3, 5, 6]
@@ -7,7 +8,32 @@ const PM_CARD_ID = 5
 const HR_CARD_ID = 6
 const CEO_CARD_ID = 8
 const INTERN_CARD_NAME = "Intern"
-const INTERN_GUESS_CARD_NAME = "CEO"
+const INTERN_GUESS_MIN_CARD_ID = 2
+const INTERN_GUESS_MAX_CARD_ID = 8
+
+const INTERN_GUESS_CARDS = Array.from(
+    createDeck().reduce((cardsById, card) => {
+        const cardId = Number(card.id)
+
+        if (cardId < INTERN_GUESS_MIN_CARD_ID || cardId > INTERN_GUESS_MAX_CARD_ID) {
+            return cardsById
+        }
+
+        const existingCard = cardsById.get(cardId)
+
+        if (existingCard) {
+            existingCard.count += 1
+        } else {
+            cardsById.set(cardId, {
+                id: cardId,
+                name: card.name,
+                count: 1,
+            })
+        }
+
+        return cardsById
+    }, new Map()).values()
+)
 
 function createServiceError(message, statusCode = 400) {
     const error = new Error(message)
@@ -119,6 +145,20 @@ function chooseTargetPlayerId(
     return target?.playerId
 }
 
+function chooseInternGuessCardName(
+    player,
+    { random = Math.random } = {}
+) {
+    const hand = Array.isArray(player?.hand) ? player.hand : []
+    const heldCardIds = new Set(hand.map((card) => Number(card.id)))
+    const eligibleCards = INTERN_GUESS_CARDS.filter((card) => {
+        return card.count > 1 || !heldCardIds.has(card.id)
+    })
+    const randomIndex = Math.floor(random() * eligibleCards.length)
+
+    return eligibleCards[randomIndex]?.name
+}
+
 function buildPlayPayload(state, player, card, options = {}) {
     const payload = {
         roomCode: state.roomCode,
@@ -129,7 +169,7 @@ function buildPlayPayload(state, player, card, options = {}) {
     }
 
     if (card.name === INTERN_CARD_NAME) {
-        payload.guessedCardName = INTERN_GUESS_CARD_NAME
+        payload.guessedCardName = chooseInternGuessCardName(player, options)
     }
 
     return payload

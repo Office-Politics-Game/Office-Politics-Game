@@ -136,21 +136,32 @@ describe("computerPlayerService decision helpers", () => {
         )).toBeUndefined()
     })
 
-    test("builds Intern play payload with fixed CEO guess", () => {
-        const state = createState()
-        const player = getCurrentTurnPlayer(state)
+    test.each([
+        ["CEO", { id: 8, name: "CEO" }, ["Adviser", "HR", "PM", "Senior", "Manager", "Cleaner"]],
+        ["Adviser", { id: 7, name: "Adviser" }, ["CEO", "HR", "PM", "Senior", "Manager", "Cleaner"]],
+        ["HR", { id: 6, name: "HR" }, ["CEO", "Adviser", "PM", "Senior", "Manager", "Cleaner"]],
+        ["Manager", { id: 3, name: "Manager" }, ["CEO", "Adviser", "HR", "PM", "Senior", "Manager", "Cleaner"]],
+        ["PM", { id: 5, name: "PM" }, ["CEO", "Adviser", "HR", "PM", "Senior", "Manager", "Cleaner"]],
+        ["Intern", { id: 1, name: "Intern" }, ["CEO", "Adviser", "HR", "PM", "Senior", "Manager", "Cleaner"]],
+    ])(
+        "randomizes Intern guesses while respecting a held %s card",
+        (_cardName, heldCard, expectedNames) => {
+            const state = createState()
+            state.players[0].hand = [
+                { id: 1, name: "Intern" },
+                heldCard,
+            ]
+            const player = getCurrentTurnPlayer(state)
+            const guesses = expectedNames.map((_, index) => {
+                return buildPlayPayload(
+                    state,
+                    player,
+                    { id: 1, name: "Intern" },
+                    { random: () => (index + 0.5) / expectedNames.length }
+                ).guessedCardName
+            })
 
-        expect(buildPlayPayload(
-            state,
-            player,
-            { id: 1, name: "Intern" },
-            { random: () => 0.999 }
-        )).toMatchObject({
-            roomCode: "ROOM01",
-            playerId: 1,
-            cardId: 1,
-            targetPlayerId: 3,
-            guessedCardName: "CEO",
-        })
-    })
+            expect(new Set(guesses)).toEqual(new Set(expectedNames))
+        }
+    )
 })
