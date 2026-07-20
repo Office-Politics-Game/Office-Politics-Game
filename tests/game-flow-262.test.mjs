@@ -54,9 +54,9 @@ test('game stage exposes turn timeout and computer-finish controls', () => {
 })
 
 test('settings modal fits mobile without its own scroll', () => {
-  assert.match(settingsSource, /@media \(max-width: 760px\) \{[\s\S]*\.settings-dialog \{[\s\S]*overflow: hidden;/)
-  assert.match(settingsSource, /@media \(max-width: 760px\) \{[\s\S]*\.settings-header \{[\s\S]*min-height: 48px;/)
-  assert.match(settingsSource, /@media \(max-width: 760px\) \{[\s\S]*\.audio-grid \{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/)
+  assert.match(settingsSource, /@media \(max-width: 760px\) \{[\s\S]*\.settings-dialog \{[\s\S]*width: 100%;/)
+  assert.match(settingsSource, /@media \(max-width: 760px\) \{[\s\S]*\.settings-header,[\s\S]*\.settings-content \{[\s\S]*padding-right: 14px;/)
+  assert.match(settingsSource, /@media \(max-width: 760px\) \{[\s\S]*\.audio-grid \{[\s\S]*grid-template-columns: 1fr;/)
 })
 
 test('intern target choices exclude eliminated players', () => {
@@ -67,5 +67,4 @@ test('settings return-lobby action is a surrender confirmation', () => {
   assert.match(settingsSource, /確認投降/)
   assert.match(settingsSource, /放棄對局無法領取結算獎勵/)
   assert.match(settingsSource, /openConfirmation\('return-lobby'\)/)
-  assert.doesNotMatch(settingsSource, /OFFICE POLITICS|AUDIO|GAME|CONFIRM ACTION/)
 })

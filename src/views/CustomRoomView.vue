@@ -7,6 +7,7 @@ import InviteFriendModal from "@/components/gameRoom/InviteFriendModal.vue";
 import PlayerList from "@/components/gameRoom/CustomRoomPlayerList.vue";
 import BG from "@/assets/images/bg-dashboard.webp";
 import { createGuestNickname } from "@/constants/guestOptions.js";
+import { useButtonClickAudio } from "@/composables/UseButtonClickAudio.js";
 import { useCurrentPlayerId } from "@/composables/useCurrentPlayerId.js";
 import { useFriendStore } from "@/stores/friendStore.js";
 import { useRoomInvitationStore } from "@/stores/roomInvitationStore.js";
@@ -18,6 +19,7 @@ const route = useRoute();
 const friendStore = useFriendStore();
 const roomInvitationStore = useRoomInvitationStore();
 const roomStore = useRoomStore();
+const { handleButtonClick } = useButtonClickAudio();
 const { currentPlayerId } = useCurrentPlayerId();
 
 const { roomCode, players, errorMessage, isLoading, isRoomReadyToStart } =
@@ -651,6 +653,7 @@ watch(
       backgroundColor: 'rgba(0, 0, 0, 0.2)',
       backgroundImage: `url(${BG})`,
     }"
+    @click.capture="handleButtonClick"
   >
     <section
       class="flex h-90 w-600 flex-col items-center overflow-hidden pt-5 lg:h-170 lg:w-400 lg:pt-14"

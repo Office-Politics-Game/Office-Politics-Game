@@ -1,4 +1,4 @@
-import { computed, nextTick, ref } from "vue";
+﻿import { computed, nextTick, ref } from "vue";
 
 export function useGameStageDrawSequence({
   props,
@@ -17,6 +17,7 @@ export function useGameStageDrawSequence({
   lastInitialRoundDealSignature = ref(null),
   playRoundStartNotice,
   playTurnNotice,
+  playGameCardDealSound = () => {},
   waitForTutorialSettlement = () => Promise.resolve(false),
   resolveNoticeIdleIfIdle,
 } = {}) {
@@ -105,6 +106,8 @@ export function useGameStageDrawSequence({
       isDrawAnimating.value = false;
       return false;
     }
+
+    playGameCardDealSound();
 
     try {
       if (shouldDrawSelf) {

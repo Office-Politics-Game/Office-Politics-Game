@@ -1,10 +1,11 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from "vue-router"
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import { computed, nextTick } from 'vue'
 import LoadingScreen from '@/components/common/LoadingScreen.vue'
 import GameStage from '@/components/game/ui/GameStage.vue'
+import { useGameTableAudio } from '@/composables/UseGameTableAudio'
+import { usePreGameAudio } from '@/composables/UsePreGameAudio'
 import { useGameRoomState } from '@/composables/useGameRoomState'
 import { useGameSocketActions } from '@/composables/useGameSocketActions'
 import { useGameViewModel } from '@/composables/useGameViewModel'
@@ -133,6 +134,10 @@ const {
   beforeRefresh: ensureViewerAppearanceHydrated,
 })
 
+const { startGameTableBackground, stopGameTableBackground } =
+  useGameTableAudio()
+const { requestPreGameBackgroundResume } = usePreGameAudio()
+
 const {
   isDrawing,
   isSocketActionSubmitting,
@@ -179,30 +184,9 @@ const {
   resolveAvatarUrl,
 })
 
-async function navigateToResult() {
-  await gameStage.value?.playGameEndTransition?.()
-
-  await router.push({
-    name: "Result",
-    query: {
-      roomCode: normalizedRoomCode.value,
-      playerId: resolvedCurrentPlayerId.value || requestedPlayerId.value || undefined,
-      transition: "game-end",
-    },
-  })
-}
-
-onMounted(() => {
-  void loadInitialRoomState()
-  void subscribeGameSocket()
-})
-
-onBeforeUnmount(() => {
-  cleanupGameSocket()
-})
-
-async function handleReturnLobby() {
-  await router.push('/lobby')
+function handleReturnLobby() {
+  requestPreGameBackgroundResume()
+  router.push({ name: 'LobbyHome' })
 }
 
 async function handleAutoPlayTimeout(turnPlayerId) {
@@ -269,6 +253,39 @@ async function handleSkipComputerFinish() {
     isSkippingComputerFinish.value = false
   }
 }
+
+async function navigateToResult() {
+  await gameStage.value?.playGameEndTransition?.()
+
+  await router.push({
+    name: "Result",
+    query: {
+      roomCode: normalizedRoomCode.value,
+      playerId: resolvedCurrentPlayerId.value || requestedPlayerId.value || undefined,
+      transition: "game-end",
+    },
+  })
+}
+
+onMounted(() => {
+  void loadInitialRoomState()
+  void subscribeGameSocket()
+})
+
+onBeforeUnmount(() => {
+  stopGameTableBackground()
+  cleanupGameSocket()
+})
+
+watch(
+  hasLoadedInitialState,
+  (isGameStageReady) => {
+    if (isGameStageReady) {
+      startGameTableBackground()
+    }
+  },
+  { flush: 'post' },
+)
 
 watch(
   () => [normalizedRoomCode.value, requestedPlayerId.value],

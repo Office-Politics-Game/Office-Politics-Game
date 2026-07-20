@@ -5,6 +5,8 @@ import { FastForward } from "lucide-vue-next";
 import gameTableBackgroundUrl from "@/assets/images/bg-game-table.webp";
 import gameLogoUrl from "@/assets/images/logo-en-white.png";
 import { useAudioSettings } from "@/composables/UseAudioSettings";
+import { useButtonClickAudio } from "@/composables/UseButtonClickAudio";
+import { useGameTableAudio } from "@/composables/UseGameTableAudio";
 import { useGameStageCardPlay } from "@/composables/useGameStageCardPlay";
 import { useGameStageCardVisibility } from "@/composables/useGameStageCardVisibility";
 import { useGameStageDrawSequence } from "@/composables/useGameStageDrawSequence";
@@ -132,6 +134,7 @@ const emit = defineEmits([
   "round-sequence-complete",
 ]);
 
+const { handleButtonClick } = useButtonClickAudio();
 const appearanceStore = useAppearanceStore();
 const { boardSkinUrl } = storeToRefs(appearanceStore);
 const isSettingsOpen = ref(false);
@@ -201,6 +204,15 @@ const {
   setSoundEnabled,
   setSoundVolume,
 } = useAudioSettings();
+const {
+  playGameCardDealSound,
+  playGameCardPlaySound,
+  playHrCardSwapSound,
+  playInternGuessResultSound,
+  playPlayerEliminatedSound,
+  playRoundWinSound,
+  playSeniorProtectionActivateSound,
+} = useGameTableAudio();
 
 const isCurrentPlayerTurn = computed(() => {
   if (!props.currentTurnPlayerId || !resolvedCurrentPlayerId.value) {
@@ -281,6 +293,7 @@ const {
   activeEffectResult,
   getInitialRoundDealSignature: () => getInitialRoundDealSignature(),
   lastInitialRoundDealSignature,
+  playPlayerEliminatedSound,
 });
 
 const areTurnStartAnimationsIdle = computed(
@@ -314,6 +327,7 @@ const {
 } = useGameStageEffectAnimation({
   activeEffectResult,
   holdNoticeAckAfterClose,
+  playSeniorProtectionActivateSound,
   resolveNoticeIdleIfIdle,
 });
 
@@ -334,6 +348,7 @@ const drawSequence = useGameStageDrawSequence({
   lastInitialRoundDealSignature,
   playRoundStartNotice,
   playTurnNotice,
+  playGameCardDealSound,
   waitForTutorialSettlement,
   resolveNoticeIdleIfIdle,
 });
@@ -397,6 +412,7 @@ const {
   isDrawAnimating,
   activeEffectResult,
   resolvedPlayerHandCardCounts,
+  playGameCardPlaySound,
 });
 
 const protectedPlayers = computed(() =>
@@ -605,6 +621,7 @@ watch(
     });
 
     if (winner) {
+      playRoundWinSound();
       playRoundWinnerNotice(winner);
     }
   },
@@ -703,6 +720,7 @@ defineExpose({
       class="game-stage relative hidden h-[100dvh] w-[100dvw] overflow-hidden bg-cover bg-center bg-no-repeat"
       :style="{ backgroundImage: `url(${resolvedTableBackgroundUrl})` }"
       aria-label="Office Politics 遊戲桌面"
+      @click.capture="handleButtonClick"
     >
       <div
         v-if="pendingPlay"
@@ -884,6 +902,7 @@ defineExpose({
         :target-player-name="activeInternTargetPlayerName"
         :get-player-hand-rect="animationRects.getPlayerHandRect"
         :get-discard-rect="animationRects.getDiscardRect"
+        @outcome-reveal="playInternGuessResultSound"
         @complete="handleEffectAnimationComplete"
       />
 
@@ -913,6 +932,7 @@ defineExpose({
         :result="activeEffectResult"
         :target-player-name="activeSwapTargetPlayerName"
         :get-player-hand-rect="animationRects.getPlayerHandRect"
+        @swap-motion-start="playHrCardSwapSound"
         @complete="handleEffectAnimationComplete"
       />
 

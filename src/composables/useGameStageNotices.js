@@ -1,4 +1,4 @@
-import { nextTick, ref } from "vue";
+﻿import { nextTick, ref } from "vue";
 
 const NOTICE_CLOSE_ACK_BUFFER_MS = 600;
 const MANAGER_EFFECT_ACK_BUFFER_MS = 900;
@@ -21,6 +21,7 @@ export function useGameStageNotices({
   activeEffectResult,
   getInitialRoundDealSignature,
   lastInitialRoundDealSignature,
+  playPlayerEliminatedSound = () => {},
 } = {}) {
   const isTurnNoticeOpen = ref(false);
   const isRoundStartNoticeOpen = ref(false);
@@ -246,6 +247,7 @@ export function useGameStageNotices({
 
     scheduleNoticeOpen(() => {
       isPlayerEliminatedNoticeOpen.value = true;
+      playPlayerEliminatedSound();
     });
   }
 
