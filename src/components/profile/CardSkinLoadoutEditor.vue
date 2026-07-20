@@ -1,18 +1,15 @@
 <template>
   <section class="card-skin-loadout">
-    <div
-      v-if="appliedSlots.length"
-      class="card-skin-loadout__applied"
-    >
+    <div v-if="appliedSlots.length" class="card-skin-loadout__applied">
       <div class="card-skin-loadout__header">
         <div>
           <p class="card-skin-loadout__eyebrow">CURRENT LOADOUT</p>
-          <h3 class="card-skin-loadout__title">目前套用卡面總覽</h3>
+          <h3 class="card-skin-loadout__title">目前卡面配置</h3>
         </div>
 
         <div class="card-skin-loadout__applied-meta">
-          <strong>{{ appliedThemeName || "未套用卡面主題" }}</strong>
-          <span>{{ appliedOverrideCount }} 張已個別指定</span>
+          <strong>{{ appliedThemeName || "尚未套用主題卡面" }}</strong>
+          <span>{{ appliedOverrideCount }} 個欄位已覆寫</span>
         </div>
       </div>
 
@@ -39,7 +36,7 @@
           <div class="card-skin-loadout__body">
             <div class="card-skin-loadout__meta">
               <strong>{{ slot.label }}</strong>
-              <span>{{ slot.isOverridden ? "已個別指定" : "跟隨整套風格" }}</span>
+              <span>{{ slot.isOverridden ? "已覆寫" : "沿用主題設定" }}</span>
             </div>
           </div>
         </article>
@@ -49,7 +46,7 @@
     <div class="card-skin-loadout__header">
       <div>
         <p class="card-skin-loadout__eyebrow">CARD STYLE MIXER</p>
-        <h3 class="card-skin-loadout__title">八張卡面混搭</h3>
+        <h3 class="card-skin-loadout__title">卡面混搭設定</h3>
       </div>
 
       <button
@@ -58,20 +55,16 @@
         :disabled="!selectedSkinItem || isSaving"
         @click="$emit('apply-theme', selectedSkinItem)"
       >
-        {{ isSaving ? "儲存中..." : "套用為整套風格" }}
+        {{ isSaving ? "儲存中..." : "套用整套主題" }}
       </button>
     </div>
 
     <p class="card-skin-loadout__hint">
-      先從右側選一個卡面風格，再把它套用到全部卡片，或單獨指定到其中幾張。
+      先選一套卡面主題，再把它覆寫到指定職位卡片欄位，做出專屬於你的混搭組合。
     </p>
 
     <div class="card-skin-loadout__grid">
-      <article
-        v-for="slot in slots"
-        :key="slot.key"
-        class="card-skin-loadout__card"
-      >
+      <article v-for="slot in slots" :key="slot.key" class="card-skin-loadout__card">
         <div class="card-skin-loadout__preview">
           <img
             class="card-skin-loadout__preview-layer"
@@ -89,7 +82,7 @@
         <div class="card-skin-loadout__body">
           <div class="card-skin-loadout__meta">
             <strong>{{ slot.label }}</strong>
-            <span>{{ slot.isOverridden ? "單卡覆寫" : "跟隨整套風格" }}</span>
+            <span>{{ slot.isOverridden ? "已指定覆寫" : "沿用主題設定" }}</span>
           </div>
 
           <div class="card-skin-loadout__actions">
@@ -99,7 +92,7 @@
               :disabled="!selectedSkinItem || isSaving"
               @click="$emit('assign-slot', { slotKey: slot.key, item: selectedSkinItem })"
             >
-              指定目前選擇
+              指定成這套
             </button>
 
             <button

@@ -4,6 +4,7 @@ import {
   getPlayerItems,
   getShopItems,
   purchaseShopItem,
+  unequipShopItem,
   updateCardSkinLoadout,
 } from "../services/shopService.js"
 import {
@@ -108,7 +109,8 @@ async function handleEquipShopItem(req, res) {
   try {
     const equipped = await equipShopItem({
       playerId: req.body.playerId,
-      shopItemId: req.body.shopItemId,
+      shopItemId: req.body.shopItemId ?? null,
+      categoryId: req.body.categoryId ?? null,
     })
 
     return res.status(200).json({ equipped })
@@ -132,6 +134,22 @@ async function handleUpdateCardSkinLoadout(req, res) {
   } catch (error) {
     return res.status(getErrorStatus(error)).json({
       message: error.statusCode ? error.message : "Update card skin loadout failed",
+      error: error.message,
+    })
+  }
+}
+
+async function handleUnequipShopItem(req, res) {
+  try {
+    const equipped = await unequipShopItem({
+      playerId: req.body.playerId,
+      categoryId: req.body.categoryId,
+    })
+
+    return res.status(200).json({ equipped })
+  } catch (error) {
+    return res.status(getErrorStatus(error)).json({
+      message: error.statusCode ? error.message : "鋆???憭望?",
       error: error.message,
     })
   }
@@ -176,5 +194,6 @@ export {
   handleGetPlayerItems,
   handleGetShopItems,
   handlePurchaseShopItem,
+  handleUnequipShopItem,
   handleUpdateCardSkinLoadout,
 }
