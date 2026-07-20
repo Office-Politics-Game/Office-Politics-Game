@@ -269,6 +269,42 @@ const CARD_SKIN_THEMES = {
       ceo: "https://res.cloudinary.com/pumy6qez/image/upload/v1784280650/windows98-ceo-card-frame_jyjd5z.webp",
     },
   }),
+  tarot: createTheme({
+    key: "tarot",
+    aliases: ["tarot", "塔羅牌風格", "塔羅牌"],
+    logoUrl:
+      "https://res.cloudinary.com/pumy6qez/image/upload/v1784526032/tarot-logo_ak0d9h.webp",
+    slotImages: {
+      intern:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519782/card-bg-intern_hypihm.webp",
+      cleaner:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519781/card-bg-cleaner_vgx7ny.webp",
+      manager:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519782/card-bg-manager_atavfx.webp",
+      senior:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519785/card-bg-senior_c30b07.webp",
+      pm: "https://res.cloudinary.com/pumy6qez/image/upload/v1784519782/card-bg-pm_sn89qt.webp",
+      hr: "https://res.cloudinary.com/pumy6qez/image/upload/v1784519781/card-bg-hr_bmgetc.webp",
+      advisor:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519781/card-bg-advisor_lv9hg4.webp",
+      ceo: "https://res.cloudinary.com/pumy6qez/image/upload/v1784519781/card-bg-ceo_tazytm.webp",
+    },
+    slotFrames: {
+      intern:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519789/card-frame-intern_f65un0.webp",
+      cleaner:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519787/card-frame-cleaner_xdo53r.webp",
+      manager:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519790/card-frame-manager_g3tn5r.webp",
+      senior:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519792/card-frame-senior_i77pph.webp",
+      pm: "https://res.cloudinary.com/pumy6qez/image/upload/v1784519792/card-frame-pm_vquajq.webp",
+      hr: "https://res.cloudinary.com/pumy6qez/image/upload/v1784519788/card-frame-hr_dguvjr.webp",
+      advisor:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519786/card-frame-advisor_ioylpq.webp",
+      ceo: "https://res.cloudinary.com/pumy6qez/image/upload/v1784519786/card-frame-ceo_owxrqb.webp",
+    },
+  }),
 };
 
 function normalizeThemeKey(value) {
