@@ -161,6 +161,150 @@ const CARD_SKIN_THEMES = {
       ceo: "https://res.cloudinary.com/pumy6qez/image/upload/v1784016272/ukiyo-ceo-card-frame_dpnmdz.webp",
     },
   }),
+  minimal: createTheme({
+    key: "minimal",
+    aliases: ["minimalism", "minimal style", "minimalist", "極簡", "極簡風格"],
+    logoUrl:
+      "https://res.cloudinary.com/pumy6qez/image/upload/v1784183647/minimal-theme_rgsrbq.png",
+    slotImages: {
+      intern:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784183635/minimal-intern-card-skin_l59hj4.webp",
+      cleaner:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784183635/minimal-cleaner-card-skin_vpxiks.webp",
+      manager:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784183635/minimal-manager-card-skin_dcos9e.webp",
+      senior:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784183636/minimal-senior-card-skin_malud3.webp",
+      pm: "https://res.cloudinary.com/pumy6qez/image/upload/v1784183636/minimal-pm-card-skin_z1dicy.webp",
+      hr: "https://res.cloudinary.com/pumy6qez/image/upload/v1784183635/minimal-hr-card-skin_s6zdl5.webp",
+      advisor:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784183635/minimal-advisor-card-skin_glgwtt.webp",
+      ceo: "https://res.cloudinary.com/pumy6qez/image/upload/v1784183635/minimal-ceo-card-skin_zfw1zi.webp",
+    },
+    slotFrames: {
+      intern:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784183673/minimal-intern-card-frame_j0td70.webp",
+      cleaner:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784183670/minimal-cleaner-card-frame_bfed5u.webp",
+      manager:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784183666/minimal-manager-card-frame_wbcrcy.webp",
+      senior:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784183667/minimal-senior-card-frame_gfc1fs.webp",
+      pm: "https://res.cloudinary.com/pumy6qez/image/upload/v1784183667/minimal-pm-card-frame_rfinwd.webp",
+      hr: "https://res.cloudinary.com/pumy6qez/image/upload/v1784183672/minimal-hr-card-frame_f9t88q.webp",
+      advisor:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784183668/minimal-advisor-card-frame_f6je1v.webp",
+      ceo: "https://res.cloudinary.com/pumy6qez/image/upload/v1784183669/minimal-ceo-card-frame_t8esvi.webp",
+    },
+  }),
+  "pixel-office": createTheme({
+    key: "pixel-office",
+    aliases: ["pixel", "pixel office", "pixel style", "8-bit", "像素", "像素風格"],
+    logoUrl:
+      "https://res.cloudinary.com/pumy6qez/image/upload/v1784184978/pixel-office-theme_bmgbne.webp",
+    slotImages: {
+      intern:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784184945/pixel-office-intern-card-skin_kuhj6i.webp",
+      cleaner:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784184943/pixel-office-cleaner-card-skin_jr8wrz.webp",
+      manager:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784184972/pixel-office-manager-card-skin_mnpdto.webp",
+      senior:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784184976/pixel-office-senior-card-skin_jtsnlm.webp",
+      pm: "https://res.cloudinary.com/pumy6qez/image/upload/v1784184974/pixel-office-pm-card-skin_my2emn.webp",
+      hr: "https://res.cloudinary.com/pumy6qez/image/upload/v1784184944/pixel-office-hr-card-skin_jt9wa6.webp",
+      advisor:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784184979/pixel-office-advisor-card-skin_sxd2qm.webp",
+      ceo: "https://res.cloudinary.com/pumy6qez/image/upload/v1784184984/pixel-office-ceo-card-skin_iafiji.webp",
+    },
+    slotFrames: {
+      intern:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784184947/pixel-office-intern-card-frame_coircs.webp",
+      cleaner:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784184942/pixel-office-cleaner-card-frame_pcsqbg.webp",
+      manager:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784184948/pixel-office-manager-card-frame_t9qssm.webp",
+      senior:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784184975/pixel-office-senior-card-frame_sqnxkg.webp",
+      pm: "https://res.cloudinary.com/pumy6qez/image/upload/v1784184973/pixel-office-pm-card-frame_sxgidl.webp",
+      hr: "https://res.cloudinary.com/pumy6qez/image/upload/v1784184943/pixel-office-hr-card-frame_vjjphj.webp",
+      advisor:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784184977/pixel-office-advisor-card-frame_mgqccs.webp",
+      ceo: "https://res.cloudinary.com/pumy6qez/image/upload/v1784184983/pixel-office-ceo-card-frame_mcr7pa.webp",
+    },
+  }),
+  windows98: createTheme({
+    key: "windows98",
+    aliases: ["windows 98", "win98", "retro office", "windows 98 style"],
+    logoUrl:
+      "https://res.cloudinary.com/pumy6qez/image/upload/v1784280652/windows98-logo_vqk7kn.webp",
+    slotImages: {
+      intern:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280651/windows98-intern-card-skin_m3yqvv.webp",
+      cleaner:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280650/windows98-cleaner-card-skin_nm8a2x.webp",
+      manager:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280651/windows98-manager-card-skin_uounb6.webp",
+      senior:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280652/windows98-senior-card-skin_dlqnng.webp",
+      pm: "https://res.cloudinary.com/pumy6qez/image/upload/v1784280652/windows98-pm-card-skin_obtd3l.webp",
+      hr: "https://res.cloudinary.com/pumy6qez/image/upload/v1784280651/windows98-hr-card-skin_zbgiw0.webp",
+      advisor:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280650/windows98-advisor-card-skin_zlmoue.webp",
+      ceo: "https://res.cloudinary.com/pumy6qez/image/upload/v1784280651/windows98-ceo-card-skin_ysgxhw.webp",
+    },
+    slotFrames: {
+      intern:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280651/windows98-intern-card-frame_jarvbj.webp",
+      cleaner:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280651/windows98-cleaner-card-frame_qs3qh4.webp",
+      manager:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280651/windows98-manager-card-frame_tfav4f.webp",
+      senior:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280652/windows98-senior-card-frame_ct4pzo.webp",
+      pm: "https://res.cloudinary.com/pumy6qez/image/upload/v1784280651/windows98-pm-card-frame_hmklqj.webp",
+      hr: "https://res.cloudinary.com/pumy6qez/image/upload/v1784280650/windows98-hr-card-frame_jcqi3i.webp",
+      advisor:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784280650/windows98-advisor-card-frame_sdssbc.webp",
+      ceo: "https://res.cloudinary.com/pumy6qez/image/upload/v1784280650/windows98-ceo-card-frame_jyjd5z.webp",
+    },
+  }),
+  tarot: createTheme({
+    key: "tarot",
+    aliases: ["tarot", "塔羅牌風格", "塔羅牌"],
+    logoUrl:
+      "https://res.cloudinary.com/pumy6qez/image/upload/v1784526032/tarot-logo_ak0d9h.webp",
+    slotImages: {
+      intern:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519782/card-bg-intern_hypihm.webp",
+      cleaner:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519781/card-bg-cleaner_vgx7ny.webp",
+      manager:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519782/card-bg-manager_atavfx.webp",
+      senior:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519785/card-bg-senior_c30b07.webp",
+      pm: "https://res.cloudinary.com/pumy6qez/image/upload/v1784519782/card-bg-pm_sn89qt.webp",
+      hr: "https://res.cloudinary.com/pumy6qez/image/upload/v1784519781/card-bg-hr_bmgetc.webp",
+      advisor:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519781/card-bg-advisor_lv9hg4.webp",
+      ceo: "https://res.cloudinary.com/pumy6qez/image/upload/v1784519781/card-bg-ceo_tazytm.webp",
+    },
+    slotFrames: {
+      intern:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519789/card-frame-intern_f65un0.webp",
+      cleaner:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519787/card-frame-cleaner_xdo53r.webp",
+      manager:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519790/card-frame-manager_g3tn5r.webp",
+      senior:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519792/card-frame-senior_i77pph.webp",
+      pm: "https://res.cloudinary.com/pumy6qez/image/upload/v1784519792/card-frame-pm_vquajq.webp",
+      hr: "https://res.cloudinary.com/pumy6qez/image/upload/v1784519788/card-frame-hr_dguvjr.webp",
+      advisor:
+        "https://res.cloudinary.com/pumy6qez/image/upload/v1784519786/card-frame-advisor_ioylpq.webp",
+      ceo: "https://res.cloudinary.com/pumy6qez/image/upload/v1784519786/card-frame-ceo_owxrqb.webp",
+    },
+  }),
 };
 
 function normalizeThemeKey(value) {
