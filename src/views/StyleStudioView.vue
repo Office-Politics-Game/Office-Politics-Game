@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <main class="studio-page" :style="pageStyle">
     <div class="scene-mask" @click="goLobby"></div>
 
@@ -16,7 +16,7 @@
             type="button"
             @click="cardGalleryOpen = true"
           >
-            目前卡面
+            卡面總覽
           </button>
           <button
             v-if="!gamePreviewOpen"
@@ -24,7 +24,7 @@
             type="button"
             @click="gamePreviewOpen = true"
           >
-            遊戲內實際畫面
+            遊戲內預覽
           </button>
           <button
             class="close-button"
@@ -38,7 +38,7 @@
         </div>
       </header>
 
-      <nav v-if="!gamePreviewOpen" class="category-tabs" aria-label="設定分類">
+      <nav v-if="!gamePreviewOpen" class="category-tabs" aria-label="造型分類">
         <button
           v-for="category in equipmentSections"
           :key="category.id"
@@ -55,13 +55,13 @@
         <div class="opponent-zone">
           <div class="fake-avatar opponent-avatar">AI</div>
           <div class="opponent-cards">
-            <img v-for="index in 3" :key="index" :src="gameCardBackImage" alt="對手卡背" />
+            <img v-for="index in 3" :key="index" :src="gameCardBackImage" alt="對手手牌卡背" />
           </div>
         </div>
 
         <div class="table-pile">
-          <img :src="gameCardBackImage" alt="牌庫卡背" />
-          <span>牌庫</span>
+          <img :src="gameCardBackImage" alt="牌堆卡背" />
+          <span>牌堆</span>
         </div>
 
         <div class="player-zone">
@@ -78,7 +78,7 @@
               type="button"
               class="hand-card"
               :style="{ '--card-index': index }"
-              :aria-label="`放大預覽 ${card.label}`"
+              :aria-label="`查看 ${card.label} 預覽`"
               @click="openGameCardLightbox(card)"
             >
               <img class="skin-background" :src="card.previewImage" :alt="card.label" />
@@ -88,8 +88,8 @@
         </div>
 
         <div class="game-preview-label">
-          <strong>遊戲內搭配預覽</strong>
-          <span>目前造型的模擬牌桌效果</span>
+          <strong>遊戲內預覽</strong>
+          <span>點擊卡牌可查看大圖預覽</span>
         </div>
       </div>
 
@@ -97,10 +97,10 @@
         {{ errorMessage }}
       </div>
 
-      <div v-else-if="isLoading" class="status-message">正在載入造型素材...</div>
+      <div v-else-if="isLoading" class="status-message">正在載入個人造型...</div>
 
       <div v-else class="studio-content">
-        <section class="selection-panel" aria-label="素材選擇">
+        <section class="selection-panel" aria-label="造型選擇">
           <div class="selection-scroll">
             <div v-if="activeItems.length" class="asset-grid">
               <button
@@ -122,14 +122,9 @@
                     :class="{ round: activeCategory === 'avatar' }"
                   />
                   <span v-else>NO PREVIEW</span>
-                  <span v-if="item.isLocked" class="locked-badge">未解鎖</span>
+                  <span v-if="item.isLocked" class="locked-badge">尚未解鎖</span>
                 </div>
                 <strong>{{ item.name }}</strong>
-                <span
-                  v-if="(item.selectionId ?? item.shopItemId) === selectedItemKey"
-                  class="selected-check"
-                  aria-hidden="true"
-                >✓</span>
               </button>
             </div>
 
@@ -145,7 +140,7 @@
               <button
                 class="large-skin-card"
                 type="button"
-                :aria-label="`放大預覽 ${selectedCardSkinPreview.label}`"
+                :aria-label="`查看 ${selectedCardSkinPreview.label} 預覽`"
                 @click="openCardSkinLightbox"
               >
                 <img
@@ -162,7 +157,7 @@
               </button>
             </div>
 
-            <div class="skin-preview-grid" aria-label="選擇要修改的卡面">
+            <div class="skin-preview-grid" aria-label="卡面欄位切換">
               <button
                 v-for="card in cardSkinPreviewCards"
                 :key="card.key"
@@ -193,7 +188,7 @@
               :src="selectedItem.previewImage"
               :alt="selectedItem.name"
             />
-            <p v-else>請從左側選擇一個素材</p>
+            <p v-else>請先從左側選擇一個要預覽的造型。</p>
           </div>
 
           <div class="save-actions">
@@ -204,21 +199,21 @@
               :disabled="!selectedItem || isSaving"
               @click="applySelectedCardTheme"
             >
-              整套套用主題
+              套用整套卡面
             </button>
             <button
             class="save-button"
             type="button"
-            :disabled="!selectedItem || selectedItem?.isLocked || isSaving"
+            :disabled="!selectedItem || isSaving"
             @click="saveSelection"
           >
             {{
               selectedItem?.isLocked
-                ? "尚未解鎖"
+                ? "前往獲得"
                 : isSaving
                   ? "儲存中..."
                   : activeCategory === "card_skin"
-                    ? "儲存此卡面"
+                    ? "儲存卡面"
                     : "儲存設定"
             }}
             </button>
@@ -234,12 +229,12 @@
         class="card-gallery-overlay"
         role="dialog"
         aria-modal="true"
-        aria-label="目前卡面總覽"
+        aria-label="卡面總覽"
       >
         <header class="card-gallery-header">
           <div>
-            <h2>目前卡面總覽</h2>
-            <p>玩家目前實際套用的八張職位卡</p>
+            <h2>卡面總覽</h2>
+            <p>可直接查看目前八張卡面的套用結果。</p>
           </div>
           <button type="button" aria-label="關閉卡面總覽" @click="cardGalleryOpen = false">×</button>
         </header>
@@ -249,14 +244,13 @@
             v-for="card in gamePreviewCards"
             :key="card.key"
             type="button"
-            :aria-label="`放大預覽 ${card.label}`"
+            :aria-label="`查看 ${card.label} 預覽`"
             @click="openGameCardLightbox(card)"
           >
             <span class="gallery-card">
               <img class="skin-background" :src="card.previewImage" :alt="card.label" />
               <img v-if="card.frameImage" class="skin-frame" :src="card.frameImage" alt="" />
             </span>
-            <strong>{{ card.label }}</strong>
           </button>
         </div>
       </div>
@@ -266,7 +260,7 @@
         class="card-lightbox"
         role="dialog"
         aria-modal="true"
-        aria-label="素材大圖預覽"
+        aria-label="造型大圖預覽"
         @click.self="cardImageLightboxOpen = false"
       >
         <button
@@ -321,6 +315,7 @@ import {
   getPlayerEquippedItems,
   getPlayerShopItems,
   getShopItems,
+  unequipShopItem,
   updateCardSkinLoadout,
 } from "@/services/shopApi.js";
 import { useAppearanceStore } from "@/stores/appearanceStore.js";
@@ -358,6 +353,12 @@ const sectionDisplay = [
   { id: "board_skin", label: "遊戲背景" },
 ];
 
+const DEFAULT_ITEM_SELECTIONS = {
+  card_back: "default-card-back",
+  card_skin: "default-card-skin",
+  board_skin: "default-board-skin",
+};
+
 const pageStyle = {
   backgroundImage: `url(${pageBackgroundImage})`,
 };
@@ -374,6 +375,61 @@ const resolvedAvatarId = computed(() => {
   return Number.isInteger(avatarId) && avatarId > 0 ? avatarId : 1;
 });
 
+function createDefaultEquipmentItem(categoryId, categoryLabel) {
+  const baseItem = {
+    inventoryId: `default-${categoryId}`,
+    shopItemId: null,
+    playerId: resolvedPlayerId.value,
+    quantity: 1,
+    type: categoryId,
+    categoryId,
+    categoryLabel,
+    price: 0,
+    currency: "default",
+    isOwned: true,
+    isLocked: false,
+  };
+
+  if (categoryId === "card_back") {
+    return {
+      ...baseItem,
+      selectionId: DEFAULT_ITEM_SELECTIONS.card_back,
+      name: "預設卡背",
+      description: "使用遊戲原本的標準卡背。",
+      previewImage: defaultCardBackImage,
+      isEquipped: !equippedItems.value.cardBackItemId,
+    };
+  }
+
+  if (categoryId === "card_skin") {
+    return {
+      ...baseItem,
+      selectionId: DEFAULT_ITEM_SELECTIONS.card_skin,
+      name: "預設卡面",
+      description: "使用遊戲原本的標準卡面樣式。",
+      previewImage:
+        cardAssetsByKey.intern?.backgroundUrl ||
+        cardAssetsByKey[CARD_SKIN_SLOT_ORDER[0]]?.backgroundUrl ||
+        "",
+      isEquipped:
+        !equippedItems.value.cardSkinItemId &&
+        Object.keys(equippedItems.value.cardSkinOverrides || {}).length === 0,
+    };
+  }
+
+  if (categoryId === "board_skin") {
+    return {
+      ...baseItem,
+      selectionId: DEFAULT_ITEM_SELECTIONS.board_skin,
+      name: "預設盤面",
+      description: "使用遊戲原本的標準桌面背景。",
+      previewImage: defaultGameBackground,
+      isEquipped: !equippedItems.value.boardSkinItemId,
+    };
+  }
+
+  return null;
+}
 const equipmentSections = computed(() => {
   const baseSections = buildEquipmentSections(inventoryItems.value, equippedItems.value);
   const sectionsById = Object.fromEntries(baseSections.map((section) => [section.id, section]));
@@ -411,7 +467,19 @@ const equipmentSections = computed(() => {
       items: [...section.items, ...lockedItems],
     };
 
-    if (section.id !== "avatar") return mergedSection;
+    if (section.id !== "avatar") {
+      const defaultItem = createDefaultEquipmentItem(section.id, mergedSection.label);
+
+      if (!defaultItem) {
+        return mergedSection;
+      }
+
+      return {
+        ...mergedSection,
+        count: mergedSection.items.length + 1,
+        items: [defaultItem, ...mergedSection.items],
+      };
+    }
 
     const presetAvatars = guestAvatars.map((avatar) => ({
       selectionId: `default-avatar-${avatar.id}`,
@@ -424,7 +492,7 @@ const equipmentSections = computed(() => {
       categoryId: "avatar",
       categoryLabel: mergedSection.label,
       name: avatar.name,
-      description: "預設角色頭像",
+      description: "?身閫?剖?",
       previewImage: avatar.image,
       price: 0,
       currency: "default",
@@ -497,7 +565,7 @@ const lightboxPreview = computed(() => {
   if (activeCategory.value === "card_skin") return selectedCardSkinPreview.value;
 
   return {
-    label: selectedItem.value?.name || "素材預覽",
+    label: selectedItem.value?.name || "蝝??汗",
     previewImage: selectedItem.value?.previewImage || "",
     frameImage: "",
   };
@@ -617,7 +685,7 @@ function openGameCardLightbox(card) {
 
 async function reloadEquipment() {
   if (!resolvedPlayerId.value) {
-    errorMessage.value = "找不到目前玩家資料，請重新登入後再試。";
+    errorMessage.value = "找不到玩家資料，無法載入個人造型設定。";
     inventoryItems.value = [];
     allShopItems.value = [];
     equippedItems.value = normalizeEquippedItems(null);
@@ -645,7 +713,7 @@ async function reloadEquipment() {
     );
   } catch (error) {
     allShopItems.value = [];
-    errorMessage.value = error?.message || "載入造型素材失敗，請稍後再試。";
+    errorMessage.value = error?.message || "載入個人造型資料失敗，請稍後再試。";
   } finally {
     isLoading.value = false;
   }
@@ -655,7 +723,6 @@ async function saveSelection() {
   if (
     !resolvedPlayerId.value ||
     !selectedItem.value ||
-    selectedItem.value.isLocked ||
     isSaving.value
   ) {
     return;
@@ -666,9 +733,55 @@ async function saveSelection() {
   saveFailed.value = false;
 
   try {
+    if (selectedItem.value.isLocked) {
+      const routeName =
+        selectedItem.value.categoryId === "avatar"
+          ? "Mall"
+          : selectedItem.value.categoryId === "card_skin" &&
+              selectedItem.value.name?.includes("樂高")
+            ? "Gacha"
+            : "Mall";
+      await router.push({ name: routeName });
+      return;
+    }
+
     if (activeCategory.value === "card_skin") {
+      const isDefaultCardSkin =
+        selectedItem.value.selectionId === DEFAULT_ITEM_SELECTIONS.card_skin;
+
+      if (isDefaultCardSkin) {
+        const nextOverrides = { ...(equippedItems.value.cardSkinOverrides || {}) };
+        delete nextOverrides[selectedCardSlot.value];
+
+        const baseItemId = Number(equippedItems.value.cardSkinItemId) || null;
+        const response = await updateCardSkinLoadout({
+          playerId: resolvedPlayerId.value,
+          cardSkinItemId: baseItemId,
+          cardSkinOverrides: nextOverrides,
+        });
+
+        equippedItems.value = normalizeEquippedItems(
+          {
+            ...(response?.equipped || {
+              ...equippedItems.value,
+              cardSkinItemId: baseItemId,
+              cardSkinOverrides: nextOverrides,
+            }),
+            avatarId: resolvedAvatarId.value,
+          },
+          resolvedPlayerId.value,
+        );
+        savedCardSkinSelections.value = {
+          ...savedCardSkinSelections.value,
+          [selectedCardSlot.value]: selectedItem.value,
+        };
+        await appearanceStore.hydrateForPlayer(resolvedPlayerId.value).catch(() => {});
+        saveFeedback.value = `${CARD_SKIN_SLOT_LABELS[selectedCardSlot.value]} 卡面已儲存`;
+        return;
+      }
+
       if (!selectedItem.value.shopItemId) {
-        throw new Error("這個卡面不是可儲存的商店素材。 ");
+        throw new Error("目前無法儲存這個卡面選項。");
       }
 
       const baseItemId =
@@ -721,11 +834,21 @@ async function saveSelection() {
         selectedItem.value.previewImage || "",
         selectedItem.value.avatarPresetId,
       );
-    } else {
-      if (!selectedItem.value.shopItemId) {
-        throw new Error("這個素材目前無法儲存。 ");
-      }
+    } else if (!selectedItem.value.shopItemId) {
+      const response = await unequipShopItem({
+        playerId: resolvedPlayerId.value,
+        categoryId: activeCategory.value,
+      });
 
+      equippedItems.value = normalizeEquippedItems(
+        {
+          ...(response?.equipped ||
+            patchEquippedState(equippedItems.value, activeCategory.value, null)),
+          avatarId: resolvedAvatarId.value,
+        },
+        resolvedPlayerId.value,
+      );
+    } else {
       const response = await equipShopItem({
         playerId: resolvedPlayerId.value,
         shopItemId: selectedItem.value.shopItemId,
@@ -744,7 +867,10 @@ async function saveSelection() {
       );
 
       if (activeCategory.value === "avatar") {
-        authStore.setCurrentPlayerAvatar(selectedItem.value.previewImage || "", resolvedAvatarId.value);
+        authStore.setCurrentPlayerAvatar(
+          selectedItem.value.previewImage || "",
+          resolvedAvatarId.value,
+        );
         playerStore.setCurrentPlayerAvatar(
           selectedItem.value.previewImage || "",
           resolvedAvatarId.value,
@@ -764,8 +890,50 @@ async function saveSelection() {
     isSaving.value = false;
   }
 }
-
 async function applySelectedCardTheme() {
+  const isDefaultCardSkin = selectedItem.value?.selectionId === DEFAULT_ITEM_SELECTIONS.card_skin;
+
+  if (
+    resolvedPlayerId.value &&
+    activeCategory.value === "card_skin" &&
+    isDefaultCardSkin &&
+    !isSaving.value
+  ) {
+    isSaving.value = true;
+    saveFeedback.value = "";
+    saveFailed.value = false;
+
+    try {
+      const response = await updateCardSkinLoadout({
+        playerId: resolvedPlayerId.value,
+        cardSkinItemId: null,
+        cardSkinOverrides: {},
+      });
+
+      equippedItems.value = normalizeEquippedItems(
+        {
+          ...(response?.equipped || {
+            ...equippedItems.value,
+            cardSkinItemId: null,
+            cardSkinOverrides: {},
+          }),
+          avatarId: resolvedAvatarId.value,
+        },
+        resolvedPlayerId.value,
+      );
+      savedCardSkinSelections.value = {};
+      await appearanceStore.hydrateForPlayer(resolvedPlayerId.value).catch(() => {});
+      saveFeedback.value = "已套用預設卡面";
+    } catch (error) {
+      saveFailed.value = true;
+      saveFeedback.value = error?.message || "套用主題失敗，請稍後再試。";
+    } finally {
+      isSaving.value = false;
+    }
+
+    return;
+  }
+
   if (
     !resolvedPlayerId.value ||
     !selectedItem.value?.shopItemId ||
@@ -808,7 +976,6 @@ async function applySelectedCardTheme() {
     isSaving.value = false;
   }
 }
-
 onMounted(reloadEquipment);
 </script>
 
@@ -1128,24 +1295,6 @@ onMounted(reloadEquipment);
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.selected-check {
-  position: absolute;
-  z-index: 2;
-  top: 6px;
-  right: 6px;
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border: 2px solid white;
-  border-radius: 50%;
-  background: #1f64ff;
-  box-shadow: 0 5px 12px rgba(31, 100, 255, 0.3);
-  color: white;
-  font-size: 14px;
-  font-weight: 900;
 }
 
 .preview-panel {
@@ -1609,30 +1758,30 @@ onMounted(reloadEquipment);
   display: flex;
   min-width: 0;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  gap: 6px;
-  padding: 8px;
-  border: 1px solid #d1dbe8;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.72);
+  background: transparent;
   color: #253650;
   cursor: zoom-in;
 }
 
 .card-gallery-grid > button:hover {
-  border-color: #1f64ff;
   box-shadow: 0 8px 20px rgba(31, 100, 255, 0.12);
 }
 
 .gallery-card {
   position: relative;
   display: block;
-  height: min(16.5vh, 150px);
-  aspect-ratio: 0.67;
+  width: 100%;
+  aspect-ratio: 0.716;
   overflow: hidden;
-  border-radius: 7px;
-  background: #22304a;
+  border-radius: 10px;
+  background: transparent;
   box-shadow: 0 8px 16px rgba(20, 35, 55, 0.2);
 }
 
@@ -1641,12 +1790,7 @@ onMounted(reloadEquipment);
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-}
-
-.card-gallery-grid strong {
-  font-size: 10px;
-  font-weight: 900;
+  object-fit: contain;
 }
 
 .lightbox-card {
@@ -1933,12 +2077,12 @@ onMounted(reloadEquipment);
 
   .card-gallery-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 12px;
     overflow-y: auto;
   }
 
   .gallery-card {
-    height: 125px;
+    aspect-ratio: 0.716;
   }
 }
 
@@ -1962,3 +2106,4 @@ onMounted(reloadEquipment);
   }
 }
 </style>
+
