@@ -33,6 +33,7 @@ import RoundShowdownAnimation from "../animations/RoundShowdownAnimation.vue";
 import CardInspectionOverlay from "./CardInspectionOverlay.vue";
 import CardPlayConfirmPanel from "./CardPlayConfirmPanel.vue";
 import GameCard from "./GameCard.vue";
+import GameRulesModal from "./GameRulesModal.vue";
 import GameSettingsIcon from "./GameSettingsIcon.vue";
 import GameSettingsModal from "./GameSettingsModal.vue";
 import PlayerHand from "./PlayerHand.vue";
@@ -129,6 +130,8 @@ const activeDrawCard = ref(null);
 const tableCardPilesRef = ref(null);
 const playerSeats = ref(null);
 const playerHand = ref(null);
+const gameSettingsIcon = ref(null);
+const gameRulesModal = ref(null);
 const cardDrawAnimation = ref(null);
 const cardPlayAnimation = ref(null);
 const cardShuffleAnimation = ref(null);
@@ -155,6 +158,8 @@ function getGameTutorialTargets() {
     deck: tableCardPilesRef.value?.getDeckElement?.() ?? null,
     hand: playerHand.value?.getHandElement?.() ?? null,
     discard: tableCardPilesRef.value?.getDiscardElement?.() ?? null,
+    settings: gameSettingsIcon.value?.getButtonElement?.() ?? null,
+    rules: gameRulesModal.value?.getTriggerElement?.() ?? null,
     opponents:
       playerSeats.value?.getOpponentSeatElements?.(
         resolvedCurrentPlayerId.value,
@@ -617,7 +622,10 @@ defineExpose({
           class="block h-auto w-24 select-none object-contain drop-shadow-[0_3px_10px_rgba(0,19,50,0.48)] lg:w-40"
           draggable="false"
         />
-        <GameSettingsIcon @open="isSettingsOpen = true" />
+        <GameSettingsIcon
+          ref="gameSettingsIcon"
+          @open="isSettingsOpen = true"
+        />
       </div>
 
       <div
@@ -633,6 +641,8 @@ defineExpose({
           @draw="requestDraw"
         />
       </div>
+
+      <GameRulesModal ref="gameRulesModal" />
 
       <div class="absolute bottom-[-34px] left-1/2 z-20 -translate-x-1/2">
         <PlayerHand
