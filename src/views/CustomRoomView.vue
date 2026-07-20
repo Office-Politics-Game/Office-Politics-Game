@@ -27,16 +27,13 @@ const { room, roomCode, players, errorMessage, isLoading, isRoomReadyToStart } =
   storeToRefs(roomStore);
 
 const showInviteFriendModal = ref(false);
-const invitingSlotIndex = ref(null);
 const isRestoringRoomState = ref(false);
 const isStartingRoom = ref(false);
 const isLeavingRoom = ref(false);
 const hasJoinedCurrentRoom = ref(false);
 const kickedNotice = ref("");
-const pendingComputerSlots = ref({});
 const pendingRemovalSlots = ref({});
 const REQUIRED_READY_PLAYERS_TO_START = 3;
-const COMPUTER_JOIN_MIN_DISPLAY_MS = 900;
 const PLAYER_REMOVE_MIN_DISPLAY_MS = 700;
 const LEAVE_TRANSITION_MIN_DISPLAY_MS = 420;
 const leaveLoadingTips = [
@@ -112,22 +109,6 @@ function createRestoringSlot(slot, index) {
   };
 }
 
-function createPendingComputerSlot(slot, index, pendingState) {
-  return {
-    id: `pending-computer-${index}`,
-    isHost: false,
-    isReady: false,
-    name: pendingState.name,
-    avatar: null,
-    isComputer: true,
-    isPendingComputer: true,
-    placeholderLabel: "電腦玩家加入中",
-    canAddComputer: false,
-    canInviteFriend: false,
-    ...slot,
-  };
-}
-
 function createPendingRemovalSlot(player, index, pendingState) {
   return {
     id: `pending-removal-${player.playerId}`,
@@ -152,12 +133,6 @@ function createUniqueComputerNickname() {
       .filter(Boolean),
   );
 
-  Object.values(pendingComputerSlots.value).forEach((slot) => {
-    if (slot?.name) {
-      usedNames.add(slot.name);
-    }
-  });
-
   for (let attempt = 0; attempt < 12; attempt += 1) {
     const nickname = createGuestNickname()?.trim();
 
@@ -167,26 +142,6 @@ function createUniqueComputerNickname() {
   }
 
   return `訪客${Date.now().toString().slice(-4)}`;
-}
-
-function setPendingComputerSlot(index, name) {
-  pendingComputerSlots.value = {
-    ...pendingComputerSlots.value,
-    [index]: {
-      name,
-      startedAt: Date.now(),
-    },
-  };
-}
-
-function clearPendingComputerSlot(index) {
-  if (!(index in pendingComputerSlots.value)) {
-    return;
-  }
-
-  const nextPendingSlots = { ...pendingComputerSlots.value };
-  delete nextPendingSlots[index];
-  pendingComputerSlots.value = nextPendingSlots;
 }
 
 function setPendingRemovalSlot(player) {
@@ -242,25 +197,6 @@ function pickLeaveLoadingTip() {
   activeLeaveTip.value = leaveLoadingTips[randomIndex];
 }
 
-async function clearPendingComputerSlotWithDelay(index) {
-  const pendingState = pendingComputerSlots.value[index];
-
-  if (!pendingState) {
-    return;
-  }
-
-  const elapsed = Date.now() - pendingState.startedAt;
-  const remainingDelay = Math.max(0, COMPUTER_JOIN_MIN_DISPLAY_MS - elapsed);
-
-  if (remainingDelay > 0) {
-    await new Promise((resolve) => {
-      window.setTimeout(resolve, remainingDelay);
-    });
-  }
-
-  clearPendingComputerSlot(index);
-}
-
 const playersBySeatOrder = computed(() => {
   const mappedPlayers = new Map();
 
@@ -295,12 +231,6 @@ const playerSlots = computed(() =>
       }
 
       return createRoomPlayerSlot(roomPlayer, index);
-    }
-
-    const pendingComputerState = pendingComputerSlots.value[index];
-
-    if (pendingComputerState) {
-      return createPendingComputerSlot(displaySlot, index, pendingComputerState);
     }
 
     return {
@@ -445,7 +375,6 @@ async function handleAddComputer(index) {
   }
 
   const computerName = createUniqueComputerNickname();
-  setPendingComputerSlot(index, computerName);
 
   try {
     await roomStore.addComputerPlayer(roomCode.value, {
@@ -453,7 +382,6 @@ async function handleAddComputer(index) {
       username: computerName,
     });
   } catch (error) {
-    clearPendingComputerSlot(index);
     throw error;
   }
 }
@@ -550,7 +478,6 @@ async function openInviteFriendModal(index) {
     return;
   }
 
-  invitingSlotIndex.value = index;
   showInviteFriendModal.value = true;
   roomInvitationStore.clearMessages();
 
@@ -564,7 +491,6 @@ async function openInviteFriendModal(index) {
 
 function closeInviteFriendModal() {
   showInviteFriendModal.value = false;
-  invitingSlotIndex.value = null;
 }
 
 async function sendRoomInvitation(friend) {
@@ -702,19 +628,6 @@ watch(
 watch(
   players,
   (nextPlayers) => {
-    const nextPlayersBySeatOrder = new Map(
-      nextPlayers.map((player) => [Number(player?.seatOrder), player]),
-    );
-
-    Object.keys(pendingComputerSlots.value).forEach((slotIndex) => {
-      const index = Number(slotIndex);
-      const nextPlayer = nextPlayersBySeatOrder.get(index + 1);
-
-      if (nextPlayer) {
-        clearPendingComputerSlotWithDelay(index).catch(() => null);
-      }
-    });
-
     Object.values(pendingRemovalSlots.value).forEach((pendingState) => {
       const nextPlayer = nextPlayers.find(
         (player) => String(player.playerId) === String(pendingState.playerId),
