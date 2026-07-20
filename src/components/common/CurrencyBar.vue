@@ -89,12 +89,21 @@ const props = defineProps({
     type: String,
     default: "large",
   },
+  tooltipPlacement: {
+    type: String,
+    default: "top",
+    validator: (value) => ["top", "bottom"].includes(value),
+  },
 });
 
 const currencyStore = useCurrencyStore();
 const maxCurrencyDisplay = 99999;
 const tooltipClass = computed(() => {
-  const baseClass = "pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-max -translate-x-1/2 skew-x-[20deg] rounded-md border border-white/40 bg-slate-950/90 text-center text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus:opacity-100 group-active:opacity-100";
+  const placementClass =
+    props.tooltipPlacement === "bottom"
+      ? "top-full mt-2"
+      : "bottom-full mb-2";
+  const baseClass = `pointer-events-none absolute ${placementClass} left-1/2 z-30 w-max -translate-x-1/2 skew-x-[20deg] rounded-md border border-white/40 bg-slate-950/90 text-center text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus:opacity-100 group-active:opacity-100`;
 
   if (props.tooltipSize === "small") {
     return `${baseClass} max-w-44 px-2 py-1 text-[10px] leading-snug`;
