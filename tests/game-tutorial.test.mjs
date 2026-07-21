@@ -193,7 +193,9 @@ test("tutorial starts once, exposes localized controls, and disposes safely", as
     targets,
   };
 
+  assert.equal(tutorial.isBlocking.value, false);
   assert.equal(await tutorial.startTutorial(input), true);
+  assert.equal(tutorial.isBlocking.value, true);
   assert.equal(await tutorial.startTutorial(input), false);
   assert.equal(harness.tours.length, 1);
   assert.equal(tutorial.hasStarted, true);
@@ -238,6 +240,7 @@ test("tutorial starts once, exposes localized controls, and disposes safely", as
   tutorial.disposeTutorial();
   tutorial.disposeTutorial();
   await Promise.resolve();
+  assert.equal(tutorial.isBlocking.value, false);
   assert.equal(harness.tours[0].exitCount, 1);
 });
 
@@ -261,6 +264,7 @@ test("tutorial settlement waits for exit and finalizes skipped mounts", async ()
 
   harness.tours[0].complete();
   assert.equal(await settlement, true);
+  assert.equal(tutorial.isBlocking.value, false);
 
   const skippedHarness = createTourHarness();
   const skipped = useGameTutorial({ createTour: skippedHarness.createTour });
@@ -402,7 +406,7 @@ test("game stage resolves component-owned tutorial elements after render and cle
   assert.match(stage, /playerSeats\.value\?\.getOpponentSeatElements/);
   assert.match(stage, /await nextTick\(\)/);
   assert.match(stage, /flush: "post"/);
-  assert.match(stage, /onBeforeUnmount\(\(\) => \{\s*disposeTutorial\(\)/);
+  assert.match(stage, /onBeforeUnmount\(\(\) => \{[\s\S]*stopTurnTimer\(\);[\s\S]*disposeTutorial\(\)/);
 });
 
 test("tutorial styles load after Intro.js and enforce Square UI responsive controls", async () => {

@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { CheckCircle, Copy, Play } from "@lucide/vue";
@@ -383,7 +383,12 @@ async function handlePrimaryRoomAction() {
 }
 
 async function handleAddComputer(index) {
-  if (index === 0 || players.value[index]) {
+  if (
+    index === 0 ||
+    players.value[index] ||
+    pendingComputerSlots.value[index] ||
+    isLoading.value
+  ) {
     return;
   }
 

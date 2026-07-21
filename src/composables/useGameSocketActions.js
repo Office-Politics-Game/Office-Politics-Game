@@ -1,4 +1,5 @@
 import { nextTick, ref } from 'vue'
+import { getCardDisplayName } from '@/constants/cardInfo'
 
 const SWAP_REVEAL_STAGES = new Set(['before-swap', 'after-swap', 'never'])
 
@@ -16,6 +17,7 @@ export function useGameSocketActions({
   normalizeCard,
   cardAssetKeyByRank,
   cardAssetsByKey,
+  isSkippingComputerFinish = ref(false),
 } = {}) {
   const isDrawing = ref(false)
   const isSocketActionSubmitting = ref(false)
@@ -79,10 +81,20 @@ export function useGameSocketActions({
         const guessedCardName = typeof result.guessedCardName === 'string'
           ? result.guessedCardName.trim()
           : ''
+        const guessedCardDisplayName = getCardDisplayName(
+          guessedCardName,
+          guessedCardName,
+        )
 
         return targetPlayerId && targetCard && guessedCardName &&
           ['correct', 'incorrect'].includes(result.outcome)
-          ? { ...result, id, targetPlayerId, targetCard, guessedCardName }
+          ? {
+              ...result,
+              id,
+              targetPlayerId,
+              targetCard,
+              guessedCardName: guessedCardDisplayName,
+            }
           : null
       }
       case 'protection': {
@@ -304,11 +316,19 @@ export function useGameSocketActions({
   }
 
   async function playSocketGameAction(event) {
-    if (!event?.type || event.roomCode !== normalizedRoomCode.value) {
+    if (
+      isSkippingComputerFinish.value ||
+      !event?.type ||
+      event.roomCode !== normalizedRoomCode.value
+    ) {
       return
     }
 
     await nextTick()
+
+    if (isSkippingComputerFinish.value) {
+      return
+    }
 
     if (event.type === 'draw-card') {
       const playerId = normalizeAnimationPlayerId(event.playerId)
@@ -330,11 +350,17 @@ export function useGameSocketActions({
         : null
 
       await gameStage.value?.playRemoteCardPlayAnimation?.({ ...event, discardedCard })
+      if (isSkippingComputerFinish.value) {
+        return
+      }
       if (discardedCard) {
         await gameStage.value?.stageDiscardedCard?.(discardedCard)
       }
       if (animationResult) {
         await gameStage.value?.playEffectAnimation?.(animationResult)
+        if (isSkippingComputerFinish.value) {
+          return
+        }
       }
       if (showdownResult) {
         await gameStage.value?.playRoundShowdownAnimation?.(showdownResult)
@@ -343,7 +369,11 @@ export function useGameSocketActions({
   }
 
   function handleSocketGameAction(event) {
-    if (event?.roomCode !== normalizedRoomCode.value || rememberSocketAction(event.id)) {
+    if (
+      isSkippingComputerFinish.value ||
+      event?.roomCode !== normalizedRoomCode.value ||
+      rememberSocketAction(event.id)
+    ) {
       return
     }
 

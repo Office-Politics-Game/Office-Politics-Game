@@ -6,10 +6,6 @@ const props = defineProps({
     type: [Number, String],
     default: 0,
   },
-  showSuccessLabel: {
-    type: Boolean,
-    default: false,
-  },
   screenAnchored: {
     type: Boolean,
     default: false,
@@ -20,15 +16,16 @@ const props = defineProps({
     validator: (position) =>
       ["top", "left", "right", "bottom"].includes(position),
   },
+  showLabel: {
+    type: Boolean,
+    default: true,
+  },
 });
 
 const isSuccessFlashing = ref(false);
-const isSuccessLabelVisible = ref(false);
 const flashId = ref(0);
 const viewportSize = ref(getViewportSize());
 let flashTimeout = null;
-let successLabelTimeout = null;
-const SUCCESS_LABEL_DURATION_MS = 1500;
 const positionRotations = {
   top: "180deg",
   left: "90deg",
@@ -130,16 +127,11 @@ function getScreenEdgeCenter({ width, height, viewportWidth, viewportHeight }) {
 
 function playSuccessFlash() {
   window.clearTimeout(flashTimeout);
-  window.clearTimeout(successLabelTimeout);
   flashId.value += 1;
   isSuccessFlashing.value = true;
-  isSuccessLabelVisible.value = props.showSuccessLabel;
   flashTimeout = window.setTimeout(() => {
     isSuccessFlashing.value = false;
   }, 760);
-  successLabelTimeout = window.setTimeout(() => {
-    isSuccessLabelVisible.value = false;
-  }, SUCCESS_LABEL_DURATION_MS);
 }
 
 function getViewportSize() {
@@ -180,7 +172,6 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener("resize", updateViewportSize);
   window.clearTimeout(flashTimeout);
-  window.clearTimeout(successLabelTimeout);
 });
 </script>
 
@@ -200,12 +191,11 @@ onUnmounted(() => {
       class="protection-aura__success-flash"
     ></span>
     <span
-      v-if="isSuccessLabelVisible"
-      :key="`success-label-${flashId}`"
+      v-if="showLabel"
       class="protection-aura__success-label-anchor"
     >
-      <span class="protection-aura__success-label" aria-label="特休假">
-        <span>特</span><span>休</span><span>假</span>
+      <span class="protection-aura__success-label" aria-label="免疫狀態">
+        <span>免</span><span>疫</span><span>狀</span><span>態</span>
       </span>
     </span>
   </div>
@@ -245,10 +235,6 @@ onUnmounted(() => {
 }
 
 :global(.protection-aura-fade-leave-active .protection-aura__success-flash) {
-  display: none;
-}
-
-:global(.protection-aura-fade-leave-active .protection-aura__success-label-anchor) {
   display: none;
 }
 
@@ -359,7 +345,7 @@ onUnmounted(() => {
 
 .protection-aura__success-label-anchor {
   position: absolute;
-  top: -48px;
+  top: -32px;
   left: 50%;
   z-index: 3;
   transform: translate(-50%, -50%);
@@ -375,9 +361,10 @@ onUnmounted(() => {
   letter-spacing: 0.04em;
   white-space: nowrap;
   text-shadow:
-    0 2px 4px rgba(70, 70, 70, 0.92),
-    0 0 10px rgba(70, 70, 70, 0.72);
-  animation: protectionSuccessLabel 1.5s ease-out forwards;
+    0 2px 3px rgba(0, 19, 50, 0.95),
+    0 4px 10px rgba(0, 19, 50, 0.82),
+    0 0 14px rgba(0, 19, 50, 0.72);
+  filter: drop-shadow(0 3px 5px rgba(0, 19, 50, 0.76));
   transform: rotate(var(--protection-label-counter-rotation, 0deg));
   transform-origin: 50% 50%;
 }
@@ -406,12 +393,12 @@ onUnmounted(() => {
 @keyframes protectionAuraPulse {
   0%,
   100% {
-    opacity: 0.72;
+    opacity: 0.82;
     filter: saturate(0.96) brightness(1);
   }
 
   50% {
-    opacity: 0.9;
+    opacity: 0.96;
     filter: saturate(1.06) brightness(1.06);
   }
 }
@@ -423,14 +410,14 @@ onUnmounted(() => {
   }
 
   100% {
-    opacity: 0.72;
+    opacity: 0.82;
     filter: saturate(0.96) brightness(1);
   }
 }
 
 @keyframes protectionAuraFadeOut {
   0% {
-    opacity: 0.72;
+    opacity: 0.82;
     filter: saturate(0.96) brightness(1);
   }
 
@@ -466,33 +453,21 @@ onUnmounted(() => {
   }
 }
 
-@keyframes protectionSuccessLabel {
-  0% {
-    opacity: 0;
-    transform: rotate(var(--protection-label-counter-rotation, 0deg)) scale(0.92);
-  }
-
-  12%,
-  78% {
-    opacity: 1;
-    transform: rotate(var(--protection-label-counter-rotation, 0deg)) scale(1);
-  }
-
-  100% {
-    opacity: 0;
-    transform: rotate(var(--protection-label-counter-rotation, 0deg)) scale(1.04);
-  }
-}
-
 @media (min-width: 1024px) {
   .protection-aura__success-label-anchor {
-    top: -64px;
+    top: -44px;
   }
 }
 
 @media (max-width: 1024px) {
   .protection-aura:not(.protection-aura--anchored) {
     transform: translateX(50%) translateY(25%);
+  }
+}
+
+@media (max-width: 767px) {
+  .protection-aura--anchored .protection-aura__success-label-anchor {
+    display: none;
   }
 }
 </style>

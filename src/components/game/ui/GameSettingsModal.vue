@@ -47,9 +47,9 @@ let previouslyFocusedElement = null;
 const confirmationContent = computed(() => {
   if (confirmationAction.value === "return-lobby") {
     return {
-      title: "返回大廳？",
-      description: "目前對局將會中斷，確認後返回大廳。",
-      confirmLabel: "確認返回",
+      title: "確認投降",
+      description: "放棄對局無法領取結算獎勵，確認返回大廳？",
+      confirmLabel: "投降",
     };
   }
 
@@ -303,7 +303,7 @@ watch(
                   class="glass-button"
                   @click="openConfirmation('return-lobby')"
                 >
-                  返回大廳
+                  投降
                 </button>
                 <button
                   type="button"

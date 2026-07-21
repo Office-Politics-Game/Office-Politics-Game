@@ -64,14 +64,14 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
       class="card-inspection-overlay__card aspect-[3/4]"
       role="button"
       tabindex="0"
-      :aria-label="`收起或拖曳出牌：${card.name}`"
+      :aria-label="`收起或拖曳出牌：${card.displayName ?? card.name}`"
       :style="cardStyle"
       @pointerdown.stop="handlePointerDown"
       @pointermove="handlePointerMove"
       @pointerleave="resetTilt"
     >
       <GameCard
-        :name="card.name"
+        :name="card.displayName ?? card.name"
         :background-url="card.backgroundUrl"
         :frame-url="card.frameUrl"
         inspection

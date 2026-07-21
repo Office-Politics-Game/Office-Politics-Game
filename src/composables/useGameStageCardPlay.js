@@ -1,4 +1,4 @@
-import { computed, nextTick, ref, toRaw } from "vue";
+﻿import { computed, nextTick, ref, toRaw } from "vue";
 
 const DRAG_THRESHOLD_PX = 6;
 const HIDDEN_PLAYED_CARD_FALLBACK_MS = 5000;
@@ -137,6 +137,10 @@ export function useGameStageCardPlay({
 
     return props.players
       .filter((player) => {
+        if (player.isEliminated) {
+          return false;
+        }
+
         if (pendingTargetMode.value === "opponent") {
           return !player.isCurrentPlayer;
         }
@@ -236,6 +240,7 @@ export function useGameStageCardPlay({
   const isPlayInteractionLocked = computed(
     () =>
       props.isLoading ||
+      props.isSkippingComputerFinish ||
       isInitialRoundDrawAnimating.value ||
       !isCurrentPlayerTurn.value ||
       Boolean(activeCard.value) ||

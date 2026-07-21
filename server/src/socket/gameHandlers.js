@@ -1,9 +1,10 @@
 import { getState, getPublicState } from "../services/gameStateService.js"
 import { drawCardAction, playCardAction } from "../services/gameActionService.js"
-import { runComputerTurn } from "../services/computerPlayerService.js"
+import { runAutomatedTurn, runComputerTurn } from "../services/computerPlayerService.js"
 import { createCardEffectAnimationResultForViewer } from "../services/cardEffectAnimationService.js"
 
 const activeComputerTurnRooms = new Set()
+const skippingComputerFinishRooms = new Set()
 
 function createActionId(type) {
     return `${type}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`
@@ -49,20 +50,6 @@ function emitPlayCardActionToPlayers(io, roomCode, state, action) {
     })
 }
 
-async function emitGameStateToPlayers(io, roomCode, state) {
-    const players = Array.isArray(state.players) ? state.players : []
-
-    await Promise.all(players.map(async (player) => {
-        const gameState = {
-            status: state.phase,
-            currentTurnPlayerId: state.currentTurnPlayerId,
-            state: getPublicState(state, Number(player.playerId)),
-        }
-
-        io.to(`game:${roomCode}:player:${player.playerId}`).emit("game:state", gameState)
-    }))
-}
-
 async function emitGameStateAfterActionToPlayers(
     io,
     roomCode,
@@ -98,6 +85,18 @@ function emitDrawCardActionToPlayers(io, roomCode, state, action, drawnCard = nu
     return actionPayload
 }
 
+function wait(ms) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms)
+    })
+}
+
+async function waitForActiveComputerTurn(roomCode) {
+    for (let attempts = 0; attempts < 40 && activeComputerTurnRooms.has(roomCode); attempts += 1) {
+        await wait(50)
+    }
+}
+
 function getActionDetail(actionLog) {
     if (!actionLog?.action_detail) {
         return {}
@@ -111,7 +110,7 @@ function getActionDetail(actionLog) {
 }
 
 async function emitComputerTurnResult(io, roomCode, result) {
-    if (!result?.didRun) {
+    if (!result?.didRun || skippingComputerFinishRooms.has(roomCode)) {
         return
     }
 
@@ -157,6 +156,22 @@ async function emitComputerTurnResult(io, roomCode, result) {
             { readyForComputerTurn: true }
         )
     }
+}
+
+function canSimulateComputerFinish(state, viewerPlayerId) {
+    const players = Array.isArray(state?.players) ? state.players : []
+    const humans = players.filter((player) => !player.isComputer)
+    const computers = players.filter((player) => player.isComputer)
+    const viewer = players.find((player) => {
+        return Number(player.playerId) === Number(viewerPlayerId)
+    })
+
+    return (
+        state?.phase === "playing" &&
+        humans.length === 1 &&
+        computers.length === 3 &&
+        Boolean(viewer?.isEliminated)
+    )
 }
 
 function registerGameHandlers(io, socket) {
@@ -404,6 +419,118 @@ function registerGameHandlers(io, socket) {
                     },
                 })
             }
+        }
+    })
+
+    socket.on("game:auto-play-timeout", async (payload, callback) => {
+        const roomCode = payload?.roomCode
+
+        try {
+            const { playerId, turnPlayerId } = payload
+
+            await getState({
+                roomCode,
+                viewerPlayerId: Number(playerId),
+            })
+
+            if (activeComputerTurnRooms.has(roomCode)) {
+                if (typeof callback === "function") {
+                    callback({ ok: true, data: { roomCode, skipped: true } })
+                }
+                return
+            }
+
+            activeComputerTurnRooms.add(roomCode)
+
+            try {
+                const result = await runAutomatedTurn({
+                    roomCode,
+                    playerId: Number(turnPlayerId),
+                })
+                await emitComputerTurnResult(io, roomCode, result)
+
+                if (typeof callback === "function") {
+                    callback({
+                        ok: true,
+                        data: {
+                            roomCode,
+                            didRun: Boolean(result?.didRun),
+                        },
+                    })
+                }
+            } finally {
+                activeComputerTurnRooms.delete(roomCode)
+            }
+        } catch (error) {
+            activeComputerTurnRooms.delete(roomCode)
+
+            if (typeof callback === "function") {
+                callback({
+                    ok: false,
+                    error: { message: error.message },
+                })
+            }
+        }
+    })
+
+    socket.on("game:simulate-computer-finish", async (payload, callback) => {
+        const roomCode = payload?.roomCode
+
+        try {
+            const { playerId } = payload
+            skippingComputerFinishRooms.add(roomCode)
+            await waitForActiveComputerTurn(roomCode)
+            activeComputerTurnRooms.add(roomCode)
+
+            const currentState = await getState({
+                roomCode,
+                viewerPlayerId: Number(playerId),
+            })
+
+            if (!canSimulateComputerFinish(currentState.state, playerId)) {
+                throw new Error("Only eliminated players in a one-human computer room can skip ahead")
+            }
+
+            const startRoundNumber = Number(currentState.state.roundNumber || 1)
+            let result = { state: currentState.state }
+            let roundEndState = null
+
+            for (let turns = 0; turns < 80 && result.state?.phase === "playing"; turns += 1) {
+                result = await runAutomatedTurn({ roomCode })
+                roundEndState = result.roundEndState ?? result.playResult?.roundEndState ?? roundEndState
+
+                if (
+                    !result.didRun ||
+                    (!result.playResult && result.reason !== "advanced-eliminated-turn") ||
+                    Number(result.state?.roundNumber || 1) !== startRoundNumber
+                ) {
+                    break
+                }
+            }
+
+            if (typeof callback === "function") {
+                callback({
+                    ok: true,
+                    data: {
+                        roomCode,
+                        roundWinnerPlayerId: roundEndState?.roundWinnerPlayerId ?? null,
+                        settlementState: roundEndState
+                            ? getPublicState(roundEndState, Number(playerId))
+                            : null,
+                        state: getPublicState(result.state, Number(playerId)),
+                    },
+                })
+            }
+        } catch (error) {
+            if (typeof callback === "function") {
+                callback({
+                    ok: false,
+                    error: { message: error.message },
+                })
+            }
+        } finally {
+            activeComputerTurnRooms.delete(roomCode)
+            skippingComputerFinishRooms.delete(roomCode)
         }
     })
 }

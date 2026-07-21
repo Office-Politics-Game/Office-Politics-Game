@@ -17,6 +17,8 @@ test("custom room add computer uses backend room state instead of local fake pla
   assert.match(roomApiSource, /computer-players/);
   assert.match(customRoomSource, /await roomStore\.addComputerPlayer\(roomCode\.value/);
   assert.match(customRoomSource, /username:\s*computerName/);
+  assert.match(customRoomSource, /pendingComputerSlots\.value\[index\]/);
+  assert.match(customRoomSource, /isLoading\.value/);
   assert.doesNotMatch(customRoomSource, /localPlayerSlots/);
   assert.doesNotMatch(customRoomSource, /hasLocalComputerPlayers/);
   assert.doesNotMatch(customRoomSource, /getRankingList/);
