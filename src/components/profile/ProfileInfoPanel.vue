@@ -69,7 +69,7 @@ const props = defineProps({
   canEdit: {
     type: Boolean,
     default: false,
-  },
+  }
 });
 
 const emit = defineEmits(["edit"]);

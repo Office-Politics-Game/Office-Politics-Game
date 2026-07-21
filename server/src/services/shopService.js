@@ -14,6 +14,10 @@ const equipColumnMap = {
   board_skin: "board_skin_item_id",
 }
 
+function getEquipColumnByCategory(categoryId) {
+  return equipColumnMap[categoryId] || null
+}
+
 function createServiceError(message, statusCode = 400) {
   const error = new Error(message)
   error.statusCode = statusCode
@@ -385,7 +389,7 @@ async function getPlayerEquippedItems(playerId) {
   return mapEquippedItems(result.rows[0])
 }
 
-async function equipShopItem({ playerId, shopItemId }) {
+async function equipShopItem({ playerId, shopItemId = null, categoryId = null }) {
   const numericPlayerId = parsePositiveInteger(playerId, "playerId")
   const numericShopItemId = parsePositiveInteger(shopItemId, "shopItemId")
   const client = await pool.connect()
@@ -524,11 +528,62 @@ async function updateCardSkinLoadout({
   }
 }
 
+async function unequipShopItem({ playerId, categoryId }) {
+  const numericPlayerId = parsePositiveInteger(playerId, "playerId")
+  const equipColumn = getEquipColumnByCategory(categoryId)
+
+  if (!equipColumn) {
+    throw createServiceError("此類型不支援卸下")
+  }
+
+  const client = await pool.connect()
+
+  try {
+    await client.query("BEGIN")
+
+    let equippedResult
+
+    try {
+      equippedResult = await client.query(
+        `INSERT INTO player_equipped_items (player_id, ${equipColumn}, updated_at)
+         VALUES ($1, NULL, CURRENT_TIMESTAMP)
+         ON CONFLICT (player_id)
+         DO UPDATE SET ${equipColumn} = NULL,
+                       updated_at = CURRENT_TIMESTAMP
+         RETURNING player_id, avatar_item_id, card_skin_item_id, card_skin_overrides,
+                   card_back_item_id, board_skin_item_id, updated_at`,
+        [numericPlayerId]
+      )
+    } catch {
+      equippedResult = await client.query(
+        `INSERT INTO player_equipped_items (player_id, ${equipColumn}, updated_at)
+         VALUES ($1, NULL, CURRENT_TIMESTAMP)
+         ON CONFLICT (player_id)
+         DO UPDATE SET ${equipColumn} = NULL,
+                       updated_at = CURRENT_TIMESTAMP
+         RETURNING player_id, avatar_item_id, card_skin_item_id,
+                   card_back_item_id, board_skin_item_id, updated_at`,
+        [numericPlayerId]
+      )
+    }
+
+    await client.query("COMMIT")
+
+    return mapEquippedItems(equippedResult.rows[0])
+  } catch (error) {
+    await client.query("ROLLBACK")
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
 export {
   getShopItems,
   getPlayerItems,
   purchaseShopItem,
   getPlayerEquippedItems,
   equipShopItem,
+  unequipShopItem,
   updateCardSkinLoadout,
 }

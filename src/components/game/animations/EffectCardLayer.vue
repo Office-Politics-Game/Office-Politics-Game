@@ -67,7 +67,7 @@ defineExpose({
           </template>
           <GameCard
             v-else
-            :name="card.name"
+            :name="card.displayName ?? card.name"
             :background-url="card.backgroundUrl"
             :frame-url="card.frameUrl"
           />

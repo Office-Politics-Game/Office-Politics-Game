@@ -19,10 +19,12 @@ import CardDealDemoView from "@/views/CardDealDemoView.vue";
 import AnimationDemoView from "@/views/AnimationDemoView.vue";
 import CardPlayTestView from "@/views/CardPlayTestView.vue";
 import ProfileEquipmentTestView from "@/views/ProfileEquipmentTestView.vue";
+import StyleStudioView from "@/views/StyleStudioView.vue";
 import NotFoundView from "@/views/NotFoundView.vue";
 import AuthCallbackView from "@/views/AuthCallbackView.vue";
 import PrivacyPolicyView from "@/views/PrivacyPolicyView.vue";
 import DataDeletionView from "@/views/DataDeletionView.vue";
+import IntroView from "@/views/IntroView.vue";
 import { useAuthStore } from "../stores/authStore.js";
 
 const routes = [
@@ -30,6 +32,11 @@ const routes = [
     path: "/",
     name: "Entry",
     component: EntryPage,
+  },
+  {
+    path: "/intro",
+    name: "Intro",
+    component: IntroView,
   },
   {
     path: "/login",
@@ -104,6 +111,14 @@ const routes = [
     path: "/profile-equipment-test",
     name: "ProfileEquipmentTest",
     component: ProfileEquipmentTestView,
+    meta: {
+      requiresAuth: true,
+    },
+  },
+  {
+    path: "/style-studio",
+    name: "StyleStudio",
+    component: StyleStudioView,
     meta: {
       requiresAuth: true,
     },

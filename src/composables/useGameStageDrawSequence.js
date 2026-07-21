@@ -1,4 +1,4 @@
-import { computed, nextTick, ref } from "vue";
+﻿import { computed, nextTick, ref } from "vue";
 
 export function useGameStageDrawSequence({
   props,
@@ -130,7 +130,10 @@ export function useGameStageDrawSequence({
     }
   }
 
-  async function playInitialRoundDrawSequence(signature) {
+  async function playInitialRoundDrawSequence(
+    signature,
+    { showRoundStartNotice = true } = {},
+  ) {
     if (!signature || isInitialRoundDrawAnimating.value) {
       return;
     }
@@ -170,7 +173,9 @@ export function useGameStageDrawSequence({
       isInitialRoundDrawAnimating.value = false;
 
       await waitForTutorialSettlement();
-      await playRoundStartNotice(signature);
+      if (showRoundStartNotice) {
+        await playRoundStartNotice(signature);
+      }
 
       if (isExplicitCurrentPlayerTurn.value) {
         playTurnNotice({ force: true });

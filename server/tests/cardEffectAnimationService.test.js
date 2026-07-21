@@ -4,12 +4,15 @@ import {
   createCardEffectAnimationContext,
 } from '../src/services/cardEffectAnimationService.js'
 
-function createInternContext(guessedCardName) {
+function createInternContext(
+  guessedCardName,
+  targetCard = { id: 3, name: 'Manager' },
+) {
   return createCardEffectAnimationContext({
     state: {
       players: [
         { playerId: 1, hand: [{ id: 1, name: 'Intern' }] },
-        { playerId: 2, hand: [{ id: 3, name: 'Manager' }] },
+        { playerId: 2, hand: [targetCard] },
       ],
     },
     card: { id: 1, name: 'Intern' },
@@ -38,6 +41,19 @@ describe('intern card effect animation result', () => {
       type: 'intern',
       targetPlayerId: 2,
       guessedCardName: 'Manager',
+      outcome: 'correct',
+    })
+  })
+
+  test('treats an Advisor guess as correct for an Adviser target card', () => {
+    const result = buildCardEffectAnimationResult(
+      createInternContext('Advisor', { id: 7, name: 'Adviser' }),
+    )
+
+    expect(result).toMatchObject({
+      type: 'intern',
+      targetPlayerId: 2,
+      guessedCardName: 'Advisor',
       outcome: 'correct',
     })
   })

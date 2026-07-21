@@ -6,7 +6,7 @@ jest.unstable_mockModule("../src/services/authService.js", () => ({
     verifyToken: mockVerifyToken
 }))
 
-const { requireAuth } = await import("../src/middlewares/authMiddleware.js")
+const { requireAuth, requireMemberAuth } = await import("../src/middlewares/authMiddleware.js")
 
 function createMockResponse() {
     const res = {
@@ -30,10 +30,31 @@ describe("requireAuth middleware", () => {
         error.statusCode = 401
         mockVerifyToken.mockRejectedValueOnce(error)
 
-        const req = {
-            cookies: {}
-        }
+        const req = { cookies: {} }
+        const res = createMockResponse()
+        const next = jest.fn()
 
+        await requireAuth(req, res, next)
+
+        expect(mockVerifyToken).toHaveBeenCalledWith("")
+        expect(next).not.toHaveBeenCalled()
+        expect(res.status).toHaveBeenCalledWith(401)
+        expect(res.json).toHaveBeenCalledWith({
+            message: "缺少登入驗證token"
+        })
+    })
+
+    test("只有 Authorization header、沒有 Cookie 時回傳 401", async () => {
+        const error = new Error("缺少登入驗證token")
+        error.statusCode = 401
+        mockVerifyToken.mockRejectedValueOnce(error)
+
+        const req = {
+            cookies: {},
+            headers: {
+                authorization: "Token invalid-token"
+            }
+        }
         const res = createMockResponse()
         const next = jest.fn()
 
@@ -147,5 +168,61 @@ describe("requireAuth middleware", () => {
         })
 
         consoleErrorSpy.mockRestore()
+    })
+})
+
+describe("requireMemberAuth middleware", () => {
+    beforeEach(() => {
+        mockVerifyToken.mockReset()
+    })
+
+    test("訪客玩家不能使用會員功能", async () => {
+        mockVerifyToken.mockResolvedValueOnce({
+            id: 99,
+            username: "訪客玩家",
+            authUserId: null,
+            account: null
+        })
+
+        const req = {
+            cookies: {
+                officePoliticsAuthToken: "guest-token"
+            }
+        }
+        const res = createMockResponse()
+        const next = jest.fn()
+
+        await requireMemberAuth(req, res, next)
+
+        expect(next).not.toHaveBeenCalled()
+        expect(res.status).toHaveBeenCalledWith(403)
+        expect(res.json).toHaveBeenCalledWith({
+            message: "登入解鎖更多功能"
+        })
+    })
+
+    test("會員玩家可以使用會員功能", async () => {
+        const player = {
+            id: 1,
+            username: "會員玩家",
+            authUserId: "auth-user-001",
+            account: "member@example.com"
+        }
+
+        mockVerifyToken.mockResolvedValueOnce(player)
+
+        const req = {
+            cookies: {
+                officePoliticsAuthToken: "member-token"
+            }
+        }
+        const res = createMockResponse()
+        const next = jest.fn()
+
+        await requireMemberAuth(req, res, next)
+
+        expect(req.player).toEqual(player)
+        expect(next).toHaveBeenCalledTimes(1)
+        expect(res.status).not.toHaveBeenCalled()
     })
 })

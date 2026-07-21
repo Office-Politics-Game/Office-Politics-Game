@@ -1,9 +1,13 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { X } from "lucide-vue-next";
+import { ChevronLeft, ChevronRight, X } from "lucide-vue-next";
 import bgGachaUrl from "@/assets/images/bg-gacha.webp";
 import gachaPrinterUrl from "@/assets/images/gacha-printer.png";
+import gachaPoolBannerUrl from "@/assets/images/gacha-pool-lego-classic.webp";
+import tarotGachaPoolBannerUrl from "@/assets/images/gacha-pool-tarot-style.webp";
+import legoGachaInfoFrameUrl from "@/assets/images/lego-gacha-info-frame.webp";
+import tarotGachaInfoFrameUrl from "@/assets/images/tarot-gacha-info-frame.webp";
 import cardBackUrl from "@/assets/images/card-bg-back.webp";
 import GameCard from "@/components/game/ui/GameCard.vue";
 import GachaAnimation from "@/components/gacha/GachaAnimation.vue";
@@ -27,6 +31,31 @@ const CARD_FLIGHT_DURATION_MS = 700;
 const AUTO_REVEAL_DELAY_MS = 0;
 const PRINT_START_MIN_RATIO = 0.48;
 const PRINT_START_MAX_CARD_OFFSET = 0.34;
+const GACHA_POOL_RATES = [
+  { name: "實習生", rate: "40%" },
+  { name: "打掃阿姨", rate: "25%" },
+  { name: "部門主管", rate: "15%" },
+  { name: "職場老鳥", rate: "10%" },
+  { name: "專案經理", rate: "5%" },
+  { name: "人資主管", rate: "3%" },
+  { name: "資深顧問", rate: "1.5%" },
+  { name: "執行長", rate: "0.5%" },
+];
+const GACHA_CARD_NAME_BY_RANK = {
+  1: "實習生",
+  2: "打掃阿姨",
+  3: "部門主管",
+  4: "職場老鳥",
+  5: "專案經理",
+  6: "人資主管",
+  7: "資深顧問",
+  8: "執行長",
+};
+
+const GACHA_POOL_CODE_BY_PAGE = {
+  1: "role_cards",
+  2: "tarot_cards",
+};
 
 const route = useRoute();
 const router = useRouter();
@@ -52,6 +81,8 @@ const isOwnedCardsOpen = ref(false);
 const ownedCards = ref([]);
 const isOwnedCardsLoading = ref(false);
 const ownedCardsError = ref("");
+const gachaPoolPage = ref(1);
+const isGachaPoolInfoOpen = ref(false);
 let autoRevealTimer = null;
 let autoRevealElapsed = false;
 let cardFlightFallbackTimer = null;
@@ -79,16 +110,24 @@ const drawResultLabel = computed(() => {
 
   return `${currentDrawIndex.value + 1} / ${drawResults.value.length}`;
 });
+const currentGachaPoolId = computed(
+  () => GACHA_POOL_CODE_BY_PAGE[gachaPoolPage.value] ?? "role_cards",
+);
+const currentGachaInfoFrameUrl = computed(() =>
+  gachaPoolPage.value === 1 ? legoGachaInfoFrameUrl : tarotGachaInfoFrameUrl,
+);
 
 function resolveGachaCardAsset(card) {
   const fallbackKey = cardAssetKeyByRank[card?.rank] ?? "ceo";
   const backgroundAsset = cardAssetsByKey[card?.imageKey] ?? cardAssetsByKey[fallbackKey];
   const frameAsset = cardAssetsByKey[card?.frameKey] ?? backgroundAsset;
+  const fallbackName = GACHA_CARD_NAME_BY_RANK[card?.rank] ?? backgroundAsset.name;
+  const cardName = card?.name && !/[?�]/.test(card.name) ? card.name : fallbackName;
 
   return {
     ...backgroundAsset,
     ...card,
-    name: card?.name ?? backgroundAsset.name,
+    name: cardName,
     backgroundUrl: card?.imageUrl ?? backgroundAsset.backgroundUrl,
     frameUrl: card?.frameUrl ?? frameAsset.frameUrl,
   };
@@ -327,6 +366,7 @@ function startDrawRequest(count = selectedDrawCount.value) {
   pendingDrawRequest = drawGacha({
     playerId: currentPlayerId.value,
     count,
+    poolId: currentGachaPoolId.value,
   }).then(
     (result) => ({ result }),
     (error) => ({ error }),
@@ -399,6 +439,7 @@ async function fetchOwnedCards() {
   try {
     const result = await getOwnedGachaCards({
       playerId: currentPlayerId.value,
+      poolId: currentGachaPoolId.value,
     });
 
     ownedCards.value = result.cards ?? [];
@@ -425,6 +466,22 @@ function toggleOwnedCardsPanel() {
   }
 
   openOwnedCardsModal();
+}
+
+function setGachaPoolPage(page) {
+  gachaPoolPage.value = page;
+
+  if (isOwnedCardsOpen.value) {
+    fetchOwnedCards();
+  }
+}
+
+function openGachaPoolInfo() {
+  isGachaPoolInfoOpen.value = true;
+}
+
+function closeGachaPoolInfo() {
+  isGachaPoolInfoOpen.value = false;
 }
 
 function onPrinterPointerDown(event) {
@@ -743,6 +800,7 @@ watch(
     :is-ready-to-reveal="isReadyToReveal"
     :is-revealed="isRevealed"
     :is-draw-active="isDrawActive"
+    :is-printer-interactive="isAnimationMode"
     :arrow-guide-style="arrowGuideStyle"
     :show-guide="isAnimationMode"
     :show-actions="false"
@@ -759,16 +817,104 @@ watch(
       class="fixed right-20 top-5 z-40 origin-top-right"
       :items="['tickets']"
       tooltip-size="small"
+      tooltip-placement="bottom"
     />
+
+    <div
+      v-if="!isAnimationMode"
+      class="gacha-pool-carousel fixed left-1/2 z-30 -translate-x-1/2"
+    >
+      <button
+        v-if="gachaPoolPage === 2"
+        type="button"
+        class="gacha-pool-arrow gacha-pool-arrow--left grid place-items-center text-white transition focus-visible:outline-none focus-visible:ring-[4px] focus-visible:ring-[var(--brand-focus)]"
+        aria-label="上一個卡池"
+        @click.stop.prevent="setGachaPoolPage(1)"
+        @pointerdown.stop
+      >
+        <ChevronLeft class="size-5" :stroke-width="3" aria-hidden="true" />
+      </button>
+
+      <img
+        :src="gachaPoolPage === 1 ? gachaPoolBannerUrl : tarotGachaPoolBannerUrl"
+        :alt="gachaPoolPage === 1 ? '樂高經典風格卡池' : '塔羅牌占星風格卡池'"
+        class="gacha-pool-banner pointer-events-none select-none object-contain drop-shadow-[0_18px_32px_rgba(0,19,50,0.42)]"
+        draggable="false"
+      />
+
+      <button
+        type="button"
+        class="gacha-pool-info-hotspot"
+        aria-label="查看卡池資訊"
+        @click.stop.prevent="openGachaPoolInfo"
+        @pointerdown.stop
+      ></button>
+
+      <button
+        v-if="gachaPoolPage === 1"
+        type="button"
+        class="gacha-pool-arrow gacha-pool-arrow--right grid place-items-center text-white transition focus-visible:outline-none focus-visible:ring-[4px] focus-visible:ring-[var(--brand-focus)]"
+        aria-label="下一個卡池"
+        @click.stop.prevent="setGachaPoolPage(2)"
+        @pointerdown.stop
+      >
+        <ChevronRight class="size-5" :stroke-width="3" aria-hidden="true" />
+      </button>
+    </div>
+
+    <section
+      v-if="!isAnimationMode && isGachaPoolInfoOpen"
+      class="fixed inset-0 z-[80] grid place-items-center bg-slate-950/60 px-4 text-white backdrop-blur-[3px]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="gacha-pool-info-title"
+      @click.self="closeGachaPoolInfo"
+    >
+      <div
+        class="gacha-pool-info-card"
+        :style="{ backgroundImage: `url(${currentGachaInfoFrameUrl})` }"
+      >
+        <div class="gacha-pool-info-card__header">
+          <h2 id="gacha-pool-info-title" class="m-0 text-base font-black">
+            卡池資訊
+          </h2>
+          <button
+            type="button"
+            class="gacha-pool-info-card__close"
+            aria-label="關閉卡池資訊"
+            @click.stop="closeGachaPoolInfo"
+          >
+            <X class="size-4" :stroke-width="2.5" aria-hidden="true" />
+          </button>
+        </div>
+
+        <div class="gacha-pool-info-card__body">
+          <p class="gacha-pool-info-card__text">
+            卡池期間：2025/07/13 - 2025/08/13
+          </p>
+
+          <dl class="gacha-pool-rate-list" aria-label="卡牌抽取機率">
+            <div
+              v-for="item in GACHA_POOL_RATES"
+              :key="item.name"
+              class="gacha-pool-rate-list__item"
+            >
+              <dt>{{ item.name }}</dt>
+              <dd>{{ item.rate }}</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </section>
 
     <button
       v-if="!isAnimationMode"
       type="button"
-      class="fixed right-5 top-5 z-50 grid size-8 place-items-center border border-white/60 bg-white/10 text-white backdrop-blur-[2px] transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-[4px] focus-visible:ring-[var(--brand-focus)]"
+      class="btn-glass fixed right-5 top-5 z-50 grid size-9 place-items-center p-0 lg:p-0"
       aria-label="返回大廳"
       @click.stop="goLobby"
     >
-      <X class="size-4" :stroke-width="2.5" aria-hidden="true" />
+      <X class="size-5" :stroke-width="2.5" aria-hidden="true" />
     </button>
 
     <section
@@ -878,7 +1024,7 @@ watch(
       aria-label="我的卡牌"
       @click.stop="toggleOwnedCardsPanel"
     >
-      <span class="relative mx-auto block aspect-[3/4] w-14 overflow-hidden border border-white/70 bg-slate-900 shadow-[0_12px_28px_rgba(0,19,50,0.36)] transition hover:-translate-y-1">
+      <span class="relative mx-auto block aspect-[3/4] w-14 overflow-hidden bg-transparent transition hover:-translate-y-1">
         <img
           :src="cardBackUrl"
           alt=""
@@ -976,6 +1122,201 @@ watch(
   transform: translate3d(0, -52px, 0) scale(0.72);
   animation: multi-result-deal 220ms ease-out forwards;
   animation-delay: calc(var(--deal-index) * 80ms);
+}
+
+.gacha-pool-banner {
+  display: block;
+  width: 100%;
+  max-height: min(17svh, 150px);
+  object-fit: contain;
+}
+
+.gacha-pool-carousel {
+  top: 48px;
+  width: min(82vw, 760px);
+  --gacha-pool-arrow-size: clamp(34px, 4vw, 46px);
+  --gacha-pool-arrow-offset: clamp(16px, 3vw, 34px);
+}
+
+@media (min-width: 1024px) {
+  .gacha-pool-carousel {
+    top: clamp(76px, 11svh, 124px);
+  }
+}
+
+.gacha-pool-arrow {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  width: var(--gacha-pool-arrow-size);
+  height: var(--gacha-pool-arrow-size);
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.08)),
+    rgba(0, 19, 50, 0.48);
+  box-shadow:
+    0 12px 26px rgba(0, 19, 50, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translateY(-50%);
+  backdrop-filter: blur(6px);
+}
+
+.gacha-pool-arrow:hover {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0.12)),
+    rgba(0, 70, 244, 0.58);
+}
+
+.gacha-pool-arrow--left {
+  left: var(--gacha-pool-arrow-offset);
+  transform: translateY(-50%);
+}
+
+.gacha-pool-arrow--left:hover {
+  transform: translateY(-50%) scale(1.06);
+}
+
+.gacha-pool-arrow--right {
+  right: var(--gacha-pool-arrow-offset);
+  transform: translateY(-50%);
+}
+
+.gacha-pool-arrow--right:hover {
+  transform: translateY(-50%) scale(1.06);
+}
+
+.gacha-pool-info-hotspot {
+  position: absolute;
+  top: 60%;
+  left: 72%;
+  z-index: 5;
+  width: clamp(30px, 5.5%, 35px);
+  aspect-ratio: 1;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+}
+
+.gacha-pool-info-hotspot:focus-visible {
+  outline: 4px solid var(--brand-focus);
+  outline-offset: 2px;
+}
+
+.gacha-pool-info-card {
+  display: grid;
+  width: min(84vw, 360px);
+  aspect-ratio: 1;
+  grid-template-rows: auto 1fr;
+  padding: 78px 62px 56px;
+  color: white;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  filter: drop-shadow(0 24px 70px rgba(0, 19, 50, 0.52));
+}
+
+.gacha-pool-info-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gacha-pool-info-card__close {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.48);
+  color: white;
+  background: rgba(0, 19, 50, 0.42);
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.gacha-pool-info-card__close:hover {
+  border-color: rgba(255, 255, 255, 0.78);
+  background: rgba(0, 70, 244, 0.52);
+}
+
+.gacha-pool-info-card__close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--brand-focus);
+}
+
+.gacha-pool-info-card__text {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.gacha-pool-info-card__body {
+  align-self: center;
+  display: grid;
+  gap: 8px;
+}
+
+.gacha-pool-rate-list {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+}
+
+.gacha-pool-rate-list__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 16px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.gacha-pool-rate-list__item dt,
+.gacha-pool-rate-list__item dd {
+  margin: 0;
+}
+
+.gacha-pool-rate-list__item dt {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gacha-pool-rate-list__item dd {
+  color: #facc15;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 1024px) {
+  .gacha-pool-info-card {
+    width: 420px;
+    padding: 92px 74px 66px;
+  }
+
+  .gacha-pool-info-card__text {
+    font-size: 14px;
+  }
+
+  .gacha-pool-rate-list {
+    gap: 5px;
+  }
+
+  .gacha-pool-rate-list__item {
+    min-height: 18px;
+    font-size: 13px;
+  }
 }
 
 .multi-result-card-inner {

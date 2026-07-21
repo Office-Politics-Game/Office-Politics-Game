@@ -204,7 +204,7 @@ onBeforeUnmount(stop)
   position: fixed;
   left: 50%;
   z-index: 4;
-  top: 25%;
+  top: 31%;
   width: min(92vw, 900px);
   padding: 0 10px;
   color: var(--gray-100);

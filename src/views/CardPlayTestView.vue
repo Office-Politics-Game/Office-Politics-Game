@@ -88,7 +88,6 @@ const deckCount = ref(INITIAL_DECK_COUNT)
 const isBusy = ref(false)
 const isSelfProtected = ref(true)
 const protectionSuccessKey = ref(0)
-const showProtectionSuccessLabel = ref(false)
 const activeDrawCard = ref(null)
 const cleanerResult = ref(null)
 const internResult = ref(null)
@@ -134,17 +133,17 @@ const opponentCards = [
 
 const controls = computed(() => [
   {
-    label: isSelfProtected.value ? 'Protect On' : 'Protect Off',
+    label: isSelfProtected.value ? '防護開啟' : '防護關閉',
     action: toggleSelfProtection,
   },
-  { label: 'Defense Success', action: playProtectionSuccess },
-  { label: 'HR Swap', action: playSwapAnimation },
+  { label: '防護成功', action: playProtectionSuccess },
+  { label: '人資主管交換', action: playSwapAnimation },
   {
-    label: 'HR Swap (Opponents)',
+    label: '人資主管交換（對手）',
     action: () => playSwapAnimation({ bystander: true }),
   },
-  { label: 'Fly-in Text', action: playFlyInTextModal },
-  { label: 'Round Winner', action: playRoundWinnerNotice },
+  { label: '飛入提示', action: playFlyInTextModal },
+  { label: '回合勝者', action: playRoundWinnerNotice },
   { label: '發牌', action: playDealAnimation },
   { label: '洗牌', action: playShuffleAnimation },
   { label: '自己抽牌', action: () => playDrawAnimation(SELF_PLAYER_ID) },
@@ -157,7 +156,7 @@ const controls = computed(() => [
   { label: '主管勝利', action: () => playManagerAnimation('win') },
   { label: '主管失敗', action: () => playManagerAnimation('lose') },
   { label: '主管平手', action: () => playManagerAnimation('draw') },
-  { label: 'PM換牌', action: playPMAnimation },
+  { label: '專案經理換牌', action: playPMAnimation },
 ])
 
 function createCard(assetKey, id) {
@@ -239,14 +238,10 @@ function releaseBusyState() {
 
 function toggleSelfProtection() {
   isSelfProtected.value = !isSelfProtected.value
-  if (!isSelfProtected.value) {
-    showProtectionSuccessLabel.value = false
-  }
 }
 
 function playProtectionSuccess() {
   isSelfProtected.value = true
-  showProtectionSuccessLabel.value = true
   protectionSuccessKey.value += 1
 }
 
@@ -415,6 +410,7 @@ function playInternAnimation(outcome) {
     id,
     targetPlayerId: 'player-top',
     targetCard: createCard('manager', uniqueId('intern-manager')),
+    guessedCardName: cardAssetsByKey.ceo.displayName,
     outcome,
   }
 
@@ -589,7 +585,7 @@ onUnmounted(() => {
       :aria-label="source.label"
       @click="runAction(source.label, () => playOpponentCard(source))"
     >
-      <span>{{ source.card.name }}</span>
+      <span>{{ source.card.displayName ?? source.card.name }}</span>
     </button>
 
     <section class="animation-test__table">
@@ -611,7 +607,6 @@ onUnmounted(() => {
         <ProtectionAura
           v-if="isSelfProtected"
           :success-key="protectionSuccessKey"
-          :show-success-label="showProtectionSuccessLabel"
         />
       </Transition>
 
@@ -626,11 +621,11 @@ onUnmounted(() => {
           '--fan-index': index - (handCards.length - 1) / 2,
           '--fan-lift': Math.abs(index - (handCards.length - 1) / 2),
         }"
-        :aria-label="`打出 ${card.name}`"
-        @click="runAction(`自己出牌：${card.name}`, () => playCardFromHand(index))"
+        :aria-label="`打出 ${card.displayName ?? card.name}`"
+        @click="runAction(`自己出牌：${card.displayName ?? card.name}`, () => playCardFromHand(index))"
       >
         <GameCard
-          :name="card.name"
+          :name="card.displayName ?? card.name"
           :background-url="card.backgroundUrl"
           :frame-url="card.frameUrl"
         />

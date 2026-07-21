@@ -7,6 +7,7 @@ import {
   updateRoomState as updateRoomStateRequest,
   addComputerPlayer as addComputerPlayerRequest,
   removePlayer as removePlayerRequest,
+  leaveRoom as leaveRoomRequest,
   startRoom as startRoomRequest,
 } from "@/services/roomApi.js";
 import { connectSocket, emitWithAck } from "@/services/socketClient.js";
@@ -49,6 +50,19 @@ function handleSocketRoomStarted(payload) {
   activeRoomStore?.applyRoomState(payload);
 }
 
+function handleSocketRoomDissolved(payload) {
+  const dissolvedRoomCode = String(payload?.roomCode || "").toUpperCase();
+  const currentRoomCode = String(
+    subscribedRoomCode || activeRoomStore?.roomCode || "",
+  ).toUpperCase();
+
+  if (!activeRoomStore || !dissolvedRoomCode || dissolvedRoomCode !== currentRoomCode) {
+    return;
+  }
+
+  activeRoomStore.resetRoom();
+}
+
 function handleSocketPlayerTitleUpdated(payload) {
   if (!activeRoomStore || payload?.playerId === undefined || payload?.playerId === null) {
     return;
@@ -89,10 +103,12 @@ function bindRoomSocketListeners(store) {
   const socket = connectSocket();
   socket.off("room:state", handleSocketRoomState);
   socket.off("room:game-started", handleSocketRoomStarted);
+  socket.off("room:dissolved", handleSocketRoomDissolved);
   socket.off("player:title-updated", handleSocketPlayerTitleUpdated);
   socket.off("connect", handleSocketConnect);
   socket.on("room:state", handleSocketRoomState);
   socket.on("room:game-started", handleSocketRoomStarted);
+  socket.on("room:dissolved", handleSocketRoomDissolved);
   socket.on("player:title-updated", handleSocketPlayerTitleUpdated);
   socket.on("connect", handleSocketConnect);
 }
@@ -402,6 +418,26 @@ export const useRoomStore = defineStore("room", {
         return response;
       } catch (error) {
         this.errorMessage = getErrorMessage(error, "移出玩家失敗");
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async leaveRoom(roomCode, payload) {
+      this.isLoading = true;
+      this.clearError();
+
+      try {
+        const result = await emitWithAck("room:leave", {
+          roomCode,
+          ...payload,
+        }).catch(() => leaveRoomRequest(roomCode, payload));
+
+        this.resetRoom();
+        return result;
+      } catch (error) {
+        this.errorMessage = getErrorMessage(error, "離開房間失敗");
         throw error;
       } finally {
         this.isLoading = false;

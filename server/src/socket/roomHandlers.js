@@ -3,6 +3,7 @@ import {
     getRoomState,
     joinRoom,
     kickPlayer,
+    leaveRoom,
     updateReady,
     startGame,
 } from "../services/roomService.js"
@@ -178,6 +179,43 @@ function registerRoomHandlers(io, socket) {
                 callback({
                     ok: true,
                     data: roomState,
+                })
+            }
+        } catch (error) {
+            if (typeof callback === "function") {
+                callback({
+                    ok: false,
+                    error: {
+                        message: error.message,
+                    },
+                })
+            }
+        }
+    })
+
+    socket.on("room:leave", async (payload, callback) => {
+        try {
+            const { roomCode, playerId } = payload
+            const normalizedRoomCode = normalizeRoomCode(roomCode)
+            const result = await leaveRoom({
+                roomCode: normalizedRoomCode,
+                playerId,
+            })
+
+            if (result.dissolved) {
+                emitRoomState(io, "room:dissolved", {
+                    roomCode: result.roomCode,
+                })
+            } else {
+                emitRoomState(io, "room:state", result.roomState)
+            }
+
+            socket.leave(normalizedRoomCode)
+
+            if (typeof callback === "function") {
+                callback({
+                    ok: true,
+                    data: result,
                 })
             }
         } catch (error) {

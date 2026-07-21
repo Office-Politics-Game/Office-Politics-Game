@@ -40,7 +40,7 @@
 
     <div
       v-if="showActions"
-      class="flex flex-wrap gap-2 border-t border-[var(--gray-100)] px-2 py-2"
+      class="flex gap-2 border-t border-[var(--gray-100)] px-2 py-2"
     >
       <button
         type="button"
@@ -112,7 +112,9 @@ const statusColorClass = computed(() => {
 @reference "tailwindcss";
 
 .friend-item-action {
-  @apply border border-[var(--brand-primary)] bg-[var(--surface-glass)] px-2 py-1 text-xs font-bold text-[var(--brand-active)] transition-[border-color,background-color,color,box-shadow] duration-[180ms] disabled:cursor-not-allowed disabled:opacity-60;
+  width: 84px;
+  height: 32px;
+  @apply shrink-0 border border-[var(--brand-primary)] bg-[var(--surface-glass)] px-2 py-1 text-xs font-bold text-[var(--brand-active)] transition-[border-color,background-color,color,box-shadow] duration-[180ms] disabled:cursor-not-allowed disabled:opacity-60;
 }
 
 .friend-item-action.is-danger {

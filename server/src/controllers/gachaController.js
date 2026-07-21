@@ -25,6 +25,7 @@ async function handleGetOwnedGachaCards(req, res) {
   try {
     const result = await getOwnedGachaCards({
       playerId: req.query.playerId,
+      poolId: req.query.poolId ?? "role_cards",
     })
 
     return res.status(200).json(result)

@@ -56,6 +56,31 @@ describe("computerPlayerService decision helpers", () => {
         expect(chooseCardToPlay(state, player)).toEqual({ id: 1, name: "Intern" })
     })
 
+    test("prefers the drawn card when it is playable", () => {
+        const state = createState({
+            players: [
+                {
+                    playerId: 1,
+                    username: "Computer 1",
+                    isComputer: true,
+                    isEliminated: false,
+                    hand: [
+                        { id: 4, name: "Senior" },
+                        { id: 1, name: "Intern" },
+                    ],
+                },
+                {
+                    playerId: 2,
+                    isEliminated: false,
+                    hand: [{ id: 8, name: "CEO" }],
+                },
+            ],
+        })
+        const player = getCurrentTurnPlayer(state)
+
+        expect(chooseCardToPlay(state, player, 4)).toEqual({ id: 4, name: "Senior" })
+    })
+
     test("obeys Advisor rule when Advisor is held with PM or HR", () => {
         const state = createState({
             players: [
@@ -80,22 +105,84 @@ describe("computerPlayerService decision helpers", () => {
         expect(chooseCardToPlay(state, player)).toEqual({ id: 7, name: "Adviser" })
     })
 
-    test("selects the first legal target for target cards", () => {
+    test("uses injected random to select any eligible target", () => {
+        const state = createState()
+        const player = getCurrentTurnPlayer(state)
+        const card = { id: 1, name: "Intern" }
+
+        expect(chooseTargetPlayerId(state, player, card, { random: () => 0 })).toBe(2)
+        expect(chooseTargetPlayerId(state, player, card, { random: () => 0.999 })).toBe(3)
+    })
+
+    test("excludes the acting player and eliminated players for opponent cards", () => {
         const state = createState()
         const player = getCurrentTurnPlayer(state)
 
-        expect(chooseTargetPlayerId(state, player, { id: 1, name: "Intern" })).toBe(2)
+        state.players[1].isEliminated = true
+
+        expect(chooseTargetPlayerId(
+            state,
+            player,
+            { id: 1, name: "Intern" },
+            { random: () => 0 }
+        )).toBe(3)
+    })
+
+    test("allows PM to select the acting computer player", () => {
+        const state = createState()
+        const player = getCurrentTurnPlayer(state)
+
+        expect(chooseTargetPlayerId(
+            state,
+            player,
+            { id: 5, name: "PM" },
+            { random: () => 0 }
+        )).toBe(1)
+    })
+
+    test("returns undefined when no eligible target exists", () => {
+        const state = createState({
+            players: [
+                {
+                    playerId: 1,
+                    isComputer: true,
+                    isEliminated: false,
+                    hand: [{ id: 1, name: "Intern" }],
+                },
+            ],
+        })
+        const player = getCurrentTurnPlayer(state)
+
+        expect(chooseTargetPlayerId(
+            state,
+            player,
+            { id: 1, name: "Intern" },
+            { random: () => 0 }
+        )).toBeUndefined()
+    })
+
+    test("skips eliminated targets", () => {
+        const state = createState()
+        state.players[1].isEliminated = true
+        const player = getCurrentTurnPlayer(state)
+
+        expect(chooseTargetPlayerId(state, player, { id: 1, name: "Intern" })).toBe(3)
     })
 
     test("builds Intern play payload with fixed CEO guess", () => {
         const state = createState()
         const player = getCurrentTurnPlayer(state)
 
-        expect(buildPlayPayload(state, player, { id: 1, name: "Intern" })).toMatchObject({
+        expect(buildPlayPayload(
+            state,
+            player,
+            { id: 1, name: "Intern" },
+            { random: () => 0.999 }
+        )).toMatchObject({
             roomCode: "ROOM01",
             playerId: 1,
             cardId: 1,
-            targetPlayerId: 2,
+            targetPlayerId: 3,
             guessedCardName: "CEO",
         })
     })

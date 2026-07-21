@@ -127,6 +127,7 @@ function mapRoomPlayer(player) {
     isReady: isComputer ? true : player.is_ready,
     isAlive: player.is_alive,
     isComputer,
+    level: player.level,
   }
 }
 
@@ -312,6 +313,7 @@ async function getRoomState({ roomCode }) {
          p.avatar_id,
          avatar_item.image_url AS avatar_url,
          card_skin_item.image_url AS card_skin_url,
+         p.level,
          pei.card_skin_overrides,
          grp.role,
          grp.seat_order,
@@ -340,6 +342,7 @@ async function getRoomState({ roomCode }) {
          p.avatar_id,
          avatar_item.image_url AS avatar_url,
          card_skin_item.image_url AS card_skin_url,
+         p.level,
          grp.role,
          grp.seat_order,
          grp.is_ready,
@@ -550,6 +553,125 @@ async function kickPlayer({ roomCode, requesterPlayerId, targetPlayerId }) {
   return getRoomState({ roomCode })
 }
 
+async function leaveRoom({ roomCode, playerId }) {
+  const numericPlayerId = parsePositiveInteger(playerId, "playerId")
+  const client = await pool.connect()
+
+  try {
+    await client.query("BEGIN")
+
+    const roomResult = await client.query(
+      `SELECT id, room_code, host_player_id, status
+       FROM game_rooms
+       WHERE room_code = $1
+       FOR UPDATE`,
+      [roomCode],
+    )
+
+    if (roomResult.rows.length === 0) {
+      throw createServiceError("查無此房間", 404)
+    }
+
+    const room = roomResult.rows[0]
+
+    if (room.status !== "waiting") {
+      throw createServiceError("遊戲已開始，無法離開等待房", 409)
+    }
+
+    const memberResult = await client.query(
+      `SELECT
+         player_id,
+         role,
+         seat_order,
+         (is_computer OR role = 'computer') AS is_computer
+       FROM game_room_players
+       WHERE room_id = $1
+       ORDER BY seat_order ASC
+       FOR UPDATE`,
+      [room.id],
+    )
+    const departingMember = memberResult.rows.find(
+      (member) => Number(member.player_id) === numericPlayerId,
+    )
+
+    if (!departingMember) {
+      throw createServiceError("玩家不在該房間中", 404)
+    }
+
+    const isDepartingHost =
+      Number(room.host_player_id) === numericPlayerId || departingMember.role === "host"
+    const remainingMembers = memberResult.rows.filter(
+      (member) => Number(member.player_id) !== numericPlayerId,
+    )
+    const nextHost = isDepartingHost
+      ? remainingMembers.find((member) => !member.is_computer)
+      : null
+
+    if (isDepartingHost && !nextHost) {
+      await client.query(
+        `DELETE FROM game_room_players
+         WHERE room_id = $1`,
+        [room.id],
+      )
+      await client.query(
+        `DELETE FROM game_rooms
+         WHERE id = $1`,
+        [room.id],
+      )
+      await client.query("COMMIT")
+
+      return {
+        dissolved: true,
+        roomCode: room.room_code,
+      }
+    }
+
+    await client.query(
+      `DELETE FROM game_room_players
+       WHERE room_id = $1 AND player_id = $2`,
+      [room.id, numericPlayerId],
+    )
+
+    if (nextHost) {
+      await client.query(
+        `UPDATE game_rooms
+         SET host_player_id = $1
+         WHERE id = $2`,
+        [nextHost.player_id, room.id],
+      )
+      await client.query(
+        `UPDATE game_room_players
+         SET role = CASE WHEN player_id = $1 THEN 'host'
+                         WHEN role = 'host' THEN 'player'
+                         ELSE role END
+         WHERE room_id = $2`,
+        [nextHost.player_id, room.id],
+      )
+    }
+
+    for (const [index, member] of remainingMembers.entries()) {
+      await client.query(
+        `UPDATE game_room_players
+         SET seat_order = $1
+         WHERE room_id = $2 AND player_id = $3`,
+        [index + 1, room.id, member.player_id],
+      )
+    }
+
+    await client.query("COMMIT")
+  } catch (error) {
+    await client.query("ROLLBACK")
+    throw error
+  } finally {
+    client.release()
+  }
+
+  return {
+    dissolved: false,
+    roomState: await getRoomState({ roomCode }),
+  }
+}
+
 async function startGame({ roomCode, playerId }) {
   const client = await pool.connect()
 
@@ -585,9 +707,11 @@ async function startGame({ roomCode, playerId }) {
            grp.is_ready,
            (grp.is_computer OR grp.role = 'computer') AS is_computer,
            p.username,
+           p.title,
            p.avatar_id,
            avatar_item.image_url AS avatar_url,
            card_skin_item.image_url AS card_skin_url,
+           p.level,
            pei.card_skin_overrides
          FROM game_room_players grp
          JOIN players p ON p.id = grp.player_id
@@ -610,9 +734,11 @@ async function startGame({ roomCode, playerId }) {
            grp.is_ready,
            (grp.is_computer OR grp.role = 'computer') AS is_computer,
            p.username,
+           p.title,
            p.avatar_id,
            avatar_item.image_url AS avatar_url,
-           card_skin_item.image_url AS card_skin_url
+           card_skin_item.image_url AS card_skin_url,
+           p.level
          FROM game_room_players grp
          JOIN players p ON p.id = grp.player_id
          LEFT JOIN player_equipped_items pei ON pei.player_id = p.id
@@ -667,6 +793,15 @@ async function startGame({ roomCode, playerId }) {
       [room.id],
     )
 
+    await client.query(
+      `UPDATE room_invitations
+       SET status = 'expired',
+           responded_at = CURRENT_TIMESTAMP
+       WHERE room_id = $1
+         AND status = 'pending'`,
+      [room.id],
+    )
+
     await client.query("COMMIT")
   } catch (error) {
     await client.query("ROLLBACK")
@@ -683,5 +818,6 @@ export {
   updateReady,
   getRoomState,
   kickPlayer,
+  leaveRoom,
   startGame,
 }

@@ -12,6 +12,7 @@ test('room invitation schema and backend routes are registered', async () => {
   )
   const appSource = await readSource('server/src/app.js')
   const routeSource = await readSource('server/src/routes/roomInvitationRoutes.js')
+  const controllerSource = await readSource('server/src/controllers/roomInvitationController.js')
 
   assert.match(schemaSource, /CREATE TABLE room_invitations/)
   assert.match(schemaSource, /unique_pending_room_invitation/)
@@ -26,6 +27,10 @@ test('room invitation schema and backend routes are registered', async () => {
   assert.match(routeSource, /rooms\/:roomCode\/invitations/)
   assert.match(routeSource, /room-invitations\/:id\/accept/)
   assert.match(routeSource, /room-invitations\/:id\/reject/)
+  assert.match(routeSource, /requireMemberAuth/)
+  assert.match(controllerSource, /const inviterPlayerId = parsePositiveInteger\(req\.player\?\.id\)/)
+  assert.match(controllerSource, /const playerId = parsePositiveInteger\(req\.player\?\.id\)/)
+  assert.doesNotMatch(controllerSource, /const playerId = parsePositiveInteger\(body\.playerId\)/)
 })
 
 test('room invitation frontend api and store expose the MVP flow', async () => {
@@ -50,7 +55,7 @@ test('custom room invites friends and lobby exposes pending room invitations', a
   const customRoomSource = await readSource('src/views/CustomRoomView.vue')
   const playerListSource = await readSource('src/components/gameRoom/CustomRoomPlayerList.vue')
   const inviteModalSource = await readSource('src/components/gameRoom/InviteFriendModal.vue')
-  const lobbyMenuSource = await readSource('src/components/menu/LobbyMenu.vue')
+  const lobbySource = await readSource('src/views/Lobby.vue')
   const noticeSource = await readSource('src/components/gameRoom/RoomInvitationNotice.vue')
 
   assert.match(playerListSource, /invite-friend/)
@@ -58,10 +63,10 @@ test('custom room invites friends and lobby exposes pending room invitations', a
   assert.match(customRoomSource, /InviteFriendModal/)
   assert.match(customRoomSource, /availableInviteFriends/)
   assert.match(customRoomSource, /roomInvitationStore\.sendInvitation/)
-  assert.match(inviteModalSource, /好友清單/)
-  assert.match(inviteModalSource, /發送邀請/)
+  assert.match(inviteModalSource, /好友列表/)
+  assert.match(inviteModalSource, /送出邀請/)
 
-  assert.match(lobbyMenuSource, /RoomInvitationNotice/)
+  assert.match(lobbySource, /RoomInvitationNotice/)
   assert.match(noticeSource, /房間邀請/)
   assert.match(noticeSource, /roomInvitationStore\.loadInvitations/)
   assert.match(noticeSource, /roomInvitationStore\.acceptInvitation/)

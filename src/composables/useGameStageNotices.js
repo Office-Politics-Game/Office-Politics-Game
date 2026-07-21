@@ -1,4 +1,4 @@
-import { nextTick, ref } from "vue";
+﻿import { nextTick, ref } from "vue";
 
 const NOTICE_CLOSE_ACK_BUFFER_MS = 600;
 const MANAGER_EFFECT_ACK_BUFFER_MS = 900;
@@ -135,9 +135,9 @@ export function useGameStageNotices({
     resolveNoticeIdleIfIdle();
   }
 
-  function closeRoundWinnerNotice() {
+  function closeRoundWinnerNotice(ackBufferMs = NOTICE_CLOSE_ACK_BUFFER_MS) {
     if (isRoundWinnerNoticeOpen.value) {
-      holdNoticeAckAfterClose();
+      holdNoticeAckAfterClose(ackBufferMs);
     }
 
     isRoundWinnerNoticeOpen.value = false;

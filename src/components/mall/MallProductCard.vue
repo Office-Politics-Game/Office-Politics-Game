@@ -44,10 +44,11 @@
         type="button"
         class="item-action"
         :class="`item-action--${item.actionState}`"
-        :disabled="item.actionState !== 'buy'"
+        :disabled="item.actionState !== 'buy' || purchaseDisabled"
+        :aria-busy="purchasing"
         @click.stop="$emit('purchase', item)"
       >
-        {{ item.actionLabel }}
+        {{ purchasing ? "購買中..." : item.actionLabel }}
       </button>
     </div>
   </button>
@@ -63,6 +64,14 @@ defineProps({
     required: true,
   },
   active: {
+    type: Boolean,
+    default: false,
+  },
+  purchasing: {
+    type: Boolean,
+    default: false,
+  },
+  purchaseDisabled: {
     type: Boolean,
     default: false,
   },

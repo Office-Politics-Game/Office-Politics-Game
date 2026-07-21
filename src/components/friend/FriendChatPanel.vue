@@ -161,13 +161,17 @@ function handleMessageKeydown(event) {
 }
 
 async function submitMessage() {
-  const sentMessage = await chatStore.sendMessage({
+  const originalMessage = messageText.value;
+  const sendRequest = chatStore.sendMessage({
     friendId: props.friend.playerId,
-    content: messageText.value,
+    content: originalMessage,
   });
+  messageText.value = "";
 
-  if (sentMessage) {
-    messageText.value = "";
+  const sentMessage = await sendRequest;
+
+  if (!sentMessage) {
+    messageText.value = originalMessage;
   }
 }
 
@@ -206,7 +210,7 @@ watch(
 }
 
 .realtime-status {
-  @apply flex shrink-0 items-center gap-3 border-b border-[var(--brand-hover)] bg-[rgba(0,70,244,0.08)] px-4 py-2 text-xs font-bold text-[var(--brand-active)] max-sm:flex-col max-sm:items-stretch;
+  @apply flex shrink-0 items-center gap-3 border-b border-[var(--brand-hover)] bg-[rgba(0,70,244,0.08)] px-4 py-2 text-xs font-bold text-[var(--brand-active)];
 }
 
 .realtime-retry-button {
@@ -234,11 +238,11 @@ watch(
 }
 
 .chat-message--mine {
-  @apply items-start;
+  @apply items-end;
 }
 
 .chat-message--friend {
-  @apply items-end;
+  @apply items-start;
 }
 
 .message-author {
@@ -246,7 +250,10 @@ watch(
 }
 
 .message-bubble {
-  @apply relative max-w-[62%] border px-4 py-2 shadow-[0_10px_24px_rgba(0,19,50,0.08)] max-md:max-w-[82%];
+  position: relative;
+  max-width: 320px;
+  overflow-wrap: anywhere;
+  @apply border px-4 py-2 shadow-[0_10px_24px_rgba(0,19,50,0.08)];
 }
 
 .message-bubble::before,
@@ -262,10 +269,27 @@ watch(
 }
 
 .chat-message--mine .message-bubble {
-  @apply border-[var(--gray-100)] bg-white text-[var(--brand-active)];
+  @apply border-[var(--brand-primary)] bg-[var(--brand-primary)] text-[var(--brand-navy)];
 }
 
 .chat-message--mine .message-bubble::before {
+  top: 11px;
+  right: -9px;
+  border-top-width: 8px;
+  border-bottom-width: 8px;
+  border-left: 9px solid var(--brand-primary);
+}
+
+.chat-message--mine .message-bubble::after {
+  right: -7px;
+  border-left: 8px solid var(--brand-primary);
+}
+
+.chat-message--friend .message-bubble {
+  @apply border-[var(--gray-100)] bg-white text-[var(--brand-active)];
+}
+
+.chat-message--friend .message-bubble::before {
   top: 11px;
   left: -9px;
   border-top-width: 8px;
@@ -273,26 +297,9 @@ watch(
   border-right: 9px solid var(--gray-100);
 }
 
-.chat-message--mine .message-bubble::after {
+.chat-message--friend .message-bubble::after {
   left: -7px;
   border-right: 8px solid white;
-}
-
-.chat-message--friend .message-bubble {
-  @apply border-[var(--gray-200)] bg-[var(--gray-100)] text-[var(--brand-active)];
-}
-
-.chat-message--friend .message-bubble::before {
-  top: 11px;
-  right: -9px;
-  border-top-width: 8px;
-  border-bottom-width: 8px;
-  border-left: 9px solid var(--gray-200);
-}
-
-.chat-message--friend .message-bubble::after {
-  right: -7px;
-  border-left: 8px solid var(--gray-100);
 }
 
 .message-content {
@@ -304,19 +311,21 @@ watch(
 }
 
 .chat-composer {
-  @apply flex shrink-0 gap-2 border-t border-[var(--gray-100)] bg-white px-4 py-3 max-sm:flex-col;
+  @apply flex shrink-0 items-stretch gap-2 border-t border-[var(--gray-100)] bg-white px-4 py-3;
 }
 
 .chat-input {
   @apply min-h-12 min-w-0 flex-1 resize-none border border-[var(--gray-100)] bg-[rgba(255,255,255,0.72)] px-3 py-2 text-sm font-bold text-[var(--brand-active)] outline-0 transition-[border-color,background-color,box-shadow] duration-[180ms] disabled:cursor-not-allowed disabled:opacity-60;
 }
 
-.chat-input:focus {
+.chat-input:focus-visible {
   @apply border-[var(--brand-hover)] bg-[var(--surface-glass-hover)] shadow-[0_0_0_4px_var(--brand-focus)];
 }
 
 .chat-send-button {
-  @apply min-h-12 min-w-28 border border-[var(--brand-active)] bg-[var(--brand-active)] px-5 py-2 text-sm font-black text-white transition-[border-color,background-color,box-shadow,color,transform] duration-[180ms] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-focus)] disabled:cursor-not-allowed disabled:border-transparent disabled:bg-[rgba(160,166,179,0.62)] disabled:text-white disabled:shadow-none;
+  width: 112px;
+  height: 48px;
+  @apply shrink-0 border border-[var(--brand-active)] bg-[var(--brand-active)] px-5 py-2 text-sm font-black text-white transition-[border-color,background-color,box-shadow,color,transform] duration-[180ms] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-focus)] disabled:cursor-not-allowed disabled:border-transparent disabled:bg-[rgba(160,166,179,0.62)] disabled:text-white disabled:shadow-none;
 }
 
 .chat-send-button:hover:not(:disabled) {
@@ -325,5 +334,11 @@ watch(
 
 .chat-send-button:active:not(:disabled) {
   @apply translate-y-px border-[var(--brand-active)] bg-[var(--brand-active)];
+}
+
+@media (min-width: 1024px) {
+  .message-bubble {
+    max-width: 460px;
+  }
 }
 </style>

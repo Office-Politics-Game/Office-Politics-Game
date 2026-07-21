@@ -25,7 +25,7 @@ async function handleSendRoomInvitation(req, res){
   try {
     const body = req.body ?? {}
     const { roomCode } = req.params
-    const inviterPlayerId = parsePositiveInteger(body.inviterPlayerId)
+    const inviterPlayerId = parsePositiveInteger(req.player?.id)
     const inviteePlayerId = parsePositiveInteger(body.inviteePlayerId)
 
     if (!roomCode || !inviterPlayerId || !inviteePlayerId){
@@ -49,7 +49,7 @@ async function handleSendRoomInvitation(req, res){
 
 async function handleGetPendingRoomInvitations(req, res){
   try {
-    const playerId = parsePositiveInteger(req.query.playerId)
+    const playerId = parsePositiveInteger(req.player?.id)
 
     if (!playerId){
       return res.status(400).json({ message: "缺少玩家ID" })
@@ -68,9 +68,8 @@ async function handleGetPendingRoomInvitations(req, res){
 
 async function handleAcceptRoomInvitation(req, res){
   try {
-    const body = req.body ?? {}
     const invitationId = parsePositiveInteger(req.params.id)
-    const playerId = parsePositiveInteger(body.playerId)
+    const playerId = parsePositiveInteger(req.player?.id)
 
     if (!invitationId || !playerId){
       return res.status(400).json({ message: "缺少房間邀請或玩家資料" })
@@ -99,9 +98,8 @@ async function handleAcceptRoomInvitation(req, res){
 
 async function handleRejectRoomInvitation(req, res){
   try {
-    const body = req.body ?? {}
     const invitationId = parsePositiveInteger(req.params.id)
-    const playerId = parsePositiveInteger(body.playerId)
+    const playerId = parsePositiveInteger(req.player?.id)
 
     if (!invitationId || !playerId){
       return res.status(400).json({ message: "缺少房間邀請或玩家資料" })

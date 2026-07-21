@@ -2,8 +2,13 @@ import pool from "../db/index.js"
 import { supabaseAdmin, supabaseAuth } from "../db/supabaseClient.js"
 
 const DEFAULT_AVATAR_ID = 1
+const INITIAL_PLAYER_COINS = 6000
+const INITIAL_PLAYER_GEMS = 600
+const INITIAL_PLAYER_TICKETS = 50
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PASSWORD_RULE_ERROR_MESSAGE = "密碼格式不符合規則"
+const PASSWORD_AUTH_PROVIDER = "email"
+const OAUTH_PASSWORD_BLOCK_MESSAGE = "第三方登入帳號沒有修改密碼權限，請至原登入平台管理密碼"
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=[\]{};':"|,.<>/?`~])[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"|,.<>/?`~]{8,16}$/
 const PLAYER_SELECT_SQL = `id, auth_user_id, username, account, avatar_id,
     level, exp, coins, gems, tickets,
@@ -20,6 +25,29 @@ function createAuthError(statusCode, message) {
 function createInternalAuthError(error, logMessage, publicMessage = "服務暫時異常，請稍後再試") {
     console.error(logMessage, error)
     return createAuthError(500, publicMessage)
+}
+
+function getAuthProvider(user) {
+    return (
+        user?.app_metadata?.provider ||
+        user?.identities?.[0]?.provider ||
+        "unknown"
+    )
+}
+
+function canChangePassword(user) {
+    return getAuthProvider(user) === PASSWORD_AUTH_PROVIDER
+}
+
+function formatAuthPlayer(row, authUser, fallbackProvider = "unknown") {
+    const authProvider = getAuthProvider(authUser)
+    const resolvedProvider = authProvider === "unknown" ? fallbackProvider : authProvider
+
+    return {
+        ...formatPlayer(row),
+        authProvider: resolvedProvider,
+        canChangePassword: resolvedProvider === PASSWORD_AUTH_PROVIDER
+    }
 }
 
 function formatPlayer(row) {
@@ -169,18 +197,25 @@ async function registerPlayer({ username, account, password, avatarId } = {}) {
 
     try {
         const result = await pool.query(
-            `INSERT INTO players (auth_user_id, username, account, avatar_id)
-            VALUES ($1, $2, $3, $4)
+            `INSERT INTO players (auth_user_id, username, account, avatar_id, coins, gems, tickets)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING ${PLAYER_SELECT_SQL}`,
             [
                 authUserId,
                 trimmedUsername,
                 trimmedAccount,
                 avatarId ?? DEFAULT_AVATAR_ID,
+                INITIAL_PLAYER_COINS,
+                INITIAL_PLAYER_GEMS,
+                INITIAL_PLAYER_TICKETS,
             ]
         )
 
-        return formatPlayer(result.rows[0])
+        return {
+            ...formatPlayer(result.rows[0]),
+            authProvider: PASSWORD_AUTH_PROVIDER,
+            canChangePassword: true
+        }
     } catch (error) {
         await deleteSupabaseUserQuietly(authUserId)
         throw createInternalAuthError(
@@ -256,7 +291,11 @@ async function loginPlayer({ account, password } = {}) {
     )
 
     return {
-        player: formatPlayer(updatedPlayerResult.rows[0]),
+        player: formatAuthPlayer(
+            updatedPlayerResult.rows[0],
+            data.user,
+            PASSWORD_AUTH_PROVIDER
+        ),
         token,
         expiresIn
     }
@@ -327,7 +366,10 @@ async function syncOAuthPlayer({ accessToken, expiresIn } = {}) {
             )
 
             return {
-                player: formatPlayer(updatedResult.rows[0]),
+                player: {
+                    ...formatAuthPlayer(updatedResult.rows[0], authUser),
+                    canChangePassword: false
+                },
                 token: accessToken,
                 expiresIn
             }
@@ -340,21 +382,27 @@ async function syncOAuthPlayer({ accessToken, expiresIn } = {}) {
         }
     }
 
-    try {
+      try {
         const createdResult = await pool.query(
-            `INSERT INTO players (auth_user_id, username, account, avatar_id, is_online, last_login_at)
-             VALUES ($1, $2, $3, $4, true, CURRENT_TIMESTAMP)
+            `INSERT INTO players (auth_user_id, username, account, avatar_id, coins, gems, tickets, is_online, last_login_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, true, CURRENT_TIMESTAMP)
              RETURNING ${PLAYER_SELECT_SQL}`,
             [
                 authUser.id,
                 createOAuthUsername(authUser, email),
                 email,
-                DEFAULT_AVATAR_ID
+                DEFAULT_AVATAR_ID,
+                INITIAL_PLAYER_COINS,
+                INITIAL_PLAYER_GEMS,
+                INITIAL_PLAYER_TICKETS,
             ]
         )
 
         return {
-            player: formatPlayer(createdResult.rows[0]),
+            player: {
+                ...formatAuthPlayer(createdResult.rows[0], authUser),
+                canChangePassword: false
+            },
             token: accessToken,
             expiresIn
         }
@@ -421,6 +469,78 @@ async function resetPlayerPassword({ token, password } = {}) {
     }
 }
 
+async function changePlayerPassword({
+    token,
+    currentPassword,
+    password,
+    confirmPassword
+} = {}) {
+    if (!token) {
+        throw createAuthError(401, "請先登入後再修改密碼")
+    }
+
+    if (!currentPassword) {
+        throw createAuthError(400, "請輸入目前密碼")
+    }
+
+    validatePassword(password)
+
+    if (!confirmPassword) {
+        throw createAuthError(400, "請再次輸入新密碼")
+    }
+
+    if (password !== confirmPassword) {
+        throw createAuthError(400, "新密碼與確認密碼不一致")
+    }
+
+    const { data, error } = await supabaseAdmin.auth.getUser(token)
+
+    if (error || !data?.user?.id) {
+        throw createAuthError(401, "登入狀態已失效，請重新登入")
+    }
+
+    if (!canChangePassword(data.user)) {
+        throw createAuthError(403, OAUTH_PASSWORD_BLOCK_MESSAGE)
+    }
+
+    const email = data.user.email?.trim().toLowerCase()
+
+    if (!email || !isValidEmail(email)) {
+        throw createAuthError(400, "會員帳號資料異常，請重新登入")
+    }
+
+    const { error: signInError } =
+        await supabaseAdmin.auth.signInWithPassword({
+            email,
+            password: currentPassword
+        })
+
+    if (signInError) {
+        throw createAuthError(401, "目前密碼錯誤")
+    }
+
+    if (currentPassword === password) {
+        throw createAuthError(400, "新密碼不可與目前密碼相同")
+    }
+
+    const { error: updateError } =
+        await supabaseAdmin.auth.admin.updateUserById(data.user.id, {
+            password
+        })
+
+    if (updateError) {
+        throw createInternalAuthError(
+            updateError,
+            "修改密碼失敗",
+            "修改密碼失敗，請稍後再試"
+        )
+    }
+
+    return {
+        message: "密碼已更新，請重新登入"
+    }
+}
+
 async function logoutPlayer(token) {
     if (!token) {
         return false
@@ -477,7 +597,16 @@ async function verifyToken(token) {
         throw createAuthError(404, "找不到玩家資料")
     }
 
-    return formatPlayer(player)
+    return formatAuthPlayer(player, data.user)
 }
 
-export { registerPlayer, loginPlayer, syncOAuthPlayer, logoutPlayer, verifyToken, requestPasswordReset, resetPlayerPassword }
+export {
+    registerPlayer,
+    loginPlayer,
+    syncOAuthPlayer,
+    logoutPlayer,
+    verifyToken,
+    requestPasswordReset,
+    resetPlayerPassword,
+    changePlayerPassword
+}

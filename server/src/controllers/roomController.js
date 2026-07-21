@@ -5,6 +5,7 @@ import {
   updateReady,
   getRoomState,
   kickPlayer,
+  leaveRoom,
   startGame,
 } from "../services/roomService.js"
 import { getSocketServer } from "../socket/index.js"
@@ -134,7 +135,8 @@ async function handleKickPlayer(req, res) {
     })
 
     getSocketServer()
-      ?.emit("room:state", roomState)
+      ?.to(roomCode)
+      .emit("room:state", roomState)
 
     return res.status(200).json({
       message: "玩家已移出房間",
@@ -143,6 +145,37 @@ async function handleKickPlayer(req, res) {
   } catch (error) {
     return res.status(getErrorStatus(error)).json({
       message: error.statusCode ? error.message : "移出玩家失敗",
+      error: error.message,
+    })
+  }
+}
+
+async function handleLeaveRoom(req, res) {
+  try {
+    const { roomCode } = req.params
+    const numericPlayerId = Number(req.body?.playerId)
+
+    if (!Number.isInteger(numericPlayerId) || numericPlayerId <= 0) {
+      return res.status(400).json({ message: "缺少或無效的玩家ID" })
+    }
+
+    const result = await leaveRoom({ roomCode, playerId: numericPlayerId })
+    const socketServer = getSocketServer()
+
+    if (result.dissolved) {
+      socketServer
+        ?.to(roomCode)
+        .emit("room:dissolved", { roomCode: result.roomCode })
+    } else {
+      socketServer
+        ?.to(roomCode)
+        .emit("room:state", result.roomState)
+    }
+
+    return res.status(200).json(result)
+  } catch (error) {
+    return res.status(getErrorStatus(error)).json({
+      message: error.statusCode ? error.message : "離開房間失敗",
       error: error.message,
     })
   }
@@ -191,6 +224,7 @@ export {
   handleUpdateReady,
   handleGetRoomState,
   handleKickPlayer,
+  handleLeaveRoom,
   handleStartGame,
   handleGetGameResult,
 }

@@ -4,11 +4,28 @@ import assert from "node:assert/strict";
 const routerSource = readFileSync("src/router/index.js", "utf8");
 const gachaSource = readFileSync("src/views/GachaView.vue", "utf8");
 const gachaUiSource = readFileSync("src/components/gacha/GachaUi.vue", "utf8");
+const gachaRouteSource = readFileSync("server/src/routes/gachaRoutes.js", "utf8");
+const achievementRouteSource = readFileSync(
+  "server/src/routes/achievementRoutes.js",
+  "utf8",
+);
 
 assert.match(
   routerSource,
   /path:\s*"\/gacha",\s*name:\s*"Gacha",\s*component:\s*GachaView,\s*}/,
-  "gacha route must allow guest players so ticket currency can load",
+  "gacha page route should remain registered",
+);
+
+assert.match(
+  gachaRouteSource,
+  /requireMemberAuth/,
+  "gacha backend routes should require member auth",
+);
+
+assert.match(
+  achievementRouteSource,
+  /requireMemberAuth/,
+  "achievement backend routes should require member auth",
 );
 
 assert.match(

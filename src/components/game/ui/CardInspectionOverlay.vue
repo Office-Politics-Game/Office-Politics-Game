@@ -4,6 +4,14 @@ import GameCard from "./GameCard.vue";
 
 const props = defineProps({
   card: { type: Object, required: true },
+  cardAriaLabel: {
+    type: String,
+    default: null,
+  },
+  emitCardPointerDown: {
+    type: Boolean,
+    default: true,
+  },
 });
 
 const emit = defineEmits(["close", "card-pointerdown"]);
@@ -42,6 +50,7 @@ function handlePointerMove(event) {
 
 function handlePointerDown(event) {
   resetTilt();
+  if (!props.emitCardPointerDown) return;
   emit("card-pointerdown", props.card, event, "inspection");
 }
 
@@ -64,14 +73,14 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown));
       class="card-inspection-overlay__card aspect-[3/4]"
       role="button"
       tabindex="0"
-      :aria-label="`收起或拖曳出牌：${card.name}`"
+      :aria-label="cardAriaLabel ?? `收起或拖曳出牌：${card.displayName ?? card.name}`"
       :style="cardStyle"
       @pointerdown.stop="handlePointerDown"
       @pointermove="handlePointerMove"
       @pointerleave="resetTilt"
     >
       <GameCard
-        :name="card.name"
+        :name="card.displayName ?? card.name"
         :background-url="card.backgroundUrl"
         :frame-url="card.frameUrl"
         inspection

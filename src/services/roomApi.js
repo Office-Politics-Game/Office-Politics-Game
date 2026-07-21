@@ -37,6 +37,10 @@ function startRoom(roomCode, payload) {
   return apiClient.post(buildRoomPath(roomCode, "start"), payload);
 }
 
+function leaveRoom(roomCode, payload) {
+  return apiClient.post(buildRoomPath(roomCode, "leave"), payload);
+}
+
 function addComputerPlayer(roomCode, payload) {
   return apiClient.post(buildRoomPath(roomCode, "computer-players"), payload);
 }
@@ -67,5 +71,6 @@ export {
   updateRoomState,
   addComputerPlayer,
   removePlayer,
+  leaveRoom,
   startRoom,
 };

@@ -10,9 +10,9 @@ function drawGacha({ playerId, count = 1, poolId = "role_cards" }) {
   });
 }
 
-function getOwnedGachaCards({ playerId }) {
+function getOwnedGachaCards({ playerId, poolId = "role_cards" }) {
   return apiClient.get(`${GACHA_API_PATH}/owned-cards`, {
-    params: { playerId },
+    params: { playerId, poolId },
   });
 }
 

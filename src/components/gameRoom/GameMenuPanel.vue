@@ -20,7 +20,7 @@ function returnLobby() {
   >
     <WaitingRoomMenu />
     <button
-      class="btn-glass tap-pop absolute w-30 bottom-3 left-1/2 z-10 -translate-x-1/2 lg:bottom-4"
+      class="btn-glass tap-pop game-menu-return-button absolute w-30 bottom-3 left-1/2 z-10 -translate-x-1/2 lg:bottom-4"
       type="button"
       @click="returnLobby"
     >
@@ -28,3 +28,15 @@ function returnLobby() {
     </button>
   </section>
 </template>
+
+<style scoped>
+@media (orientation: landscape) and (max-width: 1023px) and (max-height: 640px) {
+  .game-menu-return-button {
+    bottom: 6px;
+    width: 88px;
+    min-height: 30px;
+    padding: 4px 10px;
+    font-size: 13px;
+  }
+}
+</style>

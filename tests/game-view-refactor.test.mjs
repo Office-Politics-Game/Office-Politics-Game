@@ -14,9 +14,9 @@ const readSource = (path) =>
 test('view model keeps the viewer at the bottom and preserves draw guards', () => {
   const rawPlayers = [
     { playerId: 1, seatOrder: 0, handCount: 1 },
-    { playerId: 2, seatOrder: 1, handCount: 1 },
+    { playerId: 2, seatOrder: 1, handCount: 1, username: 'Computer 2' },
     { playerId: 3, seatOrder: 2, handCount: 1 },
-    { playerId: 4, seatOrder: 3, hand: [{ id: 1 }] },
+    { playerId: 4, seatOrder: 3, hand: [{ id: 1 }], level: 1 },
   ]
 
   assert.deepEqual(
@@ -28,9 +28,10 @@ test('view model keeps the viewer at the bottom and preserves draw guards', () =
   const model = useGameViewModel({
     gameState: ref({ players: rawPlayers, discardPile: [{ id: 2 }], deckCount: 5 }),
     currentPlayer: ref(null),
-    currentTurnPlayerId: ref(4),
+    currentTurnPlayerId: ref(2),
     resolvedCurrentPlayerId: ref('4'),
     roomPlayerMetadata: ref({}),
+    viewerProfile: ref({ level: 8 }),
     isDrawing,
     normalizeCard: (card) => ({ ...card, normalized: true }),
     resolveAvatarUrl: (_, index) => `avatar-${index}`,
@@ -43,9 +44,11 @@ test('view model keeps the viewer at the bottom and preserves draw guards', () =
     'bottom',
   ])
   assert.equal(model.players.value.at(-1).isCurrentPlayer, true)
+  assert.equal(model.players.value.at(-1).level, 8)
   assert.equal(model.handCards.value[0].normalized, true)
   assert.equal(model.discardCards.value[0].normalized, true)
-  assert.equal(model.canDraw.value, true)
+  assert.equal(model.canDraw.value, false)
+  assert.equal(model.turnStatus.value.currentPhase, 'Computer 2')
 
   isDrawing.value = true
   assert.equal(model.canDraw.value, false)
@@ -55,7 +58,7 @@ test('room state validates route identity and patches a four-player response', a
   const patches = []
   const gameStateStore = {
     async fetchRoomState() {
-      return { players: [{ playerId: 1, username: 'Viewer' }] }
+      return { players: [{ playerId: 1, username: 'Viewer', level: 9 }] }
     },
     $patch(payload) {
       patches.push(payload)
@@ -83,6 +86,7 @@ test('room state validates route identity and patches a four-player response', a
   assert.equal(patches.at(-1).currentPlayer.playerId, 1)
   assert.equal(patches.at(-1).currentTurnPlayerId, 2)
   assert.equal(roomState.roomPlayerMetadata.value['1'].username, 'Viewer')
+  assert.equal(roomState.roomPlayerMetadata.value['1'].level, 9)
 
   const missingIdentityState = useGameRoomState({
     route: { query: {} },
@@ -103,6 +107,8 @@ test('game view remains a thin lifecycle and template coordination layer', async
   const socketSource = await readSource('src/composables/useGameSocketActions.js')
 
   assert.match(viewSource, /useGameViewModel\(\{/)
+  assert.match(viewSource, /useProfileStore\(\)/)
+  assert.match(viewSource, /viewerProfile,/)
   assert.match(viewSource, /useGameRoomState\(\{/)
   assert.match(viewSource, /useGameSocketActions\(\{/)
   assert.match(viewSource, /onMounted\(\(\) => \{[\s\S]*loadInitialRoomState\(\)[\s\S]*subscribeGameSocket\(\)/)

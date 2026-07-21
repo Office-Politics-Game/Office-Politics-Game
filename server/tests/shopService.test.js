@@ -245,23 +245,24 @@ describe("shopService", () => {
       playerId: 1,
       avatarItemId: null,
       cardSkinItemId: null,
+      cardSkinOverrides: {},
       cardBackItemId: null,
       boardSkinItemId: null,
       updatedAt: null,
     })
   })
 
-  test("equipShopItem() 可以裝備已持有的商品", async () => {
+  test("equipShopItem() 可以裝備已持有的卡背", async () => {
     clientQueryMock
       .mockResolvedValueOnce({ rows: [] }) // BEGIN
-      .mockResolvedValueOnce({ rows: [{ id: 2, type: "card_skin" }] })
+      .mockResolvedValueOnce({ rows: [{ id: 2, type: "card_back" }] })
       .mockResolvedValueOnce({
         rows: [
           {
             player_id: 1,
             avatar_item_id: null,
-            card_skin_item_id: 2,
-            card_back_item_id: null,
+            card_skin_item_id: null,
+            card_back_item_id: 2,
             board_skin_item_id: null,
             updated_at: "updated",
           },
@@ -274,12 +275,14 @@ describe("shopService", () => {
     expect(equipped).toEqual({
       playerId: 1,
       avatarItemId: null,
-      cardSkinItemId: 2,
-      cardBackItemId: null,
+      cardSkinItemId: null,
+      cardSkinOverrides: {},
+      cardBackItemId: 2,
       boardSkinItemId: null,
       updatedAt: "updated",
     })
-    expect(clientQueryMock.mock.calls[2][0]).toContain("card_skin_item_id")
+    expect(clientQueryMock.mock.calls[1][1]).toEqual([1, 2])
+    expect(clientQueryMock.mock.calls[2][0]).toContain("card_back_item_id")
   })
 
   test("equipShopItem() 不允許裝備抽卡券", async () => {

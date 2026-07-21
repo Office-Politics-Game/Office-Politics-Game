@@ -1,6 +1,5 @@
 import { verifyToken } from "../services/authService.js"
-
-const AUTH_COOKIE_NAME = "officePoliticsAuthToken"
+import { AUTH_COOKIE_NAME } from "../constants/auth.js"
 
 function getCookieToken(req) {
     return req.cookies?.[AUTH_COOKIE_NAME] || ""
@@ -29,4 +28,21 @@ async function requireAuth(req, res, next) {
     }
 }
 
-export { requireAuth }
+function isMemberPlayer(player) {
+    return Boolean(player?.authUserId && player?.account)
+}
+
+async function requireMemberAuth(req, res, next) {
+    await requireAuth(req, res, () => {
+        if (!isMemberPlayer(req.player)) {
+            res.status(403).json({
+                message: "登入解鎖更多功能"
+            })
+            return
+        }
+
+        next()
+    })
+}
+
+export { requireAuth, requireMemberAuth }

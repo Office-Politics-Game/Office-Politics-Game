@@ -15,7 +15,8 @@ import TableCardPiles from '@/components/game/ui/TableCardPiles.vue'
 const discardCards = ref([
   {
     id: 'discard-demo-base',
-    name: 'CEO Pressure',
+    name: '執行長',
+    displayName: '執行長',
     backgroundUrl: ceoBackgroundUrl,
     frameUrl: ceoFrameUrl,
   },
@@ -65,7 +66,8 @@ const opponentDrawTargets = players
 
 const selfInitialHandCard = {
   id: 'self-initial-hand',
-  name: 'CEO Pressure',
+  name: '執行長',
+  displayName: '執行長',
   backgroundUrl: ceoBackgroundUrl,
   frameUrl: ceoFrameUrl,
 }
@@ -88,7 +90,8 @@ function createDemoDrawCard() {
 
   return {
     id: `opponent-draw-demo-${drawCount}`,
-    name: 'CEO Pressure',
+    name: '執行長',
+    displayName: '執行長',
     backgroundUrl: ceoBackgroundUrl,
     frameUrl: ceoFrameUrl,
   }
