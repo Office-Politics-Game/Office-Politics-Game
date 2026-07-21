@@ -5,14 +5,20 @@
     @click.capture="handleButtonClick"
   >
     <div class="absolute inset-0 bg-[rgba(0,19,50,0.36)]"></div>
-    <section class="mall-shell relative z-10 flex h-[98svh] w-[98vw] max-w-[1360px] flex-col overflow-hidden border border-white/25 bg-white/82 shadow-2xl backdrop-blur-md md:h-[92vh] md:w-[95vw]">
+    <section
+      class="mall-shell relative z-10 flex h-[98svh] w-[98vw] max-w-[1360px] flex-col overflow-hidden border border-white/25 bg-white/82 shadow-2xl backdrop-blur-md md:h-[92vh] md:w-[95vw]"
+    >
       <header class="mobile-storebar xl:hidden">
         <div class="min-w-0">
-          <p class="m-0 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
+          <p
+            class="m-0 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500"
+          >
             OFFICE POLITICS
           </p>
           <div class="mt-0.5 flex items-center">
-            <h1 class="font-sans text-2xl font-bold tracking-[0.05em] text-slate-900">
+            <h1
+              class="font-sans text-2xl font-bold tracking-[0.05em] text-slate-900"
+            >
               商城
             </h1>
           </div>
@@ -53,12 +59,18 @@
           @click.self="isMenuOpen = false"
         >
           <aside class="mobile-menu-panel" aria-label="商城選單">
-            <div class="flex items-start justify-between gap-3 border-b border-slate-300/80 pb-3">
+            <div
+              class="flex items-start justify-between gap-3 border-b border-slate-300/80 pb-3"
+            >
               <div>
-                <p class="m-0 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
+                <p
+                  class="m-0 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500"
+                >
                   OFFICE POLITICS
                 </p>
-                <h2 class="mt-1 font-sans text-xl font-bold tracking-[0.06em] text-slate-900">
+                <h2
+                  class="mt-1 font-sans text-xl font-bold tracking-[0.06em] text-slate-900"
+                >
                   商城
                 </h2>
                 <p class="mt-1 text-xs font-semibold text-slate-600">
@@ -83,7 +95,9 @@
             />
 
             <div class="mt-3 border border-slate-300 bg-slate-100 p-3">
-              <div class="text-[10px] font-bold tracking-[0.12em] text-slate-500">
+              <div
+                class="text-[10px] font-bold tracking-[0.12em] text-slate-500"
+              >
                 目前分類
               </div>
               <div class="mt-1 text-base font-bold text-slate-900">
@@ -102,26 +116,35 @@
         </div>
       </Transition>
 
-      <header class="mall-topbar hidden grid-cols-[minmax(0,1fr)_auto] gap-1.5 border-b border-slate-300/80 px-2 py-2 xl:grid xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,1fr)_auto] xl:gap-4 xl:px-6 xl:py-4">
+      <header
+        class="mall-topbar hidden grid-cols-[minmax(0,1fr)_auto] gap-1.5 border-b border-slate-300/80 px-2 py-2 xl:grid xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,1fr)_auto] xl:gap-4 xl:px-6 xl:py-4"
+      >
         <div class="order-1 min-w-0 md:order-none">
-          <p class="hidden text-[11px] font-bold uppercase tracking-[0.28em] text-slate-500 xl:block xl:text-xs">
+          <p
+            class="hidden text-[11px] font-bold uppercase tracking-[0.28em] text-slate-500 xl:block xl:text-xs"
+          >
             OFFICE POLITICS
           </p>
-          <h1 class="font-sans text-xl font-bold tracking-[0.06em] text-slate-900 xl:mt-1 xl:text-5xl xl:tracking-[0.08em]">
+          <h1
+            class="font-sans text-xl font-bold tracking-[0.06em] text-slate-900 xl:mt-1 xl:text-5xl xl:tracking-[0.08em]"
+          >
             商城
           </h1>
-          <p class="hidden mt-1 text-xs font-semibold tracking-[0.04em] text-slate-600 xl:mt-2 xl:block xl:text-base xl:tracking-[0.06em]">
+          <p
+            class="hidden mt-1 text-xs font-semibold tracking-[0.04em] text-slate-600 xl:mt-2 xl:block xl:text-base xl:tracking-[0.06em]"
+          >
             選擇你的辦公室風格與專屬造型。
           </p>
         </div>
 
-        <div class="mall-topbar-tools order-3 col-span-2 grid grid-cols-3 gap-1 self-center xl:order-none xl:col-span-1 xl:gap-2 xl:self-center">
+        <div
+          class="mall-topbar-tools order-3 col-span-2 grid grid-cols-3 gap-1 self-center xl:order-none xl:col-span-1 xl:gap-2 xl:self-center"
+        >
           <CurrencyBar
             class="mall-topbar-currency col-span-3 justify-self-end"
             :items="['coins', 'gems', 'tickets']"
             tooltip-size="small"
           />
-
         </div>
 
         <button
@@ -134,13 +157,16 @@
         </button>
       </header>
 
-      <div class="grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-hidden xl:grid-cols-[280px_minmax(0,1fr)]">
-        <aside class="scroll-area min-h-0 overflow-y-auto border-b border-slate-300/80 bg-slate-950/95 xl:border-b-0 xl:border-r">
-          <div class="hidden border-b border-slate-300/80 px-3 py-3 xl:block xl:px-5 xl:py-4">
-            <div class="text-[11px] font-bold tracking-[0.16em] text-slate-500 xl:text-xs xl:tracking-[0.2em]">
-              分類導覽
-            </div>
-            <div class="mt-1 text-base font-bold text-slate-900 xl:mt-2 xl:text-lg">
+      <div
+        class="grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-hidden xl:grid-cols-[280px_minmax(0,1fr)]"
+      >
+        <aside
+          class="scroll-area min-h-0 overflow-y-auto border-b border-slate-300/80 bg-slate-950/95 xl:border-b-0 xl:border-r"
+        >
+          <div
+            class="hidden border-b border-slate-300/80 px-3 py-3 xl:block xl:px-5 xl:py-4"
+          >
+            <div class="text-base font-bold text-slate-900 xl:text-lg">
               商品分類
             </div>
           </div>
@@ -157,14 +183,20 @@
             >
               <div class="flex items-start justify-between gap-3">
                 <div>
-                  <div class="text-xs font-bold tracking-[0.06em] xl:text-sm xl:tracking-[0.08em]">
+                  <div
+                    class="text-xs font-bold tracking-[0.06em] xl:text-sm xl:tracking-[0.08em]"
+                  >
                     {{ category.name }}
                   </div>
-                  <div class="hidden mt-1 text-[11px] leading-4 text-slate-500 xl:block xl:text-xs xl:leading-5">
+                  <div
+                    class="hidden mt-1 text-[11px] leading-4 text-slate-500 xl:block xl:text-xs xl:leading-5"
+                  >
                     {{ category.description }}
                   </div>
                 </div>
-                <span class="mt-0.5 border border-slate-300 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-600 xl:px-2 xl:text-[11px]">
+                <span
+                  class="mt-0.5 border border-slate-300 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-600 xl:px-2 xl:text-[11px]"
+                >
                   {{ category.count }}
                 </span>
               </div>
@@ -174,20 +206,22 @@
 
         <section class="scroll-area min-h-0 overflow-y-auto bg-slate-950/90">
           <div class="product-area grid gap-2 p-2 xl:gap-2.5 xl:p-3">
-            <article class="featured-panel overflow-hidden border border-slate-300/80 bg-slate-950 text-white">
-              <div class="grid gap-2 p-2.5 xl:gap-2.5 xl:p-3">
-                <div>
-                  <div class="inline-flex border border-white/25 bg-white/10 px-2 py-0.5 text-[9px] font-bold tracking-[0.1em] text-slate-100 md:text-[9px] md:tracking-[0.14em]">
-                    精選推薦
+            <article
+              v-if="featuredBannerImage"
+              class="featured-panel overflow-hidden border border-slate-300/80 bg-slate-950 text-white"
+            >
+              <div class="featured-banner">
+                <img
+                  :src="featuredBannerImage"
+                  :alt="`${activeCategoryMeta.name}精選推薦`"
+                  class="featured-banner__image"
+                />
+                <div class="featured-banner__caption">
+                  <div>
+                    <div class="featured-banner__eyebrow">精選推薦</div>
+                    <h2>{{ featuredBannerTitle }}</h2>
                   </div>
-                  <h2 class="mt-1 font-sans text-base font-bold tracking-[0.04em] md:mt-1.5 md:text-xl md:tracking-[0.05em]">
-                    {{ featuredItem.name }}
-                  </h2>
-                  <p class="featured-summary hidden mt-1 max-w-[38rem] text-[11px] leading-4 text-slate-200 xl:block">
-                    {{ featuredItem.summary }}
-                  </p>
                 </div>
-
               </div>
             </article>
 
@@ -203,10 +237,14 @@
               v-if="isShopLoading"
               class="empty-state border border-dashed border-slate-300 bg-white/70 px-4 py-8 text-center md:px-6 md:py-12"
             >
-              <div class="text-lg font-bold tracking-[0.06em] text-slate-900 md:text-xl md:tracking-[0.08em]">
+              <div
+                class="text-lg font-bold tracking-[0.06em] text-slate-900 md:text-xl md:tracking-[0.08em]"
+              >
                 商城資料載入中
               </div>
-              <p class="mt-2 text-xs leading-5 text-slate-500 md:mt-3 md:text-sm md:leading-6">
+              <p
+                class="mt-2 text-xs leading-5 text-slate-500 md:mt-3 md:text-sm md:leading-6"
+              >
                 正在整理最新商品與持有狀態，請稍候。
               </p>
             </div>
@@ -215,15 +253,22 @@
               v-else-if="filteredItems.length === 0"
               class="empty-state border border-dashed border-slate-300 bg-white/70 px-4 py-8 text-center md:px-6 md:py-12"
             >
-              <div class="text-lg font-bold tracking-[0.06em] text-slate-900 md:text-xl md:tracking-[0.08em]">
+              <div
+                class="text-lg font-bold tracking-[0.06em] text-slate-900 md:text-xl md:tracking-[0.08em]"
+              >
                 這個分類目前沒有商品
               </div>
-              <p class="mt-2 text-xs leading-5 text-slate-500 md:mt-3 md:text-sm md:leading-6">
+              <p
+                class="mt-2 text-xs leading-5 text-slate-500 md:mt-3 md:text-sm md:leading-6"
+              >
                 可以切換其他分類，看看更多可用造型與道具。
               </p>
             </div>
 
-            <div v-else class="product-list grid gap-2 md:gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div
+              v-else
+              class="product-list grid gap-2 md:gap-3 md:grid-cols-2 xl:grid-cols-4"
+            >
               <MallProductCard
                 v-for="item in filteredItems"
                 :key="item.id"
@@ -244,21 +289,35 @@
         class="absolute inset-0 z-30 flex items-center justify-center bg-[rgba(0,19,50,0.42)] px-2 py-2 backdrop-blur-[2px] md:px-3 md:py-6"
         @click.self="closeItemDetail"
       >
-        <div class="modal-panel flex max-h-[88vh] w-full max-w-[840px] flex-col overflow-hidden border border-white/35 bg-white/92 shadow-2xl">
-          <header class="flex items-start justify-between gap-2 border-b border-slate-200 px-2.5 py-2 md:gap-4 md:px-6 md:py-4">
+        <div
+          class="modal-panel flex max-h-[88vh] w-full max-w-[840px] flex-col overflow-hidden border border-white/35 bg-white/92 shadow-2xl"
+        >
+          <header
+            class="flex items-start justify-between gap-2 border-b border-slate-200 px-2.5 py-2 md:gap-4 md:px-6 md:py-4"
+          >
             <div>
-              <div class="text-[9px] font-bold tracking-[0.1em] text-slate-500 md:text-[11px] md:tracking-[0.16em]">
+              <div
+                class="text-[9px] font-bold tracking-[0.1em] text-slate-500 md:text-[11px] md:tracking-[0.16em]"
+              >
                 商品明細
               </div>
-              <div class="mt-1 flex flex-wrap items-center gap-1.5 md:mt-2 md:gap-2">
-                <h3 class="font-sans text-xl font-bold tracking-[0.03em] text-slate-900 md:text-3xl md:tracking-[0.05em]">
+              <div
+                class="mt-1 flex flex-wrap items-center gap-1.5 md:mt-2 md:gap-2"
+              >
+                <h3
+                  class="font-sans text-xl font-bold tracking-[0.03em] text-slate-900 md:text-3xl md:tracking-[0.05em]"
+                >
                   {{ selectedItem.name }}
                 </h3>
-                <span class="border border-slate-300 bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700 md:px-2 md:py-1 md:text-[11px]">
+                <span
+                  class="border border-slate-300 bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700 md:px-2 md:py-1 md:text-[11px]"
+                >
                   {{ selectedItem.categoryLabel }}
                 </span>
               </div>
-              <p class="hidden mt-1.5 text-xs leading-5 text-slate-600 md:mt-2 md:block md:text-sm md:leading-6">
+              <p
+                class="hidden mt-1.5 text-xs leading-5 text-slate-600 md:mt-2 md:block md:text-sm md:leading-6"
+              >
                 {{ selectedItem.description }}
               </p>
             </div>
@@ -273,7 +332,9 @@
             </button>
           </header>
 
-          <div class="scroll-area min-h-0 overflow-y-auto px-2.5 py-2.5 md:px-6 md:py-5">
+          <div
+            class="scroll-area min-h-0 overflow-y-auto px-2.5 py-2.5 md:px-6 md:py-5"
+          >
             <div class="modal-detail-card">
               <div class="modal-detail-card__media">
                 <button
@@ -307,14 +368,25 @@
                 </div>
 
                 <aside class="modal-detail-card__purchase">
-                  <div class="modal-budget-row border border-slate-300 bg-slate-900 p-2.5 md:p-4">
+                  <div
+                    class="modal-budget-row border border-slate-300 bg-slate-900 p-2.5 md:p-4"
+                  >
                     <img
-                      :src="selectedItem.currency === 'coin' ? officeToken : stockToken"
+                      :src="
+                        selectedItem.currency === 'coin'
+                          ? officeToken
+                          : stockToken
+                      "
                       :alt="selectedItem.currency === 'coin' ? '金幣' : '股份'"
                       class="modal-budget-row__icon"
-                      :class="{ 'modal-budget-row__icon--stock': selectedItem.currency !== 'coin' }"
+                      :class="{
+                        'modal-budget-row__icon--stock':
+                          selectedItem.currency !== 'coin',
+                      }"
                     />
-                    <div class="modal-budget-row__amount text-lg font-bold text-slate-900 md:text-3xl">
+                    <div
+                      class="modal-budget-row__amount text-lg font-bold text-slate-900 md:text-3xl"
+                    >
                       {{ budgetDisplay }}
                     </div>
                   </div>
@@ -323,10 +395,12 @@
                     type="button"
                     class="item-action item-action--modal"
                     :class="`item-action--${selectedItem.actionState}`"
-                    :disabled="selectedItem.actionState !== 'buy' || isPurchasing"
+                    :disabled="
+                      selectedItem.actionState !== 'buy' || isPurchasing
+                    "
                     @click="purchaseSelectedItem"
                   >
-                    {{ isPurchasing ? '購買中...' : selectedItem.actionLabel }}
+                    {{ isPurchasing ? "購買中..." : selectedItem.actionLabel }}
                   </button>
                 </aside>
               </div>
@@ -368,14 +442,14 @@ import MallProductCard from "@/components/mall/MallProductCard.vue";
 import { useButtonClickAudio } from "@/composables/UseButtonClickAudio";
 import { usePreGameAudio } from "@/composables/UsePreGameAudio";
 import bgDashboard from "@/assets/images/bg-dashboard.webp";
+import beachStyleBackground from "@/assets/images/beach-style-bg.webp";
+import jpStyleBackground from "@/assets/images/jp-style-bg.webp";
+import legoStyleBackground from "@/assets/images/lego-style-bg.webp";
 import officeToken from "@/assets/images/office-token.webp";
 import stockToken from "@/assets/images/stock-token.webp";
 import stockTokenBundle from "@/assets/images/stock-token-bundle.webp";
 import stockTokenStack from "@/assets/images/stock-token-stack.webp";
-import {
-  mallCategories,
-  mallItems,
-} from "@/mocks/mallMockData.js";
+import { mallCategories, mallItems } from "@/mocks/mallMockData.js";
 import {
   getPlayerShopItems,
   getShopItems,
@@ -391,10 +465,7 @@ import {
 import { useAuthStore } from "@/stores/authStore.js";
 import { useCurrencyStore } from "@/stores/currencyStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
-import {
-  createEcpayCheckout,
-  createTopUpOrder,
-} from "@/services/topUpApi.js";
+import { createEcpayCheckout, createTopUpOrder } from "@/services/topUpApi.js";
 
 const route = useRoute();
 const router = useRouter();
@@ -405,6 +476,17 @@ const { handleButtonClick } = useButtonClickAudio();
 const { playPreGameSound } = usePreGameAudio();
 const MALL_ENTRANCE_BELL_DELAY_MS = 200;
 let mallEntranceBellTimerId = null;
+
+const featuredBannerByCategory = {
+  "card-front": beachStyleBackground,
+  "card-back": jpStyleBackground,
+  board: legoStyleBackground,
+};
+const featuredBannerTitleByCategory = {
+  "card-front": "海灘風格卡面",
+  "card-back": "浮世繪風格卡背",
+  board: "樂高風格盤面",
+};
 
 const categories = mallCategories;
 const fallbackItems = mallItems;
@@ -544,7 +626,9 @@ const fallbackImageByCategory = computed(() =>
   }, {}),
 );
 
-const ownedShopItemIds = computed(() => getOwnedShopItemIdSet(playerItems.value));
+const ownedShopItemIds = computed(() =>
+  getOwnedShopItemIdSet(playerItems.value),
+);
 
 const normalizedItems = computed(() => [
   ...shopItems.value.map((item) => {
@@ -553,7 +637,8 @@ const normalizedItems = computed(() => [
     return normalizeShopItem(item, {
       categories,
       fallbackImage:
-        fallbackImageByCategory.value[category] ?? fallbackItems[0]?.previewImage,
+        fallbackImageByCategory.value[category] ??
+        fallbackItems[0]?.previewImage,
       ownedShopItemIds: ownedShopItemIds.value,
     });
   }),
@@ -563,12 +648,15 @@ const normalizedItems = computed(() => [
 const categoriesWithCount = computed(() =>
   categories.map((category) => ({
     ...category,
-    count: normalizedItems.value.filter((item) => item.category === category.id).length,
+    count: normalizedItems.value.filter((item) => item.category === category.id)
+      .length,
   })),
 );
 
 const filteredItems = computed(() =>
-  normalizedItems.value.filter((item) => item.category === activeCategory.value),
+  normalizedItems.value.filter(
+    (item) => item.category === activeCategory.value,
+  ),
 );
 
 const activeCategoryMeta = computed(
@@ -578,8 +666,11 @@ const activeCategoryMeta = computed(
     ) ?? categoriesWithCount.value[0],
 );
 
-const featuredItem = computed(
-  () => filteredItems.value[0] ?? normalizedItems.value[0] ?? fallbackItems[0],
+const featuredBannerImage = computed(
+  () => featuredBannerByCategory[activeCategory.value] ?? null,
+);
+const featuredBannerTitle = computed(
+  () => featuredBannerTitleByCategory[activeCategory.value] ?? "",
 );
 const budgetDisplay = computed(() =>
   formatNumber(
@@ -605,7 +696,9 @@ async function loadShopData() {
     const [shopData, ownedData] = await Promise.all([
       getShopItems({ activeOnly: true }),
       playerId ? getPlayerShopItems(playerId) : Promise.resolve({ items: [] }),
-      playerId ? currencyStore.fetchPlayerCurrency(playerId) : Promise.resolve(null),
+      playerId
+        ? currencyStore.fetchPlayerCurrency(playerId)
+        : Promise.resolve(null),
     ]);
 
     shopItems.value = shopData.items ?? [];
@@ -615,7 +708,10 @@ async function loadShopData() {
       statusMessage.value = "尚未取得玩家 ID，商品可瀏覽但無法購買。";
     }
   } catch (error) {
-    statusMessage.value = getErrorMessage(error, "商城資料載入失敗，請稍後再試。");
+    statusMessage.value = getErrorMessage(
+      error,
+      "商城資料載入失敗，請稍後再試。",
+    );
     shopItems.value = [];
     playerItems.value = [];
   } finally {
@@ -687,7 +783,10 @@ async function purchaseItem(item) {
 
       submitEcpayForm(checkoutResult.checkout);
     } catch (error) {
-      statusMessage.value = getErrorMessage(error, "建立儲值訂單失敗，請稍後再試。");
+      statusMessage.value = getErrorMessage(
+        error,
+        "建立儲值訂單失敗，請稍後再試。",
+      );
     } finally {
       isPurchasing.value = false;
     }
@@ -731,7 +830,10 @@ async function purchaseItem(item) {
 
     statusMessage.value = "購買成功，已更新持有狀態與貨幣餘額。";
   } catch (error) {
-    statusMessage.value = getErrorMessage(error, "購買失敗，請檢查餘額或稍後再試。");
+    statusMessage.value = getErrorMessage(
+      error,
+      "購買失敗，請檢查餘額或稍後再試。",
+    );
   } finally {
     isPurchasing.value = false;
   }
@@ -1004,11 +1106,51 @@ onBeforeUnmount(() => {
     0 18px 34px rgba(0, 0, 0, 0.32);
 }
 
-.featured-summary {
-  display: none !important;
+.featured-banner {
+  position: relative;
+  aspect-ratio: 5 / 1;
   overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  background: var(--brand-navy);
+}
+
+.featured-banner__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.featured-banner__caption {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 19, 50, 0.9) 0%,
+    rgba(0, 19, 50, 0.58) 28%,
+    transparent 50%
+  );
+  padding: 10px 12px;
+}
+
+.featured-banner__eyebrow {
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-shadow: 0 2px 6px rgba(0, 19, 50, 0.42);
+}
+
+.featured-banner h2 {
+  margin: 3px 0 0;
+  color: white;
+  font-family: var(--font-sans);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  line-height: 1.2;
+  text-shadow: 0 2px 8px rgba(0, 19, 50, 0.48);
 }
 
 .mobile-storebar {
@@ -1900,4 +2042,3 @@ onBeforeUnmount(() => {
   }
 }
 </style>
-
