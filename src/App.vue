@@ -22,8 +22,11 @@ const {
   setSoundEnabled,
   setSoundVolume,
 } = useAudioSettings();
-const shouldShowGlobalSettings = computed(
-  () => !["Game", "Loading"].includes(route.name),
+
+const GLOBAL_SETTINGS_ROUTE_NAMES = ["Entry", "LobbyHome"];
+
+const shouldShowGlobalSettings = computed(() =>
+  GLOBAL_SETTINGS_ROUTE_NAMES.includes(route.name),
 );
 
 function openSettings() {
