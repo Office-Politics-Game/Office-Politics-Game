@@ -328,7 +328,7 @@ defineEmits(["purchase", "select"]);
 
 @media (max-width: 767px) {
   .item-card {
-    min-height: 268px;
+    min-height: 0;
   }
 
   .item-card__preview {
