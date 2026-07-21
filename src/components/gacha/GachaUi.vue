@@ -43,6 +43,10 @@ defineProps({
     type: Boolean,
     default: true,
   },
+  isPrinterInteractive: {
+    type: Boolean,
+    default: true,
+  },
 });
 
 defineEmits([
@@ -77,8 +81,13 @@ defineExpose({
     <button
       ref="printerElement"
       type="button"
-      class="printer-button absolute bottom-0 left-0 z-10 flex h-[60svh] w-screen cursor-grab touch-none items-end justify-center overflow-visible border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-[5px] focus-visible:ring-[var(--brand-focus)] active:cursor-grabbing"
-      :class="{ 'is-pulling': isPulling }"
+      class="printer-button absolute bottom-0 left-0 z-10 flex h-[60svh] w-screen touch-none items-end justify-center overflow-visible border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-[5px] focus-visible:ring-[var(--brand-focus)]"
+      :class="{
+        'is-pulling': isPulling,
+        'printer-button--interactive cursor-grab active:cursor-grabbing':
+          isPrinterInteractive,
+      }"
+      :disabled="!isPrinterInteractive"
       @pointerdown="$emit('printer-pointer-down', $event)"
       @pointermove="$emit('printer-pointer-move', $event)"
       @pointerup="$emit('printer-pointer-up', $event)"
@@ -151,6 +160,10 @@ defineExpose({
   transition:
     filter 180ms ease;
   will-change: filter;
+}
+
+.printer-button:disabled {
+  pointer-events: none;
 }
 
 .printer-image {

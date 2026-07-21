@@ -49,25 +49,40 @@ function mapDrawCard(card) {
   }
 }
 
-async function getOwnedGachaCards({ playerId }) {
+async function getOwnedGachaCards({ playerId, poolId = "role_cards" }) {
   const numericPlayerId = Number(playerId)
 
   if (!Number.isInteger(numericPlayerId) || numericPlayerId <= 0) {
     throw createServiceError("Invalid player ID")
   }
 
+  if (typeof poolId !== "string" || poolId.trim() === "") {
+    throw createServiceError("Invalid pool ID")
+  }
+
   const result = await pool.query(
-    `SELECT pgc.gacha_card_id, gc.name, gc.rank, gc.type, gc.description,
-            gc.image_key, gc.frame_key, gc.image_url, gc.frame_url, pgc.created_at
-     FROM player_gacha_cards pgc
-     JOIN gacha_cards gc ON gc.id = pgc.gacha_card_id
-     WHERE pgc.player_id = $1
+    `SELECT gc.id AS gacha_card_id, gc.name, gc.rank, gc.type, gc.description,
+            gc.image_key, gc.frame_key, gc.image_url, gc.frame_url,
+            MIN(gdl.created_at) AS created_at
+     FROM gacha_draw_logs gdl
+     JOIN gacha_cards gc ON gc.id = gdl.gacha_card_id
+     JOIN gacha_pools gp ON gp.id = gdl.pool_id
+     JOIN gacha_pool_cards gpc ON gpc.pool_id = gp.id
+      AND gpc.gacha_card_id = gc.id
+     WHERE gdl.player_id = $1
+       AND gp.code = $2
+       AND gp.is_active = true
+       AND gpc.is_active = true
+       AND gc.is_active = true
+     GROUP BY gc.id, gc.name, gc.rank, gc.type, gc.description,
+              gc.image_key, gc.frame_key, gc.image_url, gc.frame_url
      ORDER BY gc.rank ASC`,
-    [numericPlayerId]
+    [numericPlayerId, poolId]
   )
 
   return {
     playerId: numericPlayerId,
+    poolId,
     cards: result.rows.map(mapDrawCard),
   }
 }
