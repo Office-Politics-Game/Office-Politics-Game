@@ -33,18 +33,26 @@ test("long conversations scroll inside the message body while the composer stays
   const bodyRule = getCssRule(chatPanelSource, ".chat-body")
   const toolbarRule = getCssRule(chatPanelSource, ".chat-toolbar")
   const composerRule = getCssRule(chatPanelSource, ".chat-composer")
-  const asideClasses = getTagClasses(friendViewSource, "aside", "border-b")
-  const mainClasses = getTagClasses(friendViewSource, "main", "flex-1")
+  const pagePanelRule = getCssRule(friendViewSource, ".friend-page-panel")
+  const socialColumnRule = getCssRule(friendViewSource, ".friend-social-column")
+  const chatColumnRule = getCssRule(friendViewSource, ".friend-chat-column")
+  const asideClasses = getTagClasses(friendViewSource, "aside", "friend-social-column")
+  const mainClasses = getTagClasses(friendViewSource, "main", "friend-chat-column")
   const contentClasses = getTagClasses(friendViewSource, "section", "bg-[rgba(244,247,251,0.74)]")
 
   assertHasClasses(asideClasses, [
-    "max-h-[40%]",
+    "friend-social-column",
+    "min-h-0",
     "shrink-0",
+    "flex-col",
     "overflow-hidden",
-    "md:max-h-none",
   ])
-  assertHasClasses(mainClasses, ["flex", "min-h-0", "flex-1", "flex-col"])
+  assertHasClasses(mainClasses, ["friend-chat-column", "flex", "min-h-0", "flex-col"])
   assertHasClasses(contentClasses, ["flex", "min-h-0", "flex-1", "flex-col", "overflow-hidden"])
+  assert.match(pagePanelRule, /width:\s*var\(--friend-panel-width\)/)
+  assert.match(pagePanelRule, /height:\s*var\(--friend-panel-height\)/)
+  assert.match(socialColumnRule, /width:\s*var\(--friend-left-column-width\)/)
+  assert.match(chatColumnRule, /width:\s*var\(--friend-right-column-width\)/)
   assert.match(panelRule, /min-h-0/)
   assert.match(panelRule, /flex-1/)
   assert.match(panelRule, /overflow-hidden/)
@@ -83,8 +91,11 @@ test("square message bubbles are narrow and point toward their aligned edge", as
   )
 
   assert.match(bubbleRule, /relative/)
-  assert.match(bubbleRule, /max-w-\[62%\]/)
-  assert.match(bubbleRule, /max-md:max-w-\[82%\]/)
+  assert.match(bubbleRule, /max-width:\s*320px/)
+  assert.match(bubbleRule, /overflow-wrap:\s*anywhere/)
+  assert.match(source, /@media \(min-width:\s*1024px\)[\s\S]*?\.message-bubble\s*\{[\s\S]*?max-width:\s*460px/)
+  assert.doesNotMatch(bubbleRule, /%/)
+  assert.doesNotMatch(bubbleRule, /max-md:/)
   assert.doesNotMatch(bubbleRule, /rounded/)
   assert.match(commonTailRule, /position:\s*absolute/)
   assert.match(commonTailRule, /content:\s*""/)
