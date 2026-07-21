@@ -71,6 +71,23 @@ describe("useIntern", () => {
         expect(state.discardPile).toEqual([{ id: 5, name: "PM" }])
     })
 
+    test("猜 Advisor 時可淘汰持有 Adviser 的目標玩家", () => {
+        const state = createState()
+        state.players[1].hand = [{ id: 7, name: "Adviser" }]
+
+        const player = useIntern(state, 2, "Advisor")
+
+        expect(player.isEliminated).toBe(true)
+        expect(state.players[1].isEliminated).toBe(true)
+        expect(state.players[1].hand).toEqual([])
+        expect(state.players[1].discardedCards).toEqual([
+            { id: 7, name: "Adviser", ownerPlayerId: 2 },
+        ])
+        expect(state.discardPile).toEqual([
+            { id: 7, name: "Adviser", ownerPlayerId: 2 },
+        ])
+    })
+
     test("猜測 Intern 不合法時回傳 null", () => {
         const state = createState()
         const result = checkGuess("Intern")

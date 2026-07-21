@@ -129,7 +129,32 @@
   <ProfilePasswordModal
     v-if="isPasswordEditorOpen"
     @close="closePasswordEditor"
+    @changed="handlePasswordChanged"
   />
+  <div
+    v-if="passwordNoticeMessage"
+    class="profile-password-notice"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="profile-password-notice-title"
+  >
+    <section class="profile-password-notice__panel">
+      <h2 id="profile-password-notice-title" class="profile-password-notice__title">
+        無法修改密碼
+      </h2>
+      <p class="profile-password-notice__message">
+        <strong>第三方登入帳號沒有修改密碼權限</strong>
+        <span>請至原登入平台管理密碼</span>
+      </p>
+      <button
+        type="button"
+        class="profile-password-notice__button"
+        @click="closePasswordNotice"
+      >
+        確認
+      </button>
+    </section>
+  </div>
 </template>
 
 <script setup>
@@ -177,6 +202,7 @@ const editingInitialValue = ref("");
 const isAvatarEditorOpen = ref(false);
 const editErrorMessage = ref("");
 const isPasswordEditorOpen = ref(false);
+const passwordNoticeMessage = ref("");
 
 const tabs = [
   {
@@ -263,6 +289,11 @@ const lockedTabs = computed(() =>
 const isGuestLockedTab = computed(
   () =>
     profileStore.isGuestProfile && memberOnlyTabIds.includes(activeTab.value),
+);
+
+const canChangePassword = computed(() =>
+  profileStore.isMemberProfile &&
+  authStore.currentPlayer?.canChangePassword === true
 );
 
 const profilePlayer = computed(() => {
@@ -392,6 +423,11 @@ function handleEditProfileField(item) {
   }
 
   if (item.id === "password") {
+    if (!canChangePassword.value) {
+      showPasswordNotice();
+      return;
+    }
+
     openPasswordEditor();
     return;
   }
@@ -476,8 +512,27 @@ function openPasswordEditor() {
   isPasswordEditorOpen.value = true;
 }
 
+function showPasswordNotice() {
+  passwordNoticeMessage.value = "oauth-password-blocked";
+}
+
+function closePasswordNotice() {
+  passwordNoticeMessage.value = "";
+}
+
 function closePasswordEditor() {
   isPasswordEditorOpen.value = false;
+}
+
+function handlePasswordChanged() {
+  closePasswordEditor();
+  router.push({
+    name: "Entry",
+    query: {
+      auth: "login",
+      notice: "password-updated",
+    },
+  });
 }
 
 async function handleUseAchievementTitle(achievement) {
@@ -718,6 +773,66 @@ watch(
 
 .profile-page-state.is-returning .profile-state-exit-layer {
   animation: dashboardReveal 700ms ease both;
+}
+
+.profile-password-notice {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 19, 50, 0.56);
+}
+
+.profile-password-notice__panel {
+  width: min(420px, calc(100vw - 32px));
+  border: 1px solid var(--brand-primary);
+  background: rgba(255, 255, 255, 0.96);
+  padding: 32px 28px 28px;
+  text-align: center;
+}
+
+.profile-password-notice__title {
+  margin: 0 0 16px;
+  color: var(--brand-navy);
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.profile-password-notice__message {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 24px;
+  color: var(--brand-active);
+  font-size: var(--text-md);
+  font-weight: 800;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.profile-password-notice__message strong,
+.profile-password-notice__message span {
+  display: block;
+}
+
+.profile-password-notice__button {
+  min-width: 160px;
+  min-height: 48px;
+  border: 1px solid var(--brand-primary);
+  background: var(--brand-active);
+  color: white;
+  cursor: pointer;
+  font-size: var(--text-md);
+  font-weight: 900;
+}
+
+.profile-password-notice__button:hover {
+  background: var(--brand-hover);
+}
+
+.profile-password-notice__button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--brand-focus);
 }
 
 @keyframes dashboardReveal {

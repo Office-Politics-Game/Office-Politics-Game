@@ -1,3 +1,5 @@
+import { ref } from "vue";
+
 export const GAME_TUTORIAL_STEP_CONTENT = Object.freeze({
   deck: {
     title: "抽牌區",
@@ -15,6 +17,14 @@ export const GAME_TUTORIAL_STEP_CONTENT = Object.freeze({
     title: "其他玩家",
     intro:
       "淘汰其他仍存活的玩家可取得回合勝利；率先累積 3 次回合勝利，就能贏得整場遊戲。",
+  },
+  settings: {
+    title: "設定按鍵",
+    intro: "調整音效與配樂，或投降離開遊戲。",
+  },
+  rules: {
+    title: "規則側邊欄",
+    intro: "隨時查看遊戲規則。",
   },
 });
 
@@ -65,9 +75,13 @@ export function createGameTutorialSteps(targets, { isCompactLandscape = false } 
     ["discard", targets?.discard],
   ];
   const opponents = targets?.opponents;
+  const settings = targets?.settings;
+  const rules = targets?.rules;
 
   if (
     anchoredTargets.some(([, element]) => !isHtmlElement(element)) ||
+    !isHtmlElement(settings) ||
+    !isHtmlElement(rules) ||
     !Array.isArray(opponents) ||
     opponents.length !== 3 ||
     opponents.some((element) => !isHtmlElement(element))
@@ -91,6 +105,14 @@ export function createGameTutorialSteps(targets, { isCompactLandscape = false } 
         ? "game-tutorial game-tutorial--opponents"
         : "game-tutorial",
     },
+    {
+      element: settings,
+      ...GAME_TUTORIAL_STEP_CONTENT.settings,
+    },
+    {
+      element: rules,
+      ...GAME_TUTORIAL_STEP_CONTENT.rules,
+    },
   ];
 }
 
@@ -106,6 +128,7 @@ export function useGameTutorial({
   let isFinalized = false;
   let highlightedTargets = null;
   const settlementResolvers = new Set();
+  const isBlocking = ref(false);
 
   function settleTutorial(result = false) {
     settlementResolvers.forEach((resolve) => resolve(result));
@@ -155,6 +178,7 @@ export function useGameTutorial({
     if (tour === activeTour) {
       tour = null;
     }
+    isBlocking.value = false;
     settleTutorial(true);
   }
 
@@ -184,6 +208,7 @@ export function useGameTutorial({
       return false;
     }
 
+    isBlocking.value = true;
     isStarting = true;
     let nextTour = null;
     try {
@@ -256,6 +281,7 @@ export function useGameTutorial({
     tour = null;
     isFinalized = true;
     clearOpponentHighlights();
+    isBlocking.value = false;
     settleTutorial(false);
 
     if (activeTour) {
@@ -267,6 +293,7 @@ export function useGameTutorial({
     startTutorial,
     waitForTutorialSettlement,
     disposeTutorial,
+    isBlocking,
     get hasStarted() {
       return hasStarted;
     },

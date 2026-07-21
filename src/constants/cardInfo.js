@@ -70,6 +70,24 @@ const CARD_INFO_BY_NAME = Object.freeze({
   ceo: CEO_CARD_INFO,
 });
 
+const CARD_CHINESE_NAME_BY_ENGLISH = Object.freeze({
+  ...Object.fromEntries(
+    Object.values(CARD_INFO_BY_RANK).map((cardInfo) => [
+      cardInfo.english,
+      cardInfo.chinese,
+    ]),
+  ),
+});
+
+const CARD_CHINESE_NAME_BY_KEY = Object.freeze(
+  Object.fromEntries(
+    Object.entries(CARD_CHINESE_NAME_BY_ENGLISH).map(([english, chinese]) => [
+      english.toLowerCase(),
+      chinese,
+    ]),
+  ),
+);
+
 function getCardInfo(card = {}) {
   const rank = Number(card.rank ?? card.cardRank ?? card.value);
   const name = String(card.name ?? "").trim().toLowerCase();
@@ -77,8 +95,26 @@ function getCardInfo(card = {}) {
   return CARD_INFO_BY_RANK[rank] ?? CARD_INFO_BY_NAME[name] ?? null;
 }
 
+function getCardDisplayName(cardOrName, fallback = "") {
+  const card =
+    cardOrName && typeof cardOrName === "object" ? cardOrName : null;
+  const rawName = card
+    ? card.displayName ?? card.name ?? card.english ?? card.chinese
+    : cardOrName;
+  const info = card
+    ? getCardInfo(card) ?? CARD_INFO_BY_NAME[String(card.english ?? "").trim().toLowerCase()]
+    : CARD_INFO_BY_NAME[String(rawName ?? "").trim().toLowerCase()];
+  const englishName = info?.english ?? rawName;
+  const displayName =
+    info?.chinese ??
+    CARD_CHINESE_NAME_BY_KEY[String(englishName ?? "").trim().toLowerCase()];
+
+  return displayName ?? String(rawName ?? fallback).trim();
+}
+
 export {
   ADVISOR_CARD_INFO,
+  CARD_CHINESE_NAME_BY_ENGLISH,
   CARD_INFO_BY_NAME,
   CARD_INFO_BY_RANK,
   CEO_CARD_INFO,
@@ -88,5 +124,6 @@ export {
   MANAGER_CARD_INFO,
   PM_CARD_INFO,
   SENIOR_CARD_INFO,
+  getCardDisplayName,
   getCardInfo,
 };

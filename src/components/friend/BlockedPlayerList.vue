@@ -81,6 +81,8 @@ const emit = defineEmits(["unblock"]);
 @reference "tailwindcss";
 
 .blocked-action {
+  width: 88px;
+  height: 40px;
   @apply border border-[var(--brand-primary)] bg-[var(--surface-glass)] px-3 py-2 text-sm font-bold text-[var(--brand-active)] transition-[border-color,background-color,box-shadow,color] duration-[180ms] disabled:cursor-not-allowed disabled:opacity-60;
 }
 

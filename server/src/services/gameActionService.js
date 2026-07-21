@@ -7,6 +7,10 @@ import { discardCard } from "./discardService.js"
 import { finishTurn } from "./roundFlowService.js"
 import { finalizeMatchProgress } from "./playerProgressService.js"
 import {
+    appendUnlockedAchievements,
+    unlockAchievement,
+} from "./achievementService.js"
+import {
     buildCardEffectAnimationResult,
     createCardEffectAnimationResultForViewer,
     createCardEffectAnimationContext,
@@ -23,6 +27,27 @@ function createServiceError(message, statusCode = 400) {
     const error = new Error(message)
     error.statusCode = statusCode
     return error
+}
+
+async function unlockGameEndAchievements(state, viewerPlayerId) {
+    if (state.phase !== "finished") {
+        return []
+    }
+
+    const unlockedAchievements = []
+
+    if (state.winnerPlayerId) {
+        const unlockedAchievement = await unlockAchievement(
+            state.winnerPlayerId,
+            "first_game_win"
+        )
+
+        if (state.winnerPlayerId === viewerPlayerId) {
+            unlockedAchievements.push(unlockedAchievement)
+        }
+    }
+
+    return unlockedAchievements
 }
 
 async function drawCardAction({ roomCode, playerId }) {
@@ -159,7 +184,7 @@ async function playCardAction({
         effectResult,
     )
 
-    const { showdownResult } = finishTurn(state, numericPlayerId)
+    const { showdownResult, roundEndState } = finishTurn(state, numericPlayerId)
 
     let matchProgress = { finalized: false }
 
@@ -225,17 +250,23 @@ async function playCardAction({
 
     const publicState = getPublicState(state, numericPlayerId)
 
-    return {
+    const unlockedAchievements = await unlockGameEndAchievements(
+        state,
+        numericPlayerId
+    )
+
+    return appendUnlockedAchievements({
         gameSession,
         result: effectResult,
         animationResult,
         showdownResult,
+        roundEndState,
         discardedCard,
         actionLog,
         matchProgress,
         state,
         publicState,
-    }
+    }, unlockedAchievements)
 }
 
 export { drawCardAction, playCardAction }

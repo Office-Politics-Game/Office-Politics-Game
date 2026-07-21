@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
+import { CARD_INFO_BY_RANK, getCardDisplayName } from '../src/constants/cardInfo.js'
 
 const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
@@ -17,10 +18,37 @@ test('cardplay test models card effects for avatar target selection and intern g
   assert.match(source, /2:\s*['"]cleaner['"]/)
   assert.match(source, /4:\s*['"]senior['"]/)
   assert.match(source, /5:\s*['"]pm['"]/)
-  assert.match(gameStageSource, /import \{ CARD_INFO_BY_RANK \} from ["']@\/constants\/cardInfo["']/)
+  assert.match(gameStageSource, /import \{ CARD_INFO_BY_RANK, getCardDisplayName \} from ["']@\/constants\/cardInfo["']/)
   assert.match(gameStageSource, /const guessOptions = Object\.entries\(CARD_INFO_BY_RANK\)/)
+  assert.match(gameStageSource, /name: getCardDisplayName\(cardInfo\)/)
   assert.doesNotMatch(gameStageSource, /filter\(\(\[rank\]\) => Number\(rank\) !== 1\)/)
-  assert.match(gameStageSource, /name: cardInfo\.chinese/)
+})
+
+test('guess options keep visible Chinese card names', () => {
+  const guessOptions = Object.entries(CARD_INFO_BY_RANK).map(
+    ([rank, cardInfo]) => ({
+      rank: Number(rank),
+      name: getCardDisplayName(cardInfo),
+    }),
+  )
+
+  assert.equal(guessOptions.find((option) => option.rank === 6)?.name, '人資主管')
+  assert.equal(guessOptions.find((option) => option.rank === 7)?.name, '資深顧問')
+  assert.equal(guessOptions.find((option) => option.rank === 8)?.name, '執行長')
+  assert.ok(guessOptions.every((option) => option.name.length > 0))
+})
+
+test('card display names stay synced with cardInfo Chinese names', () => {
+  assert.equal(getCardDisplayName(CARD_INFO_BY_RANK[2]), '打掃阿姨')
+  assert.equal(getCardDisplayName(CARD_INFO_BY_RANK[4]), '職場老鳥')
+})
+
+test('card asset display names read from cardInfo instead of a duplicate map', async () => {
+  const source = await readSource('src/constants/cardAssets.js')
+
+  assert.match(source, /import \{ CARD_INFO_BY_RANK \} from ['"]@\/constants\/cardInfo['"]/)
+  assert.match(source, /displayName: CARD_INFO_BY_RANK\[2\]\.chinese/)
+  assert.match(source, /displayName: CARD_INFO_BY_RANK\[4\]\.chinese/)
 })
 
 test('cardplay test keeps played card pending until confirm or cancel', async () => {

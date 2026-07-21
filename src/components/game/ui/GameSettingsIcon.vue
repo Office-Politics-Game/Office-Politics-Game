@@ -3,7 +3,12 @@ import { ref } from "vue";
 import { gsap } from "gsap";
 
 const settingIcon = ref(null);
+const settingButton = ref(null);
 const emit = defineEmits(["open"]);
+
+function getButtonElement() {
+  return settingButton.value;
+}
 
 function handleMouseEnter() {
   gsap.to(settingIcon.value, {
@@ -22,10 +27,15 @@ function handleMouseLeave() {
     ease: "power2.out",
   });
 }
+
+defineExpose({
+  getButtonElement,
+});
 </script>
 
 <template>
   <button
+    ref="settingButton"
     type="button"
     class="settings-button grid size-[clamp(50px,5.6vw,66px)] shrink-0 place-items-center"
     aria-label="開啟遊戲設定"

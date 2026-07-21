@@ -127,6 +127,7 @@ function mapRoomPlayer(player) {
     isReady: isComputer ? true : player.is_ready,
     isAlive: player.is_alive,
     isComputer,
+    level: player.level,
   }
 }
 
@@ -312,6 +313,7 @@ async function getRoomState({ roomCode }) {
          p.avatar_id,
          avatar_item.image_url AS avatar_url,
          card_skin_item.image_url AS card_skin_url,
+         p.level,
          pei.card_skin_overrides,
          grp.role,
          grp.seat_order,
@@ -340,6 +342,7 @@ async function getRoomState({ roomCode }) {
          p.avatar_id,
          avatar_item.image_url AS avatar_url,
          card_skin_item.image_url AS card_skin_url,
+         p.level,
          grp.role,
          grp.seat_order,
          grp.is_ready,
@@ -704,9 +707,11 @@ async function startGame({ roomCode, playerId }) {
            grp.is_ready,
            (grp.is_computer OR grp.role = 'computer') AS is_computer,
            p.username,
+           p.title,
            p.avatar_id,
            avatar_item.image_url AS avatar_url,
            card_skin_item.image_url AS card_skin_url,
+           p.level,
            pei.card_skin_overrides
          FROM game_room_players grp
          JOIN players p ON p.id = grp.player_id
@@ -729,9 +734,11 @@ async function startGame({ roomCode, playerId }) {
            grp.is_ready,
            (grp.is_computer OR grp.role = 'computer') AS is_computer,
            p.username,
+           p.title,
            p.avatar_id,
            avatar_item.image_url AS avatar_url,
-           card_skin_item.image_url AS card_skin_url
+           card_skin_item.image_url AS card_skin_url,
+           p.level
          FROM game_room_players grp
          JOIN players p ON p.id = grp.player_id
          LEFT JOIN player_equipped_items pei ON pei.player_id = p.id

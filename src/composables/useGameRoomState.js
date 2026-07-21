@@ -36,6 +36,7 @@ export function useGameRoomState({
           playerId: getPlayerId(player),
           username: player.username,
           name: player.name,
+          level: player.level,
           avatarId: player.avatarId ?? player.avatar_id,
           avatarUrl: player.avatarUrl,
           cardSkinUrl: player.cardSkinUrl ?? '',

@@ -20,6 +20,7 @@ The backend SHALL include the submitted `guessedCardName` in every unprotected i
 - **WHEN** an intern card targets a player holding `Manager` and the submitted `guessedCardName` is `Manager`
 - **THEN** the intern animation result contains `guessedCardName: "Manager"` and `outcome: "correct"`
 
+---
 ### Requirement: Guess prompt identifies the target and guessed position
 
 The game stage SHALL resolve the target nickname by matching the intern animation result `targetPlayerId` against the current player list. The intern animation SHALL render the prompt as `猜 {target nickname} 是 {guessedCardName}`. If the target player cannot be resolved, the game stage MUST use `玩家` as the target nickname.
@@ -34,6 +35,7 @@ The game stage SHALL resolve the target nickname by matching the intern animatio
 - **WHEN** the target player ID is absent from the current player list and `guessedCardName` is `CEO`
 - **THEN** the animation displays `猜 玩家 是 CEO`
 
+---
 ### Requirement: Sequential intern target and position selection
 
 When an Intern card enters pending-play state, the game stage SHALL present target-player selection first and MUST NOT render the position-selection dialog before a valid target is selected. After the target is selected, the game stage SHALL stop target-selection mode and SHALL render the position-selection dialog for ranks 2 through 8. The common target-card flow SHALL govern the same target-first ordering for cards that require a player target without a guessed position.
@@ -48,6 +50,7 @@ When an Intern card enters pending-play state, the game stage SHALL present targ
 - **WHEN** the player selects an eligible target for a pending Intern card
 - **THEN** target-selection mode stops and the position-selection dialog is rendered for choosing ranks 2 through 8
 
+---
 ### Requirement: Guess prompt precedes and persists through the result
 
 The intern animation SHALL display the guess prompt before the outcome text, SHALL keep the prompt visible for one second before revealing `猜對啦` or `猜錯啦`, and SHALL keep both text elements visible until they disappear together at the result exit point. Reduced-motion mode MUST preserve the one-second informational hold and the same ordering.
@@ -62,6 +65,7 @@ The intern animation SHALL display the guess prompt before the outcome text, SHA
 - **WHEN** an incorrect intern animation begins after card-play animation completion
 - **THEN** the guess prompt appears first, the `猜錯啦` result appears after a one-second hold, and both texts disappear together before the effect completes
 
+---
 ### Requirement: Guess prompt emphasizes dynamic values
 
 The intern animation SHALL render the entire guess prompt at 60 percent of its original font size. The target nickname and guessed position SHALL use `#facc15`, while the static words `猜` and `是` MUST retain the base prompt color.
@@ -70,3 +74,18 @@ The intern animation SHALL render the entire guess prompt at 60 percent of its o
 
 - **WHEN** the prompt displays `猜 小明 是 Manager`
 - **THEN** the entire line uses 60 percent sizing, `小明` and `Manager` are yellow, and `猜` and `是` retain the base prompt color
+
+---
+### Requirement: Intern guess treats Advisor and Adviser as equivalent
+
+The backend SHALL treat `Advisor` and `Adviser` as equivalent names for the rank 7 card when resolving an Intern guess. The card effect and its animation result MUST use the same equivalence rule. Names for every other rank MUST retain exact matching behavior.
+
+#### Scenario: Advisor spelling eliminates a target holding Adviser
+
+- **WHEN** an Intern targets a player holding `{ id: 7, name: "Adviser" }` and the submitted `guessedCardName` is `Advisor`
+- **THEN** the backend SHALL eliminate the target player as a correct guess
+
+#### Scenario: Advisor spelling produces a correct animation outcome
+
+- **WHEN** an Intern animation context contains a target card `{ id: 7, name: "Adviser" }` and the submitted `guessedCardName` is `Advisor`
+- **THEN** the animation result SHALL preserve `guessedCardName: "Advisor"` and contain `outcome: "correct"`

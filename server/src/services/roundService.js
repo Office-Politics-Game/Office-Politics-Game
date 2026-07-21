@@ -24,6 +24,7 @@ function startNextRound(state, { random = Math.random } = {}){
     const currentTurnPlayerId = players[randomIndex].playerId
 
     state.phase = "playing"
+    state.roundNumber = Number(state.roundNumber || 1) + 1
     state.deck = deck
     state.discardPile = []
     state.currentTurnPlayerId = currentTurnPlayerId

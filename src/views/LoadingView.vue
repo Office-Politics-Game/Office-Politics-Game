@@ -7,16 +7,12 @@ const router = useRouter();
 const route = useRoute();
 
 const loadingMessages = [
-  "辦公室開啟中...",
-  "員工報到中...",
-  "會議室整理中...",
-  "座位安排中...",
-  "投影設備啟動中...",
-  "簡報資料載入中...",
-  "會議文件準備中...",
-  "茶水準備中...",
-  "與會人員確認中...",
-  "主管陸續進場...",
+  '小提示:實習生不能猜實習生...',
+  '小提示:可以把CEO換給你的對手...',
+  '小提示:如果最後點數相等可能會有小驚喜...',
+  '小提示:免疫狀態可以擋下一輪攻擊...',
+  '小提示:先記住棄牌區，會比亂猜更有用...',
+  '小提示:部門主管會比較雙方牌面大小...',
 ];
 
 const finalMessage = "會議即將開始...";
@@ -53,7 +49,7 @@ onMounted(() => {
       if (currentMessageIndex.value < activeMessages.length - 1) {
         currentMessageIndex.value += 1;
       }
-    }, 1000);
+    }, 3000);
   }, 600);
 
   fadeOutTimer = window.setTimeout(() => {
@@ -101,7 +97,7 @@ onBeforeUnmount(() => {
       class="absolute flex flex-col w-50 lg:w-90 right-[50%] translate-[50%] bottom-20 lg:bottom-40"
       aria-live="polite"
     >
-      <p class="text-white m-0 text-lg text-center font-bold">
+      <p class="text-white m-0 text-base text-center font-bold">
         {{ currentMessage }}
       </p>
       <div

@@ -27,16 +27,17 @@ function finishTurn(state, playerId){
     if (checkRoundEnd(state)){
         const winner = checkWinner(state)
         const showdownResult = createShowdownResult(state, winner)
+        const roundEndState = JSON.parse(JSON.stringify(state))
 
         if (state.phase === "roundEnded"){
             startNextRound(state)
         }
 
-        return { state, showdownResult }
+        return { state, showdownResult, roundEndState }
     }
 
     endTurn(state, playerId)
-    return { state, showdownResult: null }
+    return { state, showdownResult: null, roundEndState: null }
 }
 
 export { finishTurn }

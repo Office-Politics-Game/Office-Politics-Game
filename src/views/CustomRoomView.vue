@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { CheckCircle, Copy, Play } from "@lucide/vue";
@@ -32,8 +32,10 @@ const isStartingRoom = ref(false);
 const isLeavingRoom = ref(false);
 const hasJoinedCurrentRoom = ref(false);
 const kickedNotice = ref("");
+const pendingComputerSlot = ref(null);
 const pendingRemovalSlots = ref({});
 const REQUIRED_READY_PLAYERS_TO_START = 3;
+const COMPUTER_JOIN_MIN_DISPLAY_MS = 700;
 const PLAYER_REMOVE_MIN_DISPLAY_MS = 700;
 const LEAVE_TRANSITION_MIN_DISPLAY_MS = 420;
 const leaveLoadingTips = [
@@ -126,6 +128,21 @@ function createPendingRemovalSlot(player, index, pendingState) {
   };
 }
 
+function createPendingComputerSlot(slot, index) {
+  return {
+    id: `pending-computer-${index}`,
+    isHost: false,
+    name: "電腦玩家",
+    title: "",
+    avatar: null,
+    isComputer: true,
+    isPendingComputer: true,
+    placeholderLabel: "加入中",
+    canRemovePlayer: false,
+    ...slot,
+  };
+}
+
 function createUniqueComputerNickname() {
   const usedNames = new Set(
     players.value
@@ -186,6 +203,34 @@ async function clearPendingRemovalSlotWithDelay(playerId) {
   clearPendingRemovalSlot(playerId);
 }
 
+function setPendingComputerSlot(index) {
+  pendingComputerSlot.value = {
+    index,
+    startedAt: Date.now(),
+  };
+}
+
+function clearPendingComputerSlot() {
+  pendingComputerSlot.value = null;
+}
+
+async function clearPendingComputerSlotWithDelay() {
+  const pendingState = pendingComputerSlot.value;
+
+  if (!pendingState) {
+    return;
+  }
+
+  const elapsed = Date.now() - pendingState.startedAt;
+  const remainingDelay = Math.max(0, COMPUTER_JOIN_MIN_DISPLAY_MS - elapsed);
+
+  if (remainingDelay > 0) {
+    await wait(remainingDelay);
+  }
+
+  clearPendingComputerSlot();
+}
+
 function wait(ms) {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
@@ -231,6 +276,10 @@ const playerSlots = computed(() =>
       }
 
       return createRoomPlayerSlot(roomPlayer, index);
+    }
+
+    if (pendingComputerSlot.value?.index === index) {
+      return createPendingComputerSlot(displaySlot, index);
     }
 
     return {
@@ -370,18 +419,21 @@ async function handleAddComputer(index) {
     return;
   }
 
-  if (!roomCode.value || !resolvedPlayerId.value || !isHostPlayer.value) {
+  if (!roomCode.value || !resolvedPlayerId.value || !isHostPlayer.value || isLoading.value) {
     return;
   }
 
   const computerName = createUniqueComputerNickname();
+  setPendingComputerSlot(index);
 
   try {
     await roomStore.addComputerPlayer(roomCode.value, {
       hostPlayerId: resolvedPlayerId.value,
       username: computerName,
     });
+    await clearPendingComputerSlotWithDelay();
   } catch (error) {
+    clearPendingComputerSlot();
     throw error;
   }
 }

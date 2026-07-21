@@ -13,6 +13,7 @@ function createState(hasAnyCardBeenPlayed){
         players: [{
             playerId: 1,
             username: "玩家",
+            level: 7,
             seatOrder: 1,
             hand: [],
             discardedCards: [],
@@ -40,5 +41,11 @@ describe("教學出牌狀態", ()=>{
 
         expect(failureGuard).toBeGreaterThan(-1)
         expect(flagAssignment).toBeGreaterThan(failureGuard)
+    })
+})
+
+describe("public game state player profile data", ()=>{
+    test("keeps player levels", ()=>{
+        expect(getPublicState(createState(true), 1).players[0].level).toBe(7)
     })
 })

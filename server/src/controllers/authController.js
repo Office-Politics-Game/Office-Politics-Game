@@ -5,7 +5,8 @@ import {
     logoutPlayer,
     verifyToken,
     requestPasswordReset,
-    resetPlayerPassword
+    resetPlayerPassword,
+    changePlayerPassword
 } from "../services/authService.js"
 import { AUTH_COOKIE_NAME } from "../constants/auth.js"
 
@@ -145,4 +146,29 @@ async function handleResetPassword(req, res) {
     }
 }
 
-export { handleRegisterPlayer, handleLoginPlayer, handleOAuthCallback, handleVerifyToken, handleLogoutPlayer, handleForgotPassword, handleResetPassword }
+async function handleChangePassword(req, res) {
+    try {
+        const token = getCookieToken(req)
+        const result = await changePlayerPassword({
+            token,
+            ...req.body
+        })
+
+        clearAuthCookie(res)
+
+        res.status(200).json(result)
+    } catch (error) {
+        sendAuthError(res, error, "修改密碼失敗，請稍後再試")
+    }
+}
+
+export {
+    handleRegisterPlayer,
+    handleLoginPlayer,
+    handleOAuthCallback,
+    handleVerifyToken,
+    handleLogoutPlayer,
+    handleForgotPassword,
+    handleResetPassword,
+    handleChangePassword
+}
