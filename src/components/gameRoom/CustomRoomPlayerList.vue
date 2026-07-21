@@ -170,7 +170,7 @@ defineEmits(["add-computer", "invite-friend", "remove-player"]);
 
           <div
             v-if="slot.name && !slot.isHost && !slot.isPlaceholder && !slot.isPendingRemoval"
-            class="room-ready-stamp mt-[6px] lg:mt-[14px]"
+            class="room-ready-stamp mt-auto pt-[6px] lg:pt-[14px]"
             :class="{ 'room-ready-stamp--pending': !slot.isReady }"
             :aria-label="slot.isReady ? '已打卡' : '未打卡'"
           >
