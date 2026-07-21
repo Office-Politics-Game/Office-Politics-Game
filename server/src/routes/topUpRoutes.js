@@ -6,13 +6,14 @@ import {
   handleCreateEcpayCheckout,
   handleEcpayReturn,
 } from "../controllers/topUpController.js"
+import { requireMemberAuth } from "../middlewares/authMiddleware.js"
 
 const router = express.Router()
 
-router.get("/packages", handleGetTopUpPackages)
-router.post("/orders", handleCreateTopUpOrder)
-router.post("/orders/:orderId/ecpay-checkout", handleCreateEcpayCheckout)
-router.post("/orders/:orderId/mock-pay", handleMockPayTopUpOrder)
+router.get("/packages", requireMemberAuth, handleGetTopUpPackages)
+router.post("/orders", requireMemberAuth, handleCreateTopUpOrder)
+router.post("/orders/:orderId/ecpay-checkout", requireMemberAuth, handleCreateEcpayCheckout)
+router.post("/orders/:orderId/mock-pay", requireMemberAuth, handleMockPayTopUpOrder)
 router.post("/ecpay/return", handleEcpayReturn)
 
 export default router

@@ -10,8 +10,11 @@ import {
   handleUnequipShopItem,
   handleUpdateCardSkinLoadout,
 } from "../controllers/shopController.js"
+import { requireMemberAuth } from "../middlewares/authMiddleware.js"
 
 const router = express.Router()
+
+router.use(requireMemberAuth)
 
 router.get("/items", handleGetShopItems)
 router.get("/players/:playerId/items", handleGetPlayerItems)

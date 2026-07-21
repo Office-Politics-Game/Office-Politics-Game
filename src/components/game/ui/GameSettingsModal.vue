@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, ref, watch } from "vue";
 import { useButtonClickAudio } from "@/composables/UseButtonClickAudio";
+import { useRouter } from "vue-router";
 
 const props = defineProps({
   isOpen: {
@@ -25,6 +26,14 @@ const props = defineProps({
     required: true,
     validator: (value) => value >= 0 && value <= 100,
   },
+  showLobbyAction: {
+    type: Boolean,
+    default: true,
+  },
+  showRestartAction: {
+    type: Boolean,
+    default: true,
+  },
 });
 
 const emit = defineEmits([
@@ -38,6 +47,7 @@ const emit = defineEmits([
 ]);
 
 const { handleButtonClick } = useButtonClickAudio();
+const router = useRouter();
 const dialog = ref(null);
 const closeButton = ref(null);
 const confirmationAction = ref(null);
@@ -65,6 +75,10 @@ const confirmationContent = computed(() => {
   return null;
 });
 
+const hasGameActions = computed(
+  () => props.showLobbyAction || props.showRestartAction,
+);
+
 function requestClose() {
   if (!isSubmittingAction.value) {
     emit("close");
@@ -73,6 +87,15 @@ function requestClose() {
 
 function updateVolume(eventName, event) {
   emit(eventName, Number(event.target.value));
+}
+
+function returnToLobby() {
+  if (isSubmittingAction.value) {
+    return;
+  }
+
+  emit("close");
+  router.push({ name: "LobbyHome" });
 }
 
 function openConfirmation(action) {
@@ -188,7 +211,6 @@ watch(
                 {{ confirmationContent?.title ?? "遊戲設定" }}
               </h2>
             </div>
-
             <button
               ref="closeButton"
               type="button"
@@ -200,7 +222,6 @@ watch(
               關閉
             </button>
           </header>
-
           <div v-if="!confirmationContent" class="settings-content">
             <section
               class="audio-section"
@@ -213,14 +234,12 @@ watch(
                 </div>
                 <span>各項音量獨立控制</span>
               </div>
-
               <div class="audio-grid">
                 <article class="audio-control">
                   <div class="audio-control-header">
                     <div class="audio-label">
                       <span>音樂</span>
                     </div>
-
                     <button
                       type="button"
                       class="toggle-button"
@@ -232,7 +251,6 @@ watch(
                       {{ musicEnabled ? "開啟" : "關閉" }}
                     </button>
                   </div>
-
                   <label class="volume-control">
                     <span>
                       <span>音量</span>
@@ -250,13 +268,11 @@ watch(
                     />
                   </label>
                 </article>
-
                 <article class="audio-control">
                   <div class="audio-control-header">
                     <div class="audio-label">
                       <span>音效</span>
                     </div>
-
                     <button
                       type="button"
                       class="toggle-button"
@@ -268,7 +284,6 @@ watch(
                       {{ soundEnabled ? "開啟" : "關閉" }}
                     </button>
                   </div>
-
                   <label class="volume-control">
                     <span>
                       <span>音量</span>
@@ -288,24 +303,28 @@ watch(
                 </article>
               </div>
             </section>
-
-            <section class="game-actions" aria-labelledby="game-actions-title">
+            <section
+              v-if="hasGameActions"
+              class="game-actions"
+              aria-labelledby="game-actions-title"
+            >
               <div class="section-heading compact">
                 <div>
                   <p class="section-kicker">GAME</p>
                   <h3 id="game-actions-title">對局操作</h3>
                 </div>
               </div>
-
               <div class="action-grid">
                 <button
+                  v-if="showLobbyAction"
                   type="button"
                   class="glass-button"
-                  @click="openConfirmation('return-lobby')"
+                  @click="returnToLobby"
                 >
                   投降
                 </button>
                 <button
+                  v-if="showRestartAction"
                   type="button"
                   class="glass-button danger-button"
                   @click="openConfirmation('restart-game')"
@@ -315,7 +334,6 @@ watch(
               </div>
             </section>
           </div>
-
           <div v-else class="confirmation-content">
             <p class="confirmation-eyebrow">CONFIRM ACTION</p>
             <p>{{ confirmationContent.description }}</p>
@@ -728,24 +746,47 @@ watch(
 }
 
 @media (max-height: 480px) and (orientation: landscape) {
+  .settings-overlay {
+    padding: 8px;
+  }
+
+  .settings-dialog {
+    width: min(720px, 100%);
+    max-height: calc(100dvh - 16px);
+  }
+
   .settings-header {
-    min-height: 62px;
-    padding-top: 9px;
-    padding-bottom: 9px;
+    min-height: 48px;
+    padding: 8px 14px;
+  }
+
+  .settings-eyebrow {
+    margin-bottom: 1px;
+    font-size: 11px;
   }
 
   .settings-title {
-    font-size: var(--text-lg);
+    font-size: 20px;
+  }
+
+  .icon-button {
+    min-width: 56px;
+    height: 36px;
+    padding: 0 10px;
+    font-size: 14px;
   }
 
   .settings-content {
-    gap: 12px;
-    padding-top: 12px;
-    padding-bottom: 12px;
+    gap: 8px;
+    padding: 10px 14px;
   }
 
   .section-heading {
-    margin-bottom: 7px;
+    margin-bottom: 6px;
+  }
+
+  .section-heading h3 {
+    font-size: 18px;
   }
 
   .section-kicker,
@@ -753,18 +794,51 @@ watch(
     display: none;
   }
 
+  .audio-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
   .audio-control {
-    padding: 10px 12px;
+    padding: 10px;
+  }
+
+  .audio-label {
+    font-size: 16px;
+  }
+
+  .toggle-button {
+    min-width: 56px;
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: 14px;
   }
 
   .volume-control {
-    margin-top: 7px;
+    gap: 4px;
+    margin-top: 8px;
+    font-size: 14px;
+  }
+
+  .volume-control input {
+    height: 20px;
+  }
+
+  .volume-control input::-webkit-slider-thumb {
+    width: 16px;
+    height: 16px;
+    margin-top: -6px;
+  }
+
+  .volume-control input::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
   }
 
   .confirmation-content {
-    min-height: 220px;
-    gap: 12px;
-    padding: 18px;
+    min-height: 180px;
+    gap: 10px;
+    padding: 16px;
   }
 }
 </style>

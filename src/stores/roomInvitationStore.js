@@ -269,11 +269,8 @@ export const useRoomInvitationStore = defineStore("roomInvitation", {
       this.noticeMessage = "";
 
       try {
-        const playerId = this.getCurrentPlayerId();
-
         await rejectRoomInvitationApi({
           invitationId: numericInvitationId,
-          playerId,
         });
 
         this.invitations = this.invitations.filter(

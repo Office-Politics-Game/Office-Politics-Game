@@ -11,8 +11,11 @@ import {
   handleSendFriendRequest,
   handleUnblockPlayer,
 } from "../controllers/friendController.js"
+import { requireMemberAuth } from "../middlewares/authMiddleware.js"
 
 const router = express.Router()
+
+router.use(requireMemberAuth)
 
 router.post("/requests", handleSendFriendRequest)
 router.get("/requests/received", handleGetReceivedFriendRequests)
