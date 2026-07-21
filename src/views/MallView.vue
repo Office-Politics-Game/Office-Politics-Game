@@ -243,6 +243,8 @@
                 :key="item.id"
                 :item="item"
                 :active="selectedItem?.id === item.id && isDetailModalOpen"
+                :purchasing="isPurchasing && purchasingItemId === item.id"
+                :purchase-disabled="isPurchasing"
                 @purchase="purchaseItem"
                 @select="openItemDetail"
               />
@@ -335,9 +337,10 @@
                     class="item-action item-action--modal"
                     :class="`item-action--${selectedItem.actionState}`"
                     :disabled="selectedItem.actionState !== 'buy' || isPurchasing"
+                    :aria-busy="isPurchasing && purchasingItemId === selectedItem.id"
                     @click="purchaseSelectedItem"
                   >
-                    {{ isPurchasing ? '購買中...' : selectedItem.actionLabel }}
+                    {{ isPurchasing && purchasingItemId === selectedItem.id ? '購買中...' : selectedItem.actionLabel }}
                   </button>
                 </aside>
               </div>
@@ -421,6 +424,7 @@ const shopItems = ref([]);
 const playerItems = ref([]);
 const isShopLoading = ref(false);
 const isPurchasing = ref(false);
+const purchasingItemId = ref(null);
 const statusMessage = ref("");
 
 const activeCategory = ref(categories[0].id);
@@ -677,6 +681,10 @@ function submitEcpayForm(checkout) {
 }
 
 async function purchaseItem(item) {
+  if (isPurchasing.value) {
+    return;
+  }
+
   if (item.category === "top-up") {
     if (!currentPlayerId.value) {
       statusMessage.value = "尚未取得玩家 ID，請重新登入後再購買股份。";
@@ -684,6 +692,7 @@ async function purchaseItem(item) {
     }
 
     isPurchasing.value = true;
+    purchasingItemId.value = item.id;
     statusMessage.value = "";
 
     try {
@@ -699,6 +708,7 @@ async function purchaseItem(item) {
       statusMessage.value = getErrorMessage(error, "建立儲值訂單失敗，請稍後再試。");
     } finally {
       isPurchasing.value = false;
+      purchasingItemId.value = null;
     }
 
     return;
@@ -714,6 +724,7 @@ async function purchaseItem(item) {
   }
 
   isPurchasing.value = true;
+  purchasingItemId.value = item.id;
   statusMessage.value = "";
 
   try {
@@ -743,6 +754,7 @@ async function purchaseItem(item) {
     statusMessage.value = getErrorMessage(error, "購買失敗，請檢查餘額或稍後再試。");
   } finally {
     isPurchasing.value = false;
+    purchasingItemId.value = null;
   }
 }
 
