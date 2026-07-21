@@ -48,7 +48,10 @@ watch(
 <template>
   <RouterView v-slot="{ Component, route }">
     <Transition :name="route.query.transition === 'game-end' ? 'result-page-slide' : ''">
-      <component :is="Component" :key="route.fullPath" />
+      <component
+        :is="Component"
+        :key="route.matched[0]?.name ?? route.matched[0]?.path ?? route.name ?? route.path"
+      />
     </Transition>
   </RouterView>
   <div v-if="shouldShowGlobalSettings" class="global-settings-button">
