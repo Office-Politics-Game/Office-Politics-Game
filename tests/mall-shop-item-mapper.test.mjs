@@ -34,7 +34,7 @@ assert.equal(buyableItem.price, "620");
 assert.equal(buyableItem.actionState, "buy");
 assert.equal(buyableItem.actionLabel, "立即購買");
 
-const ownedItem = normalizeShopItem(
+const repeatableTicketItem = normalizeShopItem(
   {
     id: 2,
     name: "單張抽卡券",
@@ -47,11 +47,11 @@ const ownedItem = normalizeShopItem(
   { categories, fallbackImage: "/fallback.webp", ownedShopItemIds },
 );
 
-assert.equal(ownedItem.category, "ticket");
-assert.equal(ownedItem.previewImage, "/images/lottery-ticket.webp");
-assert.equal(ownedItem.previewImageClass, "item-card__preview-image--ticket");
-assert.equal(ownedItem.actionState, "owned");
-assert.equal(ownedItem.actionLabel, "已擁有");
+assert.equal(repeatableTicketItem.category, "ticket");
+assert.equal(repeatableTicketItem.previewImage, "/images/lottery-ticket.webp");
+assert.equal(repeatableTicketItem.previewImageClass, "item-card__preview-image--ticket");
+assert.equal(repeatableTicketItem.actionState, "buy");
+assert.equal(repeatableTicketItem.actionLabel, "立即購買");
 assert.equal(getCurrencyBalance("ticket", { coins: 12, tickets: 3 }), 3);
 
 console.log("mall shop item mapper tests passed");

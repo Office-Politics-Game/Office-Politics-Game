@@ -59,7 +59,7 @@
           <img
             :src="lotteryTicketImage"
             alt=""
-            class="absolute left-1/2 top-1/2 h-8.5 max-w-none -translate-x-1/2 -translate-y-[32%] lg:h-10"
+            class="absolute left-1/2 top-1/2 h-5 max-w-none -translate-x-1/2 -translate-y-1/2 object-contain lg:h-6"
           />
         </span>
         <span class="flex-1 pr-2 text-right text-[10px] font-bold tracking-normal text-white/90 lg:pr-2.5 lg:text-sm">
