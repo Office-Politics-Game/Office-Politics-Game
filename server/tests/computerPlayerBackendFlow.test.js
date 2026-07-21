@@ -12,8 +12,7 @@ describe("computer player backend flow wiring", () => {
         expect(roomServiceSource).toMatch(/room\.host_player_id !== Number\(hostPlayerId\)/)
         expect(roomServiceSource).toMatch(/room\.status !== "waiting"/)
         expect(roomServiceSource).toMatch(/roomPlayers\.length >= MAX_ROOM_PLAYERS/)
-        expect(roomServiceSource).toMatch(/\(grp\.role = 'computer'\) AS is_computer/)
-        expect(roomServiceSource).not.toMatch(/grp\.is_computer/)
+        expect(roomServiceSource).toMatch(/\(grp\.is_computer OR grp\.role = 'computer'\) AS is_computer/)
         expect(roomServiceSource).toMatch(/isComputer/)
     })
 

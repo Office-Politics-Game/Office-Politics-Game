@@ -58,8 +58,8 @@ test('custom room invites friends and lobby exposes pending room invitations', a
   assert.match(customRoomSource, /InviteFriendModal/)
   assert.match(customRoomSource, /availableInviteFriends/)
   assert.match(customRoomSource, /roomInvitationStore\.sendInvitation/)
-  assert.match(inviteModalSource, /好友清單/)
-  assert.match(inviteModalSource, /發送邀請/)
+  assert.match(inviteModalSource, /好友列表/)
+  assert.match(inviteModalSource, /送出邀請/)
 
   assert.match(lobbyMenuSource, /RoomInvitationNotice/)
   assert.match(noticeSource, /房間邀請/)

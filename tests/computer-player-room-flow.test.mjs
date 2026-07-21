@@ -22,7 +22,10 @@ test("custom room add computer uses backend room state instead of local fake pla
   assert.doesNotMatch(customRoomSource, /localPlayerSlots/);
   assert.doesNotMatch(customRoomSource, /hasLocalComputerPlayers/);
   assert.doesNotMatch(customRoomSource, /getRankingList/);
-  assert.match(playerListSource, /:disabled="!slot\.canAddComputer"/);
+  assert.match(
+    playerListSource,
+    /:disabled="controlsDisabled \|\| !slot\.canAddComputer"/,
+  );
 });
 
 test("backend room flow exposes computer metadata and socket handler", async () => {
