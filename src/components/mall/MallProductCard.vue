@@ -108,7 +108,7 @@ defineEmits(["purchase", "select"]);
 }
 
 .item-card__preview {
-  order: 2;
+  order: 1;
   position: relative;
   overflow: hidden;
   aspect-ratio: 16 / 9;
@@ -153,18 +153,16 @@ defineEmits(["purchase", "select"]);
 }
 
 .item-card__content {
-  order: 1;
+  order: 2;
   margin-top: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(0, 0, 0, 0.9);
-  padding: 8px 10px;
+  padding: 5px 10px;
   text-align: left;
 }
 
 .item-card__title {
   display: -webkit-box;
   overflow: hidden;
-  min-height: 38px;
   color: white;
   font-size: 15px;
   line-height: 1.25;
@@ -338,7 +336,6 @@ defineEmits(["purchase", "select"]);
   }
 
   .item-card__title {
-    min-height: 34px;
     font-size: 13px;
   }
 
