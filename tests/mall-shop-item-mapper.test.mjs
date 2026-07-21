@@ -41,14 +41,15 @@ const ownedItem = normalizeShopItem(
     type: "gacha_ticket",
     price: 100,
     currency: "ticket",
-    imageUrl: "",
+    imageUrl: "/images/lottery-ticket.webp",
     isActive: true,
   },
   { categories, fallbackImage: "/fallback.webp", ownedShopItemIds },
 );
 
 assert.equal(ownedItem.category, "ticket");
-assert.equal(ownedItem.previewImage, "/fallback.webp");
+assert.equal(ownedItem.previewImage, "/images/lottery-ticket.webp");
+assert.equal(ownedItem.previewImageClass, "item-card__preview-image--ticket");
 assert.equal(ownedItem.actionState, "owned");
 assert.equal(ownedItem.actionLabel, "已擁有");
 assert.equal(getCurrencyBalance("ticket", { coins: 12, tickets: 3 }), 3);

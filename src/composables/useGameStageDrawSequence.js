@@ -1,4 +1,4 @@
-import { computed, nextTick, ref } from "vue";
+﻿import { computed, nextTick, ref } from "vue";
 
 export function useGameStageDrawSequence({
   props,
@@ -17,6 +17,7 @@ export function useGameStageDrawSequence({
   lastInitialRoundDealSignature = ref(null),
   playRoundStartNotice,
   playTurnNotice,
+  playGameCardDealSound = () => {},
   waitForTutorialSettlement = () => Promise.resolve(false),
   resolveNoticeIdleIfIdle,
 } = {}) {
@@ -106,6 +107,8 @@ export function useGameStageDrawSequence({
       return false;
     }
 
+    playGameCardDealSound();
+
     try {
       if (shouldDrawSelf) {
         await cardDrawAnimation.value?.selfDraw({
@@ -127,7 +130,10 @@ export function useGameStageDrawSequence({
     }
   }
 
-  async function playInitialRoundDrawSequence(signature) {
+  async function playInitialRoundDrawSequence(
+    signature,
+    { showRoundStartNotice = true } = {},
+  ) {
     if (!signature || isInitialRoundDrawAnimating.value) {
       return;
     }
@@ -167,7 +173,9 @@ export function useGameStageDrawSequence({
       isInitialRoundDrawAnimating.value = false;
 
       await waitForTutorialSettlement();
-      await playRoundStartNotice(signature);
+      if (showRoundStartNotice) {
+        await playRoundStartNotice(signature);
+      }
 
       if (isExplicitCurrentPlayerTurn.value) {
         playTurnNotice({ force: true });

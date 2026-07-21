@@ -107,7 +107,7 @@ test('cleaner prompt shows only the target player', async () => {
   assert.match(source, /\.to\(\{\}, \{ duration: CLEANER_PROMPT_HOLD_SECONDS \}\)[\s\S]*\.to\(\s*cardElement,/)
   assert.match(source, /\.to\(\{\}, \{ duration: 2 \}\)[\s\S]*\.set\(promptRef\.value, \{ opacity: 0 \}\)/)
   assert.match(source, /function getKillTargets\(\) \{[\s\S]*promptRef\.value/)
-  assert.match(source, /\.cleaner-animation__prompt \{[\s\S]*top: 25%[\s\S]*width: min\(92vw, 900px\)[\s\S]*font-size: clamp\(14\.4px, 2\.7vw, 32\.4px\)/)
+  assert.match(source, /\.cleaner-animation__prompt \{[\s\S]*top: 31%[\s\S]*width: min\(92vw, 900px\)[\s\S]*font-size: clamp\(14\.4px, 2\.7vw, 32\.4px\)/)
   assert.match(source, /\.cleaner-animation__prompt-value \{[\s\S]*color: #facc15/)
   assert.match(stage, /const activeCleanerTargetPlayerName = computed/)
   assert.match(stage, /activeEffectResult\.value\.targetPlayerId/)
@@ -152,6 +152,24 @@ test('hr swap reveals only the card owned by the viewer at each end of the excha
   assert.match(socketActions, /targetCardReveal/)
   assert.match(demo, /sourceCardReveal: bystander \? 'never' : 'before-swap'/)
   assert.match(demo, /targetCardReveal: bystander \? 'never' : 'after-swap'/)
+})
+
+test('HR swap emits one motion-start event after the prompt hold in both motion modes', async () => {
+  const source = await readSource('src/components/game/animations/CardSwapAnimation.vue')
+
+  assert.match(source, /defineEmits\(\['complete', 'swap-motion-start'\]\)/)
+  assert.match(
+    source,
+    /if \(reduced\) \{[\s\S]*?\.to\(\{\}, \{ duration: SWAP_PROMPT_HOLD_SECONDS \}\)\s*\.call\(\(\) => emit\('swap-motion-start'\)\)\s*\.set\(\[sourceFlipperElement, targetFlipperElement\]/,
+  )
+  assert.match(
+    source,
+    /return\s*\}\s*timeline\.value\s*\.to\(\{\}, \{ duration: SWAP_PROMPT_HOLD_SECONDS \}\)\s*\.call\(\(\) => emit\('swap-motion-start'\)\)\s*\.to\(sourceFlipperElement/,
+  )
+  assert.equal(
+    (source.match(/emit\('swap-motion-start'\)/g) ?? []).length,
+    2,
+  )
 })
 
 test('cleaner keeps the current player card face up while moving it out and back', async () => {

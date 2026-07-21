@@ -12,6 +12,12 @@ function normalizeRoundWins(value) {
   return Number.isInteger(numberValue) ? Math.min(Math.max(numberValue, 0), 3) : 0
 }
 
+function normalizeLevel(value) {
+  const numberValue = Number(value)
+
+  return Number.isInteger(numberValue) && numberValue > 0 ? numberValue : 1
+}
+
 function getPublicHandCount(player) {
   const count = Number(
     player?.handCount ??
@@ -49,6 +55,7 @@ export function useGameViewModel({
   currentTurnPlayerId,
   resolvedCurrentPlayerId,
   roomPlayerMetadata,
+  viewerProfile,
   isDrawing,
   normalizeCard,
   resolveAvatarUrl,
@@ -78,16 +85,19 @@ export function useGameViewModel({
       resolvedCurrentPlayerId.value,
     ).slice(0, 4).map((player, index) => {
       const playerId = String(getPlayerId(player) ?? `player-${index + 1}`)
+      const isCurrentPlayer = playerId === resolvedCurrentPlayerId.value
 
       return {
         id: playerId,
         name: player.username ?? player.name ?? `Player ${index + 1}`,
         avatarUrl: resolveAvatarUrl(player.avatarUrl ?? player.avatarId, index),
         roundWins: normalizeRoundWins(player.roundWins ?? player.score ?? 0),
-        level: player.level ?? 1,
+        level: normalizeLevel(
+          isCurrentPlayer ? viewerProfile?.value?.level ?? player.level : player.level,
+        ),
         position: SEAT_POSITIONS[index] ?? 'bottom',
         isComputer: Boolean(player.isComputer),
-        isCurrentPlayer: playerId === resolvedCurrentPlayerId.value,
+        isCurrentPlayer,
         isTurnPlayer: playerId === String(currentTurnPlayerId.value ?? ''),
         isProtected: Boolean(player.isProtected),
         isEliminated: Boolean(player.isEliminated),
@@ -110,6 +120,9 @@ export function useGameViewModel({
   })
 
   const deckCount = computed(() => gameState.value?.deckCount ?? 0)
+  const currentTurnPlayer = computed(() =>
+    players.value.find((player) => player.isTurnPlayer) ?? null,
+  )
   const canCurrentPlayerAct = computed(() => {
     if (!currentTurnPlayerId.value || !resolvedCurrentPlayerId.value) {
       return true
@@ -128,7 +141,11 @@ export function useGameViewModel({
   )
   const turnStatus = computed(() => ({
     roundNumber: gameState.value?.roundNumber ?? gameState.value?.round ?? 1,
-    currentPhase: selfPlayer.value?.username ?? selfPlayer.value?.name ?? '無資料',
+    currentPhase:
+      currentTurnPlayer.value?.name ??
+      selfPlayer.value?.username ??
+      selfPlayer.value?.name ??
+      '無資料',
     currentStep: canCurrentPlayerAct.value ? '輪到你' : '等待對手出牌',
   }))
   const playerHandCardCounts = computed(() =>
@@ -162,6 +179,7 @@ export function useGameViewModel({
 export {
   getPlayerId,
   getPublicHandCount,
+  normalizeLevel,
   normalizeRoundWins,
   orderPlayersForViewer,
 }

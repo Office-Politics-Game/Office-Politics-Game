@@ -63,8 +63,9 @@ test('game stage coordinates pending play target and guess confirmation', async 
   assert.match(source, /v-if="pendingPlay"[\s\S]*class="play-target-backdrop"/)
   assert.match(source, /\.play-target-backdrop \{[\s\S]*z-index: 44[\s\S]*background: rgba\(0, 0, 0, 0\.42\)[\s\S]*backdrop-filter: blur\(5px\)/)
   assert.match(source, /<CardPlayConfirmPanel/)
-  assert.match(source, /import \{ CARD_INFO_BY_RANK \} from ["']@\/constants\/cardInfo["']/)
+  assert.match(source, /import \{ CARD_INFO_BY_RANK, getCardDisplayName \} from ["']@\/constants\/cardInfo["']/)
   assert.match(source, /Object\.entries\(CARD_INFO_BY_RANK\)/)
+  assert.match(source, /name: getCardDisplayName\(cardInfo\)/)
   assert.match(confirmPanelSource, /<CardGuessSelector/)
   assert.match(source, /@target-select="selectTargetPlayer"/)
   assert.match(confirmPanelSource, /:disabled="!canConfirmPendingPlay"/)
@@ -151,8 +152,9 @@ test('intern animation normalization requires and preserves the submitted guess'
 
   assert.match(source, /typeof result\.guessedCardName === ['"]string['"]/)
   assert.match(source, /result\.guessedCardName\.trim\(\)/)
+  assert.match(source, /getCardDisplayName\(\s*guessedCardName,/)
   assert.match(source, /targetPlayerId && targetCard && guessedCardName/)
-  assert.match(source, /\{ \.\.\.result, id, targetPlayerId, targetCard, guessedCardName \}/)
+  assert.match(source, /guessedCardName: guessedCardDisplayName/)
 })
 
 test('game stage resolves the intern target name with a stable fallback', async () => {
@@ -166,14 +168,29 @@ test('game stage resolves the intern target name with a stable fallback', async 
 
 test('intern animation shows the submitted position before a persistent outcome', async () => {
   const source = await readSource('src/components/game/animations/InternAnimation.vue')
+  const incorrectSource = source.slice(
+    source.indexOf('async function playIncorrect'),
+    source.indexOf('async function playCorrect'),
+  )
+  const correctSource = source.slice(
+    source.indexOf('async function playCorrect'),
+    source.indexOf('async function play(result)'),
+  )
+  const outcomeRevealSequence = /\.to\(\{\}, \{ duration: GUESS_PROMPT_HOLD_SECONDS \}\)\s*\.call\(\(\) => \{\s*emit\("outcome-reveal", result\.outcome\);\s*\}\)\s*\.set\(outcomeRef\.value/
 
+  assert.match(source, /defineEmits\(\["complete", "outcome-reveal"\]\)/)
   assert.match(source, /targetPlayerName: \{ type: String, default: ['"]玩家['"] \}/)
   assert.match(source, /intern-animation__prompt-value">[\s\S]*?targetPlayerName[\s\S]*?<\/span>/)
   assert.match(source, /intern-animation__prompt-value">[\s\S]*?activeResult\.guessedCardName[\s\S]*?<\/span>/)
   assert.match(source, /\.intern-animation__prompt \{[\s\S]*font-size: clamp\(14\.4px, 2\.7vw, 32\.4px\)/)
   assert.match(source, /\.intern-animation__prompt-value \{[\s\S]*color: #facc15;[\s\S]*\}/)
   assert.match(source, /const GUESS_PROMPT_HOLD_SECONDS = 1/)
-  assert.match(source, /\.to\(\{\}, \{ duration: GUESS_PROMPT_HOLD_SECONDS \}\)[\s\S]*\.set\(outcomeRef\.value/)
+  assert.match(incorrectSource, outcomeRevealSequence)
+  assert.match(correctSource, outcomeRevealSequence)
+  assert.equal(
+    (source.match(/emit\("outcome-reveal", result\.outcome\)/g) ?? []).length,
+    2,
+  )
   assert.match(source, /\[glowRef\.value, promptRef\.value, outcomeRef\.value\]/)
   assert.match(source, /isReducedMotion\(\)/)
   assert.match(source, /\.intern-animation__prompt \{[\s\S]*width: min\(92vw, 900px\)[\s\S]*overflow-wrap: anywhere/)

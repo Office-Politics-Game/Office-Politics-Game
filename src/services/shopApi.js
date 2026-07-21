@@ -22,10 +22,11 @@ function purchaseShopItem({ playerId, shopItemId, quantity = 1 }) {
   });
 }
 
-function equipShopItem({ playerId, shopItemId }) {
+function equipShopItem({ playerId, shopItemId = null, categoryId = null }) {
   return apiClient.post(`${SHOP_API_PATH}/equip`, {
     playerId,
     shopItemId,
+    categoryId,
   });
 }
 
@@ -34,6 +35,13 @@ function updateCardSkinLoadout({ playerId, cardSkinItemId = null, cardSkinOverri
     playerId,
     cardSkinItemId,
     cardSkinOverrides,
+  });
+}
+
+function unequipShopItem({ playerId, categoryId }) {
+  return apiClient.post(`${SHOP_API_PATH}/unequip`, {
+    playerId,
+    categoryId,
   });
 }
 
@@ -53,5 +61,6 @@ export {
   getPlayerShopItems,
   getShopItems,
   purchaseShopItem,
+  unequipShopItem,
   updateCardSkinLoadout,
 };

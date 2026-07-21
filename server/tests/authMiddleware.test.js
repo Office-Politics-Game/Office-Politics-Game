@@ -25,13 +25,12 @@ describe("requireAuth middleware", () => {
         mockVerifyToken.mockReset()
     })
 
-    test("沒有 Authorization header 時回傳 401", async () => {
+    test("沒有 Cookie 時回傳 401", async () => {
         const error = new Error("缺少登入驗證token")
+        error.statusCode = 401
         mockVerifyToken.mockRejectedValueOnce(error)
 
-        const req = {
-            headers: {}
-        }
+        const req = { cookies: {} }
         const res = createMockResponse()
         const next = jest.fn()
 
@@ -45,11 +44,12 @@ describe("requireAuth middleware", () => {
         })
     })
 
-    test("Authorization 格式不是 Bearer token 時回傳 401", async () => {
+    test("只有 Authorization header、沒有 Cookie 時回傳 401", async () => {
         const error = new Error("缺少登入驗證token")
         mockVerifyToken.mockRejectedValueOnce(error)
 
         const req = {
+            cookies: {},
             headers: {
                 authorization: "Token invalid-token"
             }
@@ -69,11 +69,12 @@ describe("requireAuth middleware", () => {
 
     test("token 無效時回傳 401", async () => {
         const error = new Error("登入驗證失敗")
+        error.statusCode = 401
         mockVerifyToken.mockRejectedValueOnce(error)
 
         const req = {
-            headers: {
-                authorization: "Bearer invalid-token"
+            cookies: {
+                officePoliticsAuthToken: "invalid-token"
             }
         }
         const res = createMockResponse()
@@ -100,8 +101,8 @@ describe("requireAuth middleware", () => {
         mockVerifyToken.mockResolvedValueOnce(player)
 
         const req = {
-            headers: {
-                authorization: "Bearer valid-token"
+            cookies: {
+                officePoliticsAuthToken: "valid-token"
             }
         }
         const res = createMockResponse()
@@ -122,8 +123,8 @@ describe("requireAuth middleware", () => {
         mockVerifyToken.mockRejectedValueOnce(error)
 
         const req = {
-            headers: {
-                authorization: "Bearer valid-token"
+            cookies: {
+                officePoliticsAuthToken: "valid-token"
             }
         }
         const res = createMockResponse()
@@ -137,5 +138,34 @@ describe("requireAuth middleware", () => {
         expect(res.json).toHaveBeenCalledWith({
             message: "找不到玩家資料"
         })
+    })
+
+    test("service 發生未知錯誤時，不回傳內部錯誤訊息", async () => {
+        const consoleErrorSpy = jest
+            .spyOn(console, "error")
+            .mockImplementation(() => {})
+
+        mockVerifyToken.mockRejectedValueOnce(
+            new Error('查詢玩家資料時發生資料庫外鍵約束錯誤')
+        )
+
+        const req = {
+            cookies: {
+                officePoliticsAuthToken: "valid-token"
+            }
+        }
+        const res = createMockResponse()
+        const next = jest.fn()
+
+        await requireAuth(req, res, next)
+
+        expect(mockVerifyToken).toHaveBeenCalledWith("valid-token")
+        expect(next).not.toHaveBeenCalled()
+        expect(res.status).toHaveBeenCalledWith(401)
+        expect(res.json).toHaveBeenCalledWith({
+            message: "請先登入"
+        })
+
+        consoleErrorSpy.mockRestore()
     })
 })

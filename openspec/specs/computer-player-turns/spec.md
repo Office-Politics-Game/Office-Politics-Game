@@ -59,10 +59,27 @@ The system SHALL decide computer player draw, card selection, target selection, 
 - **WHEN** the current turn player is a computer player with fewer than two cards and the deck has cards
 - **THEN** the backend SHALL perform a draw action before selecting and playing a card
 
-#### Scenario: Computer turn uses deterministic first-version strategy
+#### Scenario: Computer turn keeps the existing card and guess strategy
 
 - **WHEN** the current turn player is a computer player with playable cards
-- **THEN** the backend SHALL choose a legal card by prioritizing lower ranks, keeping CEO as the last choice, obeying Advisor restrictions, selecting the first legal target when a target is required, and guessing `CEO` for Intern
+- **THEN** the backend SHALL choose a legal card by prioritizing lower ranks, keeping CEO as the last choice, obeying Advisor restrictions, and guessing `CEO` for Intern
+
+#### Scenario: Computer turn randomly selects an eligible target
+
+- **WHEN** a computer player plays a card that requires a target
+- **THEN** the backend SHALL select one eligible target using uniform random selection
+- **AND** the eligible targets SHALL include every non-eliminated player allowed by the card self-target rule
+- **AND** the selection SHALL NOT depend on player seat order
+
+##### Example: target eligibility by card and player state
+
+| Played card | Candidate state | Expected eligibility |
+| ----------- | --------------- | -------------------- |
+| Intern | acting computer player | excluded |
+| Intern | other non-eliminated computer player | included |
+| Intern | non-eliminated human player | included |
+| Intern | eliminated player | excluded |
+| PM | acting computer player | included |
 
 #### Scenario: Human turn does not trigger computer action
 

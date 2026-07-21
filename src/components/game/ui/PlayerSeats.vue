@@ -67,6 +67,12 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  protectedPlayerIds: {
+    type: Array,
+    default: () => [],
+    validator: (playerIds) =>
+      playerIds.every((playerId) => typeof playerId === "string"),
+  },
 });
 
 const emit = defineEmits(["target-select"]);
@@ -79,6 +85,7 @@ const dealtPlayerIdSet = computed(() => new Set(props.dealtPlayerIds));
 const selectablePlayerIdSet = computed(
   () => new Set(props.selectablePlayerIds),
 );
+const protectedPlayerIdSet = computed(() => new Set(props.protectedPlayerIds));
 const temporarilyHiddenHandCardPlayerIdSet = computed(
   () => new Set(props.temporarilyHiddenHandCardPlayerIds),
 );
@@ -163,6 +170,14 @@ function isSelectedTarget(playerId) {
   return props.selectedTargetPlayerId === playerId;
 }
 
+function isProtectedPlayer(playerId) {
+  return protectedPlayerIdSet.value.has(String(playerId));
+}
+
+function shouldShowImmunityLabel(player) {
+  return !player.isCurrentPlayer && isProtectedPlayer(player.id);
+}
+
 function handleTargetSelect(player) {
   if (!isSelectableTarget(player.id)) {
     return;
@@ -213,6 +228,15 @@ defineExpose({
         },
       ]"
     >
+      <span
+        v-if="shouldShowImmunityLabel(player)"
+        class="player-seats__immunity-label"
+        :class="`player-seats__immunity-label--${player.position}`"
+        aria-hidden="true"
+      >
+        免疫狀態
+      </span>
+
       <PlayerAvatar
         :name="player.name"
         :avatar-url="player.avatarUrl"
@@ -276,6 +300,10 @@ defineExpose({
 
 .player-seats__seat--eliminated {
   opacity: 0.45;
+}
+
+.player-seats__immunity-label {
+  display: none;
 }
 
 .player-seat-hand-target {
@@ -359,6 +387,38 @@ defineExpose({
     --player-hand-target-left-tilt: -80deg;
     --player-hand-target-right-tilt: 80deg;
     height: clamp(62px, 10vh, 92px);
+  }
+}
+
+@media (max-width: 767px) {
+  .player-seats__immunity-label {
+    position: absolute;
+    z-index: 28;
+    display: block;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    text-shadow:
+      0 2px 3px rgba(0, 19, 50, 0.95),
+      0 4px 10px rgba(0, 19, 50, 0.82),
+      0 0 14px rgba(0, 19, 50, 0.72);
+    filter: drop-shadow(0 3px 5px rgba(0, 19, 50, 0.76));
+    pointer-events: none;
+  }
+
+  .player-seats__immunity-label--top,
+  .player-seats__immunity-label--left,
+  .player-seats__immunity-label--right {
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .player-seats__immunity-label--bottom {
+    display: none;
   }
 }
 

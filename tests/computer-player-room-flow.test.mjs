@@ -16,6 +16,9 @@ test("custom room add computer uses backend room state instead of local fake pla
   assert.match(roomApiSource, /function addComputerPlayer\(roomCode, payload\)/);
   assert.match(roomApiSource, /computer-players/);
   assert.match(customRoomSource, /await roomStore\.addComputerPlayer\(roomCode\.value/);
+  assert.match(customRoomSource, /username:\s*computerName/);
+  assert.match(customRoomSource, /pendingComputerSlots\.value\[index\]/);
+  assert.match(customRoomSource, /isLoading\.value/);
   assert.doesNotMatch(customRoomSource, /localPlayerSlots/);
   assert.doesNotMatch(customRoomSource, /hasLocalComputerPlayers/);
   assert.doesNotMatch(customRoomSource, /getRankingList/);
@@ -25,13 +28,19 @@ test("custom room add computer uses backend room state instead of local fake pla
 test("backend room flow exposes computer metadata and socket handler", async () => {
   const schemaSource = await readSource("server/src/db/schema.sql");
   const roomServiceSource = await readSource("server/src/services/roomService.js");
+  const roomControllerSource = await readSource("server/src/controllers/roomController.js");
   const roomHandlersSource = await readSource("server/src/socket/roomHandlers.js");
   const routesSource = await readSource("server/src/routes/roomRoutes.js");
 
   assert.match(schemaSource, /is_computer BOOLEAN NOT NULL DEFAULT false/);
   assert.match(roomServiceSource, /async function addComputerPlayer/);
   assert.match(roomServiceSource, /findOrCreateComputerPlayer/);
+  assert.match(roomServiceSource, /normalizeComputerUsername/);
+  assert.match(roomServiceSource, /async function addComputerPlayer\(\{ roomCode, hostPlayerId, username \}\)/);
   assert.match(roomServiceSource, /isComputer/);
+  assert.match(roomControllerSource, /const \{ hostPlayerId, username \} = req\.body/);
+  assert.match(roomControllerSource, /addComputerPlayer\(\{ roomCode, hostPlayerId, username \}\)/);
+  assert.match(roomHandlersSource, /const \{ roomCode, hostPlayerId, username \} = payload/);
   assert.match(roomHandlersSource, /room:add-computer/);
   assert.match(routesSource, /computer-players/);
 });

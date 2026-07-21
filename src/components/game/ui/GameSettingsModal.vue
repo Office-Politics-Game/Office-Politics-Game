@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, ref, watch } from "vue";
+import { useButtonClickAudio } from "@/composables/UseButtonClickAudio";
 
 const props = defineProps({
   isOpen: {
@@ -36,6 +37,7 @@ const emit = defineEmits([
   "restart-game",
 ]);
 
+const { handleButtonClick } = useButtonClickAudio();
 const dialog = ref(null);
 const closeButton = ref(null);
 const confirmationAction = ref(null);
@@ -45,10 +47,9 @@ let previouslyFocusedElement = null;
 const confirmationContent = computed(() => {
   if (confirmationAction.value === "return-lobby") {
     return {
-      title: "返回大廳？",
-      description:
-        "目前對局將會中斷。這個版本只會送出返回大廳事件，不會直接切換頁面。",
-      confirmLabel: "確認返回",
+      title: "確認投降",
+      description: "放棄對局無法領取結算獎勵，確認返回大廳？",
+      confirmLabel: "投降",
     };
   }
 
@@ -165,7 +166,12 @@ watch(
 <template>
   <Teleport to="body">
     <Transition name="settings-modal">
-      <div v-if="isOpen" class="settings-overlay" @click.self="requestClose">
+      <div
+        v-if="isOpen"
+        class="settings-overlay"
+        @click.capture="handleButtonClick"
+        @click.self="requestClose"
+      >
         <section
           ref="dialog"
           class="settings-dialog"
@@ -295,9 +301,9 @@ watch(
                 <button
                   type="button"
                   class="glass-button"
-                  @click="$router.push('/Lobby')"
+                  @click="openConfirmation('return-lobby')"
                 >
-                  返回大廳
+                  投降
                 </button>
                 <button
                   type="button"

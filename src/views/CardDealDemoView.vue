@@ -80,25 +80,27 @@ const players = [
 const cardsByPosition = {
   bottom: {
     id: 'deal-bottom-ceo',
-    name: 'CEO',
+    name: '執行長',
+    displayName: '執行長',
     backgroundUrl: ceoBackgroundUrl,
     frameUrl: ceoFrameUrl,
   },
   left: {
     id: 'deal-left-advisor',
-    name: '顧問',
+    name: '資深顧問',
     backgroundUrl: advisorBackgroundUrl,
     frameUrl: advisorFrameUrl,
   },
   top: {
     id: 'deal-top-ceo',
-    name: 'CEO',
+    name: '執行長',
+    displayName: '執行長',
     backgroundUrl: ceoBackgroundUrl,
     frameUrl: ceoFrameUrl,
   },
   right: {
     id: 'deal-right-advisor',
-    name: '顧問',
+    name: '資深顧問',
     backgroundUrl: advisorBackgroundUrl,
     frameUrl: advisorFrameUrl,
   },

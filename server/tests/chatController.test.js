@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises"
 import { jest } from "@jest/globals"
 
 const getDirectMessagesMock = jest.fn()
@@ -50,9 +51,10 @@ describe("chatController", () => {
     sendDirectMessageMock.mockResolvedValueOnce(directMessage)
 
     const req = {
+      player: { id: 1 },
       params: { friendId: "2" },
       body: {
-        playerId: 1,
+        playerId: 999,
         content: "hello",
       },
     }
@@ -85,8 +87,9 @@ describe("chatController", () => {
     getSocketServerMock.mockReturnValueOnce({ to: toMock })
     sendDirectMessageMock.mockResolvedValueOnce(directMessage)
     const req = {
+      player: { id: 1 },
       params: { friendId: "2" },
-      body: { playerId: 1, content: "hello" },
+      body: { playerId: 999, content: "hello" },
     }
     const res = createMockResponse()
 
@@ -107,8 +110,9 @@ describe("chatController", () => {
     }
     sendDirectMessageMock.mockResolvedValueOnce(directMessage)
     const req = {
+      player: { id: 1 },
       params: { friendId: "2" },
-      body: { playerId: 1, content: "stored" },
+      body: { content: "stored" },
     }
     const res = createMockResponse()
 
@@ -139,8 +143,9 @@ describe("chatController", () => {
     sendDirectMessageMock.mockResolvedValueOnce(directMessage)
     const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {})
     const req = {
+      player: { id: 1 },
       params: { friendId: "2" },
-      body: { playerId: 1, content: "stored once" },
+      body: { content: "stored once" },
     }
     const res = createMockResponse()
 
@@ -161,10 +166,9 @@ describe("chatController", () => {
 
   test("handleSendDirectMessage() rejects invalid request payload", async () => {
     const req = {
+      player: { id: 1 },
       params: { friendId: "2" },
-      body: {
-        content: "hello",
-      },
+      body: {},
     }
     const res = createMockResponse()
 
@@ -190,8 +194,9 @@ describe("chatController", () => {
     getDirectMessagesMock.mockResolvedValueOnce(messages)
 
     const req = {
+      player: { id: 1 },
       params: { friendId: "2" },
-      query: { playerId: "1" },
+      query: { playerId: "999" },
     }
     const res = createMockResponse()
 
@@ -207,6 +212,7 @@ describe("chatController", () => {
 
   test("handleGetDirectMessages() rejects invalid request query", async () => {
     const req = {
+      player: null,
       params: { friendId: "2" },
       query: {},
     }
@@ -227,9 +233,10 @@ describe("chatController", () => {
     sendDirectMessageMock.mockRejectedValueOnce(error)
 
     const req = {
+      player: { id: 1 },
       params: { friendId: "2" },
       body: {
-        playerId: 1,
+        playerId: 999,
         content: "hello",
       },
     }
@@ -243,5 +250,19 @@ describe("chatController", () => {
       error: "只能和好友傳送訊息",
     })
     expect(getSocketServerMock).not.toHaveBeenCalled()
+  })
+
+  test("chat routes require HttpOnly Cookie authentication before controllers", async () => {
+    const source = await readFile(
+      new URL("../src/routes/chatRoutes.js", import.meta.url),
+      "utf8",
+    )
+
+    expect(source).toMatch(
+      /router\.get\("\/direct\/:friendId\/messages", requireAuth, handleGetDirectMessages\)/,
+    )
+    expect(source).toMatch(
+      /router\.post\("\/direct\/:friendId\/messages", requireAuth, handleSendDirectMessage\)/,
+    )
   })
 })

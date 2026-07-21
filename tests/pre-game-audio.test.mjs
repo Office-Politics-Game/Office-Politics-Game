@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readdir, readFile } from 'node:fs/promises'
 import test from 'node:test'
+import { createServer } from 'vite'
 
 const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
@@ -87,6 +88,21 @@ test('pre-game lobby music fades out when leaving the auth flow', async () => {
   )
 })
 
+test('loading route uses an extended pre-game lobby fade out', async () => {
+  const source = await readSource('src/composables/UsePreGameAudio.js')
+
+  assert.match(source, /LOADING_MUSIC_FADE_OUT_MS = 4000/)
+  assert.match(
+    source,
+    /function stopPreGameBackground\(\{[\s\S]*?fadeOutMs = LOBBY_MUSIC_FADE_OUT_MS/,
+  )
+  assert.match(source, /fadeOutAudio\(preGameLobbyMusicAudio, fadeOutMs\)/)
+  assert.match(
+    source,
+    /fadeOutMs:\s*routeName === "Loading"\s*\? LOADING_MUSIC_FADE_OUT_MS\s*:\s*LOBBY_MUSIC_FADE_OUT_MS/,
+  )
+})
+
 test('pre-game lobby music fades in when explicitly started', async () => {
   const source = await readSource('src/composables/UsePreGameAudio.js')
 
@@ -130,30 +146,43 @@ test('pre-game background audio separates login-before and post-login routes', a
     "Matching",
     "JoinRoom",
     "CustomRoom",
-    "Loading",
     "Profile",
     "Friend",
     "Gacha",
   ])
 })
 
-test('post-login lobby audio does not schedule footsteps', async () => {
+test('pre-login lobby audio retries after user interaction and schedules footsteps', async () => {
   const source = await readSource('src/composables/UsePreGameAudio.js')
 
-  assert.doesNotMatch(source, /LOBBY_FOOTSTEP_LAYERS/)
-  assert.doesNotMatch(source, /scheduleFootstepLayer/)
-  assert.doesNotMatch(source, /playLobbyFootstep/)
-  assert.doesNotMatch(source, /connectFootstepLayer/)
-  assert.doesNotMatch(source, /lobbyFootstepsHeels\d\dUrl/)
+  assert.match(source, /AUDIO_UNLOCK_EVENTS/)
+  assert.match(source, /function unlockAudio/)
+  assert.match(source, /function installAudioUnlockListeners/)
+  assert.match(
+    source,
+    /if \(currentPreLoginRouteActive\) \{[\s\S]*?playLoginLobbyMusic\(\);[\s\S]*?scheduleFootstepLayer\(\{ initial: true \}\)/,
+  )
+  assert.match(source, /LOBBY_FOOTSTEP_LAYERS/)
+  assert.match(source, /function scheduleFootstepLayer/)
+  assert.match(source, /function playLobbyFootstep/)
+  assert.match(source, /function connectFootstepLayer/)
+  assert.match(source, /lobbyFootstepsHeels01Url/)
+  assert.match(source, /lobbyFootstepsHeels02Url/)
+  assert.match(source, /lobbyFootstepsHeels03Url/)
+  assert.match(source, /lobbyFootstepsHeels04Url/)
 })
 
-test('pre-game audio mix excludes footsteps', async () => {
+test('pre-login lobby audio mix includes footsteps and clears them on route exit', async () => {
   const source = await readSource('src/composables/UsePreGameAudio.js')
 
   assert.match(source, /PRE_LOGIN_MUSIC_GAIN/)
   assert.match(source, /PRE_GAME_MUSIC_GAIN/)
-  assert.doesNotMatch(source, /LOBBY_DETAIL_GAIN/)
-  assert.doesNotMatch(source, /gain:/)
+  assert.match(source, /LOBBY_DETAIL_GAIN/)
+  assert.match(source, /clearFootstepTimer/)
+  assert.match(
+    source,
+    /pauseAudio\(loginLobbyMusicAudio, \{ reset: true \}\);\s*stopLobbyFootsteps\(\)/,
+  )
 })
 
 test('login page actions trigger the shared click sound, including close controls', async () => {
@@ -261,12 +290,15 @@ test('pre-game lobby music continues through personal, social, and recruitment p
   }
 })
 
-test('starting the game menu uses the shared click sound', async () => {
+test('starting the game menu uses the lobby navigation sound', async () => {
   const source = await readSource('src/components/menu/LobbyMenu.vue')
-  const startGameAction = source.slice(source.indexOf('function openGameMenu()'))
+  const startGameAction = source.slice(
+    source.indexOf('function openGameMenu()'),
+    source.indexOf('function openGachaPage()'),
+  )
 
-  assert.match(startGameAction, /playPreGameSound\("login-button-click"\)/)
-  assert.doesNotMatch(startGameAction, /playLobbyNavigationSound\(\)/)
+  assert.match(startGameAction, /playLobbyNavigationSound\(\)/)
+  assert.doesNotMatch(startGameAction, /playPreGameSound\("login-button-click"\)/)
 })
 
 test('waiting room entry actions use the shared click sound', async () => {
@@ -291,6 +323,29 @@ test('post-login pages delegate enabled button clicks to the shared click sound'
   assert.match(buttonAudioSource, /playPreGameSound\("login-button-click"\)/)
 
   for (const source of [profileSource, friendSource, mallSource]) {
+    assert.match(source, /useButtonClickAudio/)
+    assert.match(source, /@click\.capture="handleButtonClick"/)
+  }
+})
+
+test('custom room waiting controls use the shared click sound', async () => {
+  const source = await readSource('src/views/CustomRoomView.vue')
+
+  assert.match(source, /useButtonClickAudio/)
+  assert.match(
+    source,
+    /const \{ handleButtonClick \} = useButtonClickAudio\(\)/,
+  )
+  assert.match(source, /<main[\s\S]*?@click\.capture="handleButtonClick"/)
+})
+
+test('game table selection and settings buttons use the shared click sound', async () => {
+  const gameStageSource = await readSource('src/components/game/ui/GameStage.vue')
+  const settingsModalSource = await readSource(
+    'src/components/game/ui/GameSettingsModal.vue',
+  )
+
+  for (const source of [gameStageSource, settingsModalSource]) {
     assert.match(source, /useButtonClickAudio/)
     assert.match(source, /@click\.capture="handleButtonClick"/)
   }
@@ -347,6 +402,158 @@ test('returning from mall preserves activation and fades the pre-game theme in',
   assert.match(audioSource, /startPreGameBackground\(\{ fadeIn \}\)/)
   assert.match(
     audioSource,
-    /preserveActivation: routeName === "Mall"/,
+    /preserveActivation:\s*PRESERVE_PRE_GAME_ACTIVATION_ROUTE_NAMES\.has\(routeName\)/,
+  )
+})
+
+test('returning from Game preserves activation and fades the pre-game theme in', async () => {
+  const appSource = await readSource('src/App.vue')
+  const audioSource = await readSource('src/composables/UsePreGameAudio.js')
+  const preserveRouteNamesMatch = audioSource.match(
+    /PRESERVE_PRE_GAME_ACTIVATION_ROUTE_NAMES = new Set\(\[([\s\S]*?)\]\)/,
+  )
+  const startPreGameSource = audioSource.slice(
+    audioSource.indexOf('function startPreGameBackground'),
+    audioSource.indexOf('function removeAudioUnlockListeners'),
+  )
+
+  assert.match(
+    appSource,
+    /const fadeIn =\s*previousRouteName === "Mall" \|\|\s*previousRouteName === "Game"/,
+  )
+  assert.match(appSource, /syncPreGameRouteAudio\(routeName, \{ fadeIn \}\)/)
+  assert.doesNotMatch(appSource, /suppressBackground/)
+  assert.doesNotMatch(audioSource, /suppressBackground/)
+
+  assert.ok(preserveRouteNamesMatch)
+  const preserveRouteNames = Array.from(
+    preserveRouteNamesMatch[1].matchAll(/"([^"]+)"/g),
+  ).map(([, routeName]) => routeName)
+  assert.deepEqual(preserveRouteNames, ["Mall", "Loading", "Game"])
+  assert.match(
+    audioSource,
+    /preserveActivation:\s*PRESERVE_PRE_GAME_ACTIVATION_ROUTE_NAMES\.has\(routeName\)/,
+  )
+
+  assert.match(startPreGameSource, /const \{ musicEnabled, musicVolume \} = getAudioSettings\(\)/)
+  assert.match(
+    startPreGameSource,
+    /!musicEnabled\.value \|\|[\s\S]*?getBoundedVolume\(musicVolume\.value, PRE_GAME_MUSIC_GAIN\) <= 0/,
+  )
+})
+
+test('game settings return-lobby flows through GameView to LobbyHome', async () => {
+  const settingsModalSource = await readSource(
+    'src/components/game/ui/GameSettingsModal.vue',
+  )
+  const gameStageSource = await readSource('src/components/game/ui/GameStage.vue')
+  const gameViewSource = await readSource('src/views/GameView.vue')
+
+  assert.match(
+    settingsModalSource,
+    /@click="openConfirmation\(['"]return-lobby['"]\)"/,
+  )
+  assert.match(settingsModalSource, /emit\(confirmationAction\.value\)/)
+  assert.doesNotMatch(
+    settingsModalSource,
+    /\$router\.push\(['"]\/Lobby['"]\)/,
+  )
+  assert.match(gameStageSource, /@return-lobby="emit\(['"]return-lobby['"]\)"/)
+  assert.match(gameViewSource, /useRouter/)
+  assert.match(
+    gameViewSource,
+    /function handleReturnLobby\(\)[\s\S]*?router\.push\(\{ name: ['"]LobbyHome['"] \}\)/,
+  )
+  assert.match(gameViewSource, /@return-lobby="handleReturnLobby"/)
+})
+
+test('confirmed game settings return restores a missing pre-game activation before routing', async () => {
+  const originalAudio = globalThis.Audio
+  const originalWindow = globalThis.window
+  const audioInstances = []
+
+  class AudioMock {
+    constructor(url) {
+      this.url = url
+      this.currentTime = 0
+      this.paused = true
+      this.volume = 1
+      audioInstances.push(this)
+    }
+
+    pause() {
+      this.paused = true
+    }
+
+    play() {
+      this.paused = false
+      return Promise.resolve()
+    }
+  }
+
+  globalThis.Audio = AudioMock
+  globalThis.window = {
+    addEventListener() {},
+    removeEventListener() {},
+    setInterval() {
+      return 1
+    },
+    clearInterval() {},
+    setTimeout() {
+      return 1
+    },
+    clearTimeout() {},
+    localStorage: {
+      getItem() {
+        return null
+      },
+      setItem() {},
+    },
+  }
+
+  const viteServer = await createServer({
+    appType: 'custom',
+    logLevel: 'silent',
+    server: { middlewareMode: true },
+  })
+
+  try {
+    const { usePreGameAudio } = await viteServer.ssrLoadModule(
+      '/src/composables/UsePreGameAudio.js',
+    )
+    const preGameAudio = usePreGameAudio()
+
+    assert.equal(typeof preGameAudio.requestPreGameBackgroundResume, 'function')
+    preGameAudio.requestPreGameBackgroundResume()
+    assert.equal(audioInstances.length, 0)
+
+    preGameAudio.syncPreGameRouteAudio('LobbyHome', { fadeIn: true })
+
+    const lobbyTheme = audioInstances.find((audio) =>
+      String(audio.url).includes('pre-game-lobby-theme'),
+    )
+    assert.ok(lobbyTheme)
+    assert.equal(lobbyTheme.paused, false)
+    assert.equal(lobbyTheme.currentTime, 0)
+    assert.equal(lobbyTheme.volume, 0)
+  } finally {
+    await viteServer.close()
+    if (originalAudio === undefined) {
+      delete globalThis.Audio
+    } else {
+      globalThis.Audio = originalAudio
+    }
+    if (originalWindow === undefined) {
+      delete globalThis.window
+    } else {
+      globalThis.window = originalWindow
+    }
+  }
+
+  const gameViewSource = await readSource('src/views/GameView.vue')
+  assert.match(gameViewSource, /requestPreGameBackgroundResume/)
+  assert.match(
+    gameViewSource,
+    /function handleReturnLobby\(\)[\s\S]*?requestPreGameBackgroundResume\(\)[\s\S]*?router\.push\(\{ name: ['"]LobbyHome['"] \}\)/,
   )
 })

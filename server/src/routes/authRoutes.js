@@ -6,7 +6,8 @@ import {
     handleVerifyToken,
     handleLogoutPlayer,
     handleForgotPassword,
-    handleResetPassword
+    handleResetPassword,
+    handleChangePassword
 } from "../controllers/authController.js"
 
 const router = express.Router()
@@ -18,5 +19,6 @@ router.post("/oauth/callback", handleOAuthCallback)
 router.post("/logout", handleLogoutPlayer)
 router.post("/forgot-password", handleForgotPassword)
 router.post("/reset-password", handleResetPassword)
+router.patch("/password", handleChangePassword)
 
 export { router }

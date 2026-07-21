@@ -12,10 +12,11 @@ const {
   registerChatHandlers,
 } = await import("../src/socket/chatHandlers.js")
 
-function createSocket() {
+function createSocket(cookies = {}) {
   const handlers = new Map()
   const socket = {
     data: {},
+    request: { cookies },
     join: jest.fn(),
     leave: jest.fn(),
     on: jest.fn((eventName, handler) => {
@@ -31,8 +32,10 @@ beforeEach(() => {
 })
 
 describe("chat socket handlers", () => {
-  test("valid member token joins only the verified player's chat room", async () => {
-    const { handlers, socket } = createSocket()
+  test("valid member Cookie joins only the verified player's chat room", async () => {
+    const { handlers, socket } = createSocket({
+      officePoliticsAuthToken: "cookie-member-token",
+    })
     const callback = jest.fn()
     verifyTokenMock.mockResolvedValueOnce({ id: 2 })
     registerChatHandlers(socket)
@@ -42,7 +45,7 @@ describe("chat socket handlers", () => {
       callback,
     )
 
-    expect(verifyTokenMock).toHaveBeenCalledWith("member-token")
+    expect(verifyTokenMock).toHaveBeenCalledWith("cookie-member-token")
     expect(socket.join).toHaveBeenCalledWith("chat:player:2")
     expect(socket.join).not.toHaveBeenCalledWith("chat:player:999")
     expect(socket.data.chatPlayerId).toBe(2)
@@ -52,7 +55,7 @@ describe("chat socket handlers", () => {
     })
   })
 
-  test("missing or invalid member token is rejected without joining", async () => {
+  test("missing or invalid member Cookie is rejected without joining", async () => {
     const { handlers, socket } = createSocket()
     const callback = jest.fn()
     verifyTokenMock.mockRejectedValueOnce(new Error("登入驗證失敗"))
@@ -60,6 +63,7 @@ describe("chat socket handlers", () => {
 
     await handlers.get("chat:subscribe")({}, callback)
 
+    expect(verifyTokenMock).toHaveBeenCalledWith("")
     expect(socket.join).not.toHaveBeenCalled()
     expect(socket.data.chatPlayerId).toBeUndefined()
     expect(callback).toHaveBeenCalledWith({
@@ -69,14 +73,20 @@ describe("chat socket handlers", () => {
   })
 
   test("subscribing as another verified player leaves the old chat room first", async () => {
-    const { handlers, socket } = createSocket()
+    const { handlers, socket } = createSocket({
+      officePoliticsAuthToken: "player-2-cookie",
+    })
     verifyTokenMock
       .mockResolvedValueOnce({ id: 2 })
       .mockResolvedValueOnce({ id: 3 })
     registerChatHandlers(socket)
 
-    await handlers.get("chat:subscribe")({ token: "player-2-token" }, jest.fn())
-    await handlers.get("chat:subscribe")({ token: "player-3-token" }, jest.fn())
+    await handlers.get("chat:subscribe")({}, jest.fn())
+    socket.request.cookies.officePoliticsAuthToken = "player-3-cookie"
+    await handlers.get("chat:subscribe")({}, jest.fn())
+
+    expect(verifyTokenMock).toHaveBeenNthCalledWith(1, "player-2-cookie")
+    expect(verifyTokenMock).toHaveBeenNthCalledWith(2, "player-3-cookie")
 
     expect(socket.leave).toHaveBeenCalledWith("chat:player:2")
     expect(socket.join).toHaveBeenLastCalledWith("chat:player:3")
@@ -118,7 +128,9 @@ describe("chat socket handlers", () => {
   })
 
   test("unsubscribe cancels a subscription whose token verification is still pending", async () => {
-    const { handlers, socket } = createSocket()
+    const { handlers, socket } = createSocket({
+      officePoliticsAuthToken: "pending-member-cookie",
+    })
     const subscribeCallback = jest.fn()
     const unsubscribeCallback = jest.fn()
     let resolveVerification
@@ -128,10 +140,7 @@ describe("chat socket handlers", () => {
     verifyTokenMock.mockReturnValueOnce(verificationPromise)
     registerChatHandlers(socket)
 
-    const subscribePromise = handlers.get("chat:subscribe")(
-      { token: "member-token" },
-      subscribeCallback,
-    )
+    const subscribePromise = handlers.get("chat:subscribe")({}, subscribeCallback)
     const unsubscribePromise = handlers.get("chat:unsubscribe")(
       {},
       unsubscribeCallback,
@@ -148,7 +157,7 @@ describe("chat socket handlers", () => {
     })
   })
 
-  test("socket initialization registers chat handlers", async () => {
+  test("socket initialization parses Cookies and keeps guest handlers registered", async () => {
     const source = await readFile(
       new URL("../src/socket/index.js", import.meta.url),
       "utf8",
@@ -157,7 +166,20 @@ describe("chat socket handlers", () => {
     expect(source).toMatch(
       /import \{[^}]*registerChatHandlers[^}]*\} from "\.\/chatHandlers\.js"/,
     )
+    expect(source).toMatch(/import cookieParser from "cookie-parser"/)
+    expect(source).toMatch(/io\.engine\.use\(cookieParser\(\)\)/)
+    expect(source).toMatch(/registerRoomHandlers\(io, socket\)/)
+    expect(source).toMatch(/registerGameHandlers\(io, socket\)/)
     expect(source).toMatch(/registerChatHandlers\(socket\)/)
     expect(getChatPlayerRoom(2)).toBe("chat:player:2")
+  })
+
+  test("socket server allows credentialed CORS", async () => {
+    const source = await readFile(
+      new URL("../src/socket/index.js", import.meta.url),
+      "utf8",
+    )
+
+    expect(source).toMatch(/credentials: true/)
   })
 })

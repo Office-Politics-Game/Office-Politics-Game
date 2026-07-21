@@ -6,6 +6,13 @@ import {
 } from "./achievementService.js"
 import crypto from "node:crypto"
 
+const apiBaseUrl = String(
+  process.env.API_BASE_URL || process.env.BACKEND_URL || "http://localhost:3000"
+).replace(/\/$/, "")
+const frontendBaseUrl = String(
+  process.env.FRONTEND_URL || process.env.CLIENT_ORIGIN || "http://localhost:5173"
+).replace(/\/$/, "")
+
 const topUpPackages = [
   {
     id: "gems_60",
@@ -202,8 +209,8 @@ async function createEcpayCheckout(orderId) {
     TotalAmount: order.price,
     TradeDesc: "Office Politics Game top up",
     ItemName: order.package_id,
-    ReturnURL: "https://35.212.213.247.sslip.io/api/top-ups/ecpay/return",
-    ClientBackURL: "https://office-politics-game-fawn.vercel.app/mall",
+    ReturnURL: `${apiBaseUrl}/api/top-ups/ecpay/return`,
+    ClientBackURL: `${frontendBaseUrl}/mall`,
     ChoosePayment: "ALL",
     EncryptType: 1,
   }
