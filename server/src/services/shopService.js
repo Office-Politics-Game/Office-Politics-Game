@@ -391,6 +391,7 @@ async function getPlayerEquippedItems(playerId) {
 
 async function equipShopItem({ playerId, shopItemId = null, categoryId = null }) {
   const numericPlayerId = parsePositiveInteger(playerId, "playerId")
+  const numericShopItemId = parsePositiveInteger(shopItemId, "shopItemId")
   const client = await pool.connect()
 
   try {
