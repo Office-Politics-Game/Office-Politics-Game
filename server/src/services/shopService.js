@@ -44,14 +44,24 @@ function getCurrencyColumn(currency) {
   return column
 }
 
+function getEffectiveItemCurrency(item) {
+  if (item?.type === "gacha_ticket") {
+    return "diamond"
+  }
+
+  return item?.currency
+}
+
 function mapShopItem(row) {
+  const effectiveCurrency = getEffectiveItemCurrency(row)
+
   return {
     id: row.id,
     name: row.name,
     description: row.description,
     type: row.type,
     price: row.price,
-    currency: row.currency,
+    currency: effectiveCurrency,
     imageUrl: row.image_url,
     isActive: row.is_active,
     startAt: row.start_at,
@@ -248,7 +258,8 @@ async function purchaseShopItem({ playerId, shopItemId, quantity = 1 }) {
       throw createServiceError("已達商品購買上限")
     }
 
-    const currencyColumn = getCurrencyColumn(item.currency)
+    const effectiveCurrency = getEffectiveItemCurrency(item)
+    const currencyColumn = getCurrencyColumn(effectiveCurrency)
     const totalPrice = item.price * numericQuantity
     const playerResult = await client.query(
       `SELECT id, ${currencyColumn}
@@ -308,7 +319,7 @@ async function purchaseShopItem({ playerId, shopItemId, quantity = 1 }) {
         numericQuantity,
         item.price,
         totalPrice,
-        item.currency,
+        effectiveCurrency,
       ]
     )
 
@@ -320,7 +331,7 @@ async function purchaseShopItem({ playerId, shopItemId, quantity = 1 }) {
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         numericPlayerId,
-        item.currency,
+        effectiveCurrency,
         -totalPrice,
         balanceAfter,
         "shop_purchase",
@@ -336,7 +347,7 @@ async function purchaseShopItem({ playerId, shopItemId, quantity = 1 }) {
       purchaseLog: mapPurchaseLog(purchaseLogResult.rows[0]),
       currency: {
         playerId: updatedPlayerResult.rows[0].id,
-        currency: item.currency,
+        currency: effectiveCurrency,
         amount: -totalPrice,
         balanceAfter,
         coins: updatedPlayerResult.rows[0].coins,
