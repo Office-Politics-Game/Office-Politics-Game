@@ -428,9 +428,8 @@ const protectedPlayerIds = computed(() =>
 );
 function resolvePlayerName(playerId) {
   return (
-    props.players.find(
-      (player) => String(player.id) === String(playerId),
-    )?.name ?? "玩家"
+    props.players.find((player) => String(player.id) === String(playerId))
+      ?.name ?? "玩家"
   );
 }
 const activeCleanerTargetPlayerName = computed(() => {
@@ -747,7 +746,9 @@ defineExpose({
         :players="players"
         :dealt-player-ids="initialRoundDealtPlayerIds"
         :player-hand-card-counts="visiblePlayerHandCardCounts"
-        :temporarily-hidden-hand-card-player-ids="temporarilyHiddenSeatHandPlayerIds"
+        :temporarily-hidden-hand-card-player-ids="
+          temporarilyHiddenSeatHandPlayerIds
+        "
         :is-target-selection-active="isPendingTargetSelectionActive"
         :selectable-player-ids="selectableTargetPlayerIds"
         :selected-target-player-id="selectedTargetPlayerId"
@@ -1085,14 +1086,14 @@ defineExpose({
   justify-content: center;
   gap: 8px;
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 0;
-  background: var(--brand-hover);
+  background: rgba(255, 255, 255, 0.2);
   box-shadow:
     0 8px 20px rgba(0, 19, 50, 0.28),
     inset 0 0 0 1px rgba(255, 255, 255, 0.2);
   font-size: var(--text-sm);
-  font-weight: 900;
+  font-weight: 700;
   letter-spacing: 0.04em;
 }
 
@@ -1161,8 +1162,9 @@ defineExpose({
 .skip-computer-button {
   position: absolute;
   z-index: 46;
-  right: 18px;
-  bottom: 92px;
+  left: 50%;
+  bottom: 5vh;
+  transform: translateX(-50%);
   min-height: 40px;
   padding: 9px 16px;
   font-size: 13px;
@@ -1221,18 +1223,18 @@ defineExpose({
 }
 
 .skip-computer-button:hover {
-  border-color: rgba(255, 255, 255, 0.95);
+  border-color: rgba(255, 255, 255, 0.6);
   background: var(--brand-hover);
   box-shadow:
     0 10px 24px rgba(0, 19, 50, 0.34),
     inset 0 0 0 1px rgba(255, 255, 255, 0.32);
-  transform: translateY(-1px);
+  transform: translate(-50%, -1px);
 }
 
 .skip-computer-button:active {
   border-color: var(--brand-active);
   background: var(--brand-active);
-  transform: translateY(1px);
+  transform: translate(-50%, 1px);
 }
 
 .skip-computer-button:focus-visible {
@@ -1246,7 +1248,14 @@ defineExpose({
   background: rgba(160, 166, 179, 0.62);
   box-shadow: none;
   cursor: not-allowed;
-  transform: none;
+  transform: translateX(-50%);
+}
+
+@media (min-width: 1024px) {
+  .skip-computer-button {
+    bottom: 10vh;
+    font-size: 16px;
+  }
 }
 
 .skip-settlement-overlay {
