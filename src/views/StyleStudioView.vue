@@ -324,6 +324,7 @@ import { useAppearanceStore } from "@/stores/appearanceStore.js";
 import { useAuthStore } from "@/stores/authStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
 import { resolveImageAssetUrl } from "@/utils/assetUrlResolver.js";
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -561,7 +562,7 @@ const equipmentSections = computed(() => {
       categoryId: "avatar",
       categoryLabel: mergedSection.label,
       name: avatar.name,
-      description: "?身閫?剖?",
+      description: "預設玩家頭像",
       previewImage: avatar.image,
       price: 0,
       currency: "default",
@@ -634,7 +635,7 @@ const lightboxPreview = computed(() => {
   if (activeCategory.value === "card_skin") return selectedCardSkinPreview.value;
 
   return {
-    label: selectedItem.value?.name || "蝝??汗",
+    label: selectedItem.value?.name || "未選擇造型",
     previewImage: selectedItem.value?.previewImage || "",
     frameImage: "",
   };
@@ -754,7 +755,7 @@ function openGameCardLightbox(card) {
 
 async function reloadEquipment() {
   if (!resolvedPlayerId.value) {
-    errorMessage.value = "找不到玩家資料，無法載入個人造型設定。";
+    errorMessage.value = "找不到玩家資料，無法載入個人造型設定";
     inventoryItems.value = [];
     allShopItems.value = [];
     equippedItems.value = normalizeEquippedItems(null);
@@ -782,7 +783,7 @@ async function reloadEquipment() {
     );
   } catch (error) {
     allShopItems.value = [];
-    errorMessage.value = error?.message || "載入個人造型資料失敗，請稍後再試。";
+    errorMessage.value = getDisplayErrorMessage(error, "載入個人造型資料失敗，請稍後再試");
   } finally {
     isLoading.value = false;
   }
@@ -852,7 +853,7 @@ async function saveSelection() {
       }
 
       if (!selectedItem.value.shopItemId) {
-        throw new Error("目前無法儲存這個卡面選項。");
+        throw new Error("目前無法儲存這個卡面選項");
       }
 
       const baseItemId =
@@ -956,7 +957,7 @@ async function saveSelection() {
     saveFeedback.value = "設定已儲存";
   } catch (error) {
     saveFailed.value = true;
-    saveFeedback.value = error?.message || "儲存失敗，請稍後再試。";
+    saveFeedback.value = getDisplayErrorMessage(error, "儲存失敗，請稍後再試");
   } finally {
     isSaving.value = false;
   }
@@ -997,7 +998,7 @@ async function applySelectedCardTheme() {
       saveFeedback.value = "已套用預設卡面";
     } catch (error) {
       saveFailed.value = true;
-      saveFeedback.value = error?.message || "套用主題失敗，請稍後再試。";
+      saveFeedback.value = getDisplayErrorMessage(error, "套用主題失敗，請稍後再試");
     } finally {
       isSaving.value = false;
     }
@@ -1042,7 +1043,7 @@ async function applySelectedCardTheme() {
     saveFeedback.value = `已將八張卡面統一套用「${selectedItem.value.name}」`;
   } catch (error) {
     saveFailed.value = true;
-    saveFeedback.value = error?.message || "套用主題失敗，請稍後再試。";
+    saveFeedback.value = getDisplayErrorMessage(error, "套用主題失敗，請稍後再試");
   } finally {
     isSaving.value = false;
   }
@@ -1979,7 +1980,7 @@ onMounted(reloadEquipment);
 }
 
 .save-feedback.error {
-  color: #be123c;
+  color: var(--feedback-error);
 }
 
 .status-message,
@@ -1998,7 +1999,7 @@ onMounted(reloadEquipment);
 }
 
 .status-message.error {
-  color: #be123c;
+  color: var(--feedback-error);
 }
 
 .empty-state {
@@ -2177,4 +2178,3 @@ onMounted(reloadEquipment);
   }
 }
 </style>
-

@@ -181,6 +181,7 @@ import { useAchievementStore } from "@/stores/achievementStore.js";
 import { useAuthStore } from "@/stores/authStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
 import { useProfileStore } from "@/stores/profileStore.js";
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -354,7 +355,7 @@ const statePanel = computed(() => {
     return {
       eyebrow: "",
       title: "資料載入中",
-      description: "正在向伺服器取得你的個人資料。",
+      description: "正在向伺服器取得你的個人資料",
     };
   }
 
@@ -457,8 +458,7 @@ async function saveProfileField(value) {
 
     closeProfileEditor();
   } catch (error) {
-    editErrorMessage.value =
-      error?.data?.message || error?.message || "個人資料更新失敗";
+    editErrorMessage.value = getDisplayErrorMessage(error, "個人資料更新失敗");
   }
 }
 
@@ -495,8 +495,7 @@ async function saveAvatar(avatarId) {
 
     closeAvatarEditor();
   } catch (error) {
-    editErrorMessage.value =
-      error?.data?.message || error?.message || "頭像更新失敗";
+    editErrorMessage.value = getDisplayErrorMessage(error, "頭像更新失敗");
   }
 }
 
@@ -538,8 +537,7 @@ async function handleUseAchievementTitle(achievement) {
   try {
     await profileStore.saveAchievementTitle(achievement.code);
   } catch (error) {
-    titleSaveError.value =
-      error?.data?.message || error?.message || "稱號設定失敗，請再試一次。";
+    titleSaveError.value = getDisplayErrorMessage(error, "稱號設定失敗，請再試一次");
   } finally {
     isSavingTitle.value = false;
   }

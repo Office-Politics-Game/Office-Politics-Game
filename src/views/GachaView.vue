@@ -18,6 +18,7 @@ import { useCurrencyStore } from "@/stores/currencyStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
 import { drawGacha, getOwnedGachaCards } from "@/services/gachaApi.js";
 import { cardAssetKeyByRank, cardAssetsByKey } from "@/constants/cardAssets.js";
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js";
 
 const PULL_THRESHOLD = 70;
 const MAX_PULL = 112;
@@ -444,7 +445,7 @@ async function fetchOwnedCards() {
 
     ownedCards.value = result.cards ?? [];
   } catch (error) {
-    ownedCardsError.value = error.message || "卡牌讀取失敗";
+    ownedCardsError.value = getDisplayErrorMessage(error, "卡牌讀取失敗");
   } finally {
     isOwnedCardsLoading.value = false;
   }
@@ -657,7 +658,7 @@ async function performDraw(count = selectedDrawCount.value, pullOffset = 0) {
   try {
     result = await consumeDrawRequest(count);
   } catch (error) {
-    statusMessage.value = error.message || "抽卡失敗";
+    statusMessage.value = getDisplayErrorMessage(error, "抽卡失敗");
     drawState.value = "idle";
     pullDistance.value = 0;
     activePointerId.value = null;

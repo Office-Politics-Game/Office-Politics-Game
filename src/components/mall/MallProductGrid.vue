@@ -11,6 +11,7 @@
       <div
         v-if="statusMessage"
         class="status-state border border-slate-600/70 bg-slate-950/80 px-4 py-3 text-sm font-bold text-slate-100"
+        :class="{ 'is-error': statusType === 'error' }"
         role="status"
       >
         {{ statusMessage }}
@@ -82,6 +83,10 @@ defineProps({
     type: String,
     default: "",
   },
+  statusType: {
+    type: String,
+    default: "",
+  },
   selectedItemId: {
     type: [String, Number],
     default: null,
@@ -141,6 +146,10 @@ defineEmits(["purchase", "select"]);
   background: rgba(15, 23, 42, 0.82);
   color: rgba(226, 232, 240, 0.9);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.status-state.is-error {
+  color: var(--feedback-error);
 }
 
 @media (max-width: 1279px) {

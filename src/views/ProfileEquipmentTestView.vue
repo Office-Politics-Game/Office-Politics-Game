@@ -105,7 +105,7 @@
 
         <p
           v-if="cloudinaryUploadError"
-          class="mt-3 text-sm font-bold text-rose-600"
+          class="mt-3 text-sm font-bold text-[var(--feedback-error)]"
         >
           {{ cloudinaryUploadError }}
         </p>
@@ -196,6 +196,7 @@ import {
 import { useAppearanceStore } from "@/stores/appearanceStore.js";
 import { useAuthStore } from "@/stores/authStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -434,7 +435,7 @@ function handleCloudinaryFileChange(event) {
 
 async function uploadSelectedFileToCloudinary() {
   if (!selectedUploadFile.value) {
-    cloudinaryUploadError.value = "請先選擇圖片。";
+    cloudinaryUploadError.value = "請先選擇圖片";
     return;
   }
 
@@ -454,7 +455,7 @@ async function uploadSelectedFileToCloudinary() {
     const uploadUrl = configResponse?.uploadUrl || signatureResponse?.uploadUrl;
 
     if (!uploadUrl) {
-      throw new Error("找不到 Cloudinary upload URL");
+      throw new Error("找不到圖片上傳網址");
     }
 
     const formData = new FormData();
@@ -480,7 +481,7 @@ async function uploadSelectedFileToCloudinary() {
     const uploadResult = await uploadResponse.json();
 
     if (!uploadResponse.ok) {
-      throw new Error(uploadResult?.error?.message || "Cloudinary 上傳失敗");
+      throw new Error(getDisplayErrorMessage(uploadResult?.error, "圖片上傳失敗"));
     }
 
     cloudinaryUploadResult.value = {
@@ -488,7 +489,7 @@ async function uploadSelectedFileToCloudinary() {
       secureUrl: uploadResult.secure_url || "",
     };
   } catch (error) {
-    cloudinaryUploadError.value = error?.message || "Cloudinary 上傳失敗";
+    cloudinaryUploadError.value = getDisplayErrorMessage(error, "圖片上傳失敗");
   } finally {
     isUploadingToCloudinary.value = false;
   }
@@ -565,7 +566,7 @@ async function persistCardSkinLoadout(baseItemId, overrides = {}) {
       response?.equipped?.cardSkinOverrides ?? overrides,
     );
   } catch (error) {
-    errorMessage.value = error?.message || "儲存卡面配置失敗。";
+    errorMessage.value = getDisplayErrorMessage(error, "儲存卡面配置失敗");
   } finally {
     equippingItemId.value = null;
   }
@@ -573,7 +574,7 @@ async function persistCardSkinLoadout(baseItemId, overrides = {}) {
 
 async function reloadEquipment() {
   if (!resolvedPlayerId.value) {
-    errorMessage.value = "找不到玩家 ID，請先登入再測試。";
+    errorMessage.value = "找不到玩家ID，請先登入再測試";
     inventoryItems.value = [];
     equippedItems.value = normalizeEquippedItems(null);
     return;
@@ -597,7 +598,7 @@ async function reloadEquipment() {
       resolvedPlayerId.value,
     );
   } catch (error) {
-    errorMessage.value = error?.message || "讀取配件資料失敗。";
+    errorMessage.value = getDisplayErrorMessage(error, "讀取配件資料失敗");
   } finally {
     isLoading.value = false;
   }
@@ -663,7 +664,7 @@ async function handleEquipItem(item) {
 
     appearanceStore.setAppearanceByCategory(item.categoryId, item.previewImage || "");
   } catch (error) {
-    errorMessage.value = error?.message || "套用配件失敗。";
+    errorMessage.value = getDisplayErrorMessage(error, "套用配件失敗");
   } finally {
     equippingItemId.value = null;
   }

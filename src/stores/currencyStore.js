@@ -1,9 +1,6 @@
 import { defineStore } from "pinia";
 import { getPlayerCurrency } from "../services/currencyApi.js";
-
-function getErrorMessage(error, fallbackMessage) {
-  return error?.data?.message || error?.message || fallbackMessage;
-}
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js";
 
 export const useCurrencyStore = defineStore("currency", {
   state: () => ({
@@ -28,7 +25,7 @@ export const useCurrencyStore = defineStore("currency", {
 
         return data;
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "取得遊戲幣失敗");
+        this.errorMessage = getDisplayErrorMessage(error, "取得遊戲幣失敗");
         throw error;
       } finally {
         this.isLoading = false;

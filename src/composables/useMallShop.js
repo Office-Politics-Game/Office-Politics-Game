@@ -23,6 +23,7 @@ import { createEcpayCheckout, createTopUpOrder } from "@/services/topUpApi.js";
 import { useAuthStore } from "@/stores/authStore.js";
 import { useCurrencyStore } from "@/stores/currencyStore.js";
 import { usePlayerStore } from "@/stores/playerStore.js";
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js";
 
 function getStoredGuestPlayer() {
   if (typeof localStorage === "undefined") {
@@ -34,10 +35,6 @@ function getStoredGuestPlayer() {
   } catch {
     return null;
   }
-}
-
-function getErrorMessage(error, fallbackMessage) {
-  return error?.data?.message || error?.message || fallbackMessage;
 }
 
 function submitEcpayForm(checkout) {
@@ -74,6 +71,7 @@ export function useMallShop() {
   const isShopLoading = ref(false);
   const isPurchasing = ref(false);
   const statusMessage = ref("");
+  const statusType = ref("");
   const activeCategory = ref(categories[0].id);
   const selectedItem = ref(null);
   const isDetailModalOpen = ref(false);
@@ -173,6 +171,7 @@ export function useMallShop() {
 
     isShopLoading.value = true;
     statusMessage.value = "";
+    statusType.value = "";
 
     try {
       const [shopData, ownedData] = await Promise.all([
@@ -188,12 +187,14 @@ export function useMallShop() {
 
       if (!playerId) {
         statusMessage.value = "尚未取得玩家 ID，商品可瀏覽但無法購買。";
+        statusType.value = "notice";
       }
     } catch (error) {
-      statusMessage.value = getErrorMessage(
+      statusMessage.value = getDisplayErrorMessage(
         error,
-        "商城資料載入失敗，請稍後再試。",
+        "商城資料載入失敗，請稍後再試",
       );
+      statusType.value = "error";
       shopItems.value = [];
       playerItems.value = [];
     } finally {
@@ -223,11 +224,13 @@ export function useMallShop() {
     if (item.category === "top-up") {
       if (!currentPlayerId.value) {
         statusMessage.value = "尚未取得玩家 ID，請重新登入後再購買股份。";
+        statusType.value = "error";
         return;
       }
 
       isPurchasing.value = true;
       statusMessage.value = "";
+      statusType.value = "";
 
       try {
         const orderResult = await createTopUpOrder({
@@ -238,10 +241,11 @@ export function useMallShop() {
 
         submitEcpayForm(checkoutResult.checkout);
       } catch (error) {
-        statusMessage.value = getErrorMessage(
+        statusMessage.value = getDisplayErrorMessage(
           error,
-          "建立儲值訂單失敗，請稍後再試。",
+          "建立儲值訂單失敗，請稍後再試",
         );
+        statusType.value = "error";
       } finally {
         isPurchasing.value = false;
       }
@@ -251,6 +255,7 @@ export function useMallShop() {
 
     if (!currentPlayerId.value) {
       statusMessage.value = "尚未取得玩家 ID，請重新登入後再購買商品。";
+      statusType.value = "error";
       return;
     }
 
@@ -260,6 +265,7 @@ export function useMallShop() {
 
     isPurchasing.value = true;
     statusMessage.value = "";
+    statusType.value = "";
 
     try {
       const result = await purchaseShopItem({
@@ -285,11 +291,13 @@ export function useMallShop() {
       ]);
 
       statusMessage.value = "購買成功，已更新持有狀態與貨幣餘額。";
+      statusType.value = "success";
     } catch (error) {
-      statusMessage.value = getErrorMessage(
+      statusMessage.value = getDisplayErrorMessage(
         error,
-        "購買失敗，請檢查餘額或稍後再試。",
+        "購買失敗，請檢查餘額或稍後再試",
       );
+      statusType.value = "error";
     } finally {
       isPurchasing.value = false;
     }
@@ -340,5 +348,6 @@ export function useMallShop() {
     purchaseSelectedItem,
     selectedItem,
     statusMessage,
+    statusType,
   };
 }
