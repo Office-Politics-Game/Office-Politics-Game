@@ -34,7 +34,7 @@ async function bootstrapApplication() {
 
   localStorage.removeItem("gameAuthToken");
 
-  const isVerified = await authStore.verifyToken();
+  const isVerified = await authStore.checkSession();
 
   if (isVerified && authStore.currentPlayer) {
     playerStore.setCurrentPlayer(authStore.currentPlayer);

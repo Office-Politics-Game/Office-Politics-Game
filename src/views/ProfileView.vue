@@ -383,14 +383,6 @@ async function initializeProfile() {
   try {
     const result = await initializeProfileData();
 
-    if (result?.status === "auth_failed") {
-      router.replace({
-        name: "Entry",
-        query: { auth: "login" },
-      });
-      return;
-    }
-
     if (result?.status === "anonymous") {
       router.replace({
         name: "Entry",

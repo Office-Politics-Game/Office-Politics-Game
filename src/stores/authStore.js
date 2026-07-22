@@ -3,6 +3,7 @@ import {
   register as registerApi,
   login as loginApi,
   verifyToken as verifyTokenApi,
+  getSession as getSessionApi,
   logout as logoutApi,
   forgotPassword as forgotPasswordApi,
   resetPassword as resetPasswordApi,
@@ -162,6 +163,46 @@ export const useAuthStore = defineStore("auth", {
       } catch (error) {
         this.errorMessage = getErrorMessage(error, "修改密碼失敗")
         throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async checkSession() {
+      const appearanceStore = useAppearanceStore()
+
+      if (this.hasVerifiedToken && this.isLoggedIn && this.currentPlayer) {
+        return true
+      }
+
+      this.isLoading = true
+      this.errorMessage = ""
+
+      try {
+        const data = await getSessionApi()
+
+        if (!data?.authenticated || !data?.player) {
+          resetAuthState(this)
+          appearanceStore.resetAppearance()
+          return false
+        }
+
+        const { player: hydratedPlayer, appearance } = await hydratePlayerAppearanceBundle(data.player)
+
+        this.currentPlayer = hydratedPlayer
+        this.isLoggedIn = Boolean(hydratedPlayer)
+        this.hasVerifiedToken = Boolean(hydratedPlayer)
+
+        appearanceStore.applyAppearance({
+          ...appearance,
+          playerId: hydratedPlayer?.id ?? null
+        })
+
+        return Boolean(hydratedPlayer)
+      } catch {
+        resetAuthState(this)
+        appearanceStore.resetAppearance()
+        return false
       } finally {
         this.isLoading = false
       }

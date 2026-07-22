@@ -21,6 +21,10 @@ function verifyToken() {
   return apiClient.get(`${AUTH_API_PATH}/verify`);
 }
 
+function getSession() {
+  return apiClient.get(`${AUTH_API_PATH}/session`);
+}
+
 async function logout() {
   const response = await apiClient.post(`${AUTH_API_PATH}/logout`)
   const supabase = getOptionalSupabaseClient()
@@ -161,6 +165,7 @@ export {
   register,
   login,
   verifyToken,
+  getSession,
   logout,
   forgotPassword,
   resetPassword,
