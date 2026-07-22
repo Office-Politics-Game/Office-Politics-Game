@@ -20,6 +20,10 @@ test("gacha pool arrows stay clickable above the info hotspot", async () => {
 
   assert.match(source, /\.gacha-pool-arrow \{[\s\S]*z-index: 4;/);
   assert.match(source, /\.gacha-pool-info-hotspot \{[\s\S]*z-index: 5;/);
+  assert.match(source, /\.gacha-pool-info-hotspot \{[\s\S]*left: 65%;/);
+  assert.match(source, /width: clamp\(52px, 10%, 68px\);/);
+  assert.match(source, /transform: translate\(-35%, -50%\);/);
+  assert.match(source, /@media \(min-width: 1024px\) \{[\s\S]*\.gacha-pool-info-hotspot \{[\s\S]*left: 69%;/);
 });
 
 test("gacha pool banner keeps its original responsive image sizing", async () => {
@@ -47,6 +51,9 @@ test("gacha pool info modal uses the lego frame asset", async () => {
   assert.match(source, /tarotGachaInfoFrameUrl from ["']@\/assets\/images\/tarot-gacha-info-frame\.webp["']/);
   assert.match(source, /const currentGachaInfoFrameUrl = computed/);
   assert.match(source, /class="gacha-pool-info-card"/);
+  assert.match(source, /class="gacha-pool-info-card__title"/);
+  assert.match(source, /\.gacha-pool-info-card \{[\s\S]*width: min\(70vw, 292px\);/);
+  assert.match(source, /\.gacha-pool-rate-list__item \{[\s\S]*font-size: 9px;/);
   assert.match(source, /backgroundImage: `url\(\$\{currentGachaInfoFrameUrl\}\)`/);
 });
 

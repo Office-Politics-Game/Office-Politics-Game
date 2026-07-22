@@ -875,7 +875,10 @@ watch(
         :style="{ backgroundImage: `url(${currentGachaInfoFrameUrl})` }"
       >
         <div class="gacha-pool-info-card__header">
-          <h2 id="gacha-pool-info-title" class="m-0 text-base font-black">
+          <h2
+            id="gacha-pool-info-title"
+            class="gacha-pool-info-card__title"
+          >
             卡池資訊
           </h2>
           <button
@@ -890,7 +893,7 @@ watch(
 
         <div class="gacha-pool-info-card__body">
           <p class="gacha-pool-info-card__text">
-            卡池期間：2025/07/13 - 2025/08/13
+            卡池期間：2026/07/13 - 2026/08/13
           </p>
 
           <dl class="gacha-pool-rate-list" aria-label="卡牌抽取機率">
@@ -1191,15 +1194,15 @@ watch(
 .gacha-pool-info-hotspot {
   position: absolute;
   top: 60%;
-  left: 72%;
+  left: 65%;
   z-index: 5;
-  width: clamp(30px, 5.5%, 35px);
+  width: clamp(52px, 10%, 68px);
   aspect-ratio: 1;
   border: 0;
   background: transparent;
   cursor: pointer;
   pointer-events: auto;
-  transform: translate(-50%, -50%);
+  transform: translate(-35%, -50%);
 }
 
 .gacha-pool-info-hotspot:focus-visible {
@@ -1209,10 +1212,10 @@ watch(
 
 .gacha-pool-info-card {
   display: grid;
-  width: min(84vw, 360px);
+  width: min(70vw, 292px);
   aspect-ratio: 1;
   grid-template-rows: auto 1fr;
-  padding: 78px 62px 56px;
+  padding: 62px 48px 42px;
   color: white;
   background-position: center;
   background-repeat: no-repeat;
@@ -1224,13 +1227,20 @@ watch(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
+}
+
+.gacha-pool-info-card__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.1;
 }
 
 .gacha-pool-info-card__close {
   display: grid;
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.48);
   color: white;
@@ -1253,20 +1263,20 @@ watch(
 .gacha-pool-info-card__text {
   margin: 0;
   color: rgba(255, 255, 255, 0.84);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 800;
-  line-height: 1.35;
+  line-height: 1.2;
 }
 
 .gacha-pool-info-card__body {
   align-self: center;
   display: grid;
-  gap: 8px;
+  gap: 5px;
 }
 
 .gacha-pool-rate-list {
   display: grid;
-  gap: 3px;
+  gap: 1px;
   margin: 0;
 }
 
@@ -1274,12 +1284,12 @@ watch(
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  min-height: 16px;
+  gap: 6px;
+  min-height: 13px;
   color: rgba(255, 255, 255, 0.9);
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 800;
-  line-height: 1.2;
+  line-height: 1.1;
 }
 
 .gacha-pool-rate-list__item dt,
@@ -1300,13 +1310,35 @@ watch(
 }
 
 @media (min-width: 1024px) {
+  .gacha-pool-info-hotspot {
+    left: 69%;
+  }
+
   .gacha-pool-info-card {
     width: 420px;
     padding: 92px 74px 66px;
   }
 
+  .gacha-pool-info-card__header {
+    gap: 12px;
+  }
+
+  .gacha-pool-info-card__title {
+    font-size: 16px;
+  }
+
+  .gacha-pool-info-card__close {
+    width: 30px;
+    height: 30px;
+  }
+
   .gacha-pool-info-card__text {
     font-size: 14px;
+    line-height: 1.35;
+  }
+
+  .gacha-pool-info-card__body {
+    gap: 8px;
   }
 
   .gacha-pool-rate-list {
@@ -1316,6 +1348,8 @@ watch(
   .gacha-pool-rate-list__item {
     min-height: 18px;
     font-size: 13px;
+    gap: 10px;
+    line-height: 1.2;
   }
 }
 
