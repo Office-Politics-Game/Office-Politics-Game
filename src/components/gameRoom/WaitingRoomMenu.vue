@@ -338,7 +338,7 @@ async function handleActionClick(action) {
   border: 1px solid var(--brand-primary, #86b3e0);
   background: rgba(255, 255, 255, 0.9);
   padding: 8px 4px;
-  color: #c51f28;
+  color: var(--feedback-error);
   font-size: var(--text-sm);
   font-weight: 900;
   line-height: 1.2;

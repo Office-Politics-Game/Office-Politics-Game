@@ -170,7 +170,7 @@ async function handleForgotPassword() {
 
 .login-error {
   margin-top: 6px;
-  color: var(--brand-hover);
+  color: var(--feedback-error);
   font-size: var(--text-sm);
   font-weight: 700;
 }

@@ -127,6 +127,7 @@ import { Eye, EyeOff } from "lucide-vue-next";
 import PasswordRuleList from "@/components/login/PasswordRuleList.vue";
 import { getPasswordError } from "@/utils/passwordRules.js";
 import { useAuthStore } from "@/stores/authStore.js";
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js";
 
 const emit = defineEmits(["close", "changed"]);
 const authStore = useAuthStore();
@@ -231,7 +232,7 @@ async function submitPasswordChange() {
       emit("changed");
     }, 900);
   } catch (error) {
-    const message = error?.data?.message || error?.message || "修改密碼失敗";
+    const message = getDisplayErrorMessage(error, "修改密碼失敗");
 
     if (applyApiFieldError(message)) {
       return;
@@ -297,7 +298,7 @@ async function submitPasswordChange() {
 .profile-modal__title {
   margin: 0 0 20px;
   color: var(--brand-navy);
-  font-size: var(--text-lg);
+  font-size: 32px;
   font-weight: 900;
   text-align: center;
 }
@@ -366,8 +367,8 @@ async function submitPasswordChange() {
 }
 
 .profile-modal__error {
-  color: #b91c1c;
-  font-size: var(--text-xs);
+  color: var(--feedback-error);
+  font-size: var(--text-sm);
   font-weight: 800;
 }
 
@@ -383,7 +384,7 @@ async function submitPasswordChange() {
 }
 
 .profile-modal__status--error {
-  color: #b91c1c;
+  color: var(--feedback-error);
 }
 
 .profile-modal__button:disabled,

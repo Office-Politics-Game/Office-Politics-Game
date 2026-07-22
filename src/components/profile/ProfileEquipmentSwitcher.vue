@@ -250,7 +250,7 @@ const activeItems = computed(() => activeCategoryMeta.value?.items ?? []);
 
 .equipment-switcher__status.is-error {
   border-color: rgba(180, 52, 52, 0.24);
-  color: #9f2f2f;
+  color: var(--feedback-error);
 }
 
 .equipment-switcher__content {

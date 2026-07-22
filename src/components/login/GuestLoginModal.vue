@@ -87,7 +87,7 @@
 
       <p
         v-if="errorMessage"
-        class="m-0 text-sm font-bold text-[var(--brand-hover)]"
+        class="m-0 text-sm font-bold text-[var(--feedback-error)]"
         role="alert"
       >
         {{ errorMessage }}
@@ -120,6 +120,7 @@ import { ChevronLeft, ChevronRight, Dice5 } from "lucide-vue-next";
 import { createGuestNickname, guestAvatars } from "@/constants/guestOptions";
 import { createGuestPlayer } from "@/services/playerService";
 import { usePreGameAudio } from "@/composables/UsePreGameAudio";
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js";
 
 const emit = defineEmits(["close", "success"]);
 const { playPreGameSound, startPreGameBackground } = usePreGameAudio();
@@ -192,7 +193,7 @@ async function submitGuest() {
     startPreGameBackground({ fadeIn: true, userInitiated: true });
     emit("success", player);
   } catch (error) {
-    errorMessage.value = error.message || "建立訪客資料失敗，請稍後再試";
+    errorMessage.value = getDisplayErrorMessage(error, "建立訪客資料失敗，請稍後再試");
   } finally {
     isSubmitting.value = false;
   }

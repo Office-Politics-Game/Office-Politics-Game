@@ -173,7 +173,7 @@ watch(
 
 .profile-modal__error {
   margin: 12px 0 0;
-  color: var(--brand-hover);
+  color: var(--feedback-error);
   font-size: var(--text-sm);
   font-weight: 800;
 }
