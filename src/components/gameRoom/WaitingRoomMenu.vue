@@ -8,6 +8,7 @@ import createIcon from "@/assets/images/icon-create.png";
 import waitingRoomOne from "@/assets/images/waiting-room-1.webp";
 import waitingRoomTwo from "@/assets/images/waiting-room-2.webp";
 import waitingRoomThree from "@/assets/images/waiting-room-3.webp";
+import { createGuestNickname } from "@/constants/guestOptions.js";
 import { useCurrentPlayerId } from "@/composables/useCurrentPlayerId.js";
 import { usePreGameAudio } from "@/composables/UsePreGameAudio";
 import { useRoomStore } from "@/stores/roomStore.js";
@@ -54,6 +55,16 @@ function playRoomActionClick() {
 
 function handleRoomIdInput() {
   roomStore.clearError();
+}
+
+function createTutorialComputerName() {
+  const nickname = createGuestNickname()?.trim();
+
+  if (nickname) {
+    return nickname;
+  }
+
+  return `訪客${Date.now().toString().slice(-4)}`;
 }
 
 function clearErrorNoticeTimer() {
@@ -127,6 +138,7 @@ async function handleTutorialMode() {
     for (let index = 0; index < 3; index += 1) {
       await roomStore.addComputerPlayer(tutorialRoomCode, {
         hostPlayerId: currentPlayerId.value,
+        username: createTutorialComputerName(),
       });
     }
 
