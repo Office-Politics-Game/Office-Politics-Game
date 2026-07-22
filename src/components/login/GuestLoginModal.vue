@@ -71,6 +71,7 @@
             autocomplete="nickname"
             placeholder="請輸入暱稱"
             :disabled="isSubmitting"
+            @input="clearGuestError"
           />
           <button
             type="button"
@@ -134,6 +135,14 @@ function playGuestClick() {
   playPreGameSound("login-button-click");
 }
 
+function clearGuestError() {
+  if (!errorMessage.value) {
+    return;
+  }
+
+  errorMessage.value = "";
+}
+
 function closeGuest() {
   playGuestClick();
   emit("close");
@@ -154,7 +163,7 @@ function selectNextAvatar() {
 function rollNickname() {
   playGuestClick();
   nickname.value = createGuestNickname();
-  errorMessage.value = "";
+  clearGuestError();
 }
 
 async function submitGuest() {
