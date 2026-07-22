@@ -11,7 +11,7 @@ function buildRoomPath(roomCode, action) {
   const normalizedRoomCode = getTrimmedRoomCode(roomCode);
 
   if (!normalizedRoomCode) {
-    throw new Error("缺少房間代碼。");
+    throw new Error("缺少房間代碼");
   }
 
   return `${ROOM_API_PATH}/${encodeURIComponent(normalizedRoomCode)}/${action}`;

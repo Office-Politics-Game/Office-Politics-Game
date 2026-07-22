@@ -28,7 +28,7 @@ async function getLatestGameSession(roomCode) {
     )
 
     if (sessionResult.rows.length === 0) {
-        throw createServiceError("Game session not found", 404)
+        throw createServiceError("找不到遊戲房間", 404)
     }
 
     return sessionResult.rows[0]

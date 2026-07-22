@@ -46,7 +46,7 @@ async function createGuest({ username, avatarId }) {
     )
   } catch (error) {
     if (error.code === "23505") {
-      throw createServiceError("Username already exists", 409)
+      throw createServiceError("暱稱已被使用", 409)
     }
 
     throw error
@@ -60,11 +60,11 @@ async function updatePlayerAvatar({ playerId, avatarId }) {
   const numericAvatarId = Number(avatarId)
 
   if (!Number.isInteger(numericPlayerId) || numericPlayerId <= 0) {
-    throw createServiceError("Invalid player ID")
+    throw createServiceError("玩家資料不正確")
   }
 
   if (!Number.isInteger(numericAvatarId) || numericAvatarId < 1 || numericAvatarId > 4) {
-    throw createServiceError("Invalid avatar ID")
+    throw createServiceError("頭像資料不正確")
   }
 
   const client = await pool.connect()
@@ -81,7 +81,7 @@ async function updatePlayerAvatar({ playerId, avatarId }) {
     )
 
     if (playerResult.rows.length === 0) {
-      throw createServiceError("Player not found", 404)
+      throw createServiceError("找不到玩家資料", 404)
     }
 
     await client.query(
@@ -107,11 +107,11 @@ async function searchPlayers({ keyword, viewerPlayerId }) {
   const normalizedKeyword = String(keyword ?? "").trim()
 
   if (!normalizedKeyword) {
-    throw createServiceError("Keyword is required")
+    throw createServiceError("請輸入搜尋關鍵字")
   }
 
   if (!Number.isInteger(viewerPlayerId) || viewerPlayerId <= 0) {
-    throw createServiceError("Invalid player ID")
+    throw createServiceError("玩家資料不正確")
   }
 
   const numericKeyword = Number(normalizedKeyword)

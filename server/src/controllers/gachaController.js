@@ -31,7 +31,7 @@ async function handleGetOwnedGachaCards(req, res) {
     return res.status(200).json(result)
   } catch (error) {
     return res.status(getErrorStatus(error)).json({
-      message: error.statusCode ? error.message : "Failed to load owned cards",
+      message: error.statusCode ? error.message : "讀取已擁有卡牌失敗",
       error: error.message,
     })
   }

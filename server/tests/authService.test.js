@@ -1525,7 +1525,7 @@ describe("驗證登入狀態服務", () => {
     })
 
     test("未提供token時，丟出錯誤", async () => {
-        await expect(verifyToken("")).rejects.toThrow("缺少登入驗證token")
+        await expect(verifyToken("")).rejects.toThrow("登入驗證資料缺失")
 
         expect(mockGetUser).not.toHaveBeenCalled()
         expect(mockQuery).not.toHaveBeenCalled()

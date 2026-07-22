@@ -38,7 +38,7 @@ function getCurrencyColumn(currency) {
   const column = currencyColumnMap[currency]
 
   if (!column) {
-    throw createServiceError("不支援的通貨類型")
+    throw createServiceError("貨幣類型有誤")
   }
 
   return column
@@ -135,7 +135,7 @@ async function validateOwnedCardSkinItems(client, playerId, itemIds = []) {
   const missingItemId = itemIds.find((itemId) => !ownedItemIdSet.has(Number(itemId)))
 
   if (missingItemId) {
-    throw createServiceError("Player does not own the selected card skin", 404)
+    throw createServiceError("尚未擁有此卡面", 404)
   }
 }
 
@@ -533,7 +533,7 @@ async function unequipShopItem({ playerId, categoryId }) {
   const equipColumn = getEquipColumnByCategory(categoryId)
 
   if (!equipColumn) {
-    throw createServiceError("此類型不支援卸下")
+    throw createServiceError("此項目無法取消套用")
   }
 
   const client = await pool.connect()

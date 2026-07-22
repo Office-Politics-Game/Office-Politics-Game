@@ -34,7 +34,7 @@ function normalizeComputerUsername(username) {
   const normalizedUsername = String(username ?? "").trim()
 
   if (!normalizedUsername) {
-    throw createServiceError("Computer username is required")
+    throw createServiceError("請輸入電腦玩家名稱")
   }
 
   return normalizedUsername.slice(0, COMPUTER_USERNAME_MAX_LENGTH)
@@ -161,7 +161,7 @@ async function findOrCreateComputerPlayer(client, preferredUsername, index) {
     }
   }
 
-  throw createServiceError("Computer username already exists", 409)
+  throw createServiceError("電腦玩家名稱已存在", 409)
 }
 
 function getNextSeatOrder(players) {
@@ -244,7 +244,7 @@ async function joinRoom({ roomCode, playerId }) {
     const playerCount = Number(countResult.rows[0].count)
 
     if (playerCount >= MAX_ROOM_PLAYERS) {
-      throw createServiceError("房間已滿")
+      throw createServiceError("房間人數已滿")
     }
 
     await client.query(
@@ -415,7 +415,7 @@ async function addComputerPlayer({ roomCode, hostPlayerId, username }) {
     const roomPlayers = playerResult.rows
 
     if (roomPlayers.length >= MAX_ROOM_PLAYERS) {
-      throw createServiceError("房間已滿")
+      throw createServiceError("房間人數已滿")
     }
 
     const computerIndex = roomPlayers.filter((player) => player.is_computer).length

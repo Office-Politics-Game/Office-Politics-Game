@@ -18,12 +18,12 @@ const normalizedRoomId = computed(() => roomId.value.trim().toUpperCase());
 
 async function handleJoinRoom() {
   if (!normalizedRoomId.value) {
-    roomStore.errorMessage = "請先輸入房號。";
+    roomStore.errorMessage = "請先輸入房號";
     return;
   }
 
   if (!currentPlayerId.value) {
-    roomStore.errorMessage = "請先登入或建立訪客玩家。";
+    roomStore.errorMessage = "請先登入或建立訪客玩家";
     return;
   }
 
@@ -79,7 +79,7 @@ async function handleJoinRoom() {
         </div>
         <p
           v-if="errorMessage"
-          class="mt-3 text-center text-sm font-bold text-red-700"
+          class="mt-3 text-center text-sm font-bold text-[var(--feedback-error)]"
         >
           {{ errorMessage }}
         </p>

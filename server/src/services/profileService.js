@@ -15,7 +15,7 @@ function createProfileError(statusCode, message) {
 
 function parseAchievementCode(code) {
   if (typeof code !== "string" || code.trim() === "") {
-    throw createProfileError(400, "Invalid achievement code")
+    throw createProfileError(400, "成就代號無效")
   }
 
   return code.trim()
@@ -126,13 +126,13 @@ async function setProfileTitle(playerId, achievementCodeValue) {
   )
 
   if (achievementResult.rows.length === 0) {
-    throw createProfileError(404, "Achievement not found")
+    throw createProfileError(404, "找不到成就資料")
   }
 
   const achievement = achievementResult.rows[0]
 
   if (!achievement.unlocked_player_id) {
-    throw createProfileError(403, "Achievement has not been unlocked")
+    throw createProfileError(403, "尚未解鎖此成就")
   }
 
   const result = await pool.query(
