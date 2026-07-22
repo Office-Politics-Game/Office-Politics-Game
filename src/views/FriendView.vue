@@ -250,6 +250,7 @@ function goLogin() {
 
 function loadFriendDataIfAllowed() {
   if (friendStore.canUseFriendSystem) {
+    friendStore.startRealtime();
     chatStore.startRealtime();
     friendStore.loadFriendData();
     return;
@@ -333,6 +334,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  friendStore.stopRealtime();
   chatStore.stopRealtime();
 });
 

@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import { toRaw } from "vue";
 import {
   acceptFriendRequest as acceptFriendRequestApi,
   blockPlayer as blockPlayerApi,
@@ -12,9 +13,32 @@ import {
   unblockPlayer as unblockPlayerApi,
 } from "@/services/friendApi.js";
 import { searchPlayers as searchPlayersApi } from "@/services/playerService.js";
+import { emitWithAck, getSocket } from "@/services/socketClient.js";
 import { useAuthStore } from "@/stores/authStore.js";
 
 const FRIEND_LOGIN_REQUIRED_MESSAGE = "登入後才能使用好友功能";
+const FRIEND_REALTIME_UNAVAILABLE_MESSAGE = "好友即時連線失敗";
+const FRIEND_REALTIME_DISCONNECTED_MESSAGE = "好友即時連線已中斷";
+const realtimeHandlersByStore = new WeakMap();
+const realtimeGenerationByStore = new WeakMap();
+
+function getRealtimeStoreKey(store) {
+  return toRaw(store);
+}
+
+function advanceRealtimeGeneration(store) {
+  const storeKey = getRealtimeStoreKey(store);
+  const generation = (realtimeGenerationByStore.get(storeKey) ?? 0) + 1;
+  realtimeGenerationByStore.set(storeKey, generation);
+  return generation;
+}
+
+function isRealtimeGenerationActive(store, generation) {
+  return (
+    store.isRealtimeStarted &&
+    realtimeGenerationByStore.get(getRealtimeStoreKey(store)) === generation
+  );
+}
 
 function normalizeKeyword(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ");
@@ -163,6 +187,9 @@ export const useFriendStore = defineStore("friend", {
     processingFriendshipIds: [],
     processingPlayerIds: [],
     processingBlockIds: [],
+    isRealtimeStarted: false,
+    isRealtimeSubscribed: false,
+    realtimeErrorMessage: "",
   }),
 
   getters: {
@@ -191,6 +218,7 @@ export const useFriendStore = defineStore("friend", {
 
   actions: {
     clearFriendData() {
+      this.stopRealtime();
       this.currentPlayerId = null;
       this.friends = [];
       this.requests = [];
@@ -209,6 +237,148 @@ export const useFriendStore = defineStore("friend", {
       this.processingFriendshipIds = [];
       this.processingPlayerIds = [];
       this.processingBlockIds = [];
+      this.realtimeErrorMessage = "";
+    },
+
+    async subscribeRealtime({
+      recoverData = false,
+      generation = realtimeGenerationByStore.get(getRealtimeStoreKey(this)),
+    } = {}) {
+      if (!isRealtimeGenerationActive(this, generation)) {
+        return false;
+      }
+
+      if (!this.canUseFriendSystem) {
+        this.isRealtimeSubscribed = false;
+        this.realtimeErrorMessage = FRIEND_LOGIN_REQUIRED_MESSAGE;
+        return false;
+      }
+
+      try {
+        await emitWithAck("friend:subscribe", {});
+
+        if (!isRealtimeGenerationActive(this, generation)) {
+          return false;
+        }
+
+        this.isRealtimeSubscribed = true;
+        this.realtimeErrorMessage = "";
+
+        if (recoverData) {
+          await this.loadFriendData();
+        }
+
+        return true;
+      } catch (error) {
+        if (!isRealtimeGenerationActive(this, generation)) {
+          return false;
+        }
+
+        this.isRealtimeSubscribed = false;
+        this.realtimeErrorMessage =
+          error?.message || FRIEND_REALTIME_UNAVAILABLE_MESSAGE;
+        return false;
+      }
+    },
+
+    async startRealtime() {
+      if (!this.canUseFriendSystem) {
+        this.stopRealtime();
+        this.realtimeErrorMessage = FRIEND_LOGIN_REQUIRED_MESSAGE;
+        return false;
+      }
+
+      if (this.isRealtimeStarted) {
+        if (this.isRealtimeSubscribed) {
+          return true;
+        }
+
+        const storeKey = getRealtimeStoreKey(this);
+        const generation = realtimeGenerationByStore.get(storeKey);
+        const handlers = realtimeHandlersByStore.get(storeKey);
+
+        if (!handlers?.socket.connected) {
+          handlers?.socket.connect();
+          return false;
+        }
+
+        return this.subscribeRealtime({ recoverData: true, generation });
+      }
+
+      const socket = getSocket();
+      const storeKey = getRealtimeStoreKey(this);
+      const generation = advanceRealtimeGeneration(this);
+      const handleInvalidation = () => {
+        if (!isRealtimeGenerationActive(this, generation)) {
+          return false;
+        }
+
+        return this.loadFriendData();
+      };
+      const handleConnect = () =>
+        this.subscribeRealtime({ recoverData: true, generation });
+      const handleDisconnect = () => {
+        if (!isRealtimeGenerationActive(this, generation)) {
+          return;
+        }
+
+        this.isRealtimeSubscribed = false;
+        this.realtimeErrorMessage = FRIEND_REALTIME_DISCONNECTED_MESSAGE;
+      };
+      const handleConnectError = (error) => {
+        if (!isRealtimeGenerationActive(this, generation)) {
+          return;
+        }
+
+        this.isRealtimeSubscribed = false;
+        this.realtimeErrorMessage =
+          error?.message || FRIEND_REALTIME_UNAVAILABLE_MESSAGE;
+      };
+
+      realtimeHandlersByStore.set(storeKey, {
+        socket,
+        handleInvalidation,
+        handleConnect,
+        handleDisconnect,
+        handleConnectError,
+      });
+      socket.on("friend:data-invalidated", handleInvalidation);
+      socket.on("connect", handleConnect);
+      socket.on("disconnect", handleDisconnect);
+      socket.on("connect_error", handleConnectError);
+      this.isRealtimeStarted = true;
+
+      if (!socket.connected) {
+        socket.connect();
+        return false;
+      }
+
+      return this.subscribeRealtime({ generation });
+    },
+
+    stopRealtime() {
+      advanceRealtimeGeneration(this);
+      const storeKey = getRealtimeStoreKey(this);
+      const handlers = realtimeHandlersByStore.get(storeKey);
+
+      if (handlers) {
+        handlers.socket.off(
+          "friend:data-invalidated",
+          handlers.handleInvalidation,
+        );
+        handlers.socket.off("connect", handlers.handleConnect);
+        handlers.socket.off("disconnect", handlers.handleDisconnect);
+        handlers.socket.off("connect_error", handlers.handleConnectError);
+        realtimeHandlersByStore.delete(storeKey);
+
+        if (handlers.socket.connected) {
+          handlers.socket.emit("friend:unsubscribe", {}, () => {});
+        }
+      }
+
+      this.isRealtimeStarted = false;
+      this.isRealtimeSubscribed = false;
+      this.realtimeErrorMessage = "";
     },
 
     markLoginRequired({ search = false } = {}) {

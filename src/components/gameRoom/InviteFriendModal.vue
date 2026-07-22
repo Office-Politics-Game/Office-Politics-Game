@@ -152,7 +152,7 @@ function sendInvitation() {
           :disabled="isLoading || isSending || !selectedFriend"
           @click="sendInvitation"
         >
-          {{ isSending ? "邀請中..." : "送出邀請" }}
+          {{ isSending ? "邀請中..." : "邀請" }}
         </button>
       </div>
     </section>
