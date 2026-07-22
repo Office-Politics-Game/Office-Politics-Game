@@ -10,6 +10,7 @@ import {
   sendFriendRequest,
   unblockPlayer,
 } from "../services/friendService.js"
+import { getFriendPlayerRoom, getSocketServer } from "../socket/index.js"
 
 function getErrorStatus(error){
   return error.statusCode || 500
@@ -25,6 +26,42 @@ function parsePositiveInteger(value){
   return numberValue
 }
 
+function getCounterpartyPlayerId(relationship, actorPlayerId){
+  const relationshipPlayerId = parsePositiveInteger(relationship?.playerId)
+  const relationshipFriendId = parsePositiveInteger(relationship?.friendId)
+
+  if (relationshipPlayerId === actorPlayerId){
+    return relationshipFriendId
+  }
+
+  if (relationshipFriendId === actorPlayerId){
+    return relationshipPlayerId
+  }
+
+  return null
+}
+
+function emitFriendDataInvalidation(relationship, actorPlayerId){
+  try {
+    const targetPlayerId = getCounterpartyPlayerId(
+      relationship,
+      actorPlayerId,
+    )
+    const io = getSocketServer()
+
+    if (!targetPlayerId || !io){
+      return
+    }
+
+    io.to(getFriendPlayerRoom(targetPlayerId)).emit(
+      "friend:data-invalidated",
+      {},
+    )
+  } catch (error){
+    console.error("好友關係即時同步失敗", error)
+  }
+}
+
 async function handleSendFriendRequest(req, res){
   try {
     const body = req.body ?? {}
@@ -38,6 +75,7 @@ async function handleSendFriendRequest(req, res){
     }
 
     const request = await sendFriendRequest({ playerId, targetPlayerId })
+    emitFriendDataInvalidation(request, playerId)
 
     return res.status(201).json({ request })
   } catch (error){
@@ -59,6 +97,7 @@ async function handleRemoveFriend(req, res){
     }
 
     const friendship = await removeFriend({ friendshipId, playerId })
+    emitFriendDataInvalidation(friendship, playerId)
 
     return res.status(200).json({
       message: "已解除好友",
@@ -85,6 +124,7 @@ async function handleBlockPlayer(req, res){
     }
 
     const block = await blockPlayer({ playerId, targetPlayerId })
+    emitFriendDataInvalidation(block, playerId)
 
     return res.status(200).json({
       message: "已封鎖玩家",
@@ -166,6 +206,7 @@ async function handleUnblockPlayer(req, res){
     }
 
     const block = await unblockPlayer({ blockId, playerId })
+    emitFriendDataInvalidation(block, playerId)
 
     return res.status(200).json({
       message: "已取消封鎖",
@@ -190,6 +231,7 @@ async function handleAcceptFriendRequest(req, res){
     }
 
     const request = await acceptFriendRequest({ requestId, playerId })
+    emitFriendDataInvalidation(request, playerId)
 
     return res.status(200).json({
       message: "已接受好友邀請",
@@ -214,6 +256,7 @@ async function handleRejectFriendRequest(req, res){
     }
 
     const request = await rejectFriendRequest({ requestId, playerId })
+    emitFriendDataInvalidation(request, playerId)
 
     return res.status(200).json({
       message: "已拒絕好友邀請",

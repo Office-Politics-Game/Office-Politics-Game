@@ -1,6 +1,7 @@
 import { Server } from "socket.io"
 import cookieParser from "cookie-parser"
 import { getChatPlayerRoom, registerChatHandlers } from "./chatHandlers.js"
+import { getFriendPlayerRoom, registerFriendHandlers } from "./friendHandlers.js"
 import { registerRoomHandlers } from "./roomHandlers.js"
 import { registerGameHandlers } from "./gameHandlers.js"
 
@@ -24,6 +25,7 @@ function initializeSocket(httpServer) {
     registerRoomHandlers(io, socket)
     registerGameHandlers(io, socket)
     registerChatHandlers(socket)
+    registerFriendHandlers(socket)
 
     socket.on("socket:ping", (payload, callback) => {
         if (typeof callback === "function") {
@@ -49,4 +51,9 @@ function getSocketServer() {
   return activeSocketServer
 }
 
-export { getChatPlayerRoom, getSocketServer, initializeSocket }
+export {
+  getChatPlayerRoom,
+  getFriendPlayerRoom,
+  getSocketServer,
+  initializeSocket,
+}

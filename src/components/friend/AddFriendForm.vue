@@ -21,7 +21,7 @@
         class="friend-button is-primary"
         :disabled="isSearching || isSending || !keyword.trim()"
       >
-        {{ isSearching ? "搜尋中..." : "搜尋玩家" }}
+        {{ isSearching ? "搜尋..." : "搜尋" }}
       </button>
     </div>
 
@@ -161,7 +161,7 @@ function actionLabel(player) {
     return "無法邀請";
   }
 
-  return "送出邀請";
+  return "送出";
 }
 
 function blockActionLabel(player) {
