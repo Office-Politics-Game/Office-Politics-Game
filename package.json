@@ -1,6 +1,37 @@
 {
   "name": "office-politics-game",
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "author": {
+    "name": "Office Politics Game Team",
+    "url": "https://github.com/Office-Politics-Game"
+  },
+  "contributors": [
+    {
+      "name": "蘇郁傑",
+      "email": "abcd031313@gmail.com",
+      "url": "https://github.com/Tissuu"
+    },
+    {
+      "name": "郭嘉琪",
+      "email": "h6741957@gmail.com",
+      "url": "https://github.com/Maggie0513"
+    },
+    {
+      "name": "詹珈璇",
+      "email": "angel332332@gmail.com",
+      "url": "https://github.com/ChloeChan1"
+    },
+    {
+      "name": "蔡佩芹",
+      "email": "p.tonki1123@gmail.com",
+      "url": "https://github.com/celery1123"
+    },
+    {
+      "name": "林立崴",
+      "email": "linliweii54@gmail.com",
+      "url": "https://github.com/mountainway54"
+    }
+  ],
   "private": true,
   "type": "module",
   "scripts": {
