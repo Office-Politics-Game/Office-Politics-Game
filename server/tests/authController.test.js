@@ -25,6 +25,7 @@ const {
     handleLoginPlayer,
     handleOAuthCallback,
     handleVerifyToken,
+    handleGetAuthSession,
     handleLogoutPlayer,
     handleChangePassword
 } = await import("../src/controllers/authController.js")
@@ -246,6 +247,109 @@ describe("auth controller cookie login flow", () => {
         expect(res.json).toHaveBeenCalledWith({
             message: "缺少登入驗證token"
         })
+    })
+
+    test("檢查登入 session 時，沒有 Cookie 會視為正常匿名狀態", async () => {
+        const req = {
+            cookies: {}
+        }
+        const res = createMockResponse()
+
+        await handleGetAuthSession(req, res)
+
+        expect(mockVerifyToken).not.toHaveBeenCalled()
+        expect(res.clearCookie).not.toHaveBeenCalled()
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({
+            authenticated: false,
+            player: null
+        })
+    })
+
+    test("檢查登入 session 時，有效 Cookie 會回傳已登入玩家", async () => {
+        const player = createPlayer()
+
+        mockVerifyToken.mockResolvedValueOnce(player)
+
+        const req = {
+            cookies: {
+                officePoliticsAuthToken: "cookie-access-token"
+            }
+        }
+        const res = createMockResponse()
+
+        await handleGetAuthSession(req, res)
+
+        expect(mockVerifyToken).toHaveBeenCalledWith("cookie-access-token")
+        expect(res.clearCookie).not.toHaveBeenCalled()
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({
+            authenticated: true,
+            player
+        })
+    })
+
+    test.each([
+        [401, "登入驗證失敗"],
+        [404, "找不到玩家資料"]
+    ])("檢查登入 session 時，登入狀態失效 %i 會清除 Cookie 並回匿名", async (statusCode, message) => {
+        const error = new Error(message)
+        error.statusCode = statusCode
+
+        mockVerifyToken.mockRejectedValueOnce(error)
+
+        const req = {
+            cookies: {
+                officePoliticsAuthToken: "invalid-cookie-token"
+            }
+        }
+        const res = createMockResponse()
+
+        await handleGetAuthSession(req, res)
+
+        expect(mockVerifyToken).toHaveBeenCalledWith("invalid-cookie-token")
+        expect(res.clearCookie).toHaveBeenCalledWith(
+            "officePoliticsAuthToken",
+            {
+                httpOnly: true,
+                secure: false,
+                sameSite: "lax",
+                path: "/"
+            }
+        )
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({
+            authenticated: false,
+            player: null
+        })
+    })
+
+    test("檢查登入 session 時，內部錯誤不會偽裝成匿名狀態", async () => {
+        const consoleErrorSpy = jest
+            .spyOn(console, "error")
+            .mockImplementation(() => {})
+
+        mockVerifyToken.mockRejectedValueOnce(
+            new Error("database connection failed")
+        )
+
+        const req = {
+            cookies: {
+                officePoliticsAuthToken: "cookie-access-token"
+            }
+        }
+        const res = createMockResponse()
+
+        await handleGetAuthSession(req, res)
+
+        expect(mockVerifyToken).toHaveBeenCalledWith("cookie-access-token")
+        expect(res.clearCookie).not.toHaveBeenCalled()
+        expect(res.status).toHaveBeenCalledWith(500)
+        expect(res.json).toHaveBeenCalledWith({
+            message: "登入狀態檢查失敗"
+        })
+
+        consoleErrorSpy.mockRestore()
     })
 
     test("登出時同步玩家離線並清除 HttpOnly Cookie", async () => {

@@ -236,6 +236,6 @@ function statusColorClass(player) {
 }
 
 .friend-alert.is-error {
-  @apply border-[var(--brand-hover)] bg-[rgba(0,70,244,0.08)] text-[var(--brand-hover)];
+  @apply border-[var(--brand-hover)] bg-[rgba(0,70,244,0.08)] text-[var(--feedback-error)];
 }
 </style>

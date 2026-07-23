@@ -15,6 +15,7 @@ import {
 import { searchPlayers as searchPlayersApi } from "@/services/playerService.js";
 import { emitWithAck, getSocket } from "@/services/socketClient.js";
 import { useAuthStore } from "@/stores/authStore.js";
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js";
 
 const FRIEND_LOGIN_REQUIRED_MESSAGE = "登入後才能使用好友功能";
 const FRIEND_REALTIME_UNAVAILABLE_MESSAGE = "好友即時連線失敗";
@@ -445,7 +446,7 @@ export const useFriendStore = defineStore("friend", {
           this.selectedFriendId = this.friends[0].id;
         }
       } catch (error) {
-        this.errorMessage = error.message || "好友資料載入失敗";
+        this.errorMessage = getDisplayErrorMessage(error, "好友資料載入失敗");
       } finally {
         this.isLoading = false;
       }
@@ -484,7 +485,7 @@ export const useFriendStore = defineStore("friend", {
         }
       } catch (error) {
         this.searchResults = [];
-        this.searchErrorMessage = error.message || "搜尋玩家失敗";
+        this.searchErrorMessage = getDisplayErrorMessage(error, "搜尋玩家失敗");
       } finally {
         this.isSearching = false;
       }
@@ -529,7 +530,7 @@ export const useFriendStore = defineStore("friend", {
           targetPlayer?.name ?? `玩家 ${numericTargetPlayerId}`
         }`;
       } catch (error) {
-        this.searchErrorMessage = error.message || "送出好友邀請失敗";
+        this.searchErrorMessage = getDisplayErrorMessage(error, "送出好友邀請失敗");
       } finally {
         this.isSending = false;
       }
@@ -571,7 +572,7 @@ export const useFriendStore = defineStore("friend", {
 
         this.noticeMessage = `已解除與 ${friend?.name ?? "玩家"} 的好友關係`;
       } catch (error) {
-        this.errorMessage = error.message || "解除好友失敗";
+        this.errorMessage = getDisplayErrorMessage(error, "解除好友失敗");
       } finally {
         this.processingFriendshipIds = this.processingFriendshipIds.filter(
           (id) => id !== numericFriendshipId,
@@ -627,7 +628,7 @@ export const useFriendStore = defineStore("friend", {
           targetPlayer?.name ?? `玩家 ${numericTargetPlayerId}`
         }`;
       } catch (error) {
-        const message = error.message || "封鎖玩家失敗";
+        const message = getDisplayErrorMessage(error, "封鎖玩家失敗");
         this.errorMessage = message;
         this.searchErrorMessage = message;
       } finally {
@@ -678,7 +679,7 @@ export const useFriendStore = defineStore("friend", {
         );
         this.noticeMessage = `已取消封鎖 ${blockedPlayer?.name ?? "玩家"}`;
       } catch (error) {
-        this.errorMessage = error.message || "取消封鎖失敗";
+        this.errorMessage = getDisplayErrorMessage(error, "取消封鎖失敗");
       } finally {
         this.processingBlockIds = this.processingBlockIds.filter(
           (id) => id !== numericBlockId,
@@ -717,7 +718,7 @@ export const useFriendStore = defineStore("friend", {
 
         this.noticeMessage = `已接受 ${request?.name ?? "玩家"} 的好友邀請`;
       } catch (error) {
-        this.errorMessage = error.message || "接受好友邀請失敗";
+        this.errorMessage = getDisplayErrorMessage(error, "接受好友邀請失敗");
       } finally {
         this.processingRequestIds = this.processingRequestIds.filter(
           (id) => id !== requestId,
@@ -748,7 +749,7 @@ export const useFriendStore = defineStore("friend", {
 
         this.noticeMessage = `已拒絕 ${request?.name ?? "玩家"} 的好友邀請`;
       } catch (error) {
-        this.errorMessage = error.message || "拒絕好友邀請失敗";
+        this.errorMessage = getDisplayErrorMessage(error, "拒絕好友邀請失敗");
       } finally {
         this.processingRequestIds = this.processingRequestIds.filter(
           (id) => id !== requestId,

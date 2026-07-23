@@ -37,7 +37,10 @@ describe("addHandCard", () => {
     };
     addHandCard(player, card);
     expect(player.hand.length).toBe(1);
-    expect(player.hand[0]).toEqual(card);
+    expect(player.hand[0]).toEqual({
+      ...card,
+      ownerPlayerId: 1,
+    });
   });
 });
 
@@ -98,7 +101,7 @@ describe("replaceCard", () => {
     const result = replaceCard(player, 101, discardPile, deck);
     expect(result.discardedCard).toEqual({ id: 101, name: "加班" });
     expect(result.newCard).toEqual({ id: 201, name: "摸魚" });
-    expect(player.hand).toEqual([{ id: 201, name: "摸魚" }]);
+    expect(player.hand).toEqual([{ id: 201, name: "摸魚", ownerPlayerId: 1 }]);
     expect(discardPile).toEqual([{ id: 101, name: "加班" }]);
     expect(deck).toHaveLength(0);
   });

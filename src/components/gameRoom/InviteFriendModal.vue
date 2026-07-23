@@ -254,7 +254,10 @@ function sendInvitation() {
   @apply grid min-h-[204px] place-items-center px-4 text-center text-sm font-bold text-[var(--brand-active)];
 }
 
-.invite-state.is-error,
+.invite-state.is-error {
+  @apply text-[var(--feedback-error)];
+}
+
 .invite-notice {
   @apply text-[var(--brand-hover)];
 }

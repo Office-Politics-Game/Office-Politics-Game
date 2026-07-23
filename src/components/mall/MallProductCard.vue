@@ -28,11 +28,11 @@
         </div>
         <div class="item-card__price-row">
           <img
-            v-if="['coin', 'ticket'].includes(item.currency)"
-            :src="item.currency === 'ticket' ? stockTokenImage : officeTokenImage"
+            v-if="['coin', 'diamond', 'ticket'].includes(item.currency)"
+            :src="item.currency === 'coin' ? officeTokenImage : stockTokenImage"
             :alt="item.currency === 'ticket' ? '抽卡券' : '金幣'"
             class="item-card__price-icon"
-            :class="{ 'item-card__price-icon--stock': item.currency === 'ticket' }"
+            :class="{ 'item-card__price-icon--stock': item.currency !== 'coin' }"
           />
           <div class="item-card__price text-2xl font-bold text-slate-900">
             {{ item.price }}

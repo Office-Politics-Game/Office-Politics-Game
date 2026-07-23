@@ -150,5 +150,3 @@
 - **Vercel**: 前端部署
 - **Google Cloud VPS**: 後端部署
 - **Supabase PostgreSQL**: 雲端資料庫，儲存遊戲、玩家與會員資料
-
-：

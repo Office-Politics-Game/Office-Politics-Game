@@ -96,7 +96,10 @@ onBeforeUnmount(clearLoadingTimers)
       class="absolute right-[50%] bottom-20 flex w-64 translate-x-[50%] flex-col lg:bottom-40 lg:w-96"
       aria-live="polite"
     >
-      <p class="m-0 text-center text-base font-bold text-white">
+      <p
+        class="m-0 text-center text-base font-bold"
+        :class="errorMessage ? 'text-[var(--feedback-error)]' : 'text-white'"
+      >
         {{ currentMessage }}
       </p>
 

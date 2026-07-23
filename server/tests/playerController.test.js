@@ -2,11 +2,13 @@ import { jest } from "@jest/globals"
 
 const createGuestMock = jest.fn()
 const searchPlayersMock = jest.fn()
+const updatePlayerAvatarMock = jest.fn()
 const getPlayerCurrencyMock = jest.fn()
 
 jest.unstable_mockModule("../src/services/playerService.js", () => ({
     createGuest: createGuestMock,
     searchPlayers: searchPlayersMock,
+    updatePlayerAvatar: updatePlayerAvatarMock,
 }))
 
 jest.unstable_mockModule("../src/services/currencyService.js", () => ({
@@ -32,6 +34,7 @@ function createMockResponse() {
 beforeEach(() => {
     createGuestMock.mockReset()
     searchPlayersMock.mockReset()
+    updatePlayerAvatarMock.mockReset()
     getPlayerCurrencyMock.mockReset()
 })
 
