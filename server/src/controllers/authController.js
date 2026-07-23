@@ -111,6 +111,37 @@ async function handleVerifyToken(req, res) {
     }
 }
 
+async function handleGetAuthSession(req, res) {
+    const token = getCookieToken(req)
+
+    if (!token) {
+        return res.status(200).json({
+            authenticated: false,
+            player: null
+        })
+    }
+
+    try {
+        const player = await verifyToken(token)
+
+        return res.status(200).json({
+            authenticated: true,
+            player
+        })
+    } catch (error) {
+        if (error?.statusCode === 401 || error?.statusCode === 404) {
+            clearAuthCookie(res)
+
+            return res.status(200).json({
+                authenticated: false,
+                player: null
+            })
+        }
+
+        return sendAuthError(res, error, "登入狀態檢查失敗")
+    }
+}
+
 async function handleLogoutPlayer(req, res) {
     const token = getCookieToken(req)
 
@@ -167,6 +198,7 @@ export {
     handleLoginPlayer,
     handleOAuthCallback,
     handleVerifyToken,
+    handleGetAuthSession,
     handleLogoutPlayer,
     handleForgotPassword,
     handleResetPassword,

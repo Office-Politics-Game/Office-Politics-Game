@@ -265,6 +265,7 @@ function isCurrentTitle(achievement) {
   display: grid;
   gap: 12px;
   justify-items: center;
+  color: var(--feedback-error);
 }
 
 .achievement-panel__error p {
@@ -275,7 +276,7 @@ function isCurrentTitle(achievement) {
   margin: 0;
   border: 1px solid rgba(199, 59, 52, 0.28);
   background: rgba(199, 59, 52, 0.08);
-  color: #9f2f29;
+  color: var(--feedback-error);
   font-size: var(--text-xs);
   font-weight: 800;
   padding: 10px 12px;

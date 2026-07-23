@@ -5,10 +5,20 @@ function attachCardOwner(card, playerId) {
     return card
   }
 
+  const numericPlayerId = Number(playerId)
+
+  if (!Number.isInteger(numericPlayerId) || numericPlayerId <= 0) {
+    return { ...card }
+  }
+
   return {
     ...card,
-    ownerPlayerId: Number(playerId),
+    ownerPlayerId: numericPlayerId,
   }
+}
+
+function getPlayerId(player) {
+  return player?.playerId ?? player?.id ?? null
 }
 
 // 出牌
@@ -16,7 +26,7 @@ function discardCard( player, cardId, discardPile ) {
   const removedCard = attachCardOwner(removeHandCard(
     player,
     cardId
-  ), player?.playerId)
+  ), getPlayerId(player))
   
   if (removedCard === null) {
     return null  

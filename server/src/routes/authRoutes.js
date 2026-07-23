@@ -4,6 +4,7 @@ import {
     handleLoginPlayer,
     handleOAuthCallback,
     handleVerifyToken,
+    handleGetAuthSession,
     handleLogoutPlayer,
     handleForgotPassword,
     handleResetPassword,
@@ -15,6 +16,7 @@ const router = express.Router()
 router.post("/register", handleRegisterPlayer)
 router.post("/login", handleLoginPlayer)
 router.get("/verify", handleVerifyToken)
+router.get("/session", handleGetAuthSession)
 router.post("/oauth/callback", handleOAuthCallback)
 router.post("/logout", handleLogoutPlayer)
 router.post("/forgot-password", handleForgotPassword)

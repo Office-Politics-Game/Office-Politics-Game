@@ -34,7 +34,7 @@ function normalizeComputerUsername(username) {
   const normalizedUsername = String(username ?? "").trim()
 
   if (!normalizedUsername) {
-    throw createServiceError("Computer username is required")
+    throw createServiceError("請輸入電腦玩家名稱")
   }
 
   return normalizedUsername.slice(0, COMPUTER_USERNAME_MAX_LENGTH)
@@ -143,25 +143,20 @@ async function findOrCreateComputerPlayer(client, preferredUsername, index) {
     const username = createComputerUsernameCandidate(baseUsername, attempt)
     const account = createComputerAccountToken()
 
-    try {
-      const playerResult = await client.query(
-        `INSERT INTO players (username, account, avatar_id, is_online)
-         VALUES ($1, $2, $3, false)
-         RETURNING id, username, avatar_id`,
-        [username, account, avatarId],
-      )
+    const playerResult = await client.query(
+      `INSERT INTO players (username, account, avatar_id, is_online)
+       VALUES ($1, $2, $3, false)
+       ON CONFLICT DO NOTHING
+       RETURNING id, username, avatar_id`,
+      [username, account, avatarId],
+    )
 
+    if (playerResult.rows.length > 0) {
       return playerResult.rows[0]
-    } catch (error) {
-      if (error.code === "23505") {
-        continue
-      }
-
-      throw error
     }
   }
 
-  throw createServiceError("Computer username already exists", 409)
+  throw createServiceError("電腦玩家名稱已存在", 409)
 }
 
 function getNextSeatOrder(players) {
@@ -244,7 +239,7 @@ async function joinRoom({ roomCode, playerId }) {
     const playerCount = Number(countResult.rows[0].count)
 
     if (playerCount >= MAX_ROOM_PLAYERS) {
-      throw createServiceError("房間已滿")
+      throw createServiceError("房間人數已滿")
     }
 
     await client.query(
@@ -415,7 +410,7 @@ async function addComputerPlayer({ roomCode, hostPlayerId, username }) {
     const roomPlayers = playerResult.rows
 
     if (roomPlayers.length >= MAX_ROOM_PLAYERS) {
-      throw createServiceError("房間已滿")
+      throw createServiceError("房間人數已滿")
     }
 
     const computerIndex = roomPlayers.filter((player) => player.is_computer).length

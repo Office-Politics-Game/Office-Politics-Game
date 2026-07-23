@@ -33,14 +33,14 @@ function drawCard({ state, playerId }) {
   if (!player) {
     return {
       success: false,
-      message: "Player not found",
+      message: "找不到玩家資料",
     }
   }
 
   if (state.currentTurnPlayerId !== Number(playerId)) {
     return {
       success: false,
-      message: "Not this player's turn",
+      message: "還沒輪到這位玩家",
     }
   }
 
@@ -49,7 +49,7 @@ function drawCard({ state, playerId }) {
   if (!card) {
     return {
       success: false,
-      message: "Deck is empty",
+      message: "牌庫已經沒有剩餘卡牌",
     }
   }
 

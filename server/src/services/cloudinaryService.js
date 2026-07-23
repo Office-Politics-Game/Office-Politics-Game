@@ -10,7 +10,7 @@ function getRequiredEnv(name) {
   const value = String(process.env[name] || "").trim()
 
   if (!value) {
-    throw createServiceError(`Missing environment variable: ${name}`, 500)
+    throw createServiceError("圖片上傳服務設定不完整", 500)
   }
 
   return value

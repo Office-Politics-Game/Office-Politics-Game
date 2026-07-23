@@ -49,7 +49,7 @@ describe("database schema", () => {
         expect(schemaSql).toContain("UNIQUE (player_id, gacha_card_id)")
         expect(schemaSql).toContain("CREATE TABLE gacha_draw_logs")
         expect(schemaSql).toContain("compensation_coins INTEGER NOT NULL DEFAULT 0")
-        expect(schemaSql).toContain("VALUES ('role_cards', '樂高角色卡池')")
+        expect(schemaSql).toContain("('role_cards', '角色卡池')")
         expect(schemaSql).toContain("('card_001', '樂高實習生', 1")
     })
 })

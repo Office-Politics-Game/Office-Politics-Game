@@ -41,6 +41,7 @@ function normalizeShopItem(item, options = {}) {
   } = options;
   const id = Number(item.id);
   const category = shopTypeCategoryMap[item.type] ?? item.type;
+  const currency = item.type === "gacha_ticket" ? "diamond" : item.currency ?? "coin";
   const categoryMeta = categories.find((candidate) => candidate.id === category);
   const isRepeatable = item.type === "gacha_ticket";
   const isOwned = !isRepeatable && ownedShopItemIds.has(id);
@@ -55,7 +56,7 @@ function normalizeShopItem(item, options = {}) {
     summary: item.description || "",
     price: formatNumber(item.price),
     rawPrice: Number(item.price) || 0,
-    currency: item.currency ?? "coin",
+    currency,
     actionLabel: isOwned ? "已擁有" : isAvailable ? "立即購買" : "敬請期待",
     actionState: isOwned ? "owned" : isAvailable ? "buy" : "coming",
     previewImage:

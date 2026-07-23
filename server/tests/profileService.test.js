@@ -209,7 +209,7 @@ describe("profileService", () => {
     await expect(
       setProfileTitle(1, "first_game_win"),
     ).rejects.toMatchObject({
-      message: "Achievement has not been unlocked",
+      message: "尚未解鎖此成就",
       statusCode: 403,
     })
     expect(mockQuery).toHaveBeenCalledTimes(1)
@@ -219,7 +219,7 @@ describe("profileService", () => {
     mockQuery.mockResolvedValueOnce({ rows: [] })
 
     await expect(setProfileTitle(1, "bad_code")).rejects.toMatchObject({
-      message: "Achievement not found",
+      message: "找不到成就資料",
       statusCode: 404,
     })
     expect(mockQuery).toHaveBeenCalledTimes(1)

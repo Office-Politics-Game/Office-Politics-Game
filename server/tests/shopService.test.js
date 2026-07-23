@@ -207,6 +207,106 @@ describe("shopService", () => {
     expect(releaseMock).toHaveBeenCalledTimes(1)
   })
 
+  test("purchaseShopItem() 購買招募券時扣除股份並增加 tickets", async () => {
+    clientQueryMock
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 8,
+            name: "招募券",
+            description: "可進行一次招募",
+            type: "gacha_ticket",
+            price: 30,
+            currency: "ticket",
+            image_url: "/ticket.webp",
+            is_active: true,
+            start_at: null,
+            end_at: null,
+            stock: null,
+            purchase_limit: null,
+            created_at: "created",
+            updated_at: "updated",
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 1, gems: 500 }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 1,
+            coins: 0,
+            gems: 300,
+            tickets: 7,
+            balance_after: 300,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 20,
+            player_id: 1,
+            shop_item_id: 8,
+            quantity: 2,
+            created_at: "owned",
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 30,
+            player_id: 1,
+            shop_item_id: 8,
+            quantity: 2,
+            unit_price: 100,
+            total_price: 200,
+            currency: "diamond",
+            created_at: "log",
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] }) // COMMIT
+
+    const result = await purchaseShopItem({
+      playerId: 1,
+      shopItemId: 8,
+      quantity: 2,
+    })
+
+    expect(clientQueryMock.mock.calls[4][0]).toContain("tickets = tickets + $2")
+    expect(clientQueryMock.mock.calls[4][1]).toEqual([200, 2, 1])
+    expect(clientQueryMock.mock.calls[6][1]).toEqual([
+      1,
+      8,
+      2,
+      100,
+      200,
+      "diamond",
+    ])
+    expect(clientQueryMock.mock.calls[8][1]).toEqual([
+      1,
+      "ticket",
+      2,
+      7,
+      "shop_purchase",
+      "購買商城招募券：招募券",
+    ])
+    expect(result.currency).toMatchObject({
+      currency: "diamond",
+      amount: -200,
+      balanceAfter: 300,
+      gems: 300,
+      tickets: 7,
+    })
+    expect(result.item.price).toBe(100)
+    expect(clientQueryMock).toHaveBeenCalledWith("COMMIT")
+  })
+
   test("purchaseShopItem() 餘額不足時會 rollback", async () => {
     clientQueryMock
       .mockResolvedValueOnce({ rows: [] }) // BEGIN

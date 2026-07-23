@@ -18,15 +18,7 @@ export function useProfileInitializer() {
 
   async function initializeProfile() {
     if (!authStore.hasVerifiedToken) {
-      const isVerified = await authStore.verifyToken();
-
-      if (!isVerified) {
-        profileStore.clearProfile("anonymous");
-        return {
-          status: "auth_failed",
-          profile: null,
-        };
-      }
+      await authStore.checkSession();
     }
 
     if (authStore.isLoggedIn) {
