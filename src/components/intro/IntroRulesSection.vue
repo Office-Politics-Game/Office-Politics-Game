@@ -5,7 +5,7 @@ import {
   Target,
   Trophy,
   Users,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import bonusChequeUrl from "@/assets/images/bonus-cheque-token.png";
 import gameRuleFlowUrl from "@/assets/images/intro/game-rule-flow.webp";
 import rulesBackgroundUrl from "@/assets/images/intro/rules-bg.webp";

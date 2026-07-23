@@ -1,6 +1,6 @@
-﻿<script setup>
+<script setup>
 import { ref } from "vue";
-import { ChevronDown } from "lucide-vue-next";
+import { ChevronDown } from "@lucide/vue";
 
 defineProps({
   backgroundUrl: {

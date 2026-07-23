@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
-import { FastForward } from "lucide-vue-next";
+import { FastForward } from "@lucide/vue";
 import gameTableBackgroundUrl from "@/assets/images/bg-game-table.webp";
 import gameLogoUrl from "@/assets/images/logo-en-white.png";
 import { useAudioSettings } from "@/composables/UseAudioSettings";

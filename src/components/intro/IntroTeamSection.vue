@@ -1,5 +1,6 @@
 <script setup>
-import { Github, Mail } from "lucide-vue-next";
+import { Mail } from "@lucide/vue";
+import GithubIcon from "@/components/common/GithubIcon.vue";
 import rulesBackgroundUrl from "@/assets/images/intro/rules-bg.webp";
 
 const teamMembers = [
@@ -122,7 +123,10 @@ const repositoryUrl =
             <div
               class="mt-[8px] flex items-center gap-[6px] [color:var(--brand-active)] [font-size:12px] font-bold leading-none"
             >
-              <Github class="h-[14px] w-[14px] shrink-0" aria-hidden="true" />
+              <GithubIcon
+                class="h-[14px] w-[14px] shrink-0"
+                aria-hidden="true"
+              />
               <span>{{ member.github }}</span>
             </div>
             <div
@@ -171,7 +175,7 @@ const repositoryUrl =
           >
             <div>
               <div class="inline-flex items-center justify-center gap-[10px]">
-                <Github
+                <GithubIcon
                   class="h-[32px] w-[32px] stroke-[2.2]"
                   aria-hidden="true"
                 />

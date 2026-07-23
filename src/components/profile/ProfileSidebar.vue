@@ -135,7 +135,7 @@
 </template>
 
 <script setup>
-import { Crown, Pencil } from "lucide-vue-next";
+import { Crown, Pencil } from "@lucide/vue";
 
 defineProps({
   player: {

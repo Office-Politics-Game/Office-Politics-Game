@@ -20,7 +20,7 @@
 
 <script setup>
 import { computed } from "vue"
-import { Check, X } from "lucide-vue-next"
+import { Check, X } from "@lucide/vue"
 import { getPasswordRuleChecks } from "@/utils/passwordRules.js"
 
 const props = defineProps({

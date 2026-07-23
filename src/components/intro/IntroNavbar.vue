@@ -1,6 +1,6 @@
 <script setup>
 import { useRouter } from "vue-router";
-import { Play } from "lucide-vue-next";
+import { Play } from "@lucide/vue";
 import navLogoUrl from "@/assets/images/intro/logo-ch-en-long-01.svg";
 
 defineProps({

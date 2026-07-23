@@ -197,7 +197,7 @@
 import { ref, watch, onBeforeUnmount } from "vue"
 import { useRouter } from "vue-router"
 import { useAuthStore } from "../../stores/authStore.js"
-import { Eye, EyeOff } from "lucide-vue-next"
+import { Eye, EyeOff } from "@lucide/vue"
 import { usePlayerStore } from "@/stores/playerStore.js"
 import { usePreGameAudio } from "@/composables/UsePreGameAudio"
 

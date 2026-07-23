@@ -201,7 +201,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import { X } from "lucide-vue-next";
+import { X } from "@lucide/vue";
 import CurrencyBar from "@/components/common/CurrencyBar.vue";
 import MallCategorySidebar from "@/components/mall/MallCategorySidebar.vue";
 import MallImagePreview from "@/components/mall/MallImagePreview.vue";

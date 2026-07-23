@@ -123,7 +123,7 @@
 
 <script setup>
 import { computed, ref } from "vue";
-import { Eye, EyeOff } from "lucide-vue-next";
+import { Eye, EyeOff } from "@lucide/vue";
 import PasswordRuleList from "@/components/login/PasswordRuleList.vue";
 import { getPasswordError } from "@/utils/passwordRules.js";
 import { useAuthStore } from "@/stores/authStore.js";

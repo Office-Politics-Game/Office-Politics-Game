@@ -58,7 +58,7 @@
 </template>
 
 <script setup>
-import { Crown, RefreshCw, Sparkles } from "lucide-vue-next";
+import { Crown, RefreshCw, Sparkles } from "@lucide/vue";
 
 defineProps({
   matches: {

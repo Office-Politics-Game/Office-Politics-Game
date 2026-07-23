@@ -115,7 +115,7 @@
 
 <script setup>
 import { computed, ref } from "vue";
-import { ChevronLeft, ChevronRight, Dice5 } from "lucide-vue-next";
+import { ChevronLeft, ChevronRight, Dice5 } from "@lucide/vue";
 import { createGuestNickname, guestAvatars } from "@/constants/guestOptions";
 import { createGuestPlayer } from "@/services/playerService";
 import { usePreGameAudio } from "@/composables/UsePreGameAudio";

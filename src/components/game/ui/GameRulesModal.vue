@@ -9,7 +9,7 @@ import {
   Target,
   Trophy,
   Users,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import bonusChequeTokenUrl from "@/assets/images/bonus-cheque-token.png";
 import gameRulesFlowUrl from "@/assets/images/game-rules-flow.svg";
 

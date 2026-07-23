@@ -45,7 +45,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, watch } from "vue";
-import { Trophy } from "lucide-vue-next";
+import { Trophy } from "@lucide/vue";
 import firstFriendAchievementImage from "@/assets/images/achievement-first-friend.webp";
 import firstGameWinAchievementImage from "@/assets/images/achievement-first-game-win.webp";
 import roomFounderAchievementImage from "@/assets/images/achievement-room-founder.webp";
