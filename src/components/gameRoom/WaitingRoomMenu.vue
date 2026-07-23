@@ -157,6 +157,7 @@ async function handleTutorialMode() {
       query: {
         roomCode: tutorialRoomCode,
         playerId: String(currentPlayerId.value),
+        tutorial: "1",
       },
     });
   } catch {

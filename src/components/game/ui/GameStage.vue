@@ -115,6 +115,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  isTutorialMode: {
+    type: Boolean,
+    default: false,
+  },
   isLoading: {
     type: Boolean,
     default: false,
@@ -541,6 +545,7 @@ watch(
 
 watch(
   () => [
+    props.isTutorialMode,
     resolvedCurrentPlayerId.value,
     props.hasAnyCardBeenPlayed,
     props.players
@@ -548,6 +553,10 @@ watch(
       .join("|"),
   ],
   async () => {
+    if (!props.isTutorialMode) {
+      return;
+    }
+
     await nextTick();
     await startTutorial({
       players: props.players,

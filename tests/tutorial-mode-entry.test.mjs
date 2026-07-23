@@ -9,6 +9,7 @@ const stageSource = readFileSync(
   "src/components/game/ui/GameStage.vue",
   "utf8",
 );
+const gameViewSource = readFileSync("src/views/GameView.vue", "utf8");
 
 assert.match(
   menuSource,
@@ -36,14 +37,20 @@ assert.match(
 
 assert.match(
   menuSource,
-  /name: "Loading"[\s\S]*roomCode: tutorialRoomCode[\s\S]*playerId: String\(currentPlayerId\.value\)/,
+  /name: "Loading"[\s\S]*roomCode: tutorialRoomCode[\s\S]*playerId: String\(currentPlayerId\.value\)[\s\S]*tutorial: "1"/,
   "tutorial mode should enter the existing loading and game route",
 );
 
 assert.match(
+  gameViewSource,
+  /route\.query\.tutorial[\s\S]*:is-tutorial-mode="isTutorialMode"/,
+  "the explicit tutorial route flag should be forwarded to the game stage",
+);
+
+assert.match(
   stageSource,
-  /useGameTutorial\(\)[\s\S]*startTutorial\(\{[\s\S]*players: props\.players[\s\S]*hasAnyCardBeenPlayed/,
-  "the game stage should continue to launch the existing frontend tutorial",
+  /props\.isTutorialMode[\s\S]*if \(!props\.isTutorialMode\)[\s\S]*startTutorial\(\{[\s\S]*players: props\.players[\s\S]*hasAnyCardBeenPlayed/,
+  "the game stage should only launch the tutorial for an explicit tutorial route",
 );
 
 console.log("tutorial mode entry ok");
