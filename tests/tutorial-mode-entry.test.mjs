@@ -30,6 +30,12 @@ assert.match(
 
 assert.match(
   menuSource,
+  /async function handleTutorialMode\(\)[\s\S]*if \(tutorialStartLocked\)[\s\S]*tutorialStartLocked = true;[\s\S]*roomStore\.createRoom\([\s\S]*finally[\s\S]*tutorialStartLocked = false;/,
+  "tutorial mode should lock before creating a room and release the lock when finished",
+);
+
+assert.match(
+  menuSource,
   /name: "Loading"[\s\S]*roomCode: tutorialRoomCode[\s\S]*playerId: String\(currentPlayerId\.value\)/,
   "tutorial mode should enter the existing loading and game route",
 );

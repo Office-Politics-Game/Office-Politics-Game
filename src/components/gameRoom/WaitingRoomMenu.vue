@@ -45,6 +45,7 @@ const { playPreGameSound } = usePreGameAudio();
 const roomId = ref("");
 const activeAction = ref("");
 const isTutorialStarting = ref(false);
+let tutorialStartLocked = false;
 let errorNoticeTimerId = null;
 const { isLoading, errorMessage } = storeToRefs(roomStore);
 const ERROR_NOTICE_DURATION = 3000;
@@ -117,11 +118,16 @@ async function handleCreateRoom() {
 }
 
 async function handleTutorialMode() {
+  if (tutorialStartLocked) {
+    return;
+  }
+
   if (!currentPlayerId.value) {
     roomStore.errorMessage = "請先登入或建立訪客玩家。";
     return;
   }
 
+  tutorialStartLocked = true;
   isTutorialStarting.value = true;
 
   try {
@@ -156,6 +162,7 @@ async function handleTutorialMode() {
   } catch {
     return;
   } finally {
+    tutorialStartLocked = false;
     isTutorialStarting.value = false;
   }
 }
@@ -223,7 +230,9 @@ onBeforeUnmount(() => {
       :class="{
         'is-join-expanded':
           action.title === '加入房間' && activeAction === '加入房間',
+        'is-action-disabled': isLoading || isTutorialStarting,
       }"
+      :aria-disabled="isLoading || isTutorialStarting"
       @click="handleActionClick(action)"
     >
       <img
@@ -236,8 +245,9 @@ onBeforeUnmount(() => {
       <div
         class="waiting-room-button absolute border-0 bg-transparent p-0 text-center"
         role="button"
-        tabindex="0"
+        :tabindex="isLoading || isTutorialStarting ? -1 : 0"
         :aria-label="action.title"
+        :aria-disabled="isLoading || isTutorialStarting"
         @keydown.enter.self.prevent="handleActionClick(action)"
         @keydown.space.self.prevent="handleActionClick(action)"
       >
@@ -364,6 +374,10 @@ onBeforeUnmount(() => {
   transition:
     transform 180ms ease,
     filter 180ms ease;
+}
+
+.waiting-room-item.is-action-disabled {
+  pointer-events: none;
 }
 
 .waiting-room-item:nth-child(2) {
