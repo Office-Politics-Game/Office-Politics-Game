@@ -109,3 +109,46 @@
    ```
 
 6. 瀏覽器開啟 [http://localhost:5173](http://localhost:5173)。本地前端會將 `/api` 與 `/socket.io` 請求代理至 `http://localhost:3000`。
+
+---
+
+## 技術應用 (Tech Stack)
+
+### Frontend
+
+- **Vue 3**: 前端 UI 框架。
+- **Vite**: 開發伺服器與前端建置工具。
+- **Vue Router**: 前端路由管理。
+- **Pinia**: 前端狀態管理。
+- **Tailwind CSS 4**: Utility-first CSS 與版面樣式。
+- **Lucide Vue**: 圖示元件。
+
+### Animation & Realtime UI
+
+- **GSAP**: 卡牌發牌、抽牌、出牌與效果動畫。
+- **Socket.IO Client**: 前端即時遊戲事件連線。
+
+### Backend
+
+- **Node.js**: 後端執行環境。
+- **Express 5**: API server 與路由處理。
+- **Socket.IO**: 即時房間、遊戲狀態與玩家事件同步。
+
+### Database & Auth
+
+- **PostgreSQL**: 主要資料庫。
+- **pg**: Node.js PostgreSQL client。
+- **Supabase JS**: Supabase client 整合。
+
+### Testing & Development
+
+- **Jest**: 後端測試。
+- **Vite Vue DevTools**: Vue/Vite 開發除錯工具。
+
+### Deployment
+
+- **Vercel**: 前端部署
+- **Google Cloud VPS**: 後端部署
+- **Supabase PostgreSQL**: 雲端資料庫，儲存遊戲、玩家與會員資料
+
+：
