@@ -21,7 +21,11 @@ test('game stage exposes turn timeout and computer-finish controls', () => {
   assert.match(gameStageSource, /@media \(max-width: 767px\) \{[\s\S]*\.turn-countdown__hourglass \{[\s\S]*width: 10px;[\s\S]*height: 14px;/)
   assert.match(gameStageSource, /@keyframes turn-hourglass-spin/)
   assert.match(gameStageSource, /"skip-computer-finish"/)
-  assert.match(gameStageSource, /\.skip-computer-button \{[\s\S]*bottom: 92px;[\s\S]*min-height: 40px;[\s\S]*padding: 9px 16px;/)
+  assert.match(gameStageSource, /\.skip-computer-button \{[\s\S]*left: 50%;[\s\S]*bottom: 5vh;[\s\S]*transform: translateX\(-50%\);[\s\S]*min-height: 40px;[\s\S]*padding: 9px 16px;/)
+  assert.match(gameStageSource, /@media \(min-width: 1024px\) \{[\s\S]*\.skip-computer-button \{[\s\S]*bottom: 10vh;/)
+  assert.match(gameStageSource, /\.skip-computer-button:hover \{[\s\S]*transform: translate\(-50%, -1px\);/)
+  assert.match(gameStageSource, /\.skip-computer-button:active \{[\s\S]*transform: translate\(-50%, 1px\);/)
+  assert.match(gameStageSource, /\.skip-computer-button:disabled \{[\s\S]*transform: translateX\(-50%\);/)
   assert.match(gameStageSource, /props\.isSkippingComputerFinish/)
   assert.match(gameStageSource, /!isTutorialBlocking\.value/)
   assert.match(gameStageSource, /areTurnStartAnimationsIdle/)
@@ -63,8 +67,7 @@ test('intern target choices exclude eliminated players', () => {
   assert.match(cardPlaySource, /if \(player\.isEliminated\) \{\s*return false;\s*\}/)
 })
 
-test('settings return-lobby action is a surrender confirmation', () => {
-  assert.match(settingsSource, /確認投降/)
-  assert.match(settingsSource, /放棄對局無法領取結算獎勵/)
-  assert.match(settingsSource, /openConfirmation\('return-lobby'\)/)
+test('settings return-lobby action closes the modal and navigates directly', () => {
+  assert.match(settingsSource, /function returnToLobby\(\) \{[\s\S]*emit\("close"\);[\s\S]*router\.push\(\{ name: "LobbyHome" \}\);/)
+  assert.match(settingsSource, /@click="returnToLobby"/)
 })
