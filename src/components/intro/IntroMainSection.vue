@@ -1,6 +1,6 @@
 <script setup>
 import { useRouter } from "vue-router";
-import { Crosshair, FileBadge, Play, Trophy, Users } from "lucide-vue-next";
+import { Crosshair, FileBadge, Play, Trophy, Users } from "@lucide/vue";
 import mainBackgroundUrl from "@/assets/images/intro/main-bg.webp";
 import mainLogoUrl from "@/assets/images/logo-main.png";
 

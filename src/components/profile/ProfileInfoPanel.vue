@@ -59,7 +59,7 @@ import {
   UserRound,
   BadgeInfo,
   KeyRound,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 
 const props = defineProps({
   player: {

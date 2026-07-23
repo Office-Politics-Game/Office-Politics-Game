@@ -139,7 +139,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { LockKeyhole } from "lucide-vue-next";
+import { LockKeyhole } from "@lucide/vue";
 import friendBg from "@/assets/images/bg-friend-view.webp";
 import profileBg from "@/assets/images/bg-personal.webp";
 import menuBg from "@/assets/images/menu.webp";

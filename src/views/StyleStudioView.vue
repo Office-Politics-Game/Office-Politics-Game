@@ -2,11 +2,15 @@
   <main class="studio-page" :style="pageStyle">
     <div class="scene-mask" @click="goLobby"></div>
 
-    <section class="settings-modal" role="dialog" aria-modal="true" aria-label="遊戲設定">
+    <section
+      class="settings-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-label="遊戲設定"
+    >
       <header class="modal-header">
         <div>
-          <h1>遊戲設定</h1>
-          <p>OFFICE POLITICS</p>
+          <h1>造型設定</h1>
         </div>
 
         <div class="header-actions">
@@ -50,12 +54,21 @@
         </button>
       </nav>
 
-      <div v-if="gamePreviewOpen" class="game-preview" :style="gamePreviewStyle">
+      <div
+        v-if="gamePreviewOpen"
+        class="game-preview"
+        :style="gamePreviewStyle"
+      >
         <div class="game-preview-shade"></div>
         <div class="opponent-zone">
           <div class="fake-avatar opponent-avatar">AI</div>
           <div class="opponent-cards">
-            <img v-for="index in 3" :key="index" :src="gameCardBackImage" alt="對手手牌卡背" />
+            <img
+              v-for="index in 3"
+              :key="index"
+              :src="gameCardBackImage"
+              alt="對手手牌卡背"
+            />
           </div>
         </div>
 
@@ -81,8 +94,17 @@
               :aria-label="`查看 ${card.label} 預覽`"
               @click="openGameCardLightbox(card)"
             >
-              <img class="skin-background" :src="card.previewImage" :alt="card.label" />
-              <img v-if="card.frameImage" class="skin-frame" :src="card.frameImage" alt="" />
+              <img
+                class="skin-background"
+                :src="card.previewImage"
+                :alt="card.label"
+              />
+              <img
+                v-if="card.frameImage"
+                class="skin-frame"
+                :src="card.frameImage"
+                alt=""
+              />
             </button>
           </div>
         </div>
@@ -97,7 +119,9 @@
         {{ errorMessage }}
       </div>
 
-      <div v-else-if="isLoading" class="status-message">正在載入個人造型...</div>
+      <div v-else-if="isLoading" class="status-message">
+        正在載入個人造型...
+      </div>
 
       <div v-else class="studio-content">
         <section class="selection-panel" aria-label="造型選擇">
@@ -109,7 +133,8 @@
                 type="button"
                 class="asset-card"
                 :class="{
-                  selected: (item.selectionId ?? item.shopItemId) === selectedItemKey,
+                  selected:
+                    (item.selectionId ?? item.shopItemId) === selectedItemKey,
                   locked: item.isLocked,
                 }"
                 @click="handleSelectItem(item)"
@@ -122,21 +147,31 @@
                     :class="{ round: activeCategory === 'avatar' }"
                   />
                   <span v-else>NO PREVIEW</span>
-                  <span v-if="item.isLocked" class="locked-badge">尚未解鎖</span>
+                  <span v-if="item.isLocked" class="locked-badge"
+                    >尚未解鎖</span
+                  >
                 </div>
                 <strong>{{ item.name }}</strong>
               </button>
             </div>
 
-            <div v-else class="empty-state">{{ activeCategoryMeta?.emptyText }}</div>
+            <div v-else class="empty-state">
+              {{ activeCategoryMeta?.emptyText }}
+            </div>
           </div>
         </section>
 
         <aside class="preview-panel">
           <h2>預覽</h2>
 
-          <div v-if="activeCategory === 'card_skin'" class="skin-preview-editor">
-            <div class="large-skin-preview" :style="selectedPreviewBackgroundStyle">
+          <div
+            v-if="activeCategory === 'card_skin'"
+            class="skin-preview-editor"
+          >
+            <div
+              class="large-skin-preview"
+              :style="selectedPreviewBackgroundStyle"
+            >
               <button
                 class="large-skin-card"
                 type="button"
@@ -202,23 +237,27 @@
               套用整套卡面
             </button>
             <button
-            class="save-button"
-            type="button"
-            :disabled="!selectedItem || isSaving"
-            @click="saveSelection"
-          >
-            {{
-              selectedItem?.isLocked
-                ? "前往獲得"
-                : isSaving
-                  ? "儲存中..."
-                  : activeCategory === "card_skin"
-                    ? "儲存卡面"
-                    : "儲存設定"
-            }}
+              class="save-button"
+              type="button"
+              :disabled="!selectedItem || isSaving"
+              @click="saveSelection"
+            >
+              {{
+                selectedItem?.isLocked
+                  ? "前往獲得"
+                  : isSaving
+                    ? "儲存中..."
+                    : activeCategory === "card_skin"
+                      ? "儲存卡面"
+                      : "儲存設定"
+              }}
             </button>
           </div>
-          <p v-if="saveFeedback" class="save-feedback" :class="{ error: saveFailed }">
+          <p
+            v-if="saveFeedback"
+            class="save-feedback"
+            :class="{ error: saveFailed }"
+          >
             {{ saveFeedback }}
           </p>
         </aside>
@@ -236,7 +275,13 @@
             <h2>卡面總覽</h2>
             <p>可直接查看目前八張卡面的套用結果。</p>
           </div>
-          <button type="button" aria-label="關閉卡面總覽" @click="cardGalleryOpen = false">×</button>
+          <button
+            type="button"
+            aria-label="關閉卡面總覽"
+            @click="cardGalleryOpen = false"
+          >
+            ×
+          </button>
         </header>
 
         <div class="card-gallery-grid">
@@ -248,8 +293,17 @@
             @click="openGameCardLightbox(card)"
           >
             <span class="gallery-card">
-              <img class="skin-background" :src="card.previewImage" :alt="card.label" />
-              <img v-if="card.frameImage" class="skin-frame" :src="card.frameImage" alt="" />
+              <img
+                class="skin-background"
+                :src="card.previewImage"
+                :alt="card.label"
+              />
+              <img
+                v-if="card.frameImage"
+                class="skin-frame"
+                :src="card.frameImage"
+                alt=""
+              />
             </span>
           </button>
         </div>
@@ -297,7 +351,10 @@ import defaultGameBackground from "@/assets/images/bg-game-table.webp";
 import pageBackgroundImage from "@/assets/images/bg-setting.png";
 import { cardAssetsByKey } from "@/constants/cardAssets.js";
 import { guestAvatars } from "@/constants/guestOptions.js";
-import { CARD_SKIN_SLOT_LABELS, CARD_SKIN_SLOT_ORDER } from "@/constants/cardSkinSlots.js";
+import {
+  CARD_SKIN_SLOT_LABELS,
+  CARD_SKIN_SLOT_ORDER,
+} from "@/constants/cardSkinSlots.js";
 import {
   CARD_SKIN_THEMES,
   getCardSkinThemeLogo,
@@ -378,7 +435,9 @@ const pageStyle = {
   backgroundImage: `url(${pageBackgroundImage})`,
 };
 
-const sourcePlayer = computed(() => authStore.currentPlayer || playerStore.currentPlayer || null);
+const sourcePlayer = computed(
+  () => authStore.currentPlayer || playerStore.currentPlayer || null,
+);
 
 const resolvedPlayerId = computed(() => {
   const playerId = Number(sourcePlayer.value?.id);
@@ -386,7 +445,9 @@ const resolvedPlayerId = computed(() => {
 });
 
 const resolvedAvatarId = computed(() => {
-  const avatarId = Number(sourcePlayer.value?.avatarId ?? sourcePlayer.value?.avatar_id);
+  const avatarId = Number(
+    sourcePlayer.value?.avatarId ?? sourcePlayer.value?.avatar_id,
+  );
   return Number.isInteger(avatarId) && avatarId > 0 ? avatarId : 1;
 });
 
@@ -485,14 +546,24 @@ function createFallbackCardSkinThemeItem(themeKey, categoryLabel) {
 }
 
 const equipmentSections = computed(() => {
-  const baseSections = buildEquipmentSections(inventoryItems.value, equippedItems.value);
-  const sectionsById = Object.fromEntries(baseSections.map((section) => [section.id, section]));
+  const baseSections = buildEquipmentSections(
+    inventoryItems.value,
+    equippedItems.value,
+  );
+  const sectionsById = Object.fromEntries(
+    baseSections.map((section) => [section.id, section]),
+  );
 
   return sectionDisplay.map(({ id, label }) => {
     const section = { ...sectionsById[id], label };
-    const ownedItemIds = new Set(section.items.map((item) => Number(item.shopItemId)));
+    const ownedItemIds = new Set(
+      section.items.map((item) => Number(item.shopItemId)),
+    );
     const lockedItems = allShopItems.value
-      .filter((item) => item.type === section.id && !ownedItemIds.has(Number(item.id)))
+      .filter(
+        (item) =>
+          item.type === section.id && !ownedItemIds.has(Number(item.id)),
+      )
       .map((item) => ({
         selectionId: `locked-${section.id}-${item.id}`,
         inventoryId: null,
@@ -520,10 +591,12 @@ const equipmentSections = computed(() => {
       section.id === "card_skin"
         ? Object.keys(CARD_SKIN_THEMES)
             .filter((themeKey) => {
-              const alreadyListed = [...section.items, ...lockedItems].some((item) => {
-                const source = item.shopItem || item;
-                return resolveCardSkinThemeKey(source) === themeKey;
-              });
+              const alreadyListed = [...section.items, ...lockedItems].some(
+                (item) => {
+                  const source = item.shopItem || item;
+                  return resolveCardSkinThemeKey(source) === themeKey;
+                },
+              );
 
               return !alreadyListed;
             })
@@ -533,12 +606,16 @@ const equipmentSections = computed(() => {
 
     const mergedSection = {
       ...section,
-      count: section.items.length + lockedItems.length + mergedThemeItems.length,
+      count:
+        section.items.length + lockedItems.length + mergedThemeItems.length,
       items: [...section.items, ...lockedItems, ...mergedThemeItems],
     };
 
     if (section.id !== "avatar") {
-      const defaultItem = createDefaultEquipmentItem(section.id, mergedSection.label);
+      const defaultItem = createDefaultEquipmentItem(
+        section.id,
+        mergedSection.label,
+      );
 
       if (!defaultItem) {
         return mergedSection;
@@ -569,7 +646,8 @@ const equipmentSections = computed(() => {
       isOwned: true,
       isEquipped:
         !equippedItems.value.avatarItemId &&
-        Number(equippedItems.value.avatarId ?? resolvedAvatarId.value) === Number(avatar.id),
+        Number(equippedItems.value.avatarId ?? resolvedAvatarId.value) ===
+          Number(avatar.id),
     }));
 
     return {
@@ -580,10 +658,14 @@ const equipmentSections = computed(() => {
   });
 });
 
-const activeCategoryMeta = computed(() => getEquipmentCategoryMeta(activeCategory.value));
+const activeCategoryMeta = computed(() =>
+  getEquipmentCategoryMeta(activeCategory.value),
+);
 
 const activeItems = computed(() => {
-  const section = equipmentSections.value.find((item) => item.id === activeCategory.value);
+  const section = equipmentSections.value.find(
+    (item) => item.id === activeCategory.value,
+  );
   return section?.items ?? [];
 });
 
@@ -599,11 +681,15 @@ const selectedItem = computed(
 );
 
 function findSelectedItem(categoryId) {
-  const section = equipmentSections.value.find((item) => item.id === categoryId);
+  const section = equipmentSections.value.find(
+    (item) => item.id === categoryId,
+  );
   const selectionId = selectedItemIdByCategory.value[categoryId];
 
   return (
-    section?.items.find((item) => (item.selectionId ?? item.shopItemId) === selectionId) ?? null
+    section?.items.find(
+      (item) => (item.selectionId ?? item.shopItemId) === selectionId,
+    ) ?? null
   );
 }
 
@@ -614,25 +700,31 @@ function buildCardSkinPreview(themeItem, slotKey) {
     key: slotKey,
     label: CARD_SKIN_SLOT_LABELS[slotKey] || slotKey,
     previewImage:
-      getCardSkinThemeSlotImage(themeSource, slotKey) || cardAssetsByKey[slotKey].backgroundUrl,
+      getCardSkinThemeSlotImage(themeSource, slotKey) ||
+      cardAssetsByKey[slotKey].backgroundUrl,
     frameImage:
-      getCardSkinThemeSlotFrame(themeSource, slotKey) || cardAssetsByKey[slotKey].frameUrl,
+      getCardSkinThemeSlotFrame(themeSource, slotKey) ||
+      cardAssetsByKey[slotKey].frameUrl,
   };
 }
 
 const cardSkinPreviewCards = computed(() => {
-  return CARD_SKIN_SLOT_ORDER.map((slotKey) => buildCardSkinPreview(selectedItem.value, slotKey));
+  return CARD_SKIN_SLOT_ORDER.map((slotKey) =>
+    buildCardSkinPreview(selectedItem.value, slotKey),
+  );
 });
 
 const selectedCardSkinPreview = computed(
   () =>
-    cardSkinPreviewCards.value.find((card) => card.key === selectedCardSlot.value) ||
-    cardSkinPreviewCards.value[0],
+    cardSkinPreviewCards.value.find(
+      (card) => card.key === selectedCardSlot.value,
+    ) || cardSkinPreviewCards.value[0],
 );
 
 const lightboxPreview = computed(() => {
   if (lightboxPreviewOverride.value) return lightboxPreviewOverride.value;
-  if (activeCategory.value === "card_skin") return selectedCardSkinPreview.value;
+  if (activeCategory.value === "card_skin")
+    return selectedCardSkinPreview.value;
 
   return {
     label: selectedItem.value?.name || "未選擇造型",
@@ -642,10 +734,13 @@ const lightboxPreview = computed(() => {
 });
 
 const equippedCardSkinItem = computed(() => {
-  const section = equipmentSections.value.find((item) => item.id === "card_skin");
+  const section = equipmentSections.value.find(
+    (item) => item.id === "card_skin",
+  );
   return (
     section?.items.find(
-      (item) => Number(item.shopItemId) === Number(equippedItems.value.cardSkinItemId),
+      (item) =>
+        Number(item.shopItemId) === Number(equippedItems.value.cardSkinItemId),
     ) ?? null
   );
 });
@@ -653,17 +748,26 @@ const equippedCardSkinItem = computed(() => {
 const gamePreviewCards = computed(() =>
   CARD_SKIN_SLOT_ORDER.map((slotKey) => {
     const savedItem = savedCardSkinSelections.value[slotKey];
-    const equippedOverrideId = Number(equippedItems.value.cardSkinOverrides?.[slotKey]);
-    const section = equipmentSections.value.find((item) => item.id === "card_skin");
+    const equippedOverrideId = Number(
+      equippedItems.value.cardSkinOverrides?.[slotKey],
+    );
+    const section = equipmentSections.value.find(
+      (item) => item.id === "card_skin",
+    );
     const overrideItem = section?.items.find(
       (item) => Number(item.shopItemId) === equippedOverrideId,
     );
 
-    return buildCardSkinPreview(savedItem || overrideItem || equippedCardSkinItem.value, slotKey);
+    return buildCardSkinPreview(
+      savedItem || overrideItem || equippedCardSkinItem.value,
+      slotKey,
+    );
   }),
 );
 
-const gameAvatarImage = computed(() => findSelectedItem("avatar")?.previewImage || "");
+const gameAvatarImage = computed(
+  () => findSelectedItem("avatar")?.previewImage || "",
+);
 const gameCardBackImage = computed(
   () => findSelectedItem("card_back")?.previewImage || defaultCardBackImage,
 );
@@ -675,7 +779,10 @@ const gamePreviewStyle = computed(() => ({
 }));
 
 const previewStageStyle = computed(() => {
-  if (activeCategory.value === "board_skin" && selectedItem.value?.previewImage) {
+  if (
+    activeCategory.value === "board_skin" &&
+    selectedItem.value?.previewImage
+  ) {
     return { backgroundImage: `url(${selectedItem.value.previewImage})` };
   }
 
@@ -694,7 +801,8 @@ watch(
       }
 
       const selectionExists = section.items.some(
-        (item) => (item.selectionId ?? item.shopItemId) === nextSelection[section.id],
+        (item) =>
+          (item.selectionId ?? item.shopItemId) === nextSelection[section.id],
       );
 
       if (!selectionExists) {
@@ -766,11 +874,12 @@ async function reloadEquipment() {
   errorMessage.value = "";
 
   try {
-    const [playerItemsResponse, equippedResponse, shopItemsResponse] = await Promise.all([
-      getPlayerShopItems(resolvedPlayerId.value),
-      getPlayerEquippedItems(resolvedPlayerId.value),
-      getShopItems({ activeOnly: true }),
-    ]);
+    const [playerItemsResponse, equippedResponse, shopItemsResponse] =
+      await Promise.all([
+        getPlayerShopItems(resolvedPlayerId.value),
+        getPlayerEquippedItems(resolvedPlayerId.value),
+        getShopItems({ activeOnly: true }),
+      ]);
 
     inventoryItems.value = playerItemsResponse.items || [];
     allShopItems.value = shopItemsResponse.items || [];
@@ -790,11 +899,7 @@ async function reloadEquipment() {
 }
 
 async function saveSelection() {
-  if (
-    !resolvedPlayerId.value ||
-    !selectedItem.value ||
-    isSaving.value
-  ) {
+  if (!resolvedPlayerId.value || !selectedItem.value || isSaving.value) {
     return;
   }
 
@@ -822,7 +927,9 @@ async function saveSelection() {
         selectedItem.value.selectionId === DEFAULT_ITEM_SELECTIONS.card_skin;
 
       if (isDefaultCardSkin) {
-        const nextOverrides = { ...(equippedItems.value.cardSkinOverrides || {}) };
+        const nextOverrides = {
+          ...(equippedItems.value.cardSkinOverrides || {}),
+        };
         delete nextOverrides[selectedCardSlot.value];
 
         const baseItemId = Number(equippedItems.value.cardSkinItemId) || null;
@@ -847,7 +954,9 @@ async function saveSelection() {
           ...savedCardSkinSelections.value,
           [selectedCardSlot.value]: selectedItem.value,
         };
-        await appearanceStore.hydrateForPlayer(resolvedPlayerId.value).catch(() => {});
+        await appearanceStore
+          .hydrateForPlayer(resolvedPlayerId.value)
+          .catch(() => {});
         saveFeedback.value = `${CARD_SKIN_SLOT_LABELS[selectedCardSlot.value]} 卡面已儲存`;
         return;
       }
@@ -857,7 +966,8 @@ async function saveSelection() {
       }
 
       const baseItemId =
-        Number(equippedItems.value.cardSkinItemId) || Number(selectedItem.value.shopItemId);
+        Number(equippedItems.value.cardSkinItemId) ||
+        Number(selectedItem.value.shopItemId);
       const nextOverrides = {
         ...(equippedItems.value.cardSkinOverrides || {}),
         [selectedCardSlot.value]: Number(selectedItem.value.shopItemId),
@@ -883,13 +993,21 @@ async function saveSelection() {
         ...savedCardSkinSelections.value,
         [selectedCardSlot.value]: selectedItem.value,
       };
-      await appearanceStore.hydrateForPlayer(resolvedPlayerId.value).catch(() => {});
+      await appearanceStore
+        .hydrateForPlayer(resolvedPlayerId.value)
+        .catch(() => {});
       saveFeedback.value = `${CARD_SKIN_SLOT_LABELS[selectedCardSlot.value]} 卡面已儲存`;
       return;
     }
 
-    if (activeCategory.value === "avatar" && selectedItem.value.avatarPresetId) {
-      await updatePlayerAvatar(resolvedPlayerId.value, selectedItem.value.avatarPresetId);
+    if (
+      activeCategory.value === "avatar" &&
+      selectedItem.value.avatarPresetId
+    ) {
+      await updatePlayerAvatar(
+        resolvedPlayerId.value,
+        selectedItem.value.avatarPresetId,
+      );
       equippedItems.value = normalizeEquippedItems(
         {
           ...equippedItems.value,
@@ -915,7 +1033,11 @@ async function saveSelection() {
       equippedItems.value = normalizeEquippedItems(
         {
           ...(response?.equipped ||
-            patchEquippedState(equippedItems.value, activeCategory.value, null)),
+            patchEquippedState(
+              equippedItems.value,
+              activeCategory.value,
+              null,
+            )),
           avatarId: resolvedAvatarId.value,
         },
         resolvedPlayerId.value,
@@ -963,7 +1085,8 @@ async function saveSelection() {
   }
 }
 async function applySelectedCardTheme() {
-  const isDefaultCardSkin = selectedItem.value?.selectionId === DEFAULT_ITEM_SELECTIONS.card_skin;
+  const isDefaultCardSkin =
+    selectedItem.value?.selectionId === DEFAULT_ITEM_SELECTIONS.card_skin;
 
   if (
     resolvedPlayerId.value &&
@@ -994,7 +1117,9 @@ async function applySelectedCardTheme() {
         resolvedPlayerId.value,
       );
       savedCardSkinSelections.value = {};
-      await appearanceStore.hydrateForPlayer(resolvedPlayerId.value).catch(() => {});
+      await appearanceStore
+        .hydrateForPlayer(resolvedPlayerId.value)
+        .catch(() => {});
       saveFeedback.value = "已套用預設卡面";
     } catch (error) {
       saveFailed.value = true;
@@ -1039,7 +1164,9 @@ async function applySelectedCardTheme() {
       resolvedPlayerId.value,
     );
     savedCardSkinSelections.value = {};
-    await appearanceStore.hydrateForPlayer(resolvedPlayerId.value).catch(() => {});
+    await appearanceStore
+      .hydrateForPlayer(resolvedPlayerId.value)
+      .catch(() => {});
     saveFeedback.value = `已將八張卡面統一套用「${selectedItem.value.name}」`;
   } catch (error) {
     saveFailed.value = true;
@@ -1125,13 +1252,14 @@ onMounted(reloadEquipment);
 .card-gallery-button {
   padding: 8px 13px;
   border: 1px solid rgba(37, 99, 235, 0.3);
-  border-radius: 8px;
   background: rgba(255, 255, 255, 0.76);
   color: #1757da;
   font-size: 12px;
   font-weight: 900;
   cursor: pointer;
-  transition: background 150ms ease, border-color 150ms ease;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease;
 }
 
 .game-preview-button:hover,
@@ -1282,7 +1410,10 @@ onMounted(reloadEquipment);
   box-shadow: 0 5px 14px rgba(45, 65, 91, 0.05);
   color: #17243a;
   cursor: pointer;
-  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
 }
 
 .asset-card:hover {
@@ -1292,7 +1423,9 @@ onMounted(reloadEquipment);
 
 .asset-card.selected {
   border-color: #1c63ff;
-  box-shadow: inset 0 0 0 1px #1c63ff, 0 8px 18px rgba(28, 99, 255, 0.12);
+  box-shadow:
+    inset 0 0 0 1px #1c63ff,
+    0 8px 18px rgba(28, 99, 255, 0.12);
 }
 
 .asset-card.locked .asset-media img {
@@ -1498,7 +1631,11 @@ onMounted(reloadEquipment);
   padding: 10px 20px;
   border-radius: 13px;
   background:
-    radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.9), transparent 48%),
+    radial-gradient(
+      circle at 50% 20%,
+      rgba(255, 255, 255, 0.9),
+      transparent 48%
+    ),
     linear-gradient(145deg, rgba(210, 225, 241, 0.9), rgba(239, 244, 249, 0.92));
   background-position: center;
   background-size: cover;
@@ -1516,7 +1653,9 @@ onMounted(reloadEquipment);
   background: #22304a;
   box-shadow: 0 16px 24px rgba(20, 35, 55, 0.24);
   cursor: zoom-in;
-  transition: box-shadow 150ms ease, transform 150ms ease;
+  transition:
+    box-shadow 150ms ease,
+    transform 150ms ease;
 }
 
 .large-skin-card:hover {
@@ -1550,7 +1689,10 @@ onMounted(reloadEquipment);
   font-size: 10px;
   font-weight: 900;
   text-align: center;
-  transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
+  transition:
+    color 140ms ease,
+    background 140ms ease,
+    border-color 140ms ease;
 }
 
 .skin-preview-grid button:hover {
@@ -1589,7 +1731,11 @@ onMounted(reloadEquipment);
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse at center, transparent 10%, rgba(6, 15, 27, 0.22) 100%),
+    radial-gradient(
+      ellipse at center,
+      transparent 10%,
+      rgba(6, 15, 27, 0.22) 100%
+    ),
     linear-gradient(180deg, rgba(7, 18, 31, 0.08), rgba(7, 18, 31, 0.24));
 }
 
@@ -1683,7 +1829,9 @@ onMounted(reloadEquipment);
   border: 2px solid rgba(255, 255, 255, 0.55);
   border-radius: 7px;
   object-fit: cover;
-  box-shadow: -5px 6px 0 rgba(18, 31, 48, 0.7), 0 12px 20px rgba(4, 12, 22, 0.35);
+  box-shadow:
+    -5px 6px 0 rgba(18, 31, 48, 0.7),
+    0 12px 20px rgba(4, 12, 22, 0.35);
 }
 
 .table-pile span {
@@ -1742,14 +1890,30 @@ onMounted(reloadEquipment);
   margin-left: 0;
 }
 
-.hand-card:nth-child(1) { transform: translateY(18px) rotate(-12deg); }
-.hand-card:nth-child(2) { transform: translateY(10px) rotate(-9deg); }
-.hand-card:nth-child(3) { transform: translateY(4px) rotate(-6deg); }
-.hand-card:nth-child(4) { transform: rotate(-2deg); }
-.hand-card:nth-child(5) { transform: rotate(2deg); }
-.hand-card:nth-child(6) { transform: translateY(4px) rotate(6deg); }
-.hand-card:nth-child(7) { transform: translateY(10px) rotate(9deg); }
-.hand-card:nth-child(8) { transform: translateY(18px) rotate(12deg); }
+.hand-card:nth-child(1) {
+  transform: translateY(18px) rotate(-12deg);
+}
+.hand-card:nth-child(2) {
+  transform: translateY(10px) rotate(-9deg);
+}
+.hand-card:nth-child(3) {
+  transform: translateY(4px) rotate(-6deg);
+}
+.hand-card:nth-child(4) {
+  transform: rotate(-2deg);
+}
+.hand-card:nth-child(5) {
+  transform: rotate(2deg);
+}
+.hand-card:nth-child(6) {
+  transform: translateY(4px) rotate(6deg);
+}
+.hand-card:nth-child(7) {
+  transform: translateY(10px) rotate(9deg);
+}
+.hand-card:nth-child(8) {
+  transform: translateY(18px) rotate(12deg);
+}
 
 .hand-card img {
   position: absolute;

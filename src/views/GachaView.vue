@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { ChevronLeft, ChevronRight, X } from "lucide-vue-next";
+import { ChevronLeft, ChevronRight, X } from "@lucide/vue";
 import bgGachaUrl from "@/assets/images/bg-gacha.webp";
 import gachaPrinterUrl from "@/assets/images/gacha-printer.png";
 import gachaPoolBannerUrl from "@/assets/images/gacha-pool-lego-classic.webp";

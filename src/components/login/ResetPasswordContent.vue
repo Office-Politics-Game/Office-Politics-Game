@@ -144,7 +144,7 @@
 
 <script setup>
 import { ref, onBeforeUnmount } from "vue"
-import { Eye, EyeOff } from "lucide-vue-next"
+import { Eye, EyeOff } from "@lucide/vue"
 import { useAuthStore } from "@/stores/authStore.js"
 import PasswordRuleList from "@/components/login/PasswordRuleList.vue"
 import { getPasswordError } from "@/utils/passwordRules.js"

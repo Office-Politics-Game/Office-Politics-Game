@@ -1,6 +1,37 @@
 {
   "name": "office-politics-game",
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "author": {
+    "name": "Office Politics Game Team",
+    "url": "https://github.com/Office-Politics-Game"
+  },
+  "contributors": [
+    {
+      "name": "蘇郁傑",
+      "email": "abcd031313@gmail.com",
+      "url": "https://github.com/Tissuu"
+    },
+    {
+      "name": "郭嘉琪",
+      "email": "h6741957@gmail.com",
+      "url": "https://github.com/Maggie0513"
+    },
+    {
+      "name": "詹珈璇",
+      "email": "angel332332@gmail.com",
+      "url": "https://github.com/ChloeChan1"
+    },
+    {
+      "name": "蔡佩芹",
+      "email": "p.tonki1123@gmail.com",
+      "url": "https://github.com/celery1123"
+    },
+    {
+      "name": "林立崴",
+      "email": "linliweii54@gmail.com",
+      "url": "https://github.com/mountainway54"
+    }
+  ],
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,18 +41,17 @@
     "test:mall-api": "node tests/mall-api-integration.test.mjs"
   },
   "dependencies": {
+    "@lucide/vue": "^1.17.0",
     "@supabase/supabase-js": "^2.110.1",
     "axios": "^1.18.1",
     "gsap": "^3.15.0",
     "intro.js": "^8.3.2",
-    "lucide-vue-next": "^1.0.0",
     "pinia": "^3.0.4",
     "socket.io-client": "^4.8.3",
     "vue": "^3.5.32",
     "vue-router": "^5.1.0"
   },
   "devDependencies": {
-    "@lucide/vue": "^1.17.0",
     "@tailwindcss/vite": "^4.3.0",
     "@vitejs/plugin-vue": "^6.0.6",
     "tailwindcss": "^4.3.0",

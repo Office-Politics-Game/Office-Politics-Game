@@ -66,7 +66,7 @@
 </template>
 
 <script setup>
-import { X } from "lucide-vue-next";
+import { X } from "@lucide/vue";
 import LobbyMenu from "@/components/menu/LobbyMenu.vue";
 import ProfileSidebar from "@/components/profile/ProfileSidebar.vue";
 import ProfileTabs from "@/components/profile/ProfileTabs.vue";

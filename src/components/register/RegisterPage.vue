@@ -177,7 +177,7 @@
 <script setup>
 import { reactive, ref, onBeforeUnmount } from "vue"
 import { useAuthStore } from "@/stores/authStore.js"
-import { Eye, EyeOff } from "lucide-vue-next"
+import { Eye, EyeOff } from "@lucide/vue"
 import { usePreGameAudio } from "@/composables/UsePreGameAudio"
 import { getPasswordError } from "@/utils/passwordRules.js"
 import { getDisplayErrorMessage } from "@/utils/errorMessages.js"

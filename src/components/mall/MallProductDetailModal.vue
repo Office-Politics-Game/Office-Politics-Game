@@ -153,8 +153,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
-import { X } from "lucide-vue-next";
+import { X } from "@lucide/vue";
 import officeToken from "@/assets/images/office-token.webp";
 import stockToken from "@/assets/images/stock-token.webp";
 
