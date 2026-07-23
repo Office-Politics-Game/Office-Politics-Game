@@ -141,7 +141,7 @@ describe("profileController", () => {
   })
 
   test("forwards service status codes", async () => {
-    const error = new Error("Player not found")
+    const error = new Error("找不到玩家資料")
     error.statusCode = 404
     mockGetProfile.mockRejectedValueOnce(error)
 
@@ -152,7 +152,7 @@ describe("profileController", () => {
 
     expect(res.status).toHaveBeenCalledWith(404)
     expect(res.json).toHaveBeenCalledWith({
-      message: "Player not found",
+      message: "找不到玩家資料",
     })
   })
 })

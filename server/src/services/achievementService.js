@@ -10,7 +10,7 @@ function parsePlayerId(playerId) {
     const parsedPlayerId = Number(playerId)
 
     if (!Number.isInteger(parsedPlayerId) || parsedPlayerId <= 0) {
-        throw createServiceError("玩家 ID 不正確", 400)
+        throw createServiceError("玩家ID不正確", 400)
     }
 
     return parsedPlayerId
@@ -18,7 +18,7 @@ function parsePlayerId(playerId) {
 
 function parseAchievementCode(code) {
     if (typeof code !== "string" || code.trim() === "") {
-        throw createServiceError("Invalid achievement code", 400)
+        throw createServiceError("成就代碼不正確", 400)
     }
 
     return code.trim()
@@ -81,7 +81,7 @@ async function getAchievementByCode(code) {
     )
 
     if (result.rows.length === 0) {
-        throw createServiceError("Achievement not found", 404)
+        throw createServiceError("找不到成就資料", 404)
     }
 
     return result.rows[0]

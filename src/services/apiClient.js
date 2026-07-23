@@ -1,17 +1,20 @@
 import axios from "axios";
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 function normalizeApiError(error) {
   const responseData = error?.response?.data ?? null;
   const status = error?.response?.status ?? null;
-  const message =
-    responseData?.message ||
-    responseData?.error ||
-    (error?.request
-      ? "無法連線到伺服器，請檢查網路後再試。"
-      : error?.message) ||
-    "API 請求失敗，請稍後再試。";
+  const message = getDisplayErrorMessage(
+    {
+      data: responseData,
+      message: error?.request
+        ? "無法連線到伺服器，請檢查網路後再試"
+        : error?.message,
+    },
+    "系統暫時無法完成操作，請稍後再試",
+  );
 
   const normalizedError = new Error(message);
   normalizedError.status = status;

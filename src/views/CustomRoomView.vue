@@ -745,7 +745,7 @@ watch(
 
       <p
         v-if="errorMessage"
-        class="mt-3 rounded bg-white/80 px-4 py-2 text-sm font-bold text-red-700"
+        class="mt-3 bg-white/80 px-4 py-2 text-sm font-bold text-[var(--feedback-error)]"
       >
         {{ errorMessage }}
       </p>

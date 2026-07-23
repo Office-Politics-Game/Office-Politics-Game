@@ -9,7 +9,7 @@
 
     <div
       v-else-if="errorMessage"
-      class="border border-[var(--brand-hover)] bg-[rgba(0,70,244,0.08)] p-6 text-center text-sm font-bold text-[var(--brand-hover)]"
+      class="border border-[var(--brand-hover)] bg-[rgba(0,70,244,0.08)] p-6 text-center text-sm font-bold text-[var(--feedback-error)]"
     >
       {{ errorMessage }}
     </div>

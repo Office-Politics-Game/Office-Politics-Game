@@ -6,6 +6,7 @@ import {
 } from "@/services/chatApi.js";
 import { emitWithAck, getSocket } from "@/services/socketClient.js";
 import { useAuthStore } from "@/stores/authStore.js";
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js";
 
 const CHAT_LOGIN_REQUIRED_MESSAGE = "登入後才能使用好友聊天";
 const CHAT_REALTIME_UNAVAILABLE_MESSAGE = "好友聊天即時連線失敗";
@@ -266,7 +267,7 @@ export const useChatStore = defineStore("chat", {
 
         this.isRealtimeSubscribed = false;
         this.realtimeErrorMessage =
-          error?.message || CHAT_REALTIME_UNAVAILABLE_MESSAGE;
+          getDisplayErrorMessage(error, CHAT_REALTIME_UNAVAILABLE_MESSAGE);
         scheduleRealtimeRetry(this, generation);
         return false;
       }
@@ -317,7 +318,7 @@ export const useChatStore = defineStore("chat", {
 
         this.isRealtimeSubscribed = false;
         this.realtimeErrorMessage =
-          error?.message || CHAT_REALTIME_UNAVAILABLE_MESSAGE;
+          getDisplayErrorMessage(error, CHAT_REALTIME_UNAVAILABLE_MESSAGE);
       };
 
       realtimeHandlersByStore.set(storeKey, {
@@ -471,7 +472,7 @@ export const useChatStore = defineStore("chat", {
           realtimeGeneration === undefined ||
           isRealtimeGenerationActive(this, realtimeGeneration)
         ) {
-          this.errorMessage = error.message || "聊天紀錄載入失敗";
+          this.errorMessage = getDisplayErrorMessage(error, "聊天紀錄載入失敗");
         }
       } finally {
         if (
@@ -528,7 +529,7 @@ export const useChatStore = defineStore("chat", {
         if (optimisticMessage) {
           this.replaceMessage(numericFriendId, optimisticMessage.id);
         }
-        this.errorMessage = error.message || "訊息送出失敗";
+        this.errorMessage = getDisplayErrorMessage(error, "訊息送出失敗");
         return null;
       } finally {
         this.isSending = false;

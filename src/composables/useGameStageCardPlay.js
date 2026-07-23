@@ -258,7 +258,7 @@ export function useGameStageCardPlay({
     isHandDrawRequired.value ? "請先抽下一張牌" : "",
   );
   const deckBlockedMessage = computed(() =>
-    !isCurrentPlayerTurn.value ? "還沒輪到你" : "",
+    !isCurrentPlayerTurn.value ? "尚未輪到目前玩家" : "",
   );
   const dragPreviewStyle = computed(() => {
     if (

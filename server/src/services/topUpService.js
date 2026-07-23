@@ -57,7 +57,7 @@ async function createTopUpOrder(playerId, packageId) {
   const selectedPackage = findTopUpPackage(packageId)
 
   if (!playerId) {
-    throw createServiceError("缺少玩家 ID")
+    throw createServiceError("缺少玩家ID")
   }
 
   if (!selectedPackage) {
@@ -241,7 +241,7 @@ async function confirmEcpayReturn(payload) {
   }
 
   if (!checkMacValue || createCheckMacValue(payload) !== checkMacValue.toUpperCase()) {
-    throw createServiceError("Invalid ECPay CheckMacValue", 400)
+    throw createServiceError("綠界驗證資料不正確", 400)
   }
 
   if (!tradeNo || !tradeNo.startsWith("TOPUP")) {

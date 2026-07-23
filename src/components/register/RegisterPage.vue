@@ -180,6 +180,7 @@ import { useAuthStore } from "@/stores/authStore.js"
 import { Eye, EyeOff } from "lucide-vue-next"
 import { usePreGameAudio } from "@/composables/UsePreGameAudio"
 import { getPasswordError } from "@/utils/passwordRules.js"
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js"
 import PasswordRuleList from "@/components/login/PasswordRuleList.vue"
 
 const authStore = useAuthStore()
@@ -317,7 +318,8 @@ async function handleRegister() {
     )
   } catch (error) {
     showApiStatus(
-      "error", error instanceof Error ? error.message : "註冊失敗，請稍後再試"
+      "error",
+      getDisplayErrorMessage(error, "註冊失敗，請稍後再試"),
     )
 
     isSubmitting.value = false
@@ -424,7 +426,7 @@ onBeforeUnmount(() => {
 }
 
 .login-error {
-  @apply m-0 text-sm font-bold text-[var(--brand-hover)];
+  @apply m-0 text-sm font-bold text-[var(--feedback-error)];
 }
 
 .login-input[type="password"]::-ms-reveal,
@@ -502,7 +504,7 @@ onBeforeUnmount(() => {
 }
 
 .auth-alert.is-error {
-  @apply border-[#EF4444] text-[#991B1B];
+  @apply border-[#EF4444] text-[var(--feedback-error)];
   background: #FEE2E2;
   animation: auth-alert-in 220ms ease-out both, auth-alert-shake 260ms ease-out 80ms both;
 }

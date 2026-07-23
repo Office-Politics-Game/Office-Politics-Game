@@ -192,7 +192,7 @@ router.beforeEach(async (to) => {
   }
 
   const authStore = useAuthStore()
-  const isVerified = await authStore.verifyToken()
+  const isVerified = await authStore.checkSession()
 
   if (isVerified) {
     return true

@@ -3,10 +3,7 @@ import {
   createGuestPlayer as createGuestPlayerApi,
   getRoomState,
 } from "../services/gameStateApi";
-
-function getErrorMessage(error, fallbackMessage) {
-  return error?.data?.message || error?.message || fallbackMessage;
-}
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js";
 
 export const useGameStateStore = defineStore("gameState", {
   state: () => ({
@@ -34,7 +31,7 @@ export const useGameStateStore = defineStore("gameState", {
 
         return data;
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "建立訪客資料失敗。");
+        this.errorMessage = getDisplayErrorMessage(error, "建立訪客資料失敗");
         throw error;
       } finally {
         this.isLoading = false;
@@ -60,7 +57,7 @@ export const useGameStateStore = defineStore("gameState", {
 
         return data;
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "取得房間狀態失敗。");
+        this.errorMessage = getDisplayErrorMessage(error, "取得房間狀態失敗");
         throw error;
       } finally {
         this.isLoading = false;

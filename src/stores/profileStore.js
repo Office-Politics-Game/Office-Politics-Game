@@ -6,13 +6,10 @@ import {
   updateProfile,
 } from "@/services/profileApi.js";
 import { guestAvatars } from "@/constants/guestOptions.js";
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js";
 
 const UNSET_TEXT = "尚未設定";
 const DEFAULT_AVATAR_ID = 1;
-
-function getErrorMessage(error, fallbackMessage) {
-  return error?.data?.message || error?.message || fallbackMessage;
-}
 
 function toNumber(value, fallback) {
   const number = Number(value);
@@ -155,7 +152,7 @@ export const useProfileStore = defineStore("profile", {
         return this.profile;
       } catch (error) {
         this.profile = null;
-        this.errorMessage = getErrorMessage(error, "個人資料載入失敗");
+        this.errorMessage = getDisplayErrorMessage(error, "個人資料載入失敗");
         throw error;
       } finally {
         this.isLoading = false;
@@ -172,7 +169,7 @@ export const useProfileStore = defineStore("profile", {
 
         return this.profile
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "個人資料更新失敗")
+        this.errorMessage = getDisplayErrorMessage(error, "個人資料更新失敗")
         throw error
       } finally {
         this.isUpdating = false
@@ -195,7 +192,7 @@ export const useProfileStore = defineStore("profile", {
         return this.matchHistory
       } catch (error) {
         this.matchHistory = []
-        this.matchHistoryErrorMessage = getErrorMessage(error, "對戰紀錄載入失敗")
+        this.matchHistoryErrorMessage = getDisplayErrorMessage(error, "對戰紀錄載入失敗")
         throw error
       } finally {
         this.isMatchHistoryLoading = false

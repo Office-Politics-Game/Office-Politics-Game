@@ -7,6 +7,7 @@ import {
 } from "@/services/roomInvitationApi.js";
 import { useAuthStore } from "@/stores/authStore.js";
 import { useRoomStore } from "@/stores/roomStore.js";
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js";
 
 const ROOM_INVITATION_LOGIN_REQUIRED_MESSAGE =
   "登入後才能使用房間邀請功能";
@@ -149,7 +150,7 @@ export const useRoomInvitationStore = defineStore("roomInvitation", {
 
         this.invitations = (data.invitations ?? []).map(mapRoomInvitation);
       } catch (error) {
-        this.errorMessage = error.message || "房間邀請載入失敗";
+        this.errorMessage = getDisplayErrorMessage(error, "房間邀請載入失敗");
       } finally {
         this.isLoading = false;
       }
@@ -184,7 +185,7 @@ export const useRoomInvitationStore = defineStore("roomInvitation", {
         this.noticeMessage = "房間邀請已送出";
         return invitation;
       } catch (error) {
-        this.sendErrorMessage = error.message || "送出房間邀請失敗";
+        this.sendErrorMessage = getDisplayErrorMessage(error, "送出房間邀請失敗");
         return null;
       } finally {
         this.isSending = false;
@@ -238,7 +239,7 @@ export const useRoomInvitationStore = defineStore("roomInvitation", {
         this.noticeMessage = "已接受房間邀請";
         return data;
       } catch (error) {
-        this.errorMessage = error.message || "接受房間邀請失敗";
+        this.errorMessage = getDisplayErrorMessage(error, "接受房間邀請失敗");
         return null;
       } finally {
         this.processingInvitationIds = this.processingInvitationIds.filter(
@@ -278,7 +279,7 @@ export const useRoomInvitationStore = defineStore("roomInvitation", {
         );
         this.noticeMessage = "已拒絕房間邀請";
       } catch (error) {
-        this.errorMessage = error.message || "拒絕房間邀請失敗";
+        this.errorMessage = getDisplayErrorMessage(error, "拒絕房間邀請失敗");
       } finally {
         this.processingInvitationIds = this.processingInvitationIds.filter(
           (id) => id !== numericInvitationId,

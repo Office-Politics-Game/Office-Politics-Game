@@ -170,6 +170,7 @@
           :loading="isShopLoading"
           :purchasing="isPurchasing"
           :status-message="statusMessage"
+          :status-type="statusType"
           :selected-item-id="selectedItem?.id"
           :detail-open="isDetailModalOpen"
           :featured-image="featuredBannerImage"
@@ -239,6 +240,7 @@ const {
   purchaseSelectedItem,
   selectedItem,
   statusMessage,
+  statusType,
 } = useMallShop();
 
 const isMenuOpen = ref(false);
