@@ -5,7 +5,7 @@ import cardBgBack from "@/assets/images/card-bg-back.webp";
 import waitingRoomOne from "@/assets/images/waiting-room-1.webp";
 import waitingRoomTwo from "@/assets/images/waiting-room-2.webp";
 import waitingRoomThree from "@/assets/images/waiting-room-3.webp";
-import roomMenu from "@/assets/images/room-menu.webp";
+import lotteryTicket from "@/assets/images/lottery-ticket.webp";
 import playerOne from "@/assets/images/player-1.png";
 import playerTwo from "@/assets/images/player-2.png";
 
@@ -34,6 +34,11 @@ export const mallCategories = [
     id: "avatar",
     name: "頭像",
     description: "用頭像展現你的職場人設。",
+  },
+  {
+    id: "top-up",
+    name: "購買股份",
+    description: "購買股份，取得更多股票。",
   },
 ];
 
@@ -108,7 +113,7 @@ export const mallItems = [
     price: "100",
     actionLabel: "立即購買",
     actionState: "buy",
-    previewImage: roomMenu,
+    previewImage: lotteryTicket,
   },
   {
     id: "ticket-02",
@@ -120,7 +125,7 @@ export const mallItems = [
     price: "900",
     actionLabel: "立即購買",
     actionState: "buy",
-    previewImage: roomMenu,
+    previewImage: lotteryTicket,
   },
   {
     id: "board-01",

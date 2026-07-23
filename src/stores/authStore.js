@@ -1,94 +1,284 @@
-import { defineStore } from "pinia";
+import { defineStore } from "pinia"
 import {
   register as registerApi,
   login as loginApi,
   verifyToken as verifyTokenApi,
-} from "../services/authApi.js";
+  getSession as getSessionApi,
+  logout as logoutApi,
+  forgotPassword as forgotPasswordApi,
+  resetPassword as resetPasswordApi,
+  changePassword as changePasswordApi,
+  startOAuthLogin as startOAuthLoginApi,
+  completeOAuthLogin as completeOAuthLoginApi
+} from "../services/authApi.js"
+import { hydratePlayerAppearanceBundle } from "@/services/playerAppearanceService.js"
+import { useAppearanceStore } from "@/stores/appearanceStore.js"
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js"
 
-function getErrorMessage(error, fallbackMessage) {
-  return error?.data?.message || error?.message || fallbackMessage;
+function resetAuthState(store) {
+  store.currentPlayer = null
+  store.isLoggedIn = false
+  store.hasVerifiedToken = false
 }
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     currentPlayer: null,
-    token: "",
     isLoggedIn: false,
     isLoading: false,
+    hasVerifiedToken: false,
     errorMessage: "",
   }),
 
   actions: {
     async register(payload) {
-      this.isLoading = true;
-      this.errorMessage = "";
+      this.isLoading = true
+      this.errorMessage = ""
 
       try {
-        const data = await registerApi(payload);
-
-        return data
+        return await registerApi(payload)
       } catch(error){
-        this.errorMessage = getErrorMessage(error, "註冊失敗")
-        throw error;
+        this.errorMessage = getDisplayErrorMessage(error, "註冊失敗")
+        throw error
       } finally{
-        this.isLoading = false;
+        this.isLoading = false
       }
     },
 
     async login(payload) {
-      this.isLoading = true;
-      this.errorMessage = "";
+      this.isLoading = true
+      this.errorMessage = ""
+      const appearanceStore = useAppearanceStore()
 
       try {
-        const data = await loginApi(payload);
+        const data = await loginApi(payload)
+        const { player: hydratedPlayer, appearance } =
+          await hydratePlayerAppearanceBundle(data.player || null)
 
-        this.currentPlayer = data.player || null;
-        this.token = data.token || "";
-        this.isLoggedIn = Boolean(this.token);
+        this.currentPlayer = hydratedPlayer
+        this.isLoggedIn = Boolean(hydratedPlayer)
+        this.hasVerifiedToken = Boolean(hydratedPlayer)
 
-        return data;
+        appearanceStore.applyAppearance({
+          ...appearance,
+          playerId: hydratedPlayer?.id ?? null
+        })
+
+        return data
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "登入失敗");
-        throw error;
+        resetAuthState(this)
+        this.errorMessage = getDisplayErrorMessage(error, "登入失敗")
+        appearanceStore.resetAppearance()
+        throw error
       } finally {
-        this.isLoading = false;
+        this.isLoading = false
       }
     },
 
-    async verifyToken() {
-      if (!this.token) {
-        this.isLoggedIn = false;
-        return false;
-      }
-
-      this.isLoading = true;
-      this.errorMessage = "";
+    async startOAuthLogin(provider) {
+      this.isLoading = true
+      this.errorMessage = ""
 
       try {
-        const data = await verifyTokenApi(this.token);
-        this.currentPlayer = data.player || null;
-        this.isLoggedIn = true;
-        return true;
+        await startOAuthLoginApi(provider)
       } catch (error) {
-        this.currentPlayer = null;
-        this.token = "";
-        this.isLoggedIn = false;
-        this.errorMessage = getErrorMessage(error, "登入驗證失敗");
-        return false;
+        this.errorMessage = getDisplayErrorMessage(error, "第三方登入失敗")
+        throw error
       } finally {
-        this.isLoading = false;
+        this.isLoading = false
       }
     },
 
-    logout() {
-      this.currentPlayer = null;
-      this.token = "";
-      this.isLoggedIn = false;
-      this.errorMessage = "";
+    async completeOAuthLogin() {
+      this.isLoading = true
+      this.errorMessage = ""
+      const appearanceStore = useAppearanceStore()
+
+      try {
+        const data = await completeOAuthLoginApi()
+        const { player: hydratedPlayer, appearance } =
+          await hydratePlayerAppearanceBundle(data.player || null)
+
+        this.currentPlayer = hydratedPlayer
+        this.isLoggedIn = Boolean(hydratedPlayer)
+        this.hasVerifiedToken = Boolean(hydratedPlayer)
+
+        appearanceStore.applyAppearance({
+          ...appearance,
+          playerId: hydratedPlayer?.id ?? null
+        })
+
+        return data
+      } catch (error) {
+        resetAuthState(this)
+        appearanceStore.resetAppearance()
+        this.errorMessage = getDisplayErrorMessage(error, "第三方登入失敗")
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async forgotPassword(payload) {
+      this.isLoading = true
+      this.errorMessage = ""
+
+      try {
+        return await forgotPasswordApi(payload)
+      } catch (error) {
+        this.errorMessage = getDisplayErrorMessage(error, "重設密碼信寄送失敗")
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async resetPassword(payload) {
+      this.isLoading = true
+      this.errorMessage = ""
+
+      try {
+        return await resetPasswordApi(payload)
+      } catch (error) {
+        this.errorMessage = getDisplayErrorMessage(error, "密碼重設失敗")
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async changePassword(payload) {
+      this.isLoading = true
+      this.errorMessage = ""
+      const appearanceStore = useAppearanceStore()
+
+      try {
+        const data = await changePasswordApi(payload)
+        resetAuthState(this)
+        appearanceStore.resetAppearance()
+        return data
+      } catch (error) {
+        this.errorMessage = getDisplayErrorMessage(error, "修改密碼失敗")
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async checkSession() {
+      const appearanceStore = useAppearanceStore()
+
+      if (this.hasVerifiedToken && this.isLoggedIn && this.currentPlayer) {
+        return true
+      }
+
+      this.isLoading = true
+      this.errorMessage = ""
+
+      try {
+        const data = await getSessionApi()
+
+        if (!data?.authenticated || !data?.player) {
+          resetAuthState(this)
+          appearanceStore.resetAppearance()
+          return false
+        }
+
+        const { player: hydratedPlayer, appearance } = await hydratePlayerAppearanceBundle(data.player)
+
+        this.currentPlayer = hydratedPlayer
+        this.isLoggedIn = Boolean(hydratedPlayer)
+        this.hasVerifiedToken = Boolean(hydratedPlayer)
+
+        appearanceStore.applyAppearance({
+          ...appearance,
+          playerId: hydratedPlayer?.id ?? null
+        })
+
+        return Boolean(hydratedPlayer)
+      } catch {
+        resetAuthState(this)
+        appearanceStore.resetAppearance()
+        return false
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async verifyToken({ showError = false } = {}) {
+      const appearanceStore = useAppearanceStore()
+
+      if (this.hasVerifiedToken && this.isLoggedIn && this.currentPlayer) {
+        return true
+      }
+
+      this.isLoading = true
+      this.errorMessage = ""
+
+      try {
+        const data = await verifyTokenApi()
+        const { player: hydratedPlayer, appearance } =
+          await hydratePlayerAppearanceBundle(data.player || null)
+
+        if (!hydratedPlayer) {
+          resetAuthState(this)
+          appearanceStore.resetAppearance()
+          return false
+        }
+
+        this.currentPlayer = hydratedPlayer
+        this.isLoggedIn = true
+        this.hasVerifiedToken = true
+
+        appearanceStore.applyAppearance({
+          ...appearance,
+          playerId: hydratedPlayer?.id ?? null
+        })
+
+        return true
+      } catch (error) {
+        resetAuthState(this)
+        appearanceStore.resetAppearance()
+
+        if (showError) {
+          this.errorMessage = getDisplayErrorMessage(error, "登入驗證失敗")
+        }
+
+        return false
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async logout() {
+      const appearanceStore = useAppearanceStore()
+
+      try {
+        await logoutApi()
+        resetAuthState(this)
+        this.errorMessage = ""
+        appearanceStore.resetAppearance()
+        return true
+      } catch (error) {
+        this.errorMessage = getDisplayErrorMessage(error, "登出失敗")
+        return false
+      }
     },
 
     clearError() {
-      this.errorMessage = "";
+      this.errorMessage = ""
+    },
+
+    setCurrentPlayerAvatar(avatarUrl, avatarId = null) {
+      if (!this.currentPlayer) {
+        return
+      }
+
+      this.currentPlayer = {
+        ...this.currentPlayer,
+        ...(avatarId !== null && avatarId !== undefined ? { avatarId } : {}),
+        avatarUrl: avatarUrl || this.currentPlayer.avatarUrl || "",
+      }
     },
   },
-});
+})

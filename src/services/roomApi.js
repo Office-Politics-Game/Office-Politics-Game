@@ -11,7 +11,7 @@ function buildRoomPath(roomCode, action) {
   const normalizedRoomCode = getTrimmedRoomCode(roomCode);
 
   if (!normalizedRoomCode) {
-    throw new Error("缺少房間代碼。");
+    throw new Error("缺少房間代碼");
   }
 
   return `${ROOM_API_PATH}/${encodeURIComponent(normalizedRoomCode)}/${action}`;
@@ -37,6 +37,23 @@ function startRoom(roomCode, payload) {
   return apiClient.post(buildRoomPath(roomCode, "start"), payload);
 }
 
+function leaveRoom(roomCode, payload) {
+  return apiClient.post(buildRoomPath(roomCode, "leave"), payload);
+}
+
+function addComputerPlayer(roomCode, payload) {
+  return apiClient.post(buildRoomPath(roomCode, "computer-players"), payload);
+}
+
+function removePlayer(roomCode, targetPlayerId, payload) {
+  return apiClient.delete(
+    buildRoomPath(roomCode, `players/${encodeURIComponent(targetPlayerId)}`),
+    {
+      data: payload,
+    },
+  );
+}
+
 function getRoomGameState(roomCode, playerId) {
   return apiClient.get(
     `${GAME_STATE_API_PATH}/room/${encodeURIComponent(roomCode)}`,
@@ -52,5 +69,8 @@ export {
   getRoomState,
   getRoomGameState,
   updateRoomState,
+  addComputerPlayer,
+  removePlayer,
+  leaveRoom,
   startRoom,
 };

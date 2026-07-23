@@ -1,8 +1,9 @@
 <template>
   <div
-    class="friend-page-shell flex min-h-screen w-screen items-center justify-center overflow-hidden bg-cover bg-center p-3 md:p-4"
+    class="friend-page-shell flex h-full w-full items-center justify-center overflow-hidden bg-cover bg-center"
     :class="{ 'is-returning': isReturningToLobby }"
     :style="{ backgroundImage: `url(${BG_FriendView})` }"
+    @click.capture="handleButtonClick"
   >
     <div
       class="friend-exit-layer"
@@ -10,16 +11,20 @@
       aria-hidden="true"
     ></div>
 
-    <section
-      class="friend-page-panel relative z-10 flex h-[92vh] w-[94vw] max-w-[1100px] flex-col overflow-hidden bg-white/95 shadow-2xl backdrop-blur md:h-[82vh] md:flex-row"
-    >
-      <aside class="flex min-h-0 w-full flex-col border-b border-[var(--gray-100)] md:w-[38%] md:border-b-0 md:border-r">
-        <div class="flex h-14 shrink-0 items-center border-b border-[var(--gray-100)] px-5">
+    <div class="friend-canvas-frame" :style="frameStyle">
+      <div class="friend-page-canvas" :style="canvasStyle">
+        <section
+          class="friend-page-panel relative z-10 flex flex-row overflow-hidden bg-white/95 shadow-2xl backdrop-blur"
+          :style="panelStyle"
+        >
+      <aside class="friend-social-column flex min-h-0 shrink-0 flex-col overflow-hidden border-r border-[var(--gray-100)]">
+        <div class="friend-tabs grid h-14 shrink-0 grid-cols-4 items-center border-b border-[var(--gray-100)] px-2">
           <button
             type="button"
             class="tab"
-            :class="{ active: activeTab === 'friends' }"
-            @click="activeTab = 'friends'"
+            :class="{ active: friendStore.canUseFriendSystem && activeTab === 'friends' }"
+            :disabled="!friendStore.canUseFriendSystem"
+            @click="setActiveTab('friends')"
           >
             好友列表
           </button>
@@ -27,8 +32,9 @@
           <button
             type="button"
             class="tab"
-            :class="{ active: activeTab === 'requests' }"
-            @click="activeTab = 'requests'"
+            :class="{ active: friendStore.canUseFriendSystem && activeTab === 'requests' }"
+            :disabled="!friendStore.canUseFriendSystem"
+            @click="setActiveTab('requests')"
           >
             好友邀請 {{ friendStore.pendingRequestCount }}
           </button>
@@ -36,20 +42,40 @@
           <button
             type="button"
             class="tab"
-            :class="{ active: activeTab === 'add' }"
-            @click="activeTab = 'add'"
+            :class="{ active: friendStore.canUseFriendSystem && activeTab === 'add' }"
+            :disabled="!friendStore.canUseFriendSystem"
+            @click="setActiveTab('add')"
           >
             加入好友
           </button>
+
+          <button
+            type="button"
+            class="tab"
+            :class="{ active: friendStore.canUseFriendSystem && activeTab === 'blocks' }"
+            :disabled="!friendStore.canUseFriendSystem"
+            @click="setActiveTab('blocks')"
+          >
+            封鎖 {{ friendStore.blockedPlayerCount }}
+          </button>
+        </div>
+
+        <div v-if="!friendStore.canUseFriendSystem" class="min-h-0 flex-1 overflow-y-auto p-5">
+          <FriendAuthRequiredState compact @login="goLogin" />
         </div>
 
         <FriendList
-          v-if="activeTab === 'friends'"
+          v-else-if="activeTab === 'friends'"
           :friends="friendStore.friends"
           :selected-friend-id="friendStore.selectedFriendId"
           :is-loading="friendStore.isLoading"
           :error-message="friendStore.errorMessage"
+          :show-actions="true"
+          :is-friend-processing="friendStore.isFriendshipProcessing"
+          :is-player-processing="friendStore.isPlayerProcessing"
           @select="friendStore.selectFriend"
+          @remove="confirmRemoveFriend"
+          @block="confirmBlockPlayer"
         />
 
         <div v-else-if="activeTab === 'requests'" class="min-h-0 flex-1 overflow-y-auto p-5">
@@ -63,7 +89,7 @@
           />
         </div>
 
-        <div v-else class="min-h-0 flex-1 overflow-y-auto p-5">
+        <div v-else-if="activeTab === 'add'" class="min-h-0 flex-1 overflow-y-auto p-5">
           <AddFriendForm
             :sent-invites="friendStore.sentInvites"
             :search-results="friendStore.searchResults"
@@ -71,13 +97,25 @@
             :error-message="friendStore.searchErrorMessage"
             :is-searching="friendStore.isSearching"
             :is-sending="friendStore.isSending"
+            :is-player-processing="friendStore.isPlayerProcessing"
             @search="friendStore.searchPlayers"
             @add-friend="friendStore.sendFriendRequest"
+            @block-player="confirmBlockPlayer"
+          />
+        </div>
+
+        <div v-else class="min-h-0 flex-1 overflow-y-auto p-5">
+          <BlockedPlayerList
+            :blocked-players="friendStore.blockedPlayers"
+            :is-loading="friendStore.isLoading"
+            :error-message="friendStore.errorMessage"
+            :is-block-processing="friendStore.isBlockProcessing"
+            @unblock="confirmUnblockPlayer"
           />
         </div>
       </aside>
 
-      <main class="flex min-h-0 flex-1 flex-col">
+      <main class="friend-chat-column flex min-h-0 flex-col">
         <header class="flex h-14 shrink-0 items-center justify-between border-b border-[var(--gray-100)] px-5">
           <div class="flex min-w-0 items-center gap-3">
             <img
@@ -89,7 +127,7 @@
             <div class="min-w-0">
               <div class="flex items-center gap-2 text-sm font-bold text-[var(--brand-active)]">
                 <span class="truncate">
-                  {{ friendStore.selectedFriend?.name || "尚未選擇好友" }}
+                  {{ selectedFriendName }}
                 </span>
 
                 <span
@@ -116,72 +154,72 @@
           </button>
         </header>
 
-        <section class="min-h-0 flex-1 overflow-y-auto bg-[rgba(244,247,251,0.74)] px-6 py-5">
-          <article v-if="friendStore.selectedFriend" class="friend-detail">
-            <div class="flex items-center gap-4 border-b border-[var(--gray-100)] pb-5">
-              <img
-                src="@/assets/images/player-1.png"
-                alt=""
-                class="h-16 w-16 shrink-0 border border-[var(--brand-primary)] object-cover"
-              />
+        <section class="flex min-h-0 flex-1 flex-col overflow-hidden bg-[rgba(244,247,251,0.74)] px-6 py-5">
+          <FriendAuthRequiredState
+            v-if="!friendStore.canUseFriendSystem"
+            @login="goLogin"
+          />
 
-              <div class="min-w-0">
-                <h2 class="truncate text-xl font-black text-[var(--brand-navy)]">
-                  {{ friendStore.selectedFriend.name }}
-                </h2>
-                <p class="mt-1 text-sm font-bold text-[var(--gray-400)]">
-                  玩家 ID {{ friendStore.selectedFriend.playerId }}
-                </p>
-              </div>
-            </div>
+          <FriendChatPanel
+            v-else-if="friendStore.selectedFriend"
+            :friend="friendStore.selectedFriend"
+            :current-player-id="friendStore.currentPlayerId"
+          />
 
-            <dl class="mt-5 grid gap-3 sm:grid-cols-2">
-              <div
-                v-for="item in selectedFriendDetails"
-                :key="item.label"
-                class="border border-[var(--gray-100)] bg-white px-4 py-3"
-              >
-                <dt class="text-xs font-bold text-[var(--gray-400)]">
-                  {{ item.label }}
-                </dt>
-                <dd class="mt-1 text-sm font-black text-[var(--brand-active)]">
-                  {{ item.value }}
-                </dd>
-              </div>
-            </dl>
-          </article>
-
-          <div v-else class="friend-detail friend-detail--empty">
+          <div v-else class="friend-empty-state">
             <h2 class="text-xl font-black text-[var(--brand-navy)]">
-              選擇一位好友查看資料
+              選擇一位好友開始聊天
             </h2>
             <p class="mt-2 text-sm font-bold text-[var(--gray-400)]">
-              好友聊天尚未串接，本次先完成好友列表與邀請流程。
+              從左側好友列表選擇對象後，就可以讀取聊天紀錄並送出訊息。
             </p>
           </div>
         </section>
       </main>
-    </section>
+        </section>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import AddFriendForm from "@/components/friend/AddFriendForm.vue";
+import FriendAuthRequiredState from "@/components/friend/FriendAuthRequiredState.vue";
+import BlockedPlayerList from "@/components/friend/BlockedPlayerList.vue";
+import FriendChatPanel from "@/components/friend/FriendChatPanel.vue";
 import FriendList from "@/components/friend/FriendList.vue";
 import FriendRequestList from "@/components/friend/FriendRequestList.vue";
 import BG_FriendView from "@/assets/images/bg-friend-view.webp";
 import bgDashboard from "@/assets/images/bg-dashboard.webp";
+import { useButtonClickAudio } from "@/composables/UseButtonClickAudio";
+import { useFriendSocialCanvas } from "@/composables/UseFriendSocialCanvas.js";
+import { useChatStore } from "@/stores/chatStore.js";
 import { useFriendStore } from "@/stores/friendStore.js";
 
 const router = useRouter();
+const chatStore = useChatStore();
 const friendStore = useFriendStore();
+const { handleButtonClick } = useButtonClickAudio();
+const { frameStyle, canvasStyle, panelStyle } = useFriendSocialCanvas();
 const activeTab = ref("friends");
 const isReturningToLobby = ref(false);
 const RETURN_ANIMATION_DURATION = 520;
 
+const selectedFriendName = computed(() => {
+  if (!friendStore.canUseFriendSystem) {
+    return "好友功能已鎖定";
+  }
+
+  return friendStore.selectedFriend?.name || "尚未選擇好友";
+});
+
 const selectedFriendStatus = computed(() => {
+  if (!friendStore.canUseFriendSystem) {
+    return friendStore.friendLoginRequiredMessage;
+  }
+
   const friend = friendStore.selectedFriend;
 
   if (!friend) {
@@ -191,41 +229,87 @@ const selectedFriendStatus = computed(() => {
   return friend.status;
 });
 
-const selectedFriendDetails = computed(() => {
-  const friend = friendStore.selectedFriend;
-
-  if (!friend) {
-    return [];
-  }
-
-  return [
-    { label: "目前狀態", value: friend.status },
-    { label: "等級", value: `Lv. ${friend.level}` },
-    { label: "好友建立時間", value: formatDetailDate(friend.createdAt) },
-    { label: "頭像 ID", value: friend.avatarId ?? "尚未設定" },
-  ];
-});
-
 function getStatusColorClass(friend) {
   return friend.online ? "bg-green-500" : "bg-[var(--gray-200)]";
 }
 
-function formatDetailDate(value) {
-  if (!value) {
-    return "尚未記錄";
+function setActiveTab(tab) {
+  if (!friendStore.canUseFriendSystem) {
+    return;
   }
 
-  const date = new Date(value);
+  activeTab.value = tab;
+}
 
-  if (Number.isNaN(date.getTime())) {
-    return "尚未記錄";
+function goLogin() {
+  router.push({
+    name: "Entry",
+    query: { auth: "login" },
+  });
+}
+
+function loadFriendDataIfAllowed() {
+  if (friendStore.canUseFriendSystem) {
+    friendStore.startRealtime();
+    chatStore.startRealtime();
+    friendStore.loadFriendData();
+    return;
   }
 
-  return new Intl.DateTimeFormat("zh-TW", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
+  friendStore.clearFriendData();
+  chatStore.clearChatData();
+}
+
+function confirmRemoveFriend(friend) {
+  if (!friendStore.canUseFriendSystem) {
+    return;
+  }
+
+  if (!friend?.friendshipId) {
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `確定要解除與 ${friend.name} 的好友關係嗎？`,
+  );
+
+  if (confirmed) {
+    friendStore.removeFriend(friend.friendshipId);
+  }
+}
+
+function confirmBlockPlayer(player) {
+  if (!friendStore.canUseFriendSystem) {
+    return;
+  }
+
+  if (!player?.playerId) {
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `確定要封鎖 ${player.name} 嗎？封鎖後將無法互相送出好友邀請。`,
+  );
+
+  if (confirmed) {
+    friendStore.blockPlayer(player.playerId);
+  }
+}
+
+function confirmUnblockPlayer(player) {
+  if (!friendStore.canUseFriendSystem) {
+    return;
+  }
+
+  if (!player?.blockId) {
+    return;
+  }
+
+  const confirmed = window.confirm(`確定要取消封鎖 ${player.name} 嗎？`);
+
+  if (confirmed) {
+    friendStore.unblockPlayer(player.blockId);
+  }
 }
 
 function returnToLobby() {
@@ -246,24 +330,64 @@ function returnToLobby() {
 }
 
 onMounted(() => {
-  friendStore.loadFriendData();
+  loadFriendDataIfAllowed();
 });
+
+onUnmounted(() => {
+  friendStore.stopRealtime();
+  chatStore.stopRealtime();
+});
+
+watch(
+  () => friendStore.canUseFriendSystem,
+  () => {
+    loadFriendDataIfAllowed();
+  },
+);
 </script>
 
 <style scoped>
 @reference "tailwindcss";
 
 .tab {
-  @apply mr-5 h-full shrink-0 border-b-2 border-transparent text-sm font-bold text-[var(--gray-400)] transition hover:text-[var(--brand-active)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-focus)];
+  @apply h-full min-w-0 border-b-2 border-transparent px-1 text-sm font-bold whitespace-nowrap text-[var(--gray-400)] transition hover:text-[var(--brand-active)];
 }
 
 .tab.active {
   @apply border-[var(--brand-active)] text-[var(--brand-navy)];
 }
 
+.tab:disabled {
+  cursor: not-allowed;
+  border-color: transparent;
+  color: var(--brand-disabled);
+  opacity: 0.68;
+}
+
+.tab:disabled:hover {
+  color: var(--brand-disabled);
+}
+
+.tab:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 4px var(--brand-focus);
+}
+
 .friend-page-shell {
   position: relative;
   isolation: isolate;
+}
+
+.friend-canvas-frame {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+}
+
+.friend-page-canvas {
+  display: grid;
+  place-items: center;
+  will-change: transform;
 }
 
 .friend-exit-layer {
@@ -280,8 +404,18 @@ onMounted(() => {
 }
 
 .friend-page-panel {
+  width: var(--friend-panel-width);
+  height: var(--friend-panel-height);
   animation: friendPageEnter 360ms ease both;
   will-change: transform, opacity;
+}
+
+.friend-social-column {
+  width: var(--friend-left-column-width);
+}
+
+.friend-chat-column {
+  width: var(--friend-right-column-width);
 }
 
 .friend-page-shell.is-returning .friend-exit-layer {
@@ -294,12 +428,8 @@ onMounted(() => {
   animation: none;
 }
 
-.friend-detail {
-  @apply min-h-full border border-[rgba(134,179,224,0.38)] bg-[rgba(255,255,255,0.88)] p-5 shadow-[var(--shadow)];
-}
-
-.friend-detail--empty {
-  @apply flex flex-col items-center justify-center text-center;
+.friend-empty-state {
+  @apply flex min-h-full flex-col items-center justify-center border border-[rgba(134,179,224,0.38)] bg-[rgba(255,255,255,0.88)] p-5 text-center shadow-[var(--shadow)];
 }
 
 .close-button {

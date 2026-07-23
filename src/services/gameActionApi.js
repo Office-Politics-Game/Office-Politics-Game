@@ -1,5 +1,9 @@
-const ACTION_API_PATH = "/api/actions"
-const ROOM_API_PATH = "/api/rooms"
+import { API_BASE_URL } from "./apiClient.js"
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js"
+
+const ACTION_API_PATH = `${API_BASE_URL}/actions`
+const GAME_STATE_API_PATH = `${API_BASE_URL}/game-states`
+const ROOM_API_PATH = `${API_BASE_URL}/rooms`
 
 async function parseJsonResponse(response) {
   return response.json().catch(() => null)
@@ -11,14 +15,17 @@ async function requestGameActionApi(path, options) {
   try {
     response = await fetch(path, options)
   } catch (error) {
-    throw new Error(error instanceof Error ? error.message : "Network request failed")
+    throw new Error(getDisplayErrorMessage(error, "無法連線到伺服器，請檢查網路後再試"))
   }
 
   const data = await parseJsonResponse(response)
 
   if (!response.ok) {
     const apiError = new Error(
-      data?.message || data?.error || `API request failed (${response.status})`,
+      getDisplayErrorMessage(
+        { data, message: `API request failed (${response.status})` },
+        `系統暫時無法完成操作，請稍後再試（${response.status}）`,
+      ),
     )
 
     apiError.status = response.status
@@ -65,7 +72,7 @@ function getRoomGameState(roomCode, playerId) {
   const query = new URLSearchParams({ playerId: String(playerId) })
 
   return requestGameActionApi(
-    `/api/game-states/room/${encodeURIComponent(roomCode)}?${query.toString()}`,
+    `${GAME_STATE_API_PATH}/room/${encodeURIComponent(roomCode)}?${query.toString()}`,
     createRequestOptions("GET"),
   )
 }

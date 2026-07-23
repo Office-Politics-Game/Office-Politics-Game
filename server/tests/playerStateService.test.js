@@ -8,6 +8,7 @@ import {
 
 function createState() {
     return {
+        discardPile: [],
         players: [
         {
             playerId: 1,
@@ -15,6 +16,7 @@ function createState() {
             isProtected: false,
             isEliminated: false,
             hand: [{ id: 1, name: "Intern" }],
+            discardedCards: [],
         },
         {
             playerId: 2,
@@ -22,6 +24,7 @@ function createState() {
             isProtected: true,
             isEliminated: false,
             hand: [{ id: 5, name: "PM" }],
+            discardedCards: [],
         },
         ],
     }
@@ -50,6 +53,40 @@ describe("killPlayer", () => {
 
         expect(player.isEliminated).toBe(true)
         expect(state.players[0].isEliminated).toBe(true)
+        expect(state.players[0].hand).toEqual([])
+        expect(state.players[0].discardedCards).toEqual([{ id: 1, name: "Intern", ownerPlayerId: 1 }])
+        expect(state.discardPile).toEqual([{ id: 1, name: "Intern", ownerPlayerId: 1 }])
+    })
+
+    test("淘汰時依序棄掉所有剩餘手牌", () => {
+        const state = createState()
+        state.players[0].hand = [
+            { id: 1, name: "Intern", ownerPlayerId: 1 },
+            { id: 5, name: "PM", ownerPlayerId: 1 },
+        ]
+
+        killPlayer(state, 1)
+
+        expect(state.players[0].hand).toEqual([])
+        expect(state.players[0].discardedCards).toEqual([
+            { id: 1, name: "Intern", ownerPlayerId: 1 },
+            { id: 5, name: "PM", ownerPlayerId: 1 },
+        ])
+        expect(state.discardPile).toEqual([
+            { id: 1, name: "Intern", ownerPlayerId: 1 },
+            { id: 5, name: "PM", ownerPlayerId: 1 },
+        ])
+    })
+
+    test("重複淘汰不會重複加入棄牌", () => {
+        const state = createState()
+
+        killPlayer(state, 1)
+        killPlayer(state, 1)
+
+        expect(state.players[0].hand).toEqual([])
+        expect(state.players[0].discardedCards).toEqual([{ id: 1, name: "Intern", ownerPlayerId: 1 }])
+        expect(state.discardPile).toEqual([{ id: 1, name: "Intern", ownerPlayerId: 1 }])
     })
 
     test("找不到玩家時回傳 null", () => {

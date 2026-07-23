@@ -1,0 +1,80 @@
+import { readFile } from "node:fs/promises"
+
+async function readSource(path) {
+    return readFile(new URL(`../${path}`, import.meta.url), "utf8")
+}
+
+describe("showdown action delivery contract", () => {
+    test("game action service returns the showdown snapshot from finishTurn", async () => {
+        const source = await readSource("src/services/gameActionService.js")
+
+        expect(source).toMatch(/const \{ showdownResult, roundEndState \} = finishTurn\(state, numericPlayerId\)/)
+        expect(source).toMatch(/return \{[\s\S]*showdownResult,[\s\S]*publicState/)
+    })
+
+    test("HTTP play-card response exposes the optional showdown snapshot", async () => {
+        const source = await readSource("src/controllers/actionController.js")
+        const playHandler = source.slice(
+            source.indexOf("async function handlePlayCard"),
+            source.indexOf("async function handleDrawCard"),
+        )
+
+        expect(playHandler).toMatch(/showdownResult: result\.showdownResult/)
+        expect(playHandler).toMatch(/state: result\.publicState/)
+    })
+
+    test("socket play-card action and acknowledgement share action-bound showdown data", async () => {
+        const source = await readSource("src/socket/gameHandlers.js")
+        const playHandler = source.slice(source.indexOf('socket.on("game:play-card"'))
+
+        expect(playHandler).toMatch(/showdownResult: result\.showdownResult/)
+        expect(playHandler).toMatch(/afterActionId: playActionId/)
+        expect(playHandler).toMatch(/showdownResult: result\.showdownResult[\s\S]*afterActionId: playActionId/)
+        expect(source).toMatch(/showdownResult: result\.playResult\.showdownResult/)
+    })
+
+    test("draw and play acknowledgements expose public state without a nested getState wrapper", async () => {
+        const source = await readSource("src/socket/gameHandlers.js")
+        const drawHandler = source.slice(
+            source.indexOf('socket.on("game:draw-card"'),
+            source.indexOf('socket.on("game:play-card"'),
+        )
+        const playHandler = source.slice(
+            source.indexOf('socket.on("game:play-card"'),
+            source.indexOf('socket.on("game:ready-for-computer-turn"'),
+        )
+
+        expect(drawHandler).toMatch(/state: gameState\.state/)
+        expect(playHandler).toMatch(/state: gameState\.state/)
+        expect(drawHandler).not.toMatch(/state: gameState,/) 
+        expect(playHandler).not.toMatch(/state: gameState,/) 
+    })
+
+    test("draw acknowledgement is bound to the draw animation and cannot advance the turn early", async () => {
+        const source = await readSource("src/socket/gameHandlers.js")
+        const drawHandler = source.slice(
+            source.indexOf('socket.on("game:draw-card"'),
+            source.indexOf('socket.on("game:play-card"'),
+        )
+
+        expect(drawHandler).toMatch(/afterActionId: drawAction\.id/)
+        expect(drawHandler).toMatch(/readyForComputerTurn: false/)
+        expect(drawHandler).toMatch(/state: gameState\.state[\s\S]*afterActionId: drawAction\.id[\s\S]*readyForComputerTurn: false/)
+    })
+
+    test("computer finish skip resolves only the current round and returns next-round state", async () => {
+        const source = await readSource("src/socket/gameHandlers.js")
+        const computerService = await readSource("src/services/computerPlayerService.js")
+        const handler = source.slice(source.indexOf('socket.on("game:simulate-computer-finish"'))
+
+        expect(handler).toMatch(/const startRoundNumber = Number\(currentState\.state\.roundNumber \|\| 1\)/)
+        expect(handler).toMatch(/\(!result\.playResult && result\.reason !== "advanced-eliminated-turn"\)/)
+        expect(handler).toMatch(/turns < 80 && result\.state\?\.phase === "playing"/)
+        expect(handler).toMatch(/Number\(result\.state\?\.roundNumber \|\| 1\) !== startRoundNumber/)
+        expect(handler).toMatch(/roundWinnerPlayerId: roundEndState\?\.roundWinnerPlayerId \?\? null/)
+        expect(handler).toMatch(/settlementState: roundEndState/)
+        expect(handler).toMatch(/state: getPublicState\(result\.state, Number\(playerId\)\)/)
+        expect(computerService).toMatch(/player\?\.isEliminated && !playerId/)
+        expect(computerService).toMatch(/reason: "advanced-eliminated-turn"/)
+    })
+})

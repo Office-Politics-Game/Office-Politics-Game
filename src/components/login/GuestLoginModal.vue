@@ -4,7 +4,7 @@
       type="button"
       class="btn-dark tap-pop absolute right-3 top-3 grid h-9 w-9 place-items-center"
       aria-label="關閉訪客登入彈窗"
-      @click="emit('close')"
+      @click="closeGuest"
     >
       <span aria-hidden="true">×</span>
     </button>
@@ -71,6 +71,7 @@
             autocomplete="nickname"
             placeholder="請輸入暱稱"
             :disabled="isSubmitting"
+            @input="clearGuestError"
           />
           <button
             type="button"
@@ -86,7 +87,7 @@
 
       <p
         v-if="errorMessage"
-        class="m-0 text-sm font-bold text-[var(--brand-hover)]"
+        class="m-0 text-sm font-bold text-[var(--feedback-error)]"
         role="alert"
       >
         {{ errorMessage }}
@@ -97,7 +98,7 @@
           type="button"
           class="guest-button is-secondary btn-glass tap-pop"
           :disabled="isSubmitting"
-          @click="emit('close')"
+          @click="closeGuest"
         >
           返回
         </button>
@@ -115,36 +116,64 @@
 
 <script setup>
 import { computed, ref } from "vue";
-import { ChevronLeft, ChevronRight, Dice5 } from "lucide-vue-next";
-import { guestAvatars, guestNicknames } from "@/constants/guestOptions";
+import { ChevronLeft, ChevronRight, Dice5 } from "@lucide/vue";
+import { createGuestNickname, guestAvatars } from "@/constants/guestOptions";
 import { createGuestPlayer } from "@/services/playerService";
+import { usePreGameAudio } from "@/composables/UsePreGameAudio";
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js";
 
 const emit = defineEmits(["close", "success"]);
+const { playPreGameSound, startPreGameBackground } = usePreGameAudio();
 
 const selectedAvatarIndex = ref(0);
-const nickname = ref(guestNicknames[0]);
+const nickname = ref(createGuestNickname());
 const errorMessage = ref("");
 const isSubmitting = ref(false);
 
 const selectedAvatar = computed(() => guestAvatars[selectedAvatarIndex.value]);
 
+function playGuestClick() {
+  playPreGameSound("login-button-click");
+}
+
+function clearGuestError() {
+  if (!errorMessage.value) {
+    return;
+  }
+
+  errorMessage.value = "";
+}
+
+function closeGuest() {
+  playGuestClick();
+  emit("close");
+}
+
 function selectPreviousAvatar() {
+  playGuestClick();
   selectedAvatarIndex.value =
     (selectedAvatarIndex.value - 1 + guestAvatars.length) % guestAvatars.length;
 }
 
 function selectNextAvatar() {
+  playGuestClick();
   selectedAvatarIndex.value =
     (selectedAvatarIndex.value + 1) % guestAvatars.length;
 }
 
 function rollNickname() {
-  const randomIndex = Math.floor(Math.random() * guestNicknames.length);
-  nickname.value = guestNicknames[randomIndex];
-  errorMessage.value = "";
+  playGuestClick();
+  nickname.value = createGuestNickname();
+  clearGuestError();
 }
 
 async function submitGuest() {
+  if (isSubmitting.value) {
+    return;
+  }
+
+  playGuestClick();
+
   const username = nickname.value.trim();
 
   if (!username) {
@@ -161,9 +190,10 @@ async function submitGuest() {
       avatarId: selectedAvatar.value.id,
     });
 
+    startPreGameBackground({ fadeIn: true, userInitiated: true });
     emit("success", player);
   } catch (error) {
-    errorMessage.value = error.message || "建立訪客資料失敗，請稍後再試";
+    errorMessage.value = getDisplayErrorMessage(error, "建立訪客資料失敗，請稍後再試");
   } finally {
     isSubmitting.value = false;
   }

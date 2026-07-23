@@ -14,6 +14,7 @@ import pmBackgroundUrl from '@/assets/images/card-bg-pm.webp'
 import pmFrameUrl from '@/assets/images/card-frame-pm.webp'
 import seniorBackgroundUrl from '@/assets/images/card-bg-senior.webp'
 import seniorFrameUrl from '@/assets/images/card-frame-senior.webp'
+import { CARD_INFO_BY_RANK } from '@/constants/cardInfo'
 
 const cardAssetsByKey = {
   intern: {
@@ -22,6 +23,7 @@ const cardAssetsByKey = {
     color: '#fb923c',
     type: 'Guess',
     name: 'Intern',
+    displayName: CARD_INFO_BY_RANK[1].chinese,
     effectKey: 'guess',
     targetMode: 'opponent',
     requiresGuess: true,
@@ -32,6 +34,7 @@ const cardAssetsByKey = {
     color: '#22c55e',
     type: 'Peek',
     name: 'Cleaner',
+    displayName: CARD_INFO_BY_RANK[2].chinese,
     effectKey: 'peek',
     targetMode: 'opponent',
     requiresGuess: false,
@@ -42,6 +45,7 @@ const cardAssetsByKey = {
     color: '#fb7185',
     type: 'Duel',
     name: 'Manager',
+    displayName: CARD_INFO_BY_RANK[3].chinese,
     effectKey: 'compare',
     targetMode: 'opponent',
     requiresGuess: false,
@@ -52,6 +56,7 @@ const cardAssetsByKey = {
     color: '#60a5fa',
     type: 'Shield',
     name: 'Senior',
+    displayName: CARD_INFO_BY_RANK[4].chinese,
     effectKey: 'protect',
     targetMode: 'none',
     requiresGuess: false,
@@ -62,6 +67,7 @@ const cardAssetsByKey = {
     color: '#f97316',
     type: 'Redraw',
     name: 'PM',
+    displayName: CARD_INFO_BY_RANK[5].chinese,
     effectKey: 'redraw',
     targetMode: 'anyPlayer',
     requiresGuess: false,
@@ -72,6 +78,7 @@ const cardAssetsByKey = {
     color: '#a78bfa',
     type: 'Swap',
     name: 'HR',
+    displayName: CARD_INFO_BY_RANK[6].chinese,
     effectKey: 'swap',
     targetMode: 'opponent',
     requiresGuess: false,
@@ -82,6 +89,7 @@ const cardAssetsByKey = {
     color: '#38bdf8',
     type: 'Force',
     name: 'Advisor',
+    displayName: CARD_INFO_BY_RANK[7].chinese,
     effectKey: 'force-discard',
     targetMode: 'none',
     requiresGuess: false,
@@ -92,6 +100,7 @@ const cardAssetsByKey = {
     color: '#facc15',
     type: 'Boss',
     name: 'CEO',
+    displayName: CARD_INFO_BY_RANK[8].chinese,
     effectKey: 'self-eliminate',
     targetMode: 'none',
     requiresGuess: false,

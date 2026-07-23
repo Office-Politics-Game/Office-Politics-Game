@@ -4,6 +4,7 @@ import {
   cardAssetKeyByRank,
   cardAssetsByKey,
 } from '@/constants/cardAssets'
+import { getCardDisplayName } from '@/constants/cardInfo'
 
 function inferAssetKeyFromText(value) {
   if (!value) {
@@ -39,7 +40,12 @@ function normalizeCard(rawCard = {}, fallbackIndex = 0) {
   return {
     ...rawCard,
     id: String(rawCard.id ?? `${assetKey}-${fallbackIndex}`),
+    assetKey,
     name: rawCard.name ?? assets.name,
+    displayName: getCardDisplayName(
+      { ...rawCard, name: rawCard.name ?? assets.name, rank },
+      rawCard.name ?? assets.name,
+    ),
     type: rawCard.type ?? assets.type,
     rank: Number.isFinite(rank) ? rank : 1,
     effectKey: rawCard.effectKey ?? assets.effectKey,

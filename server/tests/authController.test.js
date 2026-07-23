@@ -1,0 +1,470 @@
+import { jest } from "@jest/globals"
+
+const mockRegisterPlayer = jest.fn()
+const mockLoginPlayer = jest.fn()
+const mockVerifyToken = jest.fn()
+const mockRequestPasswordReset = jest.fn()
+const mockResetPlayerPassword = jest.fn()
+const mockSyncOAuthPlayer = jest.fn()
+const mockLogoutPlayer = jest.fn()
+const mockChangePlayerPassword = jest.fn()
+
+jest.unstable_mockModule("../src/services/authService.js", () => ({
+    registerPlayer: mockRegisterPlayer,
+    loginPlayer: mockLoginPlayer,
+    syncOAuthPlayer: mockSyncOAuthPlayer,
+    logoutPlayer: mockLogoutPlayer,
+    verifyToken: mockVerifyToken,
+    requestPasswordReset: mockRequestPasswordReset,
+    resetPlayerPassword: mockResetPlayerPassword,
+    changePlayerPassword: mockChangePlayerPassword
+}))
+
+const {
+    handleRegisterPlayer,
+    handleLoginPlayer,
+    handleOAuthCallback,
+    handleVerifyToken,
+    handleGetAuthSession,
+    handleLogoutPlayer,
+    handleChangePassword
+} = await import("../src/controllers/authController.js")
+
+function createMockResponse() {
+    const res = {
+        status: jest.fn(),
+        json: jest.fn(),
+        cookie: jest.fn(),
+        clearCookie: jest.fn()
+    }
+
+    res.status.mockReturnValue(res)
+    res.json.mockReturnValue(res)
+    res.cookie.mockReturnValue(res)
+    res.clearCookie.mockReturnValue(res)
+
+    return res
+}
+
+function createPlayer(overrides = {}) {
+    return {
+        id: 1,
+        authUserId: "auth-user-001",
+        username: "測試玩家",
+        account: "test@example.com",
+        ...overrides
+    }
+}
+
+describe("auth controller cookie login flow", () => {
+    beforeEach(() => {
+        mockRegisterPlayer.mockReset()
+        mockLoginPlayer.mockReset()
+        mockVerifyToken.mockReset()
+        mockLogoutPlayer.mockReset()
+        mockRequestPasswordReset.mockReset()
+        mockResetPlayerPassword.mockReset()
+        mockSyncOAuthPlayer.mockReset()
+        mockChangePlayerPassword.mockReset()
+
+        delete process.env.AUTH_COOKIE_SAME_SITE
+        delete process.env.AUTH_COOKIE_SECURE
+    })
+
+    test("註冊發生未知錯誤時，不回傳內部錯誤訊息", async () => {
+        const consoleErrorSpy = jest
+            .spyOn(console, "error")
+            .mockImplementation(() => {})
+
+        mockRegisterPlayer.mockRejectedValueOnce(
+            new Error('insert or update on table "players" violates foreign key constraint')
+        )
+
+        const req = {
+            body: {
+                username: "測試玩家",
+                account: "test@example.com",
+                password: "Aa123456!"
+            }
+        }
+        const res = createMockResponse()
+
+        await handleRegisterPlayer(req, res)
+
+        expect(res.status).toHaveBeenCalledWith(500)
+        expect(res.json).toHaveBeenCalledWith({
+            message: "註冊失敗，請稍後再試"
+        })
+
+        consoleErrorSpy.mockRestore()
+    })
+
+    test("登入成功時設定 HttpOnly Cookie，且 response 不回傳 token", async () => {
+        const player = createPlayer()
+
+        mockLoginPlayer.mockResolvedValueOnce({
+            player,
+            token: "mock-access-token",
+            expiresIn: 3600
+        })
+
+        const req = {
+            body: {
+                account: "test@example.com",
+                password: "Aa123456!"
+            }
+        }
+        const res = createMockResponse()
+
+        await handleLoginPlayer(req, res)
+
+        expect(mockLoginPlayer).toHaveBeenCalledWith(req.body)
+        expect(res.cookie).toHaveBeenCalledWith(
+            "officePoliticsAuthToken",
+            "mock-access-token",
+            {
+                httpOnly: true,
+                secure: false,
+                sameSite: "lax",
+                path: "/",
+                maxAge: 3600 * 1000
+            }
+        )
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({
+            player
+        })
+    })
+
+    test("正式跨站 Cookie 設定會使用 sameSite none 與 secure true", async () => {
+        process.env.AUTH_COOKIE_SAME_SITE = "none"
+        process.env.AUTH_COOKIE_SECURE = "true"
+
+        const player = createPlayer()
+
+        mockLoginPlayer.mockResolvedValueOnce({
+            player,
+            token: "mock-access-token",
+            expiresIn: 3600
+        })
+
+        const req = {
+            body: {
+                account: "test@example.com",
+                password: "Aa123456!"
+            }
+        }
+        const res = createMockResponse()
+
+        await handleLoginPlayer(req, res)
+
+        expect(res.cookie).toHaveBeenCalledWith(
+            "officePoliticsAuthToken",
+            "mock-access-token",
+            {
+                httpOnly: true,
+                secure: true,
+                sameSite: "none",
+                path: "/",
+                maxAge: 3600 * 1000
+            }
+        )
+    })
+
+    test("第三方登入成功時設定 HttpOnly Cookie，且 response 不回傳 token", async () => {
+        const player = createPlayer()
+
+        mockSyncOAuthPlayer.mockResolvedValueOnce({
+            player,
+            token: "oauth-access-token",
+            expiresIn: 3600
+        })
+
+        const req = {
+            body: {
+                accessToken: "oauth-access-token",
+                expiresIn: 3600
+            }
+        }
+        const res = createMockResponse()
+
+        await handleOAuthCallback(req, res)
+
+        expect(mockSyncOAuthPlayer).toHaveBeenCalledWith(req.body)
+        expect(res.cookie).toHaveBeenCalledWith(
+            "officePoliticsAuthToken",
+            "oauth-access-token",
+            {
+                httpOnly: true,
+                secure: false,
+                sameSite: "lax",
+                path: "/",
+                maxAge: 3600 * 1000
+            }
+        )
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({
+            player
+        })
+    })
+
+    test("驗證登入狀態時，從 Cookie 讀取 token", async () => {
+        const player = createPlayer()
+
+        mockVerifyToken.mockResolvedValueOnce(player)
+
+        const req = {
+            cookies: {
+                officePoliticsAuthToken: "cookie-access-token"
+            }
+        }
+        const res = createMockResponse()
+
+        await handleVerifyToken(req, res)
+
+        expect(mockVerifyToken).toHaveBeenCalledWith("cookie-access-token")
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({
+            player
+        })
+    })
+
+    test("沒有 Cookie 時，驗證登入狀態回傳錯誤", async () => {
+        const error = new Error("缺少登入驗證token")
+        error.statusCode = 401
+
+        mockVerifyToken.mockRejectedValueOnce(error)
+
+        const req = {
+            cookies: {}
+        }
+        const res = createMockResponse()
+
+        await handleVerifyToken(req, res)
+
+        expect(mockVerifyToken).toHaveBeenCalledWith("")
+        expect(res.status).toHaveBeenCalledWith(401)
+        expect(res.json).toHaveBeenCalledWith({
+            message: "缺少登入驗證token"
+        })
+    })
+
+    test("檢查登入 session 時，沒有 Cookie 會視為正常匿名狀態", async () => {
+        const req = {
+            cookies: {}
+        }
+        const res = createMockResponse()
+
+        await handleGetAuthSession(req, res)
+
+        expect(mockVerifyToken).not.toHaveBeenCalled()
+        expect(res.clearCookie).not.toHaveBeenCalled()
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({
+            authenticated: false,
+            player: null
+        })
+    })
+
+    test("檢查登入 session 時，有效 Cookie 會回傳已登入玩家", async () => {
+        const player = createPlayer()
+
+        mockVerifyToken.mockResolvedValueOnce(player)
+
+        const req = {
+            cookies: {
+                officePoliticsAuthToken: "cookie-access-token"
+            }
+        }
+        const res = createMockResponse()
+
+        await handleGetAuthSession(req, res)
+
+        expect(mockVerifyToken).toHaveBeenCalledWith("cookie-access-token")
+        expect(res.clearCookie).not.toHaveBeenCalled()
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({
+            authenticated: true,
+            player
+        })
+    })
+
+    test.each([
+        [401, "登入驗證失敗"],
+        [404, "找不到玩家資料"]
+    ])("檢查登入 session 時，登入狀態失效 %i 會清除 Cookie 並回匿名", async (statusCode, message) => {
+        const error = new Error(message)
+        error.statusCode = statusCode
+
+        mockVerifyToken.mockRejectedValueOnce(error)
+
+        const req = {
+            cookies: {
+                officePoliticsAuthToken: "invalid-cookie-token"
+            }
+        }
+        const res = createMockResponse()
+
+        await handleGetAuthSession(req, res)
+
+        expect(mockVerifyToken).toHaveBeenCalledWith("invalid-cookie-token")
+        expect(res.clearCookie).toHaveBeenCalledWith(
+            "officePoliticsAuthToken",
+            {
+                httpOnly: true,
+                secure: false,
+                sameSite: "lax",
+                path: "/"
+            }
+        )
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({
+            authenticated: false,
+            player: null
+        })
+    })
+
+    test("檢查登入 session 時，內部錯誤不會偽裝成匿名狀態", async () => {
+        const consoleErrorSpy = jest
+            .spyOn(console, "error")
+            .mockImplementation(() => {})
+
+        mockVerifyToken.mockRejectedValueOnce(
+            new Error("database connection failed")
+        )
+
+        const req = {
+            cookies: {
+                officePoliticsAuthToken: "cookie-access-token"
+            }
+        }
+        const res = createMockResponse()
+
+        await handleGetAuthSession(req, res)
+
+        expect(mockVerifyToken).toHaveBeenCalledWith("cookie-access-token")
+        expect(res.clearCookie).not.toHaveBeenCalled()
+        expect(res.status).toHaveBeenCalledWith(500)
+        expect(res.json).toHaveBeenCalledWith({
+            message: "登入狀態檢查失敗"
+        })
+
+        consoleErrorSpy.mockRestore()
+    })
+
+    test("登出時同步玩家離線並清除 HttpOnly Cookie", async () => {
+        mockLogoutPlayer.mockResolvedValueOnce(true)
+
+        const req = {
+            cookies: {
+                officePoliticsAuthToken: "cookie-access-token"
+            }
+        }
+        const res = createMockResponse()
+
+        await handleLogoutPlayer(req, res)
+
+        expect(mockLogoutPlayer).toHaveBeenCalledWith("cookie-access-token")
+        expect(res.clearCookie).toHaveBeenCalledWith(
+            "officePoliticsAuthToken",
+            {
+                httpOnly: true,
+                secure: false,
+                sameSite: "lax",
+                path: "/"
+            }
+        )
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({
+            message: "登出成功"
+        })
+    })
+
+    test("登出時清除 HttpOnly Cookie", async () => {
+        const req = {}
+        const res = createMockResponse()
+
+        await handleLogoutPlayer(req, res)
+
+        expect(res.clearCookie).toHaveBeenCalledWith(
+            "officePoliticsAuthToken",
+            {
+                httpOnly: true,
+                secure: false,
+                sameSite: "lax",
+                path: "/"
+            }
+        )
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({
+            message: "登出成功"
+        })
+    })
+
+    test("修改密碼成功時，從 Cookie 讀取 token 並清除登入 Cookie", async () => {
+        mockChangePlayerPassword.mockResolvedValueOnce({
+            message: "密碼已更新，請重新登入"
+        })
+
+        const req = {
+            cookies: {
+                officePoliticsAuthToken: "valid-token"
+            },
+            body: {
+                currentPassword: "Aa123456!",
+                password: "Bb123456!",
+                confirmPassword: "Bb123456!"
+            }
+        }
+        const res = createMockResponse()
+
+        await handleChangePassword(req, res)
+
+        expect(mockChangePlayerPassword).toHaveBeenCalledWith({
+            token: "valid-token",
+            currentPassword: "Aa123456!",
+            password: "Bb123456!",
+            confirmPassword: "Bb123456!"
+        })
+        expect(res.clearCookie).toHaveBeenCalledWith(
+            "officePoliticsAuthToken",
+            {
+                httpOnly: true,
+                secure: false,
+                sameSite: "lax",
+                path: "/"
+            }
+        )
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({
+            message: "密碼已更新，請重新登入"
+        })
+    })
+
+    test("修改密碼發生未知錯誤時，回傳友善訊息", async () => {
+        const consoleErrorSpy = jest
+            .spyOn(console, "error")
+            .mockImplementation(() => {})
+
+        mockChangePlayerPassword.mockRejectedValueOnce(
+            new Error("Supabase內部錯誤")
+        )
+
+        const req = {
+            cookies: {
+                officePoliticsAuthToken: "valid-token"
+            },
+            body: {}
+        }
+        const res = createMockResponse()
+
+        await handleChangePassword(req, res)
+
+        expect(res.status).toHaveBeenCalledWith(500)
+        expect(res.json).toHaveBeenCalledWith({
+            message: "修改密碼失敗，請稍後再試"
+        })
+
+        consoleErrorSpy.mockRestore()
+    })
+})

@@ -4,12 +4,12 @@ import { storeToRefs } from "pinia";
 import { useRouter } from "vue-router";
 import { DoorOpen } from "@lucide/vue";
 import joinRoomBackground from "@/assets/images/waiting-room.webp";
-import { usePlayerStore } from "@/stores/playerStore.js";
+import { useCurrentPlayerId } from "@/composables/useCurrentPlayerId.js";
 import { useRoomStore } from "@/stores/roomStore.js";
 
 const router = useRouter();
 const roomStore = useRoomStore();
-const playerStore = usePlayerStore();
+const { currentPlayerId } = useCurrentPlayerId();
 
 const roomId = ref("");
 const { isLoading, errorMessage } = storeToRefs(roomStore);
@@ -18,15 +18,27 @@ const normalizedRoomId = computed(() => roomId.value.trim().toUpperCase());
 
 async function handleJoinRoom() {
   if (!normalizedRoomId.value) {
-    roomStore.errorMessage = "請先輸入房號。";
+    roomStore.errorMessage = "請先輸入房號";
     return;
   }
 
-  await roomStore.joinRoom(normalizedRoomId.value, {
-    playerId: playerStore.currentPlayerId,
-  });
+  if (!currentPlayerId.value) {
+    roomStore.errorMessage = "請先登入或建立訪客玩家";
+    return;
+  }
 
-  router.push("/custom-room");
+  try {
+    await roomStore.joinRoom(normalizedRoomId.value, {
+      playerId: currentPlayerId.value,
+    });
+
+    router.push({
+      name: "CustomRoom",
+      query: { roomCode: normalizedRoomId.value },
+    });
+  } catch {
+    return;
+  }
 }
 </script>
 
@@ -67,7 +79,7 @@ async function handleJoinRoom() {
         </div>
         <p
           v-if="errorMessage"
-          class="mt-3 text-center text-sm font-bold text-red-700"
+          class="mt-3 text-center text-sm font-bold text-[var(--feedback-error)]"
         >
           {{ errorMessage }}
         </p>

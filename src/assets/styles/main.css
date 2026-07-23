@@ -12,12 +12,17 @@
   --gray-300: #8c96a5;
   --gray-400: #6f7b8a;
   --gray-500: #465563;
+  --feedback-error: #b91c1c;
   --surface-glass: rgba(255, 255, 255, 0.3);
   --surface-glass-hover: rgba(255, 255, 255, 0.72);
   --surface-glass-active: rgba(70, 85, 99, 0.88);
   --shadow: 0 20px 60px rgba(0, 19, 50, 0.14);
   --radius-md: 0;
   --radius-lg: 0;
+  --cursor-default: url("../icons/cursor.svg") 0 0, default;
+  --cursor-pointer: url("../icons/cursor-pointer.svg") 0 0, pointer;
+  --cursor-grab: url("../icons/cursor-grab.svg") 16 14, grab;
+  --cursor-grabbing: url("../icons/cursor-grabbing.svg") 16 14, grabbing;
   --text-xs: 12px;
   --text-sm: 14px;
   --text-md: 16px;
@@ -52,6 +57,7 @@ body {
   overflow: hidden;
   font-family: var(--font-sans);
   background: var(--brand-navy);
+  cursor: var(--cursor-default);
 }
 
 @keyframes drift {
@@ -101,6 +107,15 @@ select {
 
 button {
   -webkit-tap-highlight-color: transparent;
+}
+
+:where(
+  a[href],
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  .cursor-pointer
+) {
+  cursor: var(--cursor-pointer) !important;
 }
 
 @media (min-width: 768px) {
@@ -166,5 +181,3 @@ button {
 .tap-pop {
   @apply transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98];
 }
-
-

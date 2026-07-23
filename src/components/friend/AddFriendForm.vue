@@ -7,7 +7,7 @@
       </p>
     </div>
 
-    <div class="flex gap-2 max-sm:flex-col">
+    <div class="flex gap-2">
       <input
         v-model="keyword"
         type="text"
@@ -21,7 +21,7 @@
         class="friend-button is-primary"
         :disabled="isSearching || isSending || !keyword.trim()"
       >
-        {{ isSearching ? "搜尋中..." : "搜尋玩家" }}
+        {{ isSearching ? "搜尋..." : "搜尋" }}
       </button>
     </div>
 
@@ -55,14 +55,29 @@
             </div>
           </div>
 
-          <button
-            type="button"
-            class="friend-button is-secondary shrink-0"
-            :disabled="isSending || Boolean(player.relationStatus)"
-            @click="emit('add-friend', player.playerId)"
-          >
-            {{ actionLabel(player) }}
-          </button>
+          <div class="flex shrink-0 flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              class="friend-button is-secondary"
+              :disabled="isSending || Boolean(player.relationStatus)"
+              @click="emit('add-friend', player.playerId)"
+            >
+              {{ actionLabel(player) }}
+            </button>
+
+            <button
+              type="button"
+              class="friend-button is-danger"
+              :disabled="
+                isSending ||
+                isPlayerProcessing(player.playerId) ||
+                player.relationStatus === 'blocked'
+              "
+              @click="emit('block-player', player)"
+            >
+              {{ blockActionLabel(player) }}
+            </button>
+          </div>
         </div>
       </article>
     </section>
@@ -89,7 +104,7 @@
 <script setup>
 import { ref } from "vue";
 
-defineProps({
+const props = defineProps({
   sentInvites: {
     type: Array,
     default: () => [],
@@ -114,9 +129,13 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  isPlayerProcessing: {
+    type: Function,
+    default: () => false,
+  },
 });
 
-const emit = defineEmits(["search", "add-friend"]);
+const emit = defineEmits(["search", "add-friend", "block-player"]);
 const keyword = ref("");
 
 function submitSearch() {
@@ -142,7 +161,19 @@ function actionLabel(player) {
     return "無法邀請";
   }
 
-  return "送出邀請";
+  return "送出";
+}
+
+function blockActionLabel(player) {
+  if (props.isPlayerProcessing(player.playerId)) {
+    return "處理中...";
+  }
+
+  if (player.relationStatus === "blocked") {
+    return "已封鎖";
+  }
+
+  return "封鎖";
 }
 
 function statusColorClass(player) {
@@ -175,7 +206,9 @@ function statusColorClass(player) {
 }
 
 .friend-button {
-  @apply border px-3 py-2 text-sm font-bold transition-[border-color,background-color,box-shadow,color] duration-[180ms] disabled:cursor-not-allowed disabled:opacity-60;
+  width: 88px;
+  height: 40px;
+  @apply shrink-0 border px-3 py-2 text-sm font-bold transition-[border-color,background-color,box-shadow,color] duration-[180ms] disabled:cursor-not-allowed disabled:opacity-60;
 }
 
 .friend-button.is-primary {
@@ -184,6 +217,10 @@ function statusColorClass(player) {
 
 .friend-button.is-secondary {
   @apply border-[var(--brand-primary)] bg-[var(--surface-glass)] text-[var(--brand-active)];
+}
+
+.friend-button.is-danger {
+  @apply border-[var(--brand-active)] bg-white text-[var(--brand-active)];
 }
 
 .friend-button:hover:not(:disabled) {
@@ -199,6 +236,6 @@ function statusColorClass(player) {
 }
 
 .friend-alert.is-error {
-  @apply border-[var(--brand-hover)] bg-[rgba(0,70,244,0.08)] text-[var(--brand-hover)];
+  @apply border-[var(--brand-hover)] bg-[rgba(0,70,244,0.08)] text-[var(--feedback-error)];
 }
 </style>

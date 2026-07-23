@@ -6,6 +6,8 @@ const currencyColumnMap = {
     ticket: "tickets",
 }
 
+const maxCurrencyBalance = 99999
+
 function createServiceError(message, statusCode = 400) {
     const error = new Error(message)
     error.statusCode = statusCode
@@ -15,17 +17,20 @@ function createServiceError(message, statusCode = 400) {
 function getCurrencyColumn(currency) {
     const column = currencyColumnMap[currency]
     if (!column) {
-        throw createServiceError("不支援的通貨類型")
+        throw createServiceError("貨幣類型有誤")
     }
     return column
 }
 
 async function getPlayerCurrency(playerId) {
     const result = await pool.query(
-        `SELECT id, coins, gems, tickets
+        `SELECT id,
+                LEAST(coins, $2) AS coins,
+                LEAST(gems, $2) AS gems,
+                LEAST(tickets, $2) AS tickets
          FROM players
          WHERE id = $1`,
-        [playerId]
+        [playerId, maxCurrencyBalance]
     )
 
     if (result.rows.length === 0) {
@@ -51,12 +56,25 @@ async function addCurrency(playerId, currency, amount, type, description = null)
     }
 
     const result = await pool.query(
-        `UPDATE players
-         SET ${column} = ${column} + $1,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE id = $2
-         RETURNING id, ${column}`,
-        [numericAmount, playerId]
+        `WITH current_player AS (
+             SELECT id, ${column} AS balance_before
+             FROM players
+             WHERE id = $2
+             FOR UPDATE
+         ),
+         updated_player AS (
+             UPDATE players
+             SET ${column} = LEAST(current_player.balance_before + $1, $3),
+                 updated_at = CURRENT_TIMESTAMP
+             FROM current_player
+             WHERE players.id = current_player.id
+             RETURNING players.id,
+                       current_player.balance_before,
+                       players.${column} AS balance_after
+         )
+         SELECT id, balance_before, balance_after
+         FROM updated_player`,
+        [numericAmount, playerId, maxCurrencyBalance]
     )
 
     if (result.rows.length === 0) {
@@ -64,7 +82,13 @@ async function addCurrency(playerId, currency, amount, type, description = null)
     }
 
     const player = result.rows[0]
-    const balanceAfter = player[column]
+    const balanceBefore = Number(player.balance_before)
+    const balanceAfter = Number(player.balance_after)
+    const actualAmount = balanceAfter - balanceBefore
+
+    if (actualAmount <= 0) {
+        throw createServiceError("遊戲幣已達上限")
+    }
 
     await pool.query(
         `INSERT INTO player_currency_logs
@@ -73,7 +97,7 @@ async function addCurrency(playerId, currency, amount, type, description = null)
         [
             playerId,
             currency,
-            numericAmount,
+            actualAmount,
             balanceAfter,
             type,
             description,
@@ -83,7 +107,7 @@ async function addCurrency(playerId, currency, amount, type, description = null)
     return {
         playerId: player.id,
         currency,
-        amount: numericAmount,
+        amount: actualAmount,
         balanceAfter,
     }
 }

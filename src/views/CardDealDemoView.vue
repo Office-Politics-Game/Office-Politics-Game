@@ -10,10 +10,11 @@ import playerOneUrl from '@/assets/images/player-1.png'
 import playerTwoUrl from '@/assets/images/player-2.png'
 import playerThreeUrl from '@/assets/images/player-3.png'
 import playerFourUrl from '@/assets/images/player-4.png'
-import CardDealAnimation from '@/components/game/CardDealAnimation.vue'
-import PlayerHand from '@/components/game/PlayerHand.vue'
-import PlayerSeats from '@/components/game/PlayerSeats.vue'
-import TableCardPiles from '@/components/game/TableCardPiles.vue'
+import CardDealAnimation from '@/components/game/animations/CardDealAnimation.vue'
+import PlayerHand from '@/components/game/ui/PlayerHand.vue'
+import PlayerSeats from '@/components/game/ui/PlayerSeats.vue'
+import RotateDeviceNotice from '@/components/game/ui/RotateDeviceNotice.vue'
+import TableCardPiles from '@/components/game/ui/TableCardPiles.vue'
 
 const INITIAL_DECK_COUNT = 28
 const DEAL_ORDER = ['bottom', 'left', 'top', 'right']
@@ -79,25 +80,27 @@ const players = [
 const cardsByPosition = {
   bottom: {
     id: 'deal-bottom-ceo',
-    name: 'CEO',
+    name: '執行長',
+    displayName: '執行長',
     backgroundUrl: ceoBackgroundUrl,
     frameUrl: ceoFrameUrl,
   },
   left: {
     id: 'deal-left-advisor',
-    name: '顧問',
+    name: '資深顧問',
     backgroundUrl: advisorBackgroundUrl,
     frameUrl: advisorFrameUrl,
   },
   top: {
     id: 'deal-top-ceo',
-    name: 'CEO',
+    name: '執行長',
+    displayName: '執行長',
     backgroundUrl: ceoBackgroundUrl,
     frameUrl: ceoFrameUrl,
   },
   right: {
     id: 'deal-right-advisor',
-    name: '顧問',
+    name: '資深顧問',
     backgroundUrl: advisorBackgroundUrl,
     frameUrl: advisorFrameUrl,
   },
@@ -249,11 +252,12 @@ onBeforeUnmount(() => {
       <CardDealAnimation ref="dealAnimation" />
     </section>
 
+    <RotateDeviceNotice />
   </main>
 </template>
 
 <style scoped>
-@media (orientation: landscape) {
+@media (orientation: landscape), (min-width: 768px) {
   .game-stage {
     display: block;
   }

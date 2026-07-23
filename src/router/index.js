@@ -6,6 +6,8 @@ import LobbyMenu from "@/components/menu/LobbyMenu.vue";
 import GameView from "../views/GameView.vue";
 import FriendView from "@/views/FriendView.vue";
 import MallView from "@/views/MallView.vue";
+import ProfileView from "@/views/ProfileView.vue";
+import GachaView from "@/views/GachaView.vue";
 import Result from "@/views/Result.vue";
 import LoadingView from "@/views/LoadingView.vue";
 import GameMenuPanel from "@/components/gameRoom/GameMenuPanel.vue";
@@ -16,7 +18,13 @@ import InviteFriendModal from "@/components/gameRoom/InviteFriendModal.vue";
 import CardDealDemoView from "@/views/CardDealDemoView.vue";
 import AnimationDemoView from "@/views/AnimationDemoView.vue";
 import CardPlayTestView from "@/views/CardPlayTestView.vue";
+import StyleStudioView from "@/views/StyleStudioView.vue";
 import NotFoundView from "@/views/NotFoundView.vue";
+import AuthCallbackView from "@/views/AuthCallbackView.vue";
+import PrivacyPolicyView from "@/views/PrivacyPolicyView.vue";
+import DataDeletionView from "@/views/DataDeletionView.vue";
+import IntroView from "@/views/IntroView.vue";
+import { useAuthStore } from "../stores/authStore.js";
 
 const routes = [
   {
@@ -25,9 +33,24 @@ const routes = [
     component: EntryPage,
   },
   {
+    path: "/intro",
+    name: "Intro",
+    component: IntroView,
+  },
+  {
     path: "/login",
     name: "Login",
     component: LoginPage,
+  },
+  {
+    path: "/register",
+    name: "Register",
+    component: LoginPage,
+  },
+  {
+    path: "/auth/callback",
+    name: "AuthCallback",
+    component: AuthCallbackView,
   },
   {
     path: "/lobby",
@@ -66,11 +89,35 @@ const routes = [
     path: "/friend",
     name: "Friend",
     component: FriendView,
+    meta: {
+      requiresAuth: true,
+    },
   },
   {
     path: "/mall",
     name: "Mall",
     component: MallView,
+    meta: {
+      requiresAuth: true,
+    },
+  },
+  {
+    path: "/profile",
+    name: "Profile",
+    component: ProfileView,
+  },
+  {
+    path: "/style-studio",
+    name: "StyleStudio",
+    component: StyleStudioView,
+    meta: {
+      requiresAuth: true,
+    },
+  },
+  {
+    path: "/gacha",
+    name: "Gacha",
+    component: GachaView,
   },
   {
     path: "/game-menu",
@@ -96,6 +143,9 @@ const routes = [
     path: "/invite-friend",
     name: "InviteFriend",
     component: InviteFriendModal,
+    meta: {
+      requiresAuth: true,
+    },
   },
   {
     path: "/card-deal-demo",
@@ -113,20 +163,44 @@ const routes = [
     component: CardPlayTestView,
   },
   {
+    path: "/privacy",
+    name: "PrivacyPolicy",
+    component: PrivacyPolicyView,
+  },
+  {
+    path: "/data-deletion",
+    name: "DataDeletion",
+    component: DataDeletionView,
+  },
+  {
     path: "/:pathMatch(.*)*",
     name: "NotFound",
     component: NotFoundView,
   },
-  {
-    path: "/register",
-    name: "Register",
-    component: LoginPage,
-  }
 ];
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
 });
+
+router.beforeEach(async (to) => {
+  const requiresAuth = to.matched.some((route) => route.meta.requiresAuth)
+
+  if (!requiresAuth) {
+    return true
+  }
+
+  const authStore = useAuthStore()
+  const isVerified = await authStore.checkSession()
+
+  if (isVerified) {
+    return true
+  }
+
+  return {
+    name: "Login"
+  }
+})
 
 export default router;

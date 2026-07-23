@@ -1,7 +1,7 @@
 import { createDeck } from "../game/gameDeck.js"
 import { shuffleDeck } from "./deckService.js"
 
-function startNextRound(state){
+function startNextRound(state, { random = Math.random } = {}){
     if (state.phase !== "roundEnded"){
         return state
     }
@@ -20,10 +20,11 @@ function startNextRound(state){
         player.discardedCards = []
     })
 
-    const randomIndex = Math.floor(Math.random() * players.length)
+    const randomIndex = Math.floor(random() * players.length)
     const currentTurnPlayerId = players[randomIndex].playerId
 
     state.phase = "playing"
+    state.roundNumber = Number(state.roundNumber || 1) + 1
     state.deck = deck
     state.discardPile = []
     state.currentTurnPlayerId = currentTurnPlayerId

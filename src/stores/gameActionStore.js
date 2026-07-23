@@ -5,10 +5,7 @@ import {
   getGameResult,
   playCard as playCardApi,
 } from "@/services/gameActionApi"
-
-function getActionErrorMessage(error, fallbackMessage) {
-  return error instanceof Error ? error.message : fallbackMessage
-}
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js"
 
 function getNextGameState(data) {
   return data?.state ?? data?.gameState ?? null
@@ -45,7 +42,7 @@ export const useGameActionStore = defineStore("gameAction", {
 
         return data
       } catch (error) {
-        this.errorMessage = getActionErrorMessage(error, "Failed to draw card")
+        this.errorMessage = getDisplayErrorMessage(error, "抽牌失敗")
         throw error
       } finally {
         this.isLoading = false
@@ -66,7 +63,7 @@ export const useGameActionStore = defineStore("gameAction", {
 
         return data
       } catch (error) {
-        this.errorMessage = getActionErrorMessage(error, "Failed to play card")
+        this.errorMessage = getDisplayErrorMessage(error, "出牌失敗")
         throw error
       } finally {
         this.isLoading = false
@@ -84,7 +81,7 @@ export const useGameActionStore = defineStore("gameAction", {
 
         return data
       } catch (error) {
-        this.errorMessage = getActionErrorMessage(error, "Failed to fetch game logs")
+        this.errorMessage = getDisplayErrorMessage(error, "取得遊戲紀錄失敗")
         throw error
       } finally {
         this.isLoading = false
@@ -94,6 +91,7 @@ export const useGameActionStore = defineStore("gameAction", {
     async fetchGameResult(roomCode, payload = {}) {
       this.isLoading = true
       this.errorMessage = ""
+      this.result = null
 
       try {
         const data = await getGameResult(roomCode, payload)
@@ -102,7 +100,7 @@ export const useGameActionStore = defineStore("gameAction", {
 
         return data
       } catch (error) {
-        this.errorMessage = getActionErrorMessage(error, "Failed to fetch game result")
+        this.errorMessage = getDisplayErrorMessage(error, "取得遊戲結果失敗")
         throw error
       } finally {
         this.isLoading = false

@@ -1,6 +1,16 @@
 <script setup>
 import roomMenu from "@/assets/images/room-menu.webp";
 import WaitingRoomMenu from "@/components/gameRoom/WaitingRoomMenu.vue";
+import { useRouter } from "vue-router";
+import { usePreGameAudio } from "@/composables/UsePreGameAudio";
+
+const router = useRouter();
+const { playPreGameSound } = usePreGameAudio();
+
+function returnLobby() {
+  playPreGameSound("lobby-navigation-whoosh");
+  router.push({ name: "LobbyHome" });
+}
 </script>
 
 <template>
@@ -10,11 +20,23 @@ import WaitingRoomMenu from "@/components/gameRoom/WaitingRoomMenu.vue";
   >
     <WaitingRoomMenu />
     <button
-      class="btn-glass tap-pop absolute w-30 bottom-3 left-1/2 z-10 -translate-x-1/2 lg:bottom-4"
+      class="btn-glass tap-pop game-menu-return-button absolute w-30 bottom-3 left-1/2 z-10 -translate-x-1/2 lg:bottom-4"
       type="button"
-      @click="$router.push({ name: 'LobbyHome' })"
+      @click="returnLobby"
     >
       返回
     </button>
   </section>
 </template>
+
+<style scoped>
+@media (orientation: landscape) and (max-width: 1023px) and (max-height: 640px) {
+  .game-menu-return-button {
+    bottom: 6px;
+    width: 88px;
+    min-height: 30px;
+    padding: 4px 10px;
+    font-size: 13px;
+  }
+}
+</style>

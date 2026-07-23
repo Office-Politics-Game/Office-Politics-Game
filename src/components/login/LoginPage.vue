@@ -16,18 +16,125 @@
     </div>
 
     <div class="overlay fixed inset-0 z-20 flex items-center justify-center p-5">
-      <RegisterPage v-if="isRegisterPage" />
-      <LoginContent v-else />
+      <GuestLoginModal
+        v-if="showGuestLoginModal"
+        @close="showGuestLoginModal = false"
+        @success="handleGuestCreated"
+      />
+      <RegisterPage
+        v-else-if="authPageMode === 'register'"
+        @close="goEntryPage"
+        @back-login="goLoginPage"
+        @register-success="goLoginPage"
+      />
+      <ForgotPasswordContent
+        v-else-if="authPageMode === 'forgot-password'"
+        @close="goEntryPage"
+        @back-login="goLoginPage"
+      />
+      <ResetPasswordContent
+        v-else-if="authPageMode === 'reset-password'"
+        :reset-token="resetPasswordToken"
+        @close="goEntryPage"
+        @back-login="goLoginPage"
+        @reset-success="goLoginPage"
+      />
+      <LoginContent
+        v-else
+        @close="goEntryPage"
+        @open-guest="showGuestLoginModal = true"
+        @open-register="goRegisterPage"
+        @open-forgot-password="goForgotPasswordPage"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from "vue"
-import { useRoute } from "vue-router"
+import { ref, watch } from "vue"
+import { useRoute, useRouter } from "vue-router"
 import LoginContent from "@/components/login/LoginContent.vue"
+import GuestLoginModal from "@/components/login/GuestLoginModal.vue"
 import RegisterPage from "@/components/register/RegisterPage.vue"
+import { usePlayerStore } from "@/stores/playerStore.js"
+import ForgotPasswordContent from "@/components/login/ForgotPasswordContent.vue"
+import ResetPasswordContent from "@/components/login/ResetPasswordContent.vue"
+import { resolvePasswordResetToken } from "@/services/authApi.js"
 
 const route = useRoute()
-const isRegisterPage = computed(() => route.path === "/register")
+const router = useRouter()
+const playerStore = usePlayerStore()
+
+const showGuestLoginModal = ref(false)
+const authPageMode = ref("login")
+const resetPasswordToken = ref("")
+
+async function openResetPasswordPageFromRoute() {
+  resetPasswordToken.value = ""
+  authPageMode.value = "reset-password"
+
+  try {
+    resetPasswordToken.value = await resolvePasswordResetToken()
+  } catch {
+    resetPasswordToken.value = ""
+  }
+}
+
+function syncAuthPageModeFromRoute() {
+  if (route.query.auth === "reset-password") {
+    void openResetPasswordPageFromRoute()
+    return
+  }
+
+  if (route.query.auth === "forgot-password") {
+    resetPasswordToken.value = ""
+    authPageMode.value = "forgot-password"
+    return
+  }
+
+  if (route.path === "/register") {
+    resetPasswordToken.value = ""
+    authPageMode.value = "register"
+    return
+  }
+
+  resetPasswordToken.value = ""
+  authPageMode.value = "login"
+}
+
+function goEntryPage() {
+  router.push("/")
+}
+
+function handleGuestCreated(player) {
+  localStorage.setItem("guestPlayer", JSON.stringify(player))
+  playerStore.setCurrentPlayer(player)
+  showGuestLoginModal.value = false
+  router.push("/lobby")
+}
+
+function goLoginPage() {
+  resetPasswordToken.value = ""
+  authPageMode.value = "login"
+  router.push("/login")
+}
+
+function goRegisterPage() {
+  resetPasswordToken.value = ""
+  authPageMode.value = "register"
+  router.push("/register")
+}
+
+function goForgotPasswordPage() {
+  resetPasswordToken.value = ""
+  authPageMode.value = "forgot-password"
+}
+
+watch(
+  () => route.fullPath,
+  () => {
+    syncAuthPageModeFromRoute()
+  },
+  { immediate: true }
+)
 </script>

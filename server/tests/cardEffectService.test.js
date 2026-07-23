@@ -66,6 +66,26 @@ describe("useIntern", () => {
 
         expect(player.isEliminated).toBe(true)
         expect(state.players[1].isEliminated).toBe(true)
+        expect(state.players[1].hand).toEqual([])
+        expect(state.players[1].discardedCards).toEqual([{ id: 5, name: "PM", ownerPlayerId: 2 }])
+        expect(state.discardPile).toEqual([{ id: 5, name: "PM", ownerPlayerId: 2 }])
+    })
+
+    test("猜 Advisor 時可淘汰持有 Adviser 的目標玩家", () => {
+        const state = createState()
+        state.players[1].hand = [{ id: 7, name: "Adviser" }]
+
+        const player = useIntern(state, 2, "Advisor")
+
+        expect(player.isEliminated).toBe(true)
+        expect(state.players[1].isEliminated).toBe(true)
+        expect(state.players[1].hand).toEqual([])
+        expect(state.players[1].discardedCards).toEqual([
+            { id: 7, name: "Adviser", ownerPlayerId: 2 },
+        ])
+        expect(state.discardPile).toEqual([
+            { id: 7, name: "Adviser", ownerPlayerId: 2 },
+        ])
     })
 
     test("猜測 Intern 不合法時回傳 null", () => {
@@ -88,6 +108,9 @@ describe("useManager", () => {
 
         expect(player.playerId).toBe(2)
         expect(player.isEliminated).toBe(true)
+        expect(state.players[1].hand).toEqual([])
+        expect(state.players[1].discardedCards).toEqual([{ id: 1, name: "Intern", ownerPlayerId: 2 }])
+        expect(state.discardPile).toEqual([{ id: 1, name: "Intern", ownerPlayerId: 2 }])
     })
 
     test("目標玩家受保護時回傳 null", () => {
@@ -112,7 +135,7 @@ describe("usePm", () => {
         const state = createState()
         const result = usePm(state, 2)
 
-        expect(result.discardedCard).toEqual({ id: 5, name: "PM" })
+        expect(result.discardedCard).toEqual({ id: 5, name: "PM", ownerPlayerId: 2 })
         expect(result.newCard).toBeUndefined()
         expect(result.player).toBeUndefined()
         expect(result.deck).toBeUndefined()
@@ -120,14 +143,14 @@ describe("usePm", () => {
         expect(result.targetPlayerId).toBe(2)
         expect(result.targetHandCount).toBe(1)
         expect(result.deckCount).toBe(1)
-        expect(state.players[1].hand).toEqual([{ id: 2, name: "Cleaner" }])
-        expect(state.discardPile).toEqual([{ id: 5, name: "PM" }])
+        expect(state.players[1].hand).toEqual([{ id: 2, name: "Cleaner", ownerPlayerId: 2 }])
+        expect(state.discardPile).toEqual([{ id: 5, name: "PM", ownerPlayerId: 2 }])
     })
     test("PM can target self without returning deck order", () => {
         const state = createState()
         const result = usePm(state, 1)
 
-        expect(result.discardedCard).toEqual({ id: 3, name: "Manager" })
+        expect(result.discardedCard).toEqual({ id: 3, name: "Manager", ownerPlayerId: 1 })
         expect(result.newCard).toBeUndefined()
         expect(result.player).toBeUndefined()
         expect(result.deck).toBeUndefined()
@@ -135,7 +158,7 @@ describe("usePm", () => {
         expect(result.targetPlayerId).toBe(1)
         expect(result.targetHandCount).toBe(1)
         expect(result.deckCount).toBe(1)
-        expect(state.players[0].hand).toEqual([{ id: 2, name: "Cleaner" }])
+        expect(state.players[0].hand).toEqual([{ id: 2, name: "Cleaner", ownerPlayerId: 1 }])
     })
     test("棄掉 CEO 時淘汰玩家且不抽新牌", () => {
         const state = createState()
@@ -143,7 +166,7 @@ describe("usePm", () => {
 
         const result = usePm(state, 2)
 
-        expect(result.discardedCard).toEqual({ id: 8, name: "CEO" })
+        expect(result.discardedCard).toEqual({ id: 8, name: "CEO", ownerPlayerId: 2 })
         expect(result.newCard).toBeUndefined()
         expect(result.player).toBeUndefined()
         expect(result.deck).toBeUndefined()
@@ -154,7 +177,7 @@ describe("usePm", () => {
         expect(result.deckCount).toBe(2)
         expect(state.players[1].hand).toEqual([])
         expect(state.players[1].isEliminated).toBe(true)
-        expect(state.discardPile).toEqual([{ id: 8, name: "CEO" }])
+        expect(state.discardPile).toEqual([{ id: 8, name: "CEO", ownerPlayerId: 2 }])
         expect(state.deck).toEqual([
             { id: 2, name: "Cleaner" },
             { id: 1, name: "Intern" },
@@ -171,6 +194,32 @@ describe("useHr", () => {
         expect(state.players[0].hand).toEqual([{ id: 5, name: "PM" }])
         expect(state.players[1].hand).toEqual([{ id: 3, name: "Manager" }])
     })
+
+    test("HR does not swap hands with a protected target", () => {
+        const state = createState()
+
+        const result = useHr(state, 1, 3)
+
+        expect(result).toEqual({
+            protected: true,
+            targetPlayerId: 3,
+        })
+        expect(state.players[0].hand).toEqual([{ id: 3, name: "Manager" }])
+        expect(state.players[2].hand).toEqual([{ id: 5, name: "PM" }])
+    })
+
+    test("HR handles string ids when target is protected", () => {
+        const state = createState()
+
+        const result = useHr(state, "1", "3")
+
+        expect(result).toEqual({
+            protected: true,
+            targetPlayerId: 3,
+        })
+        expect(state.players[0].hand).toEqual([{ id: 3, name: "Manager" }])
+        expect(state.players[2].hand).toEqual([{ id: 5, name: "PM" }])
+    })
 })
 
 describe("useCeo", () => {
@@ -179,6 +228,8 @@ describe("useCeo", () => {
         const player = useCeo(state, 1, { id: 8, name: "CEO" })
 
         expect(player.isEliminated).toBe(true)
+        expect(state.players[0].hand).toEqual([])
+        expect(state.discardPile).toEqual([{ id: 3, name: "Manager", ownerPlayerId: 1 }])
     })
 })
 
@@ -230,5 +281,7 @@ describe("CEO effect", () => {
     expect(player.playerId).toBe(1)
     expect(player.isEliminated).toBe(true)
     expect(state.players[0].isEliminated).toBe(true)
+    expect(state.players[0].hand).toEqual([])
+    expect(state.discardPile).toEqual([{ id: 3, name: "Manager", ownerPlayerId: 1 }])
   })
 })

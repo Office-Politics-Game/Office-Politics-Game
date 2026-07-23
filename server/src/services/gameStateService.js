@@ -13,8 +13,10 @@ function getPublicState(state, viewerPlayerId){
 
   return {
     phase: state.phase,
+    roundNumber: Number(state.roundNumber || 1),
     deckCount: deck.length,
     discardPile,
+    hasAnyCardBeenPlayed: Boolean(state.hasAnyCardBeenPlayed),
     currentTurnPlayerId: state.currentTurnPlayerId,
     roundWinnerPlayerId: state.roundWinnerPlayerId,
     winnerPlayerId: state.winnerPlayerId,
@@ -26,7 +28,13 @@ function getPublicState(state, viewerPlayerId){
       return {
         playerId: player.playerId,
         username: player.username,
+        level: player.level,
+        avatarId: player.avatarId,
+        avatarUrl: player.avatarUrl,
+        cardSkinUrl: player.cardSkinUrl ?? null,
+        cardSkinOverrides: player.cardSkinOverrides ?? {},
         seatOrder: player.seatOrder,
+        isComputer: Boolean(player.isComputer),
         hand: isSelf ? hand : undefined,
         handCount: hand.length,
         isProtected: player.isProtected,

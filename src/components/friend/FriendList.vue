@@ -19,7 +19,7 @@
 
       <div
         v-else-if="errorMessage"
-        class="border border-[var(--brand-hover)] bg-[rgba(0,70,244,0.08)] p-6 text-center text-sm font-bold text-[var(--brand-hover)]"
+        class="border border-[var(--brand-hover)] bg-[rgba(0,70,244,0.08)] p-6 text-center text-sm font-bold text-[var(--feedback-error)]"
       >
         {{ errorMessage }}
       </div>
@@ -41,7 +41,12 @@
             :key="friend.id"
             :friend="friend"
             :active="selectedFriendId === friend.id"
+            :show-actions="showActions"
+            :is-friend-processing="isFriendProcessing(friend.friendshipId)"
+            :is-player-processing="isPlayerProcessing(friend.playerId)"
             @select="emit('select', $event)"
+            @remove="emit('remove', $event)"
+            @block="emit('block', $event)"
           />
         </section>
       </template>
@@ -81,9 +86,21 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  showActions: {
+    type: Boolean,
+    default: false,
+  },
+  isFriendProcessing: {
+    type: Function,
+    default: () => false,
+  },
+  isPlayerProcessing: {
+    type: Function,
+    default: () => false,
+  },
 });
 
-const emit = defineEmits(["select"]);
+const emit = defineEmits(["select", "remove", "block"]);
 const keyword = ref("");
 
 const filteredFriends = computed(() => {

@@ -6,8 +6,8 @@ const readSource = (path) =>
   readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
 test('player avatar keeps the player data and token rendering contract', async () => {
-  const avatarSource = await readSource('src/components/game/PlayerAvatar.vue')
-  const seatsSource = await readSource('src/components/game/PlayerSeats.vue')
+  const avatarSource = await readSource('src/components/game/ui/PlayerAvatar.vue')
+  const seatsSource = await readSource('src/components/game/ui/PlayerSeats.vue')
 
   for (const propName of [
     'name',
@@ -33,16 +33,32 @@ test('player avatar keeps the player data and token rendering contract', async (
   assert.match(avatarSource, /flex-row-reverse/)
   assert.match(avatarSource, /player-avatar__info--mirrored/)
   assert.match(avatarSource, /@keyframes current-player-glow/)
+  assert.match(avatarSource, /@keyframes turn-player-ring-spin/)
+  assert.match(avatarSource, /@keyframes turn-player-pulse/)
+  assert.match(avatarSource, /\.player-avatar--turn \.player-avatar__portrait::before/)
+  assert.match(avatarSource, /\.player-avatar--turn \.player-avatar__info/)
   assert.doesNotMatch(avatarSource, /victoryTokens|勝利 TOKEN/)
   assert.doesNotMatch(avatarSource, /player-avatar--winner|winner-gold|isMatchWinner/)
   assert.doesNotMatch(avatarSource, /grayscale\(1\) brightness\(0\.58\)/)
   assert.doesNotMatch(avatarSource, /<button/)
+  assert.match(avatarSource, /player-avatar--mirrored/)
+  assert.match(avatarSource, /@media \(max-width: 767px\)[\s\S]*\.player-avatar \{[\s\S]*transform: scale\(0\.85\);/)
+  assert.doesNotMatch(avatarSource, /@media \(max-width: 767px\)[\s\S]*\.player-avatar__frame \{[\s\S]*width: 44px;/)
 
   assert.match(seatsSource, /Number\.isInteger\(player\?\.roundWins\)/)
   assert.match(seatsSource, /player\?\.roundWins >= 0/)
   assert.match(seatsSource, /player\?\.roundWins <= 3/)
   assert.match(seatsSource, /player\?\.level/)
   assert.match(seatsSource, /positionClasses/)
+  assert.match(seatsSource, /protectedPlayerIds:/)
+  assert.match(seatsSource, /isProtectedPlayer\(player\.id\)/)
+  assert.match(seatsSource, /shouldShowImmunityLabel\(player\)/)
+  assert.match(seatsSource, /!player\.isCurrentPlayer && isProtectedPlayer\(player\.id\)/)
+  assert.match(seatsSource, /player-seats__immunity-label/)
+  assert.match(seatsSource, /免疫狀態/)
+  assert.match(seatsSource, /@media \(max-width: 767px\)[\s\S]*\.player-seats__immunity-label/)
+  assert.match(seatsSource, /filter: drop-shadow\(0 3px 5px rgba\(0, 19, 50, 0\.76\)\);/)
+  assert.match(seatsSource, /\.player-seats__immunity-label--top,[\s\S]*\.player-seats__immunity-label--left,[\s\S]*\.player-seats__immunity-label--right \{[\s\S]*top: -18px;[\s\S]*left: 50%;/)
 
   for (const position of ['top', 'left', 'right', 'bottom']) {
     assert.match(seatsSource, new RegExp(`${position}:`))
@@ -56,15 +72,17 @@ test('player avatar keeps the player data and token rendering contract', async (
 
 test('game view derives four viewer-relative player records and passes them through the stage', async () => {
   const gameViewSource = await readSource('src/views/GameView.vue')
-  const gameStageSource = await readSource('src/components/game/GameStage.vue')
+  const gameViewModelSource = await readSource('src/composables/useGameViewModel.js')
+  const gameStageSource = await readSource('src/components/game/ui/GameStage.vue')
 
-  assert.match(gameViewSource, /const seatPositions = \['top', 'left', 'right', 'bottom'\]/)
-  assert.match(gameViewSource, /const players = computed\(\(\) =>/)
-  assert.match(gameViewSource, /viewerRelativePlayers\.slice\(0, 4\)\.map/)
-  assert.match(gameViewSource, /id: playerId/)
-  assert.match(gameViewSource, /position: seatPositions\[index\] \?\? 'bottom'/)
-  assert.match(gameViewSource, /roundWins: normalizeRoundWins/)
-  assert.match(gameViewSource, /isCurrentPlayer: playerId === resolvedCurrentPlayerId\.value/)
+  assert.match(gameViewModelSource, /const SEAT_POSITIONS = \['top', 'left', 'right', 'bottom'\]/)
+  assert.match(gameViewModelSource, /const players = computed\(\(\) =>/)
+  assert.match(gameViewModelSource, /\.slice\(0, 4\)\.map/)
+  assert.match(gameViewModelSource, /id: playerId/)
+  assert.match(gameViewModelSource, /position: SEAT_POSITIONS\[index\] \?\? 'bottom'/)
+  assert.match(gameViewModelSource, /roundWins: normalizeRoundWins/)
+  assert.match(gameViewModelSource, /const isCurrentPlayer = playerId === resolvedCurrentPlayerId\.value/)
+  assert.match(gameViewModelSource, /isCurrentPlayer,/)
   assert.match(gameViewSource, /:players="players"/)
   assert.match(gameStageSource, /players:/)
   assert.match(gameStageSource, /<PlayerSeats[\s\S]*:players="players"/)
@@ -83,9 +101,9 @@ test('the selected bonus cheque badge exists as a PNG asset', async () => {
 })
 
 test('game table shows the brand beside a standalone settings icon', async () => {
-  const gameStageSource = await readSource('src/components/game/GameStage.vue')
+  const gameStageSource = await readSource('src/components/game/ui/GameStage.vue')
   const settingsSource = await readSource(
-    'src/components/game/GameSettingsIcon.vue',
+    'src/components/game/ui/GameSettingsIcon.vue',
   )
 
   assert.match(gameStageSource, /logo-en-white\.png/)

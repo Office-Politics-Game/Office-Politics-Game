@@ -8,9 +8,9 @@ describe("discardCard", () => {
     };
     const discardPile = [];
     const card = discardCard(player, 101, discardPile);
-    expect(card).toEqual({ id: 101, name: "加班" });
+    expect(card).toEqual({ id: 101, name: "加班", ownerPlayerId: 1 });
     expect(player.hand).toHaveLength(0);
-    expect(discardPile).toEqual([{ id: 101, name: "加班" }]);
+    expect(discardPile).toEqual([{ id: 101, name: "加班", ownerPlayerId: 1 }]);
   });
 
   test("玩家出牌後，會從手牌移除並加入棄牌堆與玩家棄牌紀錄", () => {

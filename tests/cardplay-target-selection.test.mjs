@@ -1,22 +1,58 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
+import { CARD_INFO_BY_RANK, getCardDisplayName } from '../src/constants/cardInfo.js'
 
 const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
 test('cardplay test models card effects for avatar target selection and intern guesses', async () => {
-  const source = await readSource('src/views/CardPlayTestView.vue')
+  const source = await readSource('src/constants/cardAssets.js')
+  const mockStateSource = await readSource('src/mocks/mockGameState.js')
+  const gameStageSource = await readSource('src/components/game/ui/GameStage.vue')
 
-  assert.match(source, /rank:\s*1[\s\S]*effectKey:\s*'guess'/)
-  assert.match(source, /rank:\s*2[\s\S]*targetMode:\s*'opponent'/)
-  assert.match(source, /rank:\s*4[\s\S]*targetMode:\s*'none'/)
-  assert.match(source, /rank:\s*5[\s\S]*targetMode:\s*'anyPlayer'/)
-  assert.match(source, /const guessOptions = \[/)
-  assert.doesNotMatch(source, /guessOptions[\s\S]*rank:\s*1/)
+  assert.match(mockStateSource, /rank:\s*1[\s\S]*effectKey:\s*['"]guess['"]/)
+  assert.match(source, /cleaner:[\s\S]*targetMode:\s*['"]opponent['"]/)
+  assert.match(source, /senior:[\s\S]*targetMode:\s*['"]none['"]/)
+  assert.match(source, /pm:[\s\S]*targetMode:\s*['"]anyPlayer['"]/)
+  assert.match(source, /1:\s*['"]intern['"]/)
+  assert.match(source, /2:\s*['"]cleaner['"]/)
+  assert.match(source, /4:\s*['"]senior['"]/)
+  assert.match(source, /5:\s*['"]pm['"]/)
+  assert.match(gameStageSource, /import \{ CARD_INFO_BY_RANK, getCardDisplayName \} from ["']@\/constants\/cardInfo["']/)
+  assert.match(gameStageSource, /const guessOptions = Object\.entries\(CARD_INFO_BY_RANK\)/)
+  assert.match(gameStageSource, /name: getCardDisplayName\(cardInfo\)/)
+  assert.doesNotMatch(gameStageSource, /filter\(\(\[rank\]\) => Number\(rank\) !== 1\)/)
+})
+
+test('guess options keep visible Chinese card names', () => {
+  const guessOptions = Object.entries(CARD_INFO_BY_RANK).map(
+    ([rank, cardInfo]) => ({
+      rank: Number(rank),
+      name: getCardDisplayName(cardInfo),
+    }),
+  )
+
+  assert.equal(guessOptions.find((option) => option.rank === 6)?.name, '人資主管')
+  assert.equal(guessOptions.find((option) => option.rank === 7)?.name, '資深顧問')
+  assert.equal(guessOptions.find((option) => option.rank === 8)?.name, '執行長')
+  assert.ok(guessOptions.every((option) => option.name.length > 0))
+})
+
+test('card display names stay synced with cardInfo Chinese names', () => {
+  assert.equal(getCardDisplayName(CARD_INFO_BY_RANK[2]), '打掃阿姨')
+  assert.equal(getCardDisplayName(CARD_INFO_BY_RANK[4]), '職場老鳥')
+})
+
+test('card asset display names read from cardInfo instead of a duplicate map', async () => {
+  const source = await readSource('src/constants/cardAssets.js')
+
+  assert.match(source, /import \{ CARD_INFO_BY_RANK \} from ['"]@\/constants\/cardInfo['"]/)
+  assert.match(source, /displayName: CARD_INFO_BY_RANK\[2\]\.chinese/)
+  assert.match(source, /displayName: CARD_INFO_BY_RANK\[4\]\.chinese/)
 })
 
 test('cardplay test keeps played card pending until confirm or cancel', async () => {
-  const source = await readSource('src/views/CardPlayTestView.vue')
+  const source = await readSource('src/composables/useGameStageCardPlay.js')
 
   assert.match(source, /const pendingPlay = ref\(null\)/)
   assert.match(source, /const selectedTargetPlayerId = ref\(null\)/)
@@ -25,24 +61,31 @@ test('cardplay test keeps played card pending until confirm or cancel', async ()
   assert.match(source, /function confirmPendingPlay\(/)
   assert.match(source, /function cancelPendingPlay\(/)
   assert.match(source, /canConfirmPendingPlay/)
-  assert.match(source, /playerHandCards\.value = playerHandCards\.value\.filter/)
+  assert.match(source, /visibleHandCards/)
+  assert.match(source, /pendingPlay\.value\?\.card \?\? null/)
+  assert.match(source, /filterVisibleHandCards/)
 })
 
 test('cardplay test uses the original player seats as target choices', async () => {
-  const source = await readSource('src/views/CardPlayTestView.vue')
+  const source = await readSource('src/components/game/ui/GameStage.vue')
+  const cardPlaySource = await readSource('src/composables/useGameStageCardPlay.js')
+  const confirmPanelSource = await readSource('src/components/game/ui/CardPlayConfirmPanel.vue')
 
   assert.doesNotMatch(source, /cardplay-test__avatar-targets/)
   assert.doesNotMatch(source, /cardplay-test__avatar-target/)
-  assert.match(source, /selectableTargetPlayerIds/)
-  assert.match(source, /:is-target-selection-active="Boolean\(pendingPlay\) && requiresTarget"/)
+  assert.match(cardPlaySource, /selectableTargetPlayerIds/)
+  assert.match(cardPlaySource, /pendingRequiresTarget\.value &&\s*!selectedTargetPlayerId\.value/)
+  assert.match(cardPlaySource, /!pendingRequiresTarget\.value \|\|\s*Boolean\(selectedTargetPlayerId\.value\)/)
+  assert.match(source, /:is-target-selection-active="isPendingTargetSelectionActive"/)
   assert.match(source, /:selectable-player-ids="selectableTargetPlayerIds"/)
   assert.match(source, /:selected-target-player-id="selectedTargetPlayerId"/)
   assert.match(source, /@target-select="selectTargetPlayer"/)
-  assert.match(source, /v-if="pendingPlay"[\s\S]*class="cardplay-test__target-backdrop"/)
-  assert.match(source, /\.cardplay-test__target-backdrop \{[\s\S]*z-index: 42[\s\S]*background: rgba\(0, 0, 0, 0\.42\)[\s\S]*backdrop-filter: blur\(5px\)/)
-  assert.match(source, /cardplay-test__guess-options/)
-  assert.match(source, /selectGuess\(option\.rank\)/)
-  assert.match(source, /:disabled="!canConfirmPendingPlay"/)
-  assert.match(source, /\.cardplay-test__pending-panel \{[\s\S]*left: 50%[\s\S]*top: 50%[\s\S]*transform: translate\(-50%, -50%\)/)
-  assert.match(source, /\.cardplay-test__pending-panel \{[\s\S]*max-height: min\(420px, calc\(100dvh - 224px\)\)[\s\S]*overflow: auto/)
+  assert.match(source, /v-if="isPendingTargetSelectionActive"[\s\S]*>\s*請選擇玩家\s*<\/p>/)
+  assert.match(source, /v-if="pendingPlay"[\s\S]*class="play-target-backdrop"/)
+  assert.match(source, /\.play-target-backdrop \{[\s\S]*z-index: 44[\s\S]*background: rgba\(0, 0, 0, 0\.42\)[\s\S]*backdrop-filter: blur\(5px\)/)
+  assert.match(confirmPanelSource, /<CardGuessSelector/)
+  assert.match(confirmPanelSource, /@select="emit\('select-guess', \$event\)"/)
+  assert.match(confirmPanelSource, /:disabled="!canConfirmPendingPlay"/)
+  assert.match(confirmPanelSource, /\.play-confirm-panel \{[\s\S]*left: 50%[\s\S]*top: 50%[\s\S]*transform: translate\(-50%, -50%\)/)
+  assert.match(confirmPanelSource, /\.play-confirm-panel \{[\s\S]*min-width: 440px[\s\S]*overflow: auto/)
 })

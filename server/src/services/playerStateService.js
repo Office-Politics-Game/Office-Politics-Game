@@ -1,3 +1,5 @@
+import { discardCard } from "./discardService.js"
+
 function findPlayer(state, playerId) {
   return state.players.find((player) => player.playerId === playerId)
 }
@@ -9,6 +11,11 @@ function killPlayer(state, playerId) {
   if (!player) {
     return null
   }
+
+  const remainingHand = Array.isArray(player.hand) ? [...player.hand] : []
+  remainingHand.forEach((card) => {
+    discardCard(player, card.id, state.discardPile)
+  })
 
   player.isEliminated = true
   return player

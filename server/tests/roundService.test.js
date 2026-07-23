@@ -6,6 +6,7 @@ function createState(){
         phase: "roundEnded",
         deck: [],
         discardPile: [{ id: 1, name: "Intern" }],
+        hasAnyCardBeenPlayed: true,
         currentTurnPlayerId: 1,
         winnerPlayerId: null,
         roundWinnerPlayerId: 2,
@@ -38,13 +39,15 @@ describe("小局重置邏輯",()=>{
     test("開始下一小局時，重設小局狀態但保留勝場", ()=>{
         const state = createState()
 
-        startNextRound(state)
+        startNextRound(state, { random: ()=> 0.75 })
 
         expect(state.phase).toBe("playing")
+        expect(state.roundNumber).toBe(2)
         expect(state.roundWinnerPlayerId).toBeNull()
         expect(state.discardPile).toEqual([])
+        expect(state.hasAnyCardBeenPlayed).toBe(true)
         expect(state.deck.length).toBeGreaterThan(0)
-        expect(state.currentTurnPlayerId).toBeTruthy()
+        expect(state.currentTurnPlayerId).toBe(2)
 
         expect(state.players[0].hand).toHaveLength(1)
         expect(state.players[1].hand).toHaveLength(1)
