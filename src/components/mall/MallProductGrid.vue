@@ -58,6 +58,8 @@
           :key="item.id"
           :item="item"
           :active="selectedItemId === item.id && detailOpen"
+          :purchasing="purchasing"
+          :purchase-disabled="purchasing"
           @purchase="$emit('purchase', $event)"
           @select="$emit('select', $event)"
         />
@@ -76,6 +78,10 @@ defineProps({
     required: true,
   },
   loading: {
+    type: Boolean,
+    default: false,
+  },
+  purchasing: {
     type: Boolean,
     default: false,
   },

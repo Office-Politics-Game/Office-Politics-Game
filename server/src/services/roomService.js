@@ -143,21 +143,16 @@ async function findOrCreateComputerPlayer(client, preferredUsername, index) {
     const username = createComputerUsernameCandidate(baseUsername, attempt)
     const account = createComputerAccountToken()
 
-    try {
-      const playerResult = await client.query(
-        `INSERT INTO players (username, account, avatar_id, is_online)
-         VALUES ($1, $2, $3, false)
-         RETURNING id, username, avatar_id`,
-        [username, account, avatarId],
-      )
+    const playerResult = await client.query(
+      `INSERT INTO players (username, account, avatar_id, is_online)
+       VALUES ($1, $2, $3, false)
+       ON CONFLICT DO NOTHING
+       RETURNING id, username, avatar_id`,
+      [username, account, avatarId],
+    )
 
+    if (playerResult.rows.length > 0) {
       return playerResult.rows[0]
-    } catch (error) {
-      if (error.code === "23505") {
-        continue
-      }
-
-      throw error
     }
   }
 
