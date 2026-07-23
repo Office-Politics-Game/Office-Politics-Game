@@ -61,6 +61,12 @@ function submitEcpayForm(checkout) {
   form.submit();
 }
 
+function isGachaTicketItem(item) {
+  return (
+    item?.shopItem?.type === "gacha_ticket" || item?.category === "ticket"
+  );
+}
+
 export function useMallShop() {
   const route = useRoute();
   const authStore = useAuthStore();
@@ -219,7 +225,12 @@ export function useMallShop() {
     isImagePreviewOpen.value = false;
   }
 
-  async function purchaseItem(item) {
+  async function purchaseItem(item, quantity = null) {
+    if (isGachaTicketItem(item) && quantity === null) {
+      openItemDetail(item);
+      return;
+    }
+
     if (item.category === "top-up") {
       if (!currentPlayerId.value) {
         statusMessage.value = "尚未取得玩家 ID，請重新登入後再購買股份。";
@@ -265,7 +276,7 @@ export function useMallShop() {
       const result = await purchaseShopItem({
         playerId: currentPlayerId.value,
         shopItemId: item.id,
-        quantity: 1,
+        quantity: isGachaTicketItem(item) ? quantity : 1,
       });
 
       if (result.currency) {
@@ -295,9 +306,9 @@ export function useMallShop() {
     }
   }
 
-  function purchaseSelectedItem() {
+  function purchaseSelectedItem(quantity = 1) {
     if (selectedItem.value) {
-      purchaseItem(selectedItem.value);
+      purchaseItem(selectedItem.value, quantity);
     }
   }
 

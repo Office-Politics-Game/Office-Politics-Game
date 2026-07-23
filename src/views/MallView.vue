@@ -168,6 +168,7 @@
         <MallProductGrid
           :items="filteredItems"
           :loading="isShopLoading"
+          :purchasing="isPurchasing"
           :status-message="statusMessage"
           :selected-item-id="selectedItem?.id"
           :detail-open="isDetailModalOpen"

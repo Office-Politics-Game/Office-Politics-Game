@@ -310,7 +310,7 @@ import {
   getEquipmentCategoryMeta,
   normalizeEquippedItems,
   patchEquippedState,
-} from "@/models/equipmentModel.js";
+} from "@/utils/equipmentUtils.js";
 import { updatePlayerAvatar } from "@/services/playerApi.js";
 import {
   equipShopItem,
