@@ -14,6 +14,9 @@ const equipColumnMap = {
   board_skin: "board_skin_item_id",
 }
 
+const GACHA_TICKET_UNIT_PRICE = 100
+const MAX_GACHA_TICKET_PURCHASE_QUANTITY = 999
+
 function getEquipColumnByCategory(categoryId) {
   return equipColumnMap[categoryId] || null
 }
@@ -52,15 +55,24 @@ function getEffectiveItemCurrency(item) {
   return item?.currency
 }
 
+function getEffectiveItemPrice(item) {
+  if (item?.type === "gacha_ticket") {
+    return GACHA_TICKET_UNIT_PRICE
+  }
+
+  return Number(item?.price)
+}
+
 function mapShopItem(row) {
   const effectiveCurrency = getEffectiveItemCurrency(row)
+  const effectivePrice = getEffectiveItemPrice(row)
 
   return {
     id: row.id,
     name: row.name,
     description: row.description,
     type: row.type,
-    price: row.price,
+    price: effectivePrice,
     currency: effectiveCurrency,
     imageUrl: row.image_url,
     isActive: row.is_active,
@@ -261,7 +273,18 @@ async function purchaseShopItem({ playerId, shopItemId, quantity = 1 }) {
     const effectiveCurrency = getEffectiveItemCurrency(item)
     const currencyColumn = getCurrencyColumn(effectiveCurrency)
     const isGachaTicketPurchase = item.type === "gacha_ticket"
-    const totalPrice = item.price * numericQuantity
+
+    if (
+      isGachaTicketPurchase &&
+      numericQuantity > MAX_GACHA_TICKET_PURCHASE_QUANTITY
+    ) {
+      throw createServiceError(
+        `單次最多購買 ${MAX_GACHA_TICKET_PURCHASE_QUANTITY} 張抽獎券`
+      )
+    }
+
+    const unitPrice = getEffectiveItemPrice(item)
+    const totalPrice = unitPrice * numericQuantity
     const playerResult = await client.query(
       `SELECT id, ${currencyColumn}
        FROM players
@@ -328,7 +351,7 @@ async function purchaseShopItem({ playerId, shopItemId, quantity = 1 }) {
         numericPlayerId,
         numericShopItemId,
         numericQuantity,
-        item.price,
+        unitPrice,
         totalPrice,
         effectiveCurrency,
       ]

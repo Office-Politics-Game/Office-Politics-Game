@@ -75,7 +75,9 @@
                 </div>
                 <div class="detail-row">
                   <span>價格</span>
-                  <strong>{{ item.price }}</strong>
+                  <strong>
+                    {{ isTicketItem ? `${ticketUnitPrice} / 張` : item.price }}
+                  </strong>
                 </div>
                 <div class="detail-row">
                   <span>狀態</span>
@@ -84,6 +86,31 @@
               </div>
 
               <aside class="modal-detail-card__purchase">
+                <div v-if="isTicketItem" class="ticket-purchase">
+                  <label for="ticket-quantity">購買數量</label>
+                  <div class="ticket-purchase__input-row">
+                    <input
+                      id="ticket-quantity"
+                      v-model.number="ticketQuantity"
+                      type="number"
+                      min="1"
+                      max="999"
+                      step="1"
+                      inputmode="numeric"
+                      :disabled="purchasing"
+                      @blur="normalizeTicketQuantity"
+                    />
+                    <span>張</span>
+                  </div>
+                  <div class="ticket-purchase__total">
+                    <span>總計</span>
+                    <strong>{{ formattedTicketTotal }} 股份</strong>
+                  </div>
+                  <p v-if="isTicketBalanceInsufficient" class="ticket-purchase__error">
+                    股票不足，請減少購買數量。
+                  </p>
+                </div>
+
                 <div
                   class="modal-budget-row border border-slate-300 bg-slate-900 p-2.5 md:p-4"
                 >
@@ -106,10 +133,15 @@
                   type="button"
                   class="item-action item-action--modal"
                   :class="`item-action--${item.actionState}`"
-                  :disabled="item.actionState !== 'buy' || purchasing"
-                  @click="$emit('purchase')"
+                  :disabled="
+                    item.actionState !== 'buy' ||
+                    purchasing ||
+                    isTicketQuantityInvalid ||
+                    isTicketBalanceInsufficient
+                  "
+                  @click="handlePurchase"
                 >
-                  {{ purchasing ? "購買中..." : item.actionLabel }}
+                  {{ purchaseButtonLabel }}
                 </button>
               </aside>
             </div>
@@ -121,11 +153,15 @@
 </template>
 
 <script setup>
+import { computed, ref, watch } from "vue";
 import { X } from "lucide-vue-next";
 import officeToken from "@/assets/images/office-token.webp";
 import stockToken from "@/assets/images/stock-token.webp";
 
-defineProps({
+const TICKET_UNIT_PRICE = 100;
+const MAX_TICKET_QUANTITY = 999;
+
+const props = defineProps({
   open: {
     type: Boolean,
     default: false,
@@ -144,7 +180,74 @@ defineProps({
   },
 });
 
-defineEmits(["close", "preview", "purchase"]);
+const emit = defineEmits(["close", "preview", "purchase"]);
+const ticketQuantity = ref(1);
+
+const isTicketItem = computed(
+  () =>
+    props.item?.shopItem?.type === "gacha_ticket" ||
+    props.item?.category === "ticket",
+);
+const ticketUnitPrice = computed(() => TICKET_UNIT_PRICE);
+const numericTicketQuantity = computed(() => Number(ticketQuantity.value));
+const isTicketQuantityInvalid = computed(
+  () =>
+    isTicketItem.value &&
+    (!Number.isInteger(numericTicketQuantity.value) ||
+      numericTicketQuantity.value < 1 ||
+      numericTicketQuantity.value > MAX_TICKET_QUANTITY),
+);
+const ticketTotal = computed(() =>
+  isTicketQuantityInvalid.value
+    ? 0
+    : TICKET_UNIT_PRICE * numericTicketQuantity.value,
+);
+const formattedTicketTotal = computed(() =>
+  new Intl.NumberFormat("zh-TW").format(ticketTotal.value),
+);
+const numericBudget = computed(
+  () => Number(String(props.budgetDisplay).replaceAll(",", "")) || 0,
+);
+const isTicketBalanceInsufficient = computed(
+  () => isTicketItem.value && ticketTotal.value > numericBudget.value,
+);
+const purchaseButtonLabel = computed(() => {
+  if (props.purchasing) {
+    return "購買中...";
+  }
+
+  if (isTicketItem.value && !isTicketQuantityInvalid.value) {
+    return `購買 ${numericTicketQuantity.value} 張`;
+  }
+
+  return props.item?.actionLabel ?? "立即購買";
+});
+
+function normalizeTicketQuantity() {
+  const quantity = Math.trunc(Number(ticketQuantity.value));
+  ticketQuantity.value = Number.isFinite(quantity)
+    ? Math.min(MAX_TICKET_QUANTITY, Math.max(1, quantity))
+    : 1;
+}
+
+function handlePurchase() {
+  if (
+    props.purchasing ||
+    isTicketQuantityInvalid.value ||
+    isTicketBalanceInsufficient.value
+  ) {
+    return;
+  }
+
+  emit("purchase", isTicketItem.value ? numericTicketQuantity.value : 1);
+}
+
+watch(
+  () => [props.open, props.item?.id],
+  () => {
+    ticketQuantity.value = 1;
+  },
+);
 </script>
 
 <style scoped>
@@ -270,6 +373,70 @@ defineEmits(["close", "preview", "purchase"]);
 .modal-detail-card__purchase {
   display: grid;
   gap: 8px;
+}
+
+.ticket-purchase {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(0, 70, 244, 0.5);
+  background: rgba(0, 70, 244, 0.1);
+}
+
+.ticket-purchase > label,
+.ticket-purchase__total > span {
+  color: rgba(203, 213, 225, 0.86);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ticket-purchase__input-row,
+.ticket-purchase__total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ticket-purchase__input-row input {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  border-radius: 0;
+  outline: none;
+  background: rgba(2, 6, 23, 0.86);
+  color: white;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.ticket-purchase__input-row input:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px var(--brand-focus);
+}
+
+.ticket-purchase__input-row > span,
+.ticket-purchase__total strong {
+  color: white;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.ticket-purchase__total {
+  padding-top: 9px;
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.ticket-purchase__total strong {
+  color: rgb(134, 179, 224);
+}
+
+.ticket-purchase__error {
+  margin: 0;
+  color: rgb(253, 186, 116);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .modal-detail-card__purchase > div {
@@ -459,6 +626,21 @@ defineEmits(["close", "preview", "purchase"]);
 
   .modal-detail-card__purchase {
     gap: 6px;
+  }
+
+  .ticket-purchase {
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .ticket-purchase__input-row input {
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+
+  .ticket-purchase__total {
+    padding-top: 6px;
+    font-size: 11px;
   }
 
   .detail-row {

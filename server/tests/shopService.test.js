@@ -231,15 +231,15 @@ describe("shopService", () => {
         ],
       })
       .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ id: 1, gems: 100 }] })
+      .mockResolvedValueOnce({ rows: [{ id: 1, gems: 500 }] })
       .mockResolvedValueOnce({
         rows: [
           {
             id: 1,
             coins: 0,
-            gems: 40,
+            gems: 300,
             tickets: 7,
-            balance_after: 40,
+            balance_after: 300,
           },
         ],
       })
@@ -261,8 +261,8 @@ describe("shopService", () => {
             player_id: 1,
             shop_item_id: 8,
             quantity: 2,
-            unit_price: 30,
-            total_price: 60,
+            unit_price: 100,
+            total_price: 200,
             currency: "diamond",
             created_at: "log",
           },
@@ -279,7 +279,15 @@ describe("shopService", () => {
     })
 
     expect(clientQueryMock.mock.calls[4][0]).toContain("tickets = tickets + $2")
-    expect(clientQueryMock.mock.calls[4][1]).toEqual([60, 2, 1])
+    expect(clientQueryMock.mock.calls[4][1]).toEqual([200, 2, 1])
+    expect(clientQueryMock.mock.calls[6][1]).toEqual([
+      1,
+      8,
+      2,
+      100,
+      200,
+      "diamond",
+    ])
     expect(clientQueryMock.mock.calls[8][1]).toEqual([
       1,
       "ticket",
@@ -290,11 +298,12 @@ describe("shopService", () => {
     ])
     expect(result.currency).toMatchObject({
       currency: "diamond",
-      amount: -60,
-      balanceAfter: 40,
-      gems: 40,
+      amount: -200,
+      balanceAfter: 300,
+      gems: 300,
       tickets: 7,
     })
+    expect(result.item.price).toBe(100)
     expect(clientQueryMock).toHaveBeenCalledWith("COMMIT")
   })
 
