@@ -54,27 +54,27 @@ describe("killPlayer", () => {
         expect(player.isEliminated).toBe(true)
         expect(state.players[0].isEliminated).toBe(true)
         expect(state.players[0].hand).toEqual([])
-        expect(state.players[0].discardedCards).toEqual([{ id: 1, name: "Intern" }])
-        expect(state.discardPile).toEqual([{ id: 1, name: "Intern" }])
+        expect(state.players[0].discardedCards).toEqual([{ id: 1, name: "Intern", ownerPlayerId: 1 }])
+        expect(state.discardPile).toEqual([{ id: 1, name: "Intern", ownerPlayerId: 1 }])
     })
 
     test("淘汰時依序棄掉所有剩餘手牌", () => {
         const state = createState()
         state.players[0].hand = [
-            { id: 1, name: "Intern" },
-            { id: 5, name: "PM" },
+            { id: 1, name: "Intern", ownerPlayerId: 1 },
+            { id: 5, name: "PM", ownerPlayerId: 1 },
         ]
 
         killPlayer(state, 1)
 
         expect(state.players[0].hand).toEqual([])
         expect(state.players[0].discardedCards).toEqual([
-            { id: 1, name: "Intern" },
-            { id: 5, name: "PM" },
+            { id: 1, name: "Intern", ownerPlayerId: 1 },
+            { id: 5, name: "PM", ownerPlayerId: 1 },
         ])
         expect(state.discardPile).toEqual([
-            { id: 1, name: "Intern" },
-            { id: 5, name: "PM" },
+            { id: 1, name: "Intern", ownerPlayerId: 1 },
+            { id: 5, name: "PM", ownerPlayerId: 1 },
         ])
     })
 
@@ -85,8 +85,8 @@ describe("killPlayer", () => {
         killPlayer(state, 1)
 
         expect(state.players[0].hand).toEqual([])
-        expect(state.players[0].discardedCards).toEqual([{ id: 1, name: "Intern" }])
-        expect(state.discardPile).toEqual([{ id: 1, name: "Intern" }])
+        expect(state.players[0].discardedCards).toEqual([{ id: 1, name: "Intern", ownerPlayerId: 1 }])
+        expect(state.discardPile).toEqual([{ id: 1, name: "Intern", ownerPlayerId: 1 }])
     })
 
     test("找不到玩家時回傳 null", () => {

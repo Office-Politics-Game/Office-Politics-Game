@@ -5,6 +5,10 @@ const getPlayerEquippedItemsMock = jest.fn()
 const getPlayerItemsMock = jest.fn()
 const getShopItemsMock = jest.fn()
 const purchaseShopItemMock = jest.fn()
+const unequipShopItemMock = jest.fn()
+const updateCardSkinLoadoutMock = jest.fn()
+const createCloudinaryUploadSignatureMock = jest.fn()
+const getCloudinaryUploadConfigMock = jest.fn()
 
 jest.unstable_mockModule("../src/services/shopService.js", () => ({
   equipShopItem: equipShopItemMock,
@@ -12,6 +16,13 @@ jest.unstable_mockModule("../src/services/shopService.js", () => ({
   getPlayerItems: getPlayerItemsMock,
   getShopItems: getShopItemsMock,
   purchaseShopItem: purchaseShopItemMock,
+  unequipShopItem: unequipShopItemMock,
+  updateCardSkinLoadout: updateCardSkinLoadoutMock,
+}))
+
+jest.unstable_mockModule("../src/services/cloudinaryService.js", () => ({
+  createCloudinaryUploadSignature: createCloudinaryUploadSignatureMock,
+  getCloudinaryUploadConfig: getCloudinaryUploadConfigMock,
 }))
 
 const {
@@ -40,6 +51,10 @@ beforeEach(() => {
   getPlayerItemsMock.mockReset()
   getShopItemsMock.mockReset()
   purchaseShopItemMock.mockReset()
+  unequipShopItemMock.mockReset()
+  updateCardSkinLoadoutMock.mockReset()
+  createCloudinaryUploadSignatureMock.mockReset()
+  getCloudinaryUploadConfigMock.mockReset()
 })
 
 describe("shopController", () => {
@@ -273,6 +288,7 @@ describe("shopController", () => {
     expect(equipShopItemMock).toHaveBeenCalledWith({
       playerId: 1,
       shopItemId: 2,
+      categoryId: null,
     })
     expect(res.status).toHaveBeenCalledWith(200)
     expect(res.json).toHaveBeenCalledWith({ equipped })

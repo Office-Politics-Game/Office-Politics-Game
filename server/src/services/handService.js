@@ -5,10 +5,20 @@ function attachCardOwner(card, playerId) {
     return card
   }
 
+  const numericPlayerId = Number(playerId)
+
+  if (!Number.isInteger(numericPlayerId) || numericPlayerId <= 0) {
+    return { ...card }
+  }
+
   return {
     ...card,
-    ownerPlayerId: Number(playerId),
+    ownerPlayerId: numericPlayerId,
   }
+}
+
+function getPlayerId(player) {
+  return player?.playerId ?? player?.id ?? null
 }
 
 function dealCards(deck, players, cardsPerPlayer) {
@@ -25,7 +35,7 @@ function dealCards(deck, players, cardsPerPlayer) {
       }
 
       players[playerIndex].hand.push(
-        attachCardOwner(card, players[playerIndex].playerId),
+        attachCardOwner(card, getPlayerId(players[playerIndex])),
       )
     }
   }
@@ -43,7 +53,7 @@ function addHandCard(player, card) {
   }
 
   if (card) {
-    player.hand.push(attachCardOwner(card, player.playerId))
+    player.hand.push(attachCardOwner(card, getPlayerId(player)))
   }
 
   return player
