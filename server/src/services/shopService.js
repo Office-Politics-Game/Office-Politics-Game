@@ -260,6 +260,7 @@ async function purchaseShopItem({ playerId, shopItemId, quantity = 1 }) {
 
     const effectiveCurrency = getEffectiveItemCurrency(item)
     const currencyColumn = getCurrencyColumn(effectiveCurrency)
+    const isGachaTicketPurchase = item.type === "gacha_ticket"
     const totalPrice = item.price * numericQuantity
     const playerResult = await client.query(
       `SELECT id, ${currencyColumn}
@@ -279,14 +280,24 @@ async function purchaseShopItem({ playerId, shopItemId, quantity = 1 }) {
       throw createServiceError("餘額不足")
     }
 
-    const updatedPlayerResult = await client.query(
-      `UPDATE players
-       SET ${currencyColumn} = ${currencyColumn} - $1,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $2
-       RETURNING id, coins, gems, tickets, ${currencyColumn} AS balance_after`,
-      [totalPrice, numericPlayerId]
-    )
+    const updatedPlayerResult = isGachaTicketPurchase
+      ? await client.query(
+          `UPDATE players
+           SET ${currencyColumn} = ${currencyColumn} - $1,
+               tickets = tickets + $2,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = $3
+           RETURNING id, coins, gems, tickets, ${currencyColumn} AS balance_after`,
+          [totalPrice, numericQuantity, numericPlayerId]
+        )
+      : await client.query(
+          `UPDATE players
+           SET ${currencyColumn} = ${currencyColumn} - $1,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = $2
+           RETURNING id, coins, gems, tickets, ${currencyColumn} AS balance_after`,
+          [totalPrice, numericPlayerId]
+        )
 
     if (item.stock !== null) {
       await client.query(
@@ -338,6 +349,22 @@ async function purchaseShopItem({ playerId, shopItemId, quantity = 1 }) {
         `購買商品：${item.name}`,
       ]
     )
+
+    if (isGachaTicketPurchase) {
+      await client.query(
+        `INSERT INTO player_currency_logs
+         (player_id, currency, amount, balance_after, type, description)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          numericPlayerId,
+          "ticket",
+          numericQuantity,
+          updatedPlayerResult.rows[0].tickets,
+          "shop_purchase",
+          `購買商城招募券：${item.name}`,
+        ]
+      )
+    }
 
     await client.query("COMMIT")
 
