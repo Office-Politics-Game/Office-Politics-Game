@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { onBeforeUnmount, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { useRouter } from "vue-router";
 import matchIcon from "@/assets/images/icon-match.png";
@@ -8,6 +8,7 @@ import createIcon from "@/assets/images/icon-create.png";
 import waitingRoomOne from "@/assets/images/waiting-room-1.webp";
 import waitingRoomTwo from "@/assets/images/waiting-room-2.webp";
 import waitingRoomThree from "@/assets/images/waiting-room-3.webp";
+import { createGuestNickname } from "@/constants/guestOptions.js";
 import { useCurrentPlayerId } from "@/composables/useCurrentPlayerId.js";
 import { usePreGameAudio } from "@/composables/UsePreGameAudio";
 import { useRoomStore } from "@/stores/roomStore.js";
@@ -15,7 +16,7 @@ import { useRoomStore } from "@/stores/roomStore.js";
 const roomActions = [
   {
     title: "教學模式",
-    description: ["熟悉玩法流程", "開始教學"],
+    description: ["與電腦玩家對戰", "熟悉遊戲操作"],
     icon: matchIcon,
     paper: waitingRoomOne,
     alt: "教學模式圖示",
@@ -43,7 +44,11 @@ const { playPreGameSound } = usePreGameAudio();
 
 const roomId = ref("");
 const activeAction = ref("");
+const isTutorialStarting = ref(false);
+let tutorialStartLocked = false;
+let errorNoticeTimerId = null;
 const { isLoading, errorMessage } = storeToRefs(roomStore);
+const ERROR_NOTICE_DURATION = 3000;
 
 function playRoomActionClick() {
   playPreGameSound("login-button-click");
@@ -53,9 +58,48 @@ function handleRoomIdInput() {
   roomStore.clearError();
 }
 
+function createTutorialComputerName() {
+  const nickname = createGuestNickname()?.trim();
+
+  if (nickname) {
+    return nickname;
+  }
+
+  return `訪客${Date.now().toString().slice(-4)}`;
+}
+
+function clearErrorNoticeTimer() {
+  if (!errorNoticeTimerId) {
+    return;
+  }
+
+  window.clearTimeout(errorNoticeTimerId);
+  errorNoticeTimerId = null;
+}
+
+watch(
+  errorMessage,
+  (message) => {
+    clearErrorNoticeTimer();
+
+    if (!message) {
+      return;
+    }
+
+    errorNoticeTimerId = window.setTimeout(() => {
+      if (errorMessage.value === message) {
+        roomStore.errorMessage = "";
+      }
+
+      errorNoticeTimerId = null;
+    }, ERROR_NOTICE_DURATION);
+  },
+  { immediate: true },
+);
+
 async function handleCreateRoom() {
   if (!currentPlayerId.value) {
-    roomStore.errorMessage = "請先登入或建立訪客玩家";
+    roomStore.errorMessage = "請先登入或建立訪客玩家。";
     return;
   }
 
@@ -73,17 +117,68 @@ async function handleCreateRoom() {
   }
 }
 
+async function handleTutorialMode() {
+  if (tutorialStartLocked) {
+    return;
+  }
+
+  if (!currentPlayerId.value) {
+    roomStore.errorMessage = "請先登入或建立訪客玩家。";
+    return;
+  }
+
+  tutorialStartLocked = true;
+  isTutorialStarting.value = true;
+
+  try {
+    await roomStore.createRoom({
+      hostPlayerId: currentPlayerId.value,
+    });
+
+    const tutorialRoomCode = roomStore.roomCode;
+    if (!tutorialRoomCode) {
+      roomStore.errorMessage = "無法建立教學房間，請稍後再試。";
+      return;
+    }
+
+    for (let index = 0; index < 3; index += 1) {
+      await roomStore.addComputerPlayer(tutorialRoomCode, {
+        hostPlayerId: currentPlayerId.value,
+        username: createTutorialComputerName(),
+      });
+    }
+
+    await roomStore.startRoom(tutorialRoomCode, {
+      playerId: currentPlayerId.value,
+    });
+
+    await router.push({
+      name: "Loading",
+      query: {
+        roomCode: tutorialRoomCode,
+        playerId: String(currentPlayerId.value),
+        tutorial: "1",
+      },
+    });
+  } catch {
+    return;
+  } finally {
+    tutorialStartLocked = false;
+    isTutorialStarting.value = false;
+  }
+}
+
 async function handleJoinRoom() {
   playRoomActionClick();
   const normalizedRoomId = roomId.value.trim().toUpperCase();
 
   if (!normalizedRoomId) {
-    roomStore.errorMessage = "請先輸入房號";
+    roomStore.errorMessage = "請先輸入房號。";
     return;
   }
 
   if (!currentPlayerId.value) {
-    roomStore.errorMessage = "請先登入或建立訪客玩家";
+    roomStore.errorMessage = "請先登入或建立訪客玩家。";
     return;
   }
 
@@ -102,11 +197,15 @@ async function handleJoinRoom() {
 }
 
 async function handleActionClick(action) {
+  if (isLoading.value || isTutorialStarting.value) {
+    return;
+  }
+
   playRoomActionClick();
   activeAction.value = action.title;
 
   if (action.title === "教學模式") {
-    roomStore.clearError();
+    await handleTutorialMode();
     return;
   }
 
@@ -114,6 +213,10 @@ async function handleActionClick(action) {
     await handleCreateRoom();
   }
 }
+
+onBeforeUnmount(() => {
+  clearErrorNoticeTimer();
+});
 </script>
 
 <template>
@@ -128,7 +231,9 @@ async function handleActionClick(action) {
       :class="{
         'is-join-expanded':
           action.title === '加入房間' && activeAction === '加入房間',
+        'is-action-disabled': isLoading || isTutorialStarting,
       }"
+      :aria-disabled="isLoading || isTutorialStarting"
       @click="handleActionClick(action)"
     >
       <img
@@ -141,8 +246,9 @@ async function handleActionClick(action) {
       <div
         class="waiting-room-button absolute border-0 bg-transparent p-0 text-center"
         role="button"
-        tabindex="0"
+        :tabindex="isLoading || isTutorialStarting ? -1 : 0"
         :aria-label="action.title"
+        :aria-disabled="isLoading || isTutorialStarting"
         @keydown.enter.self.prevent="handleActionClick(action)"
         @keydown.space.self.prevent="handleActionClick(action)"
       >
@@ -178,10 +284,14 @@ async function handleActionClick(action) {
           </span>
 
           <span
-            v-if="action.title === '教學模式' && activeAction === '教學模式'"
-            class="match-timer-inline text-xs lg:text-sm mt-2"
+            v-if="
+              action.title === '教學模式' &&
+              activeAction === '教學模式' &&
+              isTutorialStarting
+            "
+            class="room-action-status text-xs lg:text-sm mt-2"
           >
-            準備中...
+            教學準備中
           </span>
 
           <span
@@ -205,27 +315,55 @@ async function handleActionClick(action) {
               :disabled="isLoading"
               @click.stop="handleJoinRoom"
             >
-              {{ isLoading ? "加入中..." : "確認" }}
+              {{ isLoading ? "加入中" : "確認" }}
             </button>
           </span>
 
           <span
             v-if="action.title === '建立房間' && isLoading && activeAction === '建立房間'"
-            class="match-timer-inline text-xs lg:text-sm mt-2"
+            class="room-action-status text-xs lg:text-sm mt-2"
           >
-            建立中...
+            建立中
           </span>
         </span>
       </div>
     </div>
 
-    <p v-if="errorMessage" class="waiting-room-error">
+    <p
+      v-if="errorMessage"
+      class="waiting-room-error pointer-events-auto"
+      role="alert"
+      aria-live="assertive"
+    >
       {{ errorMessage }}
     </p>
   </div>
 </template>
 
 <style scoped>
+.waiting-room-error {
+  position: absolute;
+  top: clamp(8px, 2.5%, 16px);
+  left: 50%;
+  z-index: 20;
+  width: max-content;
+  max-width: min(520px, calc(100% - 32px));
+  margin: 0;
+  transform: translateX(-50%);
+  border: 1px solid rgba(197, 31, 40, 0.34);
+  border-radius: var(--radius-md, 0);
+  background: rgba(255, 255, 255, 0.94);
+  padding: 8px 14px;
+  color: #a71922;
+  font-size: clamp(11px, 1.4vw, 14px);
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
+  overflow-wrap: anywhere;
+  box-shadow: 0 10px 24px rgba(0, 19, 50, 0.2);
+  backdrop-filter: blur(8px);
+}
+
 .waiting-room-item {
   --hover-y: 0px;
   --room-line-color: #c51f28;
@@ -237,6 +375,10 @@ async function handleActionClick(action) {
   transition:
     transform 180ms ease,
     filter 180ms ease;
+}
+
+.waiting-room-item.is-action-disabled {
+  pointer-events: none;
 }
 
 .waiting-room-item:nth-child(2) {
@@ -285,7 +427,7 @@ async function handleActionClick(action) {
   justify-content: flex-start;
 }
 
-.match-timer-inline {
+.room-action-status {
   color: var(--brand-active, #465563);
   font-weight: 800;
   line-height: 1;
@@ -328,24 +470,6 @@ async function handleActionClick(action) {
   color: var(--brand-hover, #0046f4);
 }
 
-.waiting-room-error {
-  position: absolute;
-  bottom: 66px;
-  left: 50%;
-  z-index: 20;
-  min-width: 114px;
-  transform: translateX(-50%);
-  border: 1px solid var(--brand-primary, #86b3e0);
-  background: rgba(255, 255, 255, 0.9);
-  padding: 8px 4px;
-  color: #c51f28;
-  font-size: var(--text-sm);
-  font-weight: 900;
-  line-height: 1.2;
-  text-align: center;
-  pointer-events: none;
-}
-
 .join-room-inline-input::placeholder {
   color: var(--brand-disabled, #a0a6b3);
 }
@@ -356,22 +480,13 @@ async function handleActionClick(action) {
   box-shadow: 0 0 0 3px var(--brand-focus, rgba(0, 70, 244, 0.24));
 }
 
-@media (min-width: 1024px) {
+@media (max-height: 560px) and (orientation: landscape) {
   .waiting-room-error {
-    bottom: 68px;
-    min-width: 114px;
-    padding: 6px 10px;
-    font-size: var(--text-sm);
-    line-height: 1.2;
-  }
-}
-
-@media (orientation: landscape) and (max-width: 1023px) and (max-height: 640px) {
-  .waiting-room-error {
-    bottom: 40px;
-    min-width: 82px;
-    padding: 4px 4px;
+    top: 6px;
+    max-width: calc(100% - 24px);
+    padding: 5px 10px;
     font-size: 11px;
+    line-height: 1.2;
   }
 }
 </style>

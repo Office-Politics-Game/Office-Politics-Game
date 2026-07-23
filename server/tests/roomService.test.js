@@ -12,7 +12,9 @@ jest.unstable_mockModule("../src/db/index.js", () => ({
   },
 }))
 
-const { getRoomState, kickPlayer, leaveRoom } = await import("../src/services/roomService.js")
+const { addComputerPlayer, getRoomState, kickPlayer, leaveRoom } = await import(
+  "../src/services/roomService.js"
+)
 
 const room = {
   id: 10,
@@ -228,6 +230,67 @@ describe("roomService kickPlayer", () => {
     expect(clientQueryMock).toHaveBeenCalledWith("ROLLBACK")
     expect(clientQueryMock).not.toHaveBeenCalledWith("COMMIT")
     expect(releaseMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("roomService addComputerPlayer", () => {
+  test("電腦暱稱重複時不會中止交易並能以新名稱重試", async () => {
+    clientQueryMock
+      .mockResolvedValueOnce({ rows: [] }) // BEGIN
+      .mockResolvedValueOnce({ rows: [room] })
+      .mockResolvedValueOnce({ rows: [members[0]] })
+      .mockResolvedValueOnce({ rows: [] }) // username conflict
+      .mockResolvedValueOnce({
+        rows: [{ id: 20, username: "CPU-abcd", avatar_id: 1 }],
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] }) // COMMIT
+
+    queryMock
+      .mockResolvedValueOnce({ rows: [room] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            player_id: 1,
+            username: "Host",
+            avatar_id: 1,
+            role: "host",
+            seat_order: 1,
+            is_ready: true,
+            is_alive: true,
+            is_computer: false,
+          },
+          {
+            player_id: 20,
+            username: "CPU-abcd",
+            avatar_id: 1,
+            role: "computer",
+            seat_order: 2,
+            is_ready: true,
+            is_alive: true,
+            is_computer: true,
+          },
+        ],
+      })
+
+    const result = await addComputerPlayer({
+      roomCode: "ROOM01",
+      hostPlayerId: 1,
+      username: "CPU",
+    })
+
+    const playerInsertCalls = clientQueryMock.mock.calls.filter(([sql]) =>
+      String(sql).includes("INSERT INTO players"),
+    )
+
+    expect(playerInsertCalls).toHaveLength(2)
+    expect(playerInsertCalls[0][0]).toContain("ON CONFLICT DO NOTHING")
+    expect(clientQueryMock).toHaveBeenCalledWith("COMMIT")
+    expect(result.players.at(-1)).toMatchObject({
+      playerId: 20,
+      username: "CPU-abcd",
+      isComputer: true,
+    })
   })
 })
 
