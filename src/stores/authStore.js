@@ -3,6 +3,7 @@ import {
   register as registerApi,
   login as loginApi,
   verifyToken as verifyTokenApi,
+  getSession as getSessionApi,
   logout as logoutApi,
   forgotPassword as forgotPasswordApi,
   resetPassword as resetPasswordApi,
@@ -12,10 +13,7 @@ import {
 } from "../services/authApi.js"
 import { hydratePlayerAppearanceBundle } from "@/services/playerAppearanceService.js"
 import { useAppearanceStore } from "@/stores/appearanceStore.js"
-
-function getErrorMessage(error, fallbackMessage) {
-  return error?.data?.message || error?.message || fallbackMessage
-}
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js"
 
 function resetAuthState(store) {
   store.currentPlayer = null
@@ -40,7 +38,7 @@ export const useAuthStore = defineStore("auth", {
       try {
         return await registerApi(payload)
       } catch(error){
-        this.errorMessage = getErrorMessage(error, "註冊失敗")
+        this.errorMessage = getDisplayErrorMessage(error, "註冊失敗")
         throw error
       } finally{
         this.isLoading = false
@@ -69,7 +67,7 @@ export const useAuthStore = defineStore("auth", {
         return data
       } catch (error) {
         resetAuthState(this)
-        this.errorMessage = getErrorMessage(error, "登入失敗")
+        this.errorMessage = getDisplayErrorMessage(error, "登入失敗")
         appearanceStore.resetAppearance()
         throw error
       } finally {
@@ -84,7 +82,7 @@ export const useAuthStore = defineStore("auth", {
       try {
         await startOAuthLoginApi(provider)
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "第三方登入失敗")
+        this.errorMessage = getDisplayErrorMessage(error, "第三方登入失敗")
         throw error
       } finally {
         this.isLoading = false
@@ -114,7 +112,7 @@ export const useAuthStore = defineStore("auth", {
       } catch (error) {
         resetAuthState(this)
         appearanceStore.resetAppearance()
-        this.errorMessage = getErrorMessage(error, "第三方登入失敗")
+        this.errorMessage = getDisplayErrorMessage(error, "第三方登入失敗")
         throw error
       } finally {
         this.isLoading = false
@@ -128,7 +126,7 @@ export const useAuthStore = defineStore("auth", {
       try {
         return await forgotPasswordApi(payload)
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "重設密碼信寄送失敗")
+        this.errorMessage = getDisplayErrorMessage(error, "重設密碼信寄送失敗")
         throw error
       } finally {
         this.isLoading = false
@@ -142,7 +140,7 @@ export const useAuthStore = defineStore("auth", {
       try {
         return await resetPasswordApi(payload)
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "密碼重設失敗")
+        this.errorMessage = getDisplayErrorMessage(error, "密碼重設失敗")
         throw error
       } finally {
         this.isLoading = false
@@ -160,8 +158,48 @@ export const useAuthStore = defineStore("auth", {
         appearanceStore.resetAppearance()
         return data
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "修改密碼失敗")
+        this.errorMessage = getDisplayErrorMessage(error, "修改密碼失敗")
         throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async checkSession() {
+      const appearanceStore = useAppearanceStore()
+
+      if (this.hasVerifiedToken && this.isLoggedIn && this.currentPlayer) {
+        return true
+      }
+
+      this.isLoading = true
+      this.errorMessage = ""
+
+      try {
+        const data = await getSessionApi()
+
+        if (!data?.authenticated || !data?.player) {
+          resetAuthState(this)
+          appearanceStore.resetAppearance()
+          return false
+        }
+
+        const { player: hydratedPlayer, appearance } = await hydratePlayerAppearanceBundle(data.player)
+
+        this.currentPlayer = hydratedPlayer
+        this.isLoggedIn = Boolean(hydratedPlayer)
+        this.hasVerifiedToken = Boolean(hydratedPlayer)
+
+        appearanceStore.applyAppearance({
+          ...appearance,
+          playerId: hydratedPlayer?.id ?? null
+        })
+
+        return Boolean(hydratedPlayer)
+      } catch {
+        resetAuthState(this)
+        appearanceStore.resetAppearance()
+        return false
       } finally {
         this.isLoading = false
       }
@@ -203,7 +241,7 @@ export const useAuthStore = defineStore("auth", {
         appearanceStore.resetAppearance()
 
         if (showError) {
-          this.errorMessage = getErrorMessage(error, "登入驗證失敗")
+          this.errorMessage = getDisplayErrorMessage(error, "登入驗證失敗")
         }
 
         return false
@@ -222,7 +260,7 @@ export const useAuthStore = defineStore("auth", {
         appearanceStore.resetAppearance()
         return true
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "登出失敗")
+        this.errorMessage = getDisplayErrorMessage(error, "登出失敗")
         return false
       }
     },

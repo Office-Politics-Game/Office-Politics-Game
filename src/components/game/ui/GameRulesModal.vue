@@ -232,7 +232,10 @@ defineExpose({
 
         <div
           v-if="activeRulesPage === 1"
-          class="rules-content grid min-h-0 grid-rows-3 gap-3 overflow-hidden p-3 lg:gap-4 lg:p-4"
+          class="rules-content rules-overview-scroll grid min-h-0 gap-3 overflow-y-auto p-3 focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_5px_var(--brand-focus)] lg:gap-4 lg:p-4"
+          role="region"
+          aria-label="遊戲規則內容"
+          tabindex="0"
         >
           <section
             v-for="section in ruleSections"
@@ -334,7 +337,10 @@ defineExpose({
             </h3>
           </div>
           <div
-            class="min-h-0 overflow-hidden border border-[rgba(134,179,224,0.36)] bg-white/60 text-[var(--brand-navy)] shadow-[inset_0_1px_0_rgba(255,255,255,0.86)]"
+            class="rules-card-table-scroll min-h-0 overflow-y-auto border border-[rgba(134,179,224,0.36)] bg-white/60 text-[var(--brand-navy)] shadow-[inset_0_1px_0_rgba(255,255,255,0.86)] focus-visible:outline-none focus-visible:shadow-[0_0_0_5px_var(--brand-focus)]"
+            role="region"
+            aria-label="卡牌資訊表格"
+            tabindex="0"
           >
             <table class="rules-card-table">
               <thead>
@@ -393,6 +399,18 @@ defineExpose({
   scrollbar-width: thin;
 }
 
+.rules-overview-scroll,
+.rules-card-table-scroll {
+  overscroll-behavior: contain;
+  scrollbar-color: rgba(70, 85, 99, 0.58) rgba(134, 179, 224, 0.14);
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rules-overview-scroll {
+  grid-template-rows: repeat(3, minmax(max-content, 1fr));
+}
+
 .rules-page-button {
   width: 44px;
   height: 24px;
@@ -400,7 +418,7 @@ defineExpose({
   background: rgba(255, 255, 255, 0.48);
   color: var(--brand-navy);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
   transition:
     transform 0.18s ease,
@@ -437,11 +455,12 @@ defineExpose({
 
 .rules-card-table {
   width: 100%;
-  height: 100%;
+  height: auto;
+  min-height: 100%;
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.4;
 }
 
@@ -453,7 +472,12 @@ defineExpose({
 }
 
 .rules-card-table th {
-  background: rgba(134, 179, 224, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background:
+    linear-gradient(rgba(134, 179, 224, 0.2), rgba(134, 179, 224, 0.2)),
+    white;
   color: var(--brand-active);
   text-align: left;
   font-size: 10px;

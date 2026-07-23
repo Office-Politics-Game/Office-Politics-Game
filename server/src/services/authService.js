@@ -571,7 +571,7 @@ async function logoutPlayer(token) {
 
 async function verifyToken(token) {
     if (!token) {
-        throw createAuthError(401, "缺少登入驗證token")
+        throw createAuthError(401, "登入驗證資料缺失")
     }
 
     const { data, error } = await supabaseAdmin.auth.getUser(token)

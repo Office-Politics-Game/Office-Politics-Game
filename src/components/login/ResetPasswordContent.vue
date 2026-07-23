@@ -332,7 +332,7 @@ onBeforeUnmount(() => {
 
 .login-error {
   margin-top: 6px;
-  color: var(--brand-hover);
+  color: var(--feedback-error);
   font-size: var(--text-sm);
   font-weight: 700;
 }
@@ -365,7 +365,7 @@ onBeforeUnmount(() => {
 .auth-alert.is-error {
   border-color: #EF4444;
   background: #FEE2E2;
-  color: #991B1B;
+  color: var(--feedback-error);
   animation: auth-alert-in 220ms ease-out both, auth-alert-shake 260ms ease-out 80ms both;
 }
 

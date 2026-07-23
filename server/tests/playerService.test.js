@@ -21,7 +21,7 @@ describe("createGuest", ()=>{
     await expect(
       createGuest({ username: "jay", avatarId: 1 })
     ).rejects.toMatchObject({
-      message: "暱稱已被使用，請換一個暱稱",
+      message: "暱稱已被使用",
       statusCode: 409,
     })
   })
@@ -71,7 +71,7 @@ describe("searchPlayers", ()=>{
     await expect(
       searchPlayers({ keyword: " ", viewerPlayerId: 1 })
     ).rejects.toMatchObject({
-      message: "請輸入玩家暱稱或玩家ID",
+      message: "請輸入搜尋關鍵字",
       statusCode: 400,
     })
 

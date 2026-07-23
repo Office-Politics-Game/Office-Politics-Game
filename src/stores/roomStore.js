@@ -11,6 +11,7 @@ import {
   startRoom as startRoomRequest,
 } from "@/services/roomApi.js";
 import { connectSocket, emitWithAck } from "@/services/socketClient.js";
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js";
 
 const ROOM_CODE_STORAGE_KEY = "activeRoomCode";
 const MAX_ROOM_PLAYERS = 4;
@@ -111,10 +112,6 @@ function bindRoomSocketListeners(store) {
   socket.on("room:dissolved", handleSocketRoomDissolved);
   socket.on("player:title-updated", handleSocketPlayerTitleUpdated);
   socket.on("connect", handleSocketConnect);
-}
-
-function getErrorMessage(error, fallbackMessage) {
-  return error?.data?.message || error?.message || fallbackMessage;
 }
 
 function getStoredRoomCode() {
@@ -251,7 +248,7 @@ export const useRoomStore = defineStore("room", {
         this.applyRoomState(roomState);
         return roomState;
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "取得房間狀態失敗。");
+        this.errorMessage = getDisplayErrorMessage(error, "取得房間狀態失敗");
         throw error;
       }
     },
@@ -278,7 +275,7 @@ export const useRoomStore = defineStore("room", {
 
         return response;
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "建立房間失敗。");
+        this.errorMessage = getDisplayErrorMessage(error, "建立房間失敗");
         throw error;
       } finally {
         this.isLoading = false;
@@ -324,7 +321,7 @@ export const useRoomStore = defineStore("room", {
         }).catch(() => null);
         return response;
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "加入房間失敗。");
+        this.errorMessage = getDisplayErrorMessage(error, "加入房間失敗");
         throw error;
       } finally {
         this.isLoading = false;
@@ -351,7 +348,7 @@ export const useRoomStore = defineStore("room", {
         }
         return response;
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "更新房間狀態失敗。");
+        this.errorMessage = getDisplayErrorMessage(error, "更新房間狀態失敗");
         throw error;
       } finally {
         this.isLoading = false;
@@ -378,7 +375,7 @@ export const useRoomStore = defineStore("room", {
         }
         return response;
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "Add computer player failed");
+        this.errorMessage = getDisplayErrorMessage(error, "加入電腦玩家失敗");
         throw error;
       } finally {
         this.isLoading = false;
@@ -417,7 +414,7 @@ export const useRoomStore = defineStore("room", {
         }
         return response;
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "移出玩家失敗");
+        this.errorMessage = getDisplayErrorMessage(error, "移出玩家失敗");
         throw error;
       } finally {
         this.isLoading = false;
@@ -437,7 +434,7 @@ export const useRoomStore = defineStore("room", {
         this.resetRoom();
         return result;
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "離開房間失敗");
+        this.errorMessage = getDisplayErrorMessage(error, "離開房間失敗");
         throw error;
       } finally {
         this.isLoading = false;
@@ -468,7 +465,7 @@ export const useRoomStore = defineStore("room", {
         );
         return response;
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "開始遊戲失敗。");
+        this.errorMessage = getDisplayErrorMessage(error, "開始遊戲失敗");
         throw error;
       } finally {
         this.isLoading = false;

@@ -1,4 +1,5 @@
 import { computed, nextTick, ref } from 'vue'
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js"
 
 const LOADING_PROGRESS_TRANSITION_MS = 240
 
@@ -73,7 +74,7 @@ export function useGameRoomState({
 
   async function refreshRoomState({ onProgress } = {}) {
     if (!normalizedRoomCode.value || !requestedPlayerId.value) {
-      throw new Error('Missing roomCode or playerId')
+      throw new Error('缺少房間代碼或玩家資料')
     }
 
     if (typeof beforeRefresh === 'function') {
@@ -96,13 +97,13 @@ export function useGameRoomState({
     const nextGameState = data?.state ?? data?.gameState ?? null
 
     if (!nextGameState) {
-      throw new Error('Game state response did not include state')
+      throw new Error('遊戲狀態回應缺少狀態資料')
     }
 
     const nextPlayers = Array.isArray(nextGameState.players) ? nextGameState.players : []
 
     if (nextPlayers.length !== 4) {
-      throw new Error('Game state must contain exactly four players')
+      throw new Error('遊戲狀態必須包含四位玩家')
     }
 
     applyGameStatePayload(data)
@@ -126,8 +127,7 @@ export function useGameRoomState({
       })
       hasLoadedInitialState.value = true
     } catch (error) {
-      initialLoadError.value =
-        error instanceof Error ? error.message : 'Failed to load game state'
+      initialLoadError.value = getDisplayErrorMessage(error, '載入遊戲狀態失敗')
       console.warn('[game] fetch initial room state failed', error)
     }
   }

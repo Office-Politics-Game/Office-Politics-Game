@@ -258,11 +258,12 @@ describe("chatController", () => {
       "utf8",
     )
 
+    expect(source).toMatch(/router\.use\(requireMemberAuth\)/)
     expect(source).toMatch(
-      /router\.get\("\/direct\/:friendId\/messages", requireAuth, handleGetDirectMessages\)/,
+      /router\.get\("\/direct\/:friendId\/messages", handleGetDirectMessages\)/,
     )
     expect(source).toMatch(
-      /router\.post\("\/direct\/:friendId\/messages", requireAuth, handleSendDirectMessage\)/,
+      /router\.post\("\/direct\/:friendId\/messages", handleSendDirectMessage\)/,
     )
   })
 })

@@ -14,6 +14,9 @@ const equipColumnMap = {
   board_skin: "board_skin_item_id",
 }
 
+const GACHA_TICKET_UNIT_PRICE = 100
+const MAX_GACHA_TICKET_PURCHASE_QUANTITY = 999
+
 function getEquipColumnByCategory(categoryId) {
   return equipColumnMap[categoryId] || null
 }
@@ -38,20 +41,39 @@ function getCurrencyColumn(currency) {
   const column = currencyColumnMap[currency]
 
   if (!column) {
-    throw createServiceError("不支援的通貨類型")
+    throw createServiceError("貨幣類型有誤")
   }
 
   return column
 }
 
+function getEffectiveItemCurrency(item) {
+  if (item?.type === "gacha_ticket") {
+    return "diamond"
+  }
+
+  return item?.currency
+}
+
+function getEffectiveItemPrice(item) {
+  if (item?.type === "gacha_ticket") {
+    return GACHA_TICKET_UNIT_PRICE
+  }
+
+  return Number(item?.price)
+}
+
 function mapShopItem(row) {
+  const effectiveCurrency = getEffectiveItemCurrency(row)
+  const effectivePrice = getEffectiveItemPrice(row)
+
   return {
     id: row.id,
     name: row.name,
     description: row.description,
     type: row.type,
-    price: row.price,
-    currency: row.currency,
+    price: effectivePrice,
+    currency: effectiveCurrency,
     imageUrl: row.image_url,
     isActive: row.is_active,
     startAt: row.start_at,
@@ -135,7 +157,7 @@ async function validateOwnedCardSkinItems(client, playerId, itemIds = []) {
   const missingItemId = itemIds.find((itemId) => !ownedItemIdSet.has(Number(itemId)))
 
   if (missingItemId) {
-    throw createServiceError("Player does not own the selected card skin", 404)
+    throw createServiceError("尚未擁有此卡面", 404)
   }
 }
 
@@ -248,8 +270,21 @@ async function purchaseShopItem({ playerId, shopItemId, quantity = 1 }) {
       throw createServiceError("已達商品購買上限")
     }
 
-    const currencyColumn = getCurrencyColumn(item.currency)
-    const totalPrice = item.price * numericQuantity
+    const effectiveCurrency = getEffectiveItemCurrency(item)
+    const currencyColumn = getCurrencyColumn(effectiveCurrency)
+    const isGachaTicketPurchase = item.type === "gacha_ticket"
+
+    if (
+      isGachaTicketPurchase &&
+      numericQuantity > MAX_GACHA_TICKET_PURCHASE_QUANTITY
+    ) {
+      throw createServiceError(
+        `單次最多購買 ${MAX_GACHA_TICKET_PURCHASE_QUANTITY} 張抽獎券`
+      )
+    }
+
+    const unitPrice = getEffectiveItemPrice(item)
+    const totalPrice = unitPrice * numericQuantity
     const playerResult = await client.query(
       `SELECT id, ${currencyColumn}
        FROM players
@@ -268,14 +303,24 @@ async function purchaseShopItem({ playerId, shopItemId, quantity = 1 }) {
       throw createServiceError("餘額不足")
     }
 
-    const updatedPlayerResult = await client.query(
-      `UPDATE players
-       SET ${currencyColumn} = ${currencyColumn} - $1,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $2
-       RETURNING id, coins, gems, tickets, ${currencyColumn} AS balance_after`,
-      [totalPrice, numericPlayerId]
-    )
+    const updatedPlayerResult = isGachaTicketPurchase
+      ? await client.query(
+          `UPDATE players
+           SET ${currencyColumn} = ${currencyColumn} - $1,
+               tickets = tickets + $2,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = $3
+           RETURNING id, coins, gems, tickets, ${currencyColumn} AS balance_after`,
+          [totalPrice, numericQuantity, numericPlayerId]
+        )
+      : await client.query(
+          `UPDATE players
+           SET ${currencyColumn} = ${currencyColumn} - $1,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = $2
+           RETURNING id, coins, gems, tickets, ${currencyColumn} AS balance_after`,
+          [totalPrice, numericPlayerId]
+        )
 
     if (item.stock !== null) {
       await client.query(
@@ -306,9 +351,9 @@ async function purchaseShopItem({ playerId, shopItemId, quantity = 1 }) {
         numericPlayerId,
         numericShopItemId,
         numericQuantity,
-        item.price,
+        unitPrice,
         totalPrice,
-        item.currency,
+        effectiveCurrency,
       ]
     )
 
@@ -320,13 +365,29 @@ async function purchaseShopItem({ playerId, shopItemId, quantity = 1 }) {
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         numericPlayerId,
-        item.currency,
+        effectiveCurrency,
         -totalPrice,
         balanceAfter,
         "shop_purchase",
         `購買商品：${item.name}`,
       ]
     )
+
+    if (isGachaTicketPurchase) {
+      await client.query(
+        `INSERT INTO player_currency_logs
+         (player_id, currency, amount, balance_after, type, description)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          numericPlayerId,
+          "ticket",
+          numericQuantity,
+          updatedPlayerResult.rows[0].tickets,
+          "shop_purchase",
+          `購買商城招募券：${item.name}`,
+        ]
+      )
+    }
 
     await client.query("COMMIT")
 
@@ -336,7 +397,7 @@ async function purchaseShopItem({ playerId, shopItemId, quantity = 1 }) {
       purchaseLog: mapPurchaseLog(purchaseLogResult.rows[0]),
       currency: {
         playerId: updatedPlayerResult.rows[0].id,
-        currency: item.currency,
+        currency: effectiveCurrency,
         amount: -totalPrice,
         balanceAfter,
         coins: updatedPlayerResult.rows[0].coins,
@@ -533,7 +594,7 @@ async function unequipShopItem({ playerId, categoryId }) {
   const equipColumn = getEquipColumnByCategory(categoryId)
 
   if (!equipColumn) {
-    throw createServiceError("此類型不支援卸下")
+    throw createServiceError("此項目無法取消套用")
   }
 
   const client = await pool.connect()

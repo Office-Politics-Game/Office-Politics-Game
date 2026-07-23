@@ -12,7 +12,7 @@
       </button>
     </header>
     <p v-if="isLoading" class="match-panel__state">載入中...</p>
-    <p v-else-if="errorMessage" class="match-panel__state">
+    <p v-else-if="errorMessage" class="match-panel__state is-error">
       {{ errorMessage }}
     </p>
     <p v-else-if="matches.length === 0" class="match-panel__state">
@@ -234,6 +234,10 @@ function getScorelineText(match) {
   font-size: var(--text-lg);
   font-weight: 800;
   text-align: center;
+}
+
+.match-panel__state.is-error {
+  color: var(--feedback-error);
 }
 
 .match-panel__list {

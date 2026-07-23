@@ -1,9 +1,6 @@
 import { defineStore } from "pinia"
 import { getPlayerAchievements } from "@/services/achievementApi.js"
-
-function getErrorMessage(error, fallbackMessage) {
-  return error?.data?.message || error?.message || fallbackMessage
-}
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js"
 
 export const useAchievementStore = defineStore("achievement", {
   state: () => ({
@@ -25,7 +22,7 @@ export const useAchievementStore = defineStore("achievement", {
 
         return data
       } catch (error) {
-        this.errorMessage = getErrorMessage(error, "取得成就失敗")
+        this.errorMessage = getDisplayErrorMessage(error, "取得成就失敗")
         throw error
       } finally {
         this.isLoading = false

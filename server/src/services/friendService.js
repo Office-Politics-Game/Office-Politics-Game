@@ -178,7 +178,7 @@ async function blockPlayer({ playerId, targetPlayerId }){
       throw createServiceError("已封鎖此玩家", 409)
     }
 
-    throw createServiceError("此玩家已與你有封鎖關係", 403)
+    throw createServiceError("已存在封鎖關係", 403)
   }
 
   const result = existingFriendship

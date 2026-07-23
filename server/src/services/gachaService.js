@@ -53,11 +53,11 @@ async function getOwnedGachaCards({ playerId, poolId = "role_cards" }) {
   const numericPlayerId = Number(playerId)
 
   if (!Number.isInteger(numericPlayerId) || numericPlayerId <= 0) {
-    throw createServiceError("Invalid player ID")
+    throw createServiceError("玩家資料不正確")
   }
 
   if (typeof poolId !== "string" || poolId.trim() === "") {
-    throw createServiceError("Invalid pool ID")
+    throw createServiceError("抽卡池資料不正確")
   }
 
   const result = await pool.query(
@@ -94,7 +94,7 @@ async function drawGacha({ playerId, count = 1, poolId = "role_cards" }) {
   const client = await pool.connect()
 
   if (!Number.isInteger(numericPlayerId) || numericPlayerId <= 0) {
-    throw createServiceError("玩家 ID 不正確")
+    throw createServiceError("玩家ID不正確")
   }
 
   try {

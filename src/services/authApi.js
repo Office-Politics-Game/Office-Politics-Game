@@ -1,5 +1,6 @@
 import { apiClient } from "./apiClient.js"
 import { getOptionalSupabaseClient, getSupabaseClient } from "./supabaseClient.js"
+import { getDisplayErrorMessage } from "@/utils/errorMessages.js"
 
 const AUTH_API_PATH = "/auth"
 const OAUTH_PROVIDERS = new Set(["google", "discord"])
@@ -19,6 +20,10 @@ function login(payload) {
 
 function verifyToken() {
   return apiClient.get(`${AUTH_API_PATH}/verify`);
+}
+
+function getSession() {
+  return apiClient.get(`${AUTH_API_PATH}/session`);
 }
 
 async function logout() {
@@ -69,7 +74,7 @@ async function startOAuthLogin(provider) {
   })
 
   if (error) {
-    throw new Error(error.message || "無法啟動第三方登入")
+    throw new Error(getDisplayErrorMessage(error, "無法啟動第三方登入"))
   }
 }
 
@@ -85,7 +90,7 @@ async function resolvePasswordResetToken() {
     hashParams.get("error")
 
   if (callbackError) {
-    throw new Error(callbackError)
+    throw new Error(getDisplayErrorMessage(callbackError, "重設密碼連結驗證失敗"))
   }
 
   const queryToken = queryParams.get("access_token")
@@ -104,7 +109,7 @@ async function resolvePasswordResetToken() {
   const { data, error } = await supabase.auth.exchangeCodeForSession(authCode)
 
   if (error) {
-    throw new Error(error.message || "重設密碼連結驗證失敗")
+    throw new Error(getDisplayErrorMessage(error, "重設密碼連結驗證失敗"))
   }
 
   return data.session?.access_token || ""
@@ -121,7 +126,7 @@ async function completeOAuthLogin() {
     hashParams.get("error")
 
   if (callbackError) {
-    throw new Error(callbackError)
+    throw new Error(getDisplayErrorMessage(callbackError, "第三方登入驗證失敗"))
   }
 
   const authCode = queryParams.get("code")
@@ -131,7 +136,7 @@ async function completeOAuthLogin() {
     const { data, error } = await supabase.auth.exchangeCodeForSession(authCode)
 
     if (error) {
-      throw new Error(error.message || "第三方登入驗證失敗")
+      throw new Error(getDisplayErrorMessage(error, "第三方登入驗證失敗"))
     }
 
     session = data.session
@@ -141,7 +146,7 @@ async function completeOAuthLogin() {
     const { data, error } = await supabase.auth.getSession()
 
     if (error) {
-      throw new Error(error.message || "第三方登入狀態讀取失敗")
+      throw new Error(getDisplayErrorMessage(error, "第三方登入狀態讀取失敗"))
     }
 
     session = data.session
@@ -161,6 +166,7 @@ export {
   register,
   login,
   verifyToken,
+  getSession,
   logout,
   forgotPassword,
   resetPassword,

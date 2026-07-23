@@ -50,6 +50,7 @@ const {
 } = storeToRefs(appearanceStore)
 const gameStage = ref(null)
 const isSkippingComputerFinish = ref(false)
+const isTutorialMode = computed(() => String(route.query.tutorial ?? '') === '1')
 
 function getViewerCardSkinSource(cardKey = '') {
   const overrideUrl =
@@ -339,6 +340,7 @@ watch(
     :current-player-id="resolvedCurrentPlayerId"
     :current-turn-player-id="currentTurnPlayerId"
     :has-any-card-been-played="Boolean(gameState?.hasAnyCardBeenPlayed)"
+    :is-tutorial-mode="isTutorialMode"
     :is-loading="isLoading || isDrawing || isSocketActionSubmitting || isPlayingSocketAction"
     :is-skipping-computer-finish="isSkippingComputerFinish"
     @draw-request="handleDrawRequest"

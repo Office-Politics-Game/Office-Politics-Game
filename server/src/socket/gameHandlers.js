@@ -368,7 +368,7 @@ function registerGameHandlers(io, socket) {
             const { playerId, reason } = payload
 
             if (!["action-complete", "round-start"].includes(reason)) {
-                throw new Error("Invalid computer turn readiness reason")
+                throw new Error("電腦玩家回合狀態無效")
             }
 
             await getState({
@@ -488,7 +488,7 @@ function registerGameHandlers(io, socket) {
             })
 
             if (!canSimulateComputerFinish(currentState.state, playerId)) {
-                throw new Error("Only eliminated players in a one-human computer room can skip ahead")
+                throw new Error("只有已淘汰玩家可以跳過電腦回合")
             }
 
             const startRoundNumber = Number(currentState.state.roundNumber || 1)

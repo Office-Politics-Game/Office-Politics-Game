@@ -12,6 +12,7 @@
   --gray-300: #8c96a5;
   --gray-400: #6f7b8a;
   --gray-500: #465563;
+  --feedback-error: #b91c1c;
   --surface-glass: rgba(255, 255, 255, 0.3);
   --surface-glass-hover: rgba(255, 255, 255, 0.72);
   --surface-glass-active: rgba(70, 85, 99, 0.88);
@@ -180,5 +181,3 @@ button {
 .tap-pop {
   @apply transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98];
 }
-
-

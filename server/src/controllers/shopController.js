@@ -133,7 +133,7 @@ async function handleUpdateCardSkinLoadout(req, res) {
     return res.status(200).json({ equipped })
   } catch (error) {
     return res.status(getErrorStatus(error)).json({
-      message: error.statusCode ? error.message : "Update card skin loadout failed",
+      message: error.statusCode ? error.message : "更新卡面配置失敗",
       error: error.message,
     })
   }
@@ -149,7 +149,7 @@ async function handleUnequipShopItem(req, res) {
     return res.status(200).json({ equipped })
   } catch (error) {
     return res.status(getErrorStatus(error)).json({
-      message: error.statusCode ? error.message : "鋆???憭望?",
+      message: error.statusCode ? error.message : "取消套用失敗",
       error: error.message,
     })
   }
@@ -162,7 +162,7 @@ async function handleGetCloudinaryUploadConfig(req, res) {
     return res.status(200).json(config)
   } catch (error) {
     return res.status(getErrorStatus(error)).json({
-      message: error.statusCode ? error.message : "Get Cloudinary config failed",
+      message: error.statusCode ? error.message : "取得圖片上傳資料失敗，請稍後再試",
       error: error.message,
     })
   }
@@ -180,7 +180,7 @@ async function handleCreateCloudinaryUploadSignature(req, res) {
     return res.status(200).json(signedPayload)
   } catch (error) {
     return res.status(getErrorStatus(error)).json({
-      message: error.statusCode ? error.message : "Create Cloudinary signature failed",
+      message: error.statusCode ? error.message : "建立圖片上傳驗證失敗，請稍後再試",
       error: error.message,
     })
   }

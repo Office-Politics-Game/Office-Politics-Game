@@ -17,7 +17,7 @@ function createServiceError(message, statusCode = 400) {
 function getCurrencyColumn(currency) {
     const column = currencyColumnMap[currency]
     if (!column) {
-        throw createServiceError("不支援的通貨類型")
+        throw createServiceError("貨幣類型有誤")
     }
     return column
 }
@@ -87,7 +87,7 @@ async function addCurrency(playerId, currency, amount, type, description = null)
     const actualAmount = balanceAfter - balanceBefore
 
     if (actualAmount <= 0) {
-        throw createServiceError("Currency balance already reached max")
+        throw createServiceError("遊戲幣已達上限")
     }
 
     await pool.query(
