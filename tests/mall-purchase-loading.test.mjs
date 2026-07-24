@@ -5,15 +5,21 @@ import test from "node:test";
 const readSource = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("mall purchase buttons show progress and prevent duplicate purchases", async () => {
-  const mallViewSource = await readSource("src/views/MallView.vue");
+  const mallShopSource = await readSource("src/composables/useMallShop.js");
+  const productGridSource = await readSource(
+    "src/components/mall/MallProductGrid.vue",
+  );
   const productCardSource = await readSource("src/components/mall/MallProductCard.vue");
 
-  assert.match(mallViewSource, /const purchasingItemId = ref\(null\)/);
-  assert.match(mallViewSource, /:purchasing="isPurchasing && purchasingItemId === item\.id"/);
-  assert.match(mallViewSource, /:purchase-disabled="isPurchasing"/);
-  assert.match(mallViewSource, /if \(isPurchasing\.value\) \{\s*return;\s*\}/);
-  assert.match(mallViewSource, /purchasingItemId\.value = item\.id/);
-  assert.match(mallViewSource, /purchasingItemId\.value = null/);
+  assert.match(mallShopSource, /const isPurchasing = ref\(false\)/);
+  assert.match(
+    mallShopSource,
+    /item\.actionState !== "buy" \|\| isPurchasing\.value/,
+  );
+  assert.match(mallShopSource, /isPurchasing\.value = true/);
+  assert.match(mallShopSource, /isPurchasing\.value = false/);
+  assert.match(productGridSource, /:purchasing="purchasing"/);
+  assert.match(productGridSource, /:purchase-disabled="purchasing"/);
 
   assert.match(productCardSource, /purchasing \? "購買中\.\.\." : item\.actionLabel/);
   assert.match(productCardSource, /item\.actionState !== 'buy' \|\| purchaseDisabled/);
