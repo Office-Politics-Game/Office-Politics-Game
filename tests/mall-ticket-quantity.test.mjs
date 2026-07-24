@@ -11,6 +11,10 @@ test("抽獎券可在商品明細輸入數量並送出", async () => {
   );
   const mallShopSource = await readSource("src/composables/useMallShop.js");
 
+  assert.match(
+    modalSource,
+    /import \{ computed, ref, watch \} from "vue";/,
+  );
   assert.match(modalSource, /id="ticket-quantity"/);
   assert.match(modalSource, /v-model\.number="ticketQuantity"/);
   assert.match(modalSource, /TICKET_UNIT_PRICE = 100/);
